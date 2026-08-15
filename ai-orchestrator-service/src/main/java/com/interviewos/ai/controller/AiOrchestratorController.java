@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/ai")
-@CrossOrigin(origins = "*") // Allows local React frontend to connect
+//@CrossOrigin(origins = "*") // Allows local React frontend to connect
 @RequiredArgsConstructor
 public class AiOrchestratorController {
 

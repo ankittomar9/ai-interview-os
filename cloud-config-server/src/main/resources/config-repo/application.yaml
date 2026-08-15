@@ -1,18 +1,30 @@
-# Global Shared Configuration across all AI Interview OS Microservices
+# Global Configuration applied to ALL Microservices
 spring:
   threads:
     virtual:
       enabled: true
 
 eureka:
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 20
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
-    instance:
-      prefer-ip-address: true
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+  level:
+    com.interviewos: DEBUG
+    org.springframework.cloud.gateway: INFO

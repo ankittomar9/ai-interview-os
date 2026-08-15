@@ -9,14 +9,11 @@ import type {
     AiDialogueResponse
 } from '../types';
 
-// Dynamic host resolution: Works on localhost AND from other devices on your local Wi-Fi!
-const HOST = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-
-const GATEWAY_URL = `http://${HOST}:8080`;
-const SESSION_API = `${GATEWAY_URL}/api/v1/sessions`;
-const AI_API = `${GATEWAY_URL}/api/v1/ai`;
-const PROCTOR_API = `${GATEWAY_URL}/api/v1/proctor`;
-const REPORT_API = `${GATEWAY_URL}/api/v1/reports`;
+// Relative paths: Served directly through Nginx/Vite proxy with zero cross-origin issues
+const SESSION_API = '/api/v1/sessions';
+const AI_API = '/api/v1/ai';
+const PROCTOR_API = '/api/v1/proctor';
+const REPORT_API = '/api/v1/reports';
 
 // --- BYOK Local Storage ---
 export const getStoredApiKey = (provider: ModelProvider): string => {
@@ -27,7 +24,7 @@ export const setStoredApiKey = (provider: ModelProvider, key: string): void => {
     localStorage.setItem(`byok_${provider}`, key);
 };
 
-// --- Session Service (:8081) ---
+// --- Session Service (Routed via Gateway -> :8081) ---
 export const createSession = async (payload: {
     candidateId: string;
     roleTitle: string;
@@ -41,13 +38,13 @@ export const createSession = async (payload: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Failed to create session');
+    if (!res.ok) throw new Error('Failed to create session via Gateway');
     return res.json();
 };
 
 export const startSession = async (sessionId: number): Promise<SessionResponse> => {
     const res = await fetch(`${SESSION_API}/${sessionId}/start`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to start session');
+    if (!res.ok) throw new Error('Failed to start session via Gateway');
     return res.json();
 };
 
@@ -60,17 +57,17 @@ export const addMessageToSession = async (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Failed to save message');
+    if (!res.ok) throw new Error('Failed to save message via Gateway');
     return res.json();
 };
 
 export const completeSession = async (sessionId: number): Promise<SessionResponse> => {
     const res = await fetch(`${SESSION_API}/${sessionId}/complete`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to complete session');
+    if (!res.ok) throw new Error('Failed to complete session via Gateway');
     return res.json();
 };
 
-// --- AI Orchestrator (:8082) ---
+// --- AI Orchestrator (Routed via Gateway -> :8082) ---
 export const generateQuestion = async (payload: {
     roleTitle: string;
     track: InterviewTrack;
@@ -86,7 +83,7 @@ export const generateQuestion = async (payload: {
     });
     if (!res.ok) {
         const errorData = await res.json().catch(() => ({ message: 'AI generation failed' }));
-        throw new Error(errorData.message || 'Failed to generate question');
+        throw new Error(errorData.message || 'Failed to generate question via Gateway');
     }
     return res.json();
 };
@@ -103,11 +100,11 @@ export const processDialogueTurn = async (payload: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Dialogue turn failed');
+    if (!res.ok) throw new Error('Dialogue turn failed via Gateway');
     return res.json();
 };
 
-// --- Proctor Sentinel (:8083) ---
+// --- Proctor Sentinel (Routed via Gateway -> :8083) ---
 export const sendTelemetryEvent = async (payload: {
     sessionId: number;
     eventType: TelemetryEventType;
@@ -126,9 +123,9 @@ export const sendTelemetryEvent = async (payload: {
     }
 };
 
-// --- Evaluation Report (:8084) ---
+// --- Evaluation Report (Routed via Gateway -> :8084) ---
 export const generateDiagnosticReport = async (sessionId: number): Promise<DiagnosticReportResponse> => {
     const res = await fetch(`${REPORT_API}/generate/${sessionId}`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to generate diagnostic report');
+    if (!res.ok) throw new Error('Failed to generate diagnostic report via Gateway');
     return res.json();
 };

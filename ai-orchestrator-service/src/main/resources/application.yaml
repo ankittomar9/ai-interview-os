@@ -1,46 +1,5 @@
-server:
-  port: 8082
-
 spring:
   application:
     name: ai-orchestrator-service
-  threads:
-    virtual:
-      enabled: true
-
-# 🤖 Configurable AI Provider Endpoints & Default Models
-ai:
-  providers:
-    gemini:
-      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/"
-      default-model: "gemini-1.5-flash"
-    groq:
-      endpoint: "https://api.groq.com/openai/v1/chat/completions"
-      default-model: "llama-3.3-70b-versatile"
-    openai:
-      endpoint: "https://api.openai.com/v1/chat/completions"
-      default-model: "gpt-4o-mini"
-    anthropic:
-      endpoint: "https://api.anthropic.com/v1/messages"
-      default-model: "claude-3-5-haiku-20241022"
-    qwen:
-      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
-      default-model: "qwen-2.5-coder-32b-instruct"
-    glm:
-      endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-      default-model: "glm-4-flash"
-    kimi:
-      endpoint: "https://api.moonshot.cn/v1/chat/completions"
-      default-model: "moonshot-v1-8k"
-    deepseek:
-      endpoint: "https://api.deepseek.com/chat/completions"
-      default-model: "deepseek-chat"
-    ollama:
-      endpoint: "http://localhost:11434/api/generate"
-      default-model:  "qwen2.5-coder:7b"
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"

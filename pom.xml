@@ -20,9 +20,9 @@
 
     <modules>
         <!-- Infrastructure Layer -->
-<!--        <module>service-discovery-service</module>-->
-<!--        <module>cloud-config-server</module>-->
-<!--        <module>api-gateway-service</module>-->
+        <module>service-discovery-service</module>
+        <module>cloud-config-server</module>
+        <module>api-gateway-service</module>
 
         <!-- Business Microservices Layer -->
         <module>interview-session-service</module>
@@ -47,6 +47,12 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-tracing-bridge-brave</artifactId>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

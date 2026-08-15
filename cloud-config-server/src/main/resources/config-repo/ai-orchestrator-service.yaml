@@ -1,0 +1,16 @@
+server:
+  port: 8082
+
+ai:
+  providers:
+    gemini:
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/"
+      default-model: "gemini-1.5-flash"
+      api-key: ${GEMINI_API_KEY:}
+    groq:
+      endpoint: "https://api.groq.com/openai/v1/chat/completions"
+      default-model: "llama-3.3-70b-versatile"
+      api-key: ${GROQ_API_KEY:}
+    ollama:
+      endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
+      default-model: ${OLLAMA_MODEL:qwen2.5-coder:7b}

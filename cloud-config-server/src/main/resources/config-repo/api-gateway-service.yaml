@@ -1,0 +1,65 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway-service
+  config:
+    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+      httpclient:
+        connect-timeout: 10000
+        response-timeout: 360s
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "*"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers:
+              - "*"
+      routes:
+        # Route 1: Session Service (:8081)
+        - id: session-service-route
+          uri: lb://interview-session-service
+          predicates:
+            - Path=/api/v1/sessions/**
+
+        # Route 2: AI Orchestrator Service (:8082)
+        - id: ai-orchestrator-route
+          uri: lb://ai-orchestrator-service
+          predicates:
+            - Path=/api/v1/ai/**
+
+        # Route 3: Proctor Sentinel Service (:8083)
+        - id: proctor-sentinel-route
+          uri: lb://proctor-sentinel-service
+          predicates:
+            - Path=/api/v1/proctor/**
+
+        # Route 4: Evaluation Report Service (:8084)
+        - id: evaluation-report-route
+          uri: lb://evaluation-report-service
+          predicates:
+            - Path=/api/v1/reports/**
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,prometheus

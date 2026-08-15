@@ -1,0 +1,23 @@
+server:
+  port: 8083
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:proctordb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+proctor:
+  scoring:
+    initial-integrity-score: 100
+    tab-blur-penalty: 5
+    paste-dump-penalty: 8
+    paste-character-threshold: 200
+    keystroke-burst-penalty: 10
+    keystroke-burst-cpm-threshold: 800

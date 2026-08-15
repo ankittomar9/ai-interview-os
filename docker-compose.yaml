@@ -1,0 +1,155 @@
+networks:
+  ai-interview-net:
+    driver: bridge
+
+services:
+  # 1. Eureka Service Discovery
+  service-discovery-service:
+    build:
+      context: ./service-discovery-service
+      dockerfile: Dockerfile
+    container_name: service-discovery-service
+    ports:
+      - "8761:8761"
+    networks:
+      - ai-interview-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  # 2. Centralized Config Server
+  cloud-config-server:
+    build:
+      context: ./cloud-config-server
+      dockerfile: Dockerfile
+    container_name: cloud-config-server
+    ports:
+      - "8888:8888"
+    networks:
+      - ai-interview-net
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+    depends_on:
+      service-discovery-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  # 3. Interview Session Service
+  interview-session-service:
+    build:
+      context: ./interview-session-service
+      dockerfile: Dockerfile
+    container_name: interview-session-service
+    ports:
+      - "8081:8081"
+    networks:
+      - ai-interview-net
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+    depends_on:
+      cloud-config-server:
+        condition: service_healthy
+
+  # 4. AI Orchestrator Service (Connected to Host Ollama)
+  ai-orchestrator-service:
+    build:
+      context: ./ai-orchestrator-service
+      dockerfile: Dockerfile
+    container_name: ai-orchestrator-service
+    ports:
+      - "8082:8082"
+    networks:
+      - ai-interview-net
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate
+      - OLLAMA_MODEL=qwen2.5-coder:7b
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      cloud-config-server:
+        condition: service_healthy
+
+  # 5. Proctor Sentinel Service
+  proctor-sentinel-service:
+    build:
+      context: ./proctor-sentinel-service
+      dockerfile: Dockerfile
+    container_name: proctor-sentinel-service
+    ports:
+      - "8083:8083"
+    networks:
+      - ai-interview-net
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+    depends_on:
+      cloud-config-server:
+        condition: service_healthy
+
+  # 6. Evaluation Report Service
+  evaluation-report-service:
+    build:
+      context: ./evaluation-report-service
+      dockerfile: Dockerfile
+    container_name: evaluation-report-service
+    ports:
+      - "8084:8084"
+    networks:
+      - ai-interview-net
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - SERVICES_SESSION_SERVICE_URL=http://interview-session-service:8081
+      - SERVICES_PROCTOR_SERVICE_URL=http://proctor-sentinel-service:8083
+    depends_on:
+      cloud-config-server:
+        condition: service_healthy
+
+  # 7. Spring Cloud API Gateway
+  api-gateway-service:
+    build:
+      context: ./api-gateway-service
+      dockerfile: Dockerfile
+    container_name: api-gateway-service
+    ports:
+      - "8080:8080"
+    networks:
+      - ai-interview-net
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+    depends_on:
+      cloud-config-server:
+        condition: service_healthy
+
+  # 8. Frontend React Cockpit
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-cockpit
+    ports:
+      - "5173:80"
+    networks:
+      - ai-interview-net
+    depends_on:
+      - api-gateway-service
