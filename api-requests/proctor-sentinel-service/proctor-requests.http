@@ -1,0 +1,44 @@
+### 1. Ingest Normal Typing Event (Clean)
+POST http://localhost:8083/api/v1/proctor/events
+Content-Type: application/json
+
+{
+  "sessionId": 1,
+  "eventType": "TAB_FOCUS",
+  "metadataDetails": "Candidate focused on interview room"
+}
+
+### 2. Ingest Suspicious Tab Blur Event (Candidate away for 12 seconds)
+POST http://localhost:8083/api/v1/proctor/events
+Content-Type: application/json
+
+{
+  "sessionId": 1,
+  "eventType": "TAB_BLUR",
+  "durationSeconds": 12,
+  "metadataDetails": "Window lost focus"
+}
+
+### 3. Ingest Instant Code Paste Dump (350 characters pasted in 10ms)
+POST http://localhost:8083/api/v1/proctor/events
+Content-Type: application/json
+
+{
+  "sessionId": 1,
+  "eventType": "PASTE_DUMP",
+  "characterCount": 350,
+  "metadataDetails": "Pasted full DFS solution into code editor"
+}
+
+### 4. Fetch Calculated Integrity Summary & Scorecard for Session 1
+GET http://localhost:8083/api/v1/proctor/session/1/summary
+
+###
+POST http://localhost:8083/api/v1/proctor/events
+Content-Type: application/json
+
+{
+  "sessionId": 1,
+  "eventType": "TAB_FOCUS",
+  "metadataDetails": "Candidate focused on interview room"
+}

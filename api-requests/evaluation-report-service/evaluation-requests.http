@@ -1,0 +1,11 @@
+### 1. Generate Full Diagnostic Report for Session 1 (Aggregates Session + Proctor + Scores)
+POST http://localhost:8084/api/v1/reports/generate/1
+
+### 2. Fetch Generated Report by Report ID
+GET http://localhost:8084/api/v1/reports/1
+
+### 3. Fetch Report by Session ID
+GET http://localhost:8084/api/v1/reports/session/1
+
+### 4. Fetch All Past Reports for Candidate
+GET http://localhost:8084/api/v1/reports/candidate/john-doe-42

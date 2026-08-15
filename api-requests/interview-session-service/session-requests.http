@@ -1,0 +1,75 @@
+### 1. Create a New Interview Session (Status: INITIALIZED)
+POST http://localhost:8081/api/v1/sessions
+Content-Type: application/json
+
+{
+  "candidateId": "john-doe-42",
+  "roleTitle": "Senior Java Developer",
+  "track": "JAVA_SPRING_BOOT",
+  "difficulty": "SENIOR",
+  "targetCompany": "Amazon",
+  "jobDescription": "Java 21, Spring Boot 3, Microservices, Concurrency"
+}
+
+### 2. Start the Session (Transitions to IN_PROGRESS)
+POST http://localhost:8081/api/v1/sessions/1/start
+
+### 3. Record Interviewer Question in Session Timeline
+POST http://localhost:8081/api/v1/sessions/1/messages
+Content-Type: application/json
+
+{
+  "senderRole": "AI",
+  "messageType": "QUESTION",
+  "content": "Can you explain how Java 21 Virtual Threads differ from OS Platform Threads?",
+  "codeSnippet": null
+}
+
+### 4. Record Candidate Code Submission in Session Timeline
+POST http://localhost:8081/api/v1/sessions/1/messages
+Content-Type: application/json
+
+{
+  "senderRole": "CANDIDATE",
+  "messageType": "CODE_SUBMISSION",
+  "content": "Here is my virtual thread executor demonstration.",
+  "codeSnippet": "try (var executor = Executors.newVirtualThreadPerTaskExecutor()) { executor.submit(() -> System.out.println(Thread.currentThread())); }"
+}
+
+### 5. Fetch Complete Session Details & Status
+GET http://localhost:8081/api/v1/sessions/1
+
+### 6. Fetch Chronological Transcript
+GET http://localhost:8081/api/v1/sessions/1/transcript
+
+### 7. End / Complete the Session (Calculates Duration)
+POST http://localhost:8081/api/v1/sessions/1/complete
+
+### 8. Fetch Past Sessions for Candidate
+GET http://localhost:8081/api/v1/sessions/candidate/john-doe-42
+
+### 9. View In-Memory H2 Database Console
+# Open http://localhost:8081/h2-console in browser (JDBC URL: jdbc:h2:mem:sessiondb, User: sa, Password: blank)
+
+
+POST http://localhost:8081/api/v1/sessions/1/messages
+Content-Type: application/json
+
+{
+  "senderRole": "CANDIDATE",
+  "messageType": "CODE_SUBMISSION",
+  "content": "Virtual thread executor solution",
+  "codeSnippet": "var executor = Executors.newVirtualThreadPerTaskExecutor();"
+}
+
+
+####
+POST http://localhost:8081/api/v1/sessions/1/messages
+Content-Type: application/json
+
+{
+  "senderRole": "CANDIDATE",
+  "messageType": "CODE_SUBMISSION",
+  "content": "Virtual thread executor solution",
+  "codeSnippet": "var executor = Executors.newVirtualThreadPerTaskExecutor();"
+}

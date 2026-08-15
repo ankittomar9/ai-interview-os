@@ -1,0 +1,66 @@
+### 1. Check Actuator Health & Virtual Threads
+GET http://localhost:8082/actuator/health
+
+### 2. Check Prometheus Metrics
+GET http://localhost:8082/actuator/prometheus
+
+### 3. Test Validation Error (Empty Role Title -> Should return HTTP 400 with clean error JSON)
+POST http://localhost:8082/api/v1/ai/generate-question
+Content-Type: application/json
+
+{
+  "roleTitle": "",
+  "track": "JAVA_SPRING_BOOT",
+  "difficulty": "SENIOR",
+  "modelProvider": "GEMINI",
+  "apiKey": "test-key"
+}
+
+### 4. Live Test: Generate Question with Google Gemini (Replace with your Gemini API key)
+POST http://localhost:8082/api/v1/ai/generate-question
+Content-Type: application/json
+
+{
+  "roleTitle": "Senior Java Backend Engineer",
+  "track": "JAVA_SPRING_BOOT",
+  "difficulty": "SENIOR",
+  "jobDescription": "Looking for deep expertise in Java 21 Virtual Threads, Spring Boot 3.4 microservices, and high-concurrency low-latency systems.",
+  "modelProvider": "GEMINI",
+  "apiKey": "YOUR_GEMINI_API_KEY_HERE"
+}
+
+### 5. Live Test: Generate Question with Groq (Fast Llama 3.3 70B)
+POST http://localhost:8082/api/v1/ai/generate-question
+Content-Type: application/json
+
+{
+  "roleTitle": "Staff Distributed Systems Engineer",
+  "track": "SYSTEM_DESIGN",
+  "difficulty": "STAFF",
+  "jobDescription": "Design a globally distributed, idempotent payment ledger processing 50k TPS.",
+  "modelProvider": "GROQ",
+  "apiKey": "YOUR_GROQ_API_KEY_HERE"
+}
+
+### 6. Live Test: Local Ollama (100% Free / Zero API Key required if Ollama is running)
+POST http://localhost:8082/api/v1/ai/generate-question
+Content-Type: application/json
+
+{
+  "roleTitle": "Full Stack Java & React Engineer",
+  "track": "ALGORITHMS_DATA_STRUCTURES",
+  "difficulty": "MID",
+  "modelProvider": "OLLAMA"
+}
+
+### 7. Live Test: Candidate Dialogue & Follow-up Probing
+POST http://localhost:8082/api/v1/ai/dialogue
+Content-Type: application/json
+
+{
+  "questionContext": "Design a thread-safe token bucket rate limiter in Java 21.",
+  "candidateExplanation": "I will use an AtomicLong to track tokens and refill them periodically based on system nanoTime without taking global synchronized locks.",
+  "candidateCode": "public class TokenBucket { private final AtomicLong tokens = new AtomicLong(100); }",
+  "modelProvider": "GROQ",
+  "apiKey": "YOUR_GROQ_API_KEY_HERE"
+}
