@@ -12,10 +12,11 @@ import type {
 // Dynamic host resolution: Works on localhost AND from other devices on your local Wi-Fi!
 const HOST = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
 
-const SESSION_API = `http://${HOST}:8081/api/v1/sessions`;
-const AI_API = `http://${HOST}:8082/api/v1/ai`;
-const PROCTOR_API = `http://${HOST}:8083/api/v1/proctor`;
-const REPORT_API = `http://${HOST}:8084/api/v1/reports`;
+const GATEWAY_URL = `http://${HOST}:8080`;
+const SESSION_API = `${GATEWAY_URL}/api/v1/sessions`;
+const AI_API = `${GATEWAY_URL}/api/v1/ai`;
+const PROCTOR_API = `${GATEWAY_URL}/api/v1/proctor`;
+const REPORT_API = `${GATEWAY_URL}/api/v1/reports`;
 
 // --- BYOK Local Storage ---
 export const getStoredApiKey = (provider: ModelProvider): string => {

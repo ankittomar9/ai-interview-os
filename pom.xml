@@ -1,17 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.interviewos</groupId>
-    <artifactId>ai-interview-os</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
-
-    <name>AI-Interview-OS Platform</name>
-    <description>Enterprise Open-Source AI Mock Interview &amp; Proctoring Platform</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -20,9 +11,22 @@
         <relativePath/>
     </parent>
 
+    <groupId>com.interviewos</groupId>
+    <artifactId>ai-interview-os</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>AI Interview OS Platform (Aggregator)</name>
+    <description>Enterprise Autonomous Technical Interview &amp; Real-Time Proctoring Platform</description>
+
     <modules>
-        <module>ai-orchestrator-service</module>
+        <!-- Infrastructure Layer -->
+<!--        <module>service-discovery-service</module>-->
+<!--        <module>cloud-config-server</module>-->
+<!--        <module>api-gateway-service</module>-->
+
+        <!-- Business Microservices Layer -->
         <module>interview-session-service</module>
+        <module>ai-orchestrator-service</module>
         <module>proctor-sentinel-service</module>
         <module>evaluation-report-service</module>
     </modules>
@@ -30,6 +34,8 @@
     <properties>
         <java.version>21</java.version>
         <spring-cloud.version>2024.0.0</spring-cloud.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
     <dependencyManagement>
@@ -43,4 +49,19 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

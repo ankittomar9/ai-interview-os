@@ -8,9 +8,12 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="evaluation-report-service" />
+        <module name="service-discovery-service" />
+        <module name="cloud-config-server" />
         <module name="interview-session-service" />
-        <module name="proctor-sentinel-service" />
+        <module name="api-gateway-service" />
         <module name="ai-orchestrator-service" />
+        <module name="proctor-sentinel-service" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
@@ -19,11 +22,15 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="ai-interview-os" options="-parameters" />
       <module name="ai-orchestrator-service" options="-parameters" />
+      <module name="api-gateway-service" options="-parameters" />
+      <module name="cloud-config-server" options="-parameters" />
       <module name="evaluation-report-service" options="-parameters" />
       <module name="interview-os-backend" options="-parameters" />
       <module name="interview-session-service" options="-parameters" />
       <module name="proctor-sentinel-service" options="-parameters" />
+      <module name="service-discovery-service" options="-parameters" />
     </option>
   </component>
 </project>
