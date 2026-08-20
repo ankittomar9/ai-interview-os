@@ -1,11 +1,12 @@
-# 🎙️ AI Interview OS — Enterprise Autonomous Technical Interview Simulator
+ 🎙️ AI Interview OS — Enterprise Autonomous Technical Interview Simulator
 
 [![Java 21](https://img.shields.io/badge/Java-21%20LTS-orange.svg)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot 3.4.2](https://img.shields.io/badge/Spring%20Boot-3.4.2-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Spring Cloud 2024.0.0](https://img.shields.io/badge/Spring%20Cloud-2024.0.0-blue.svg)](https://spring.io/projects/spring-cloud)
 [![React 18](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-blueviolet.svg)](https://reactjs.org/)
-[![MongoDB 7.0](https://img.shields.io/badge/Database-MongoDB%207.0%20%2B%20H2-green.svg)](https://www.mongodb.com/)
-[![Observability](https://img.shields.io/badge/Observability-LGTM%20(Loki%2C%20Grafana%2C%20Tempo%2C%20Prometheus)-red.svg)](https://grafana.com/)
+[![Database](https://img.shields.io/badge/Database-PostgreSQL%2016%20%2B%20MongoDB%207.0-blue.svg)](https://www.postgresql.org/)
+[![Flyway](https://img.shields.io/badge/Migrations-Flyway%20Enabled-red.svg)](https://flywaydb.org/)
+[![Observability](https://img.shields.io/badge/Observability-LGTM%20(Loki%2C%20Grafana%2C%20Tempo%2C%20Prometheus)-orange.svg)](https://grafana.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)](LICENSE)
 
 **AI Interview OS** is a distributed, enterprise-grade autonomous technical interview platform. It combines real-time conversational AI interviewers, a Monaco-based code IDE, an Apache PDFBox resume ingestion pipeline, Groq Whisper neural speech-to-text, real-time proctoring telemetry, and an independent LGTM observability stack.
@@ -58,11 +59,12 @@
 | **`service-discovery-service`** | Spring Cloud Netflix Eureka | `8761` | Dynamic service registration, heartbeat health registry, and internal load balancing (`lb://`). |
 | **`cloud-config-server`** | Spring Cloud Config | `8888` | Centralized external configuration repository with active native profile fallback. |
 | **`api-gateway-service`** | Spring Cloud Gateway (Netty) | `8080` | High-throughput reverse proxy, CORS de-duplication, routing, and client gateway security. |
-| **`interview-session-service`** | Spring Boot, H2, MongoDB, PDFBox | `8081` | Session lifecycle state machine, Apache PDFBox resume parser, transcript audit log persistence. |
+| **`interview-session-service`** | Spring Boot, PostgreSQL, MongoDB, Flyway, PDFBox | `8081` | Session lifecycle state machine, Apache PDFBox resume parser, transcript audit log persistence. |
 | **`ai-orchestrator-service`** | Spring Boot, RestClient, Groq, Ollama | `8082` | AI prompt synthesis, conversational turn review, Groq Whisper neural speech-to-text (180ms ASR). |
-| **`proctor-sentinel-service`** | Spring Boot, JPA, WebRTC Telemetry | `8083` | Real-time candidate proctoring, tab switch tracking, window blur anomaly detection, paste dump audits. |
-| **`evaluation-report-service`** | Spring Boot, Multi-Dimensional Scorer | `8084` | 360° candidate scorecard, STAR behavioral analysis, skill radar matrices, hiring verdicts (`STRONG_HIRE` to `NO_HIRE`). |
+| **`proctor-sentinel-service`** | Spring Boot, PostgreSQL, Flyway, WebRTC Telemetry | `8083` | Real-time candidate proctoring, tab switch tracking, window blur anomaly detection, paste dump audits. |
+| **`evaluation-report-service`** | Spring Boot, PostgreSQL, Flyway, Multi-Dimensional Scorer | `8084` | 360° candidate scorecard, STAR behavioral analysis, skill radar matrices, hiring verdicts (`STRONG_HIRE` to `NO_HIRE`). |
 | **`frontend`** | React 18, TypeScript, Vite, Monaco | `5173` / `80` | Cockpit UI, Monaco IDE, live dual-pass voice transcription, webcam HUD, transcript audit replay. |
+| **`postgres`** | PostgreSQL 16 Alpine | `5432` | Relational database engine hosting `interview_session_db`, `proctor_sentinel_db`, and `evaluation_report_db`. |
 | **`mongodb`** | MongoDB 7.0 Document Store | `27017` | Persistent document storage for full candidate resumes (`resumes`) and complete session audit transcripts (`interview_sessions`). |
 | **Observability (LGTM)** | Prometheus, Loki, Tempo, Grafana | `3000`, `9090`, `3100`, `3200` | Decoupled monitoring stack for metrics, distributed tracing, live microservice logs, and error alerting. |
 

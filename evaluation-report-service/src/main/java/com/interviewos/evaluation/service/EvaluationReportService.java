@@ -39,15 +39,17 @@ public class EvaluationReportService {
         SessionServiceClient.SessionDetailsDto session = sessionClient.getSessionById(sessionId);
         List<SessionServiceClient.TranscriptMessageDto> transcript = sessionClient.getSessionTranscript(sessionId);
 
-        // 2. Fetch Proctor Telemetry
-        int integrityScore = 100;
+        // 2. Fetch Proctor Telemetry (Fail-neutral, never fail open to 100)
+        int integrityScore = 70;
+        boolean proctorVerified = false;
         try {
             ProctorServiceClient.ProctorSummaryDto proctor = proctorClient.getSessionSummary(sessionId);
             if (proctor != null) {
                 integrityScore = proctor.integrityScore();
+                proctorVerified = true;
             }
         } catch (Exception e) {
-            log.warn("Proctor service not reachable for session {}, defaulting integrity to 100: {}", sessionId, e.getMessage());
+            log.warn("Proctor service unreachable for session {}, defaulting integrity to NEUTRAL 70 (never fail open): {}", sessionId, e.getMessage());
         }
 
         long durationSeconds = session.durationSeconds() != null ? session.durationSeconds() : 0;

@@ -40,6 +40,7 @@ class InterviewSessionControllerTest {
     void testCreateSession() throws Exception {
         CreateSessionRequest request = new CreateSessionRequest(
                 "candidate-123",
+                "Ankit Singh Tomar",
                 "Senior Java Backend Engineer",
                 InterviewTrack.JAVA_SPRING_BOOT,
                 DifficultyLevel.SENIOR,

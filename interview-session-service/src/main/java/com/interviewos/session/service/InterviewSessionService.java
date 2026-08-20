@@ -54,7 +54,7 @@ public class InterviewSessionService {
                     .orElseGet(() -> InterviewSessionDocument.builder()
                             .sessionId(saved.getId())
                             .candidateId(request.candidateId())
-                            .candidateName(request.candidateId())
+                            .candidateName(request.candidateName() != null && !request.candidateName().isBlank() ? request.candidateName() : request.candidateId())
                             .targetRoleTitle(request.roleTitle())
                             .interviewTrack(request.track().name())
                             .seniorityLevel(request.difficulty().name())

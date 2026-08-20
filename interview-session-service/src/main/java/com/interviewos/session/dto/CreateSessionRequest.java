@@ -9,6 +9,8 @@ public record CreateSessionRequest(
         @NotBlank(message = "Candidate ID is required")
         String candidateId,
 
+        String candidateName,
+
         @NotBlank(message = "Role title is required")
         String roleTitle,
 

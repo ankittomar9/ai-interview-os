@@ -27,6 +27,7 @@ export const setStoredApiKey = (provider: ModelProvider, key: string): void => {
 // --- Session Service (Routed via Gateway -> :8081) ---
 export const createSession = async (payload: {
     candidateId: string;
+    candidateName?: string;
     roleTitle: string;
     track: InterviewTrack;
     difficulty: DifficultyLevel;

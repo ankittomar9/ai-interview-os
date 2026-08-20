@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.time.Instant;
 import java.util.List;
 
-@FeignClient(name = "interview-session-service", url = "${services.session-service.url:http://localhost:8081}")
+@FeignClient(name = "interview-session-service")
 public interface SessionServiceClient {
 
     @GetMapping("/api/v1/sessions/{id}")

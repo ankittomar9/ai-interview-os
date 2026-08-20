@@ -1,5 +1,6 @@
 package com.interviewos.proctor.service;
 
+import com.interviewos.proctor.config.ProctorScoringProperties;
 import com.interviewos.proctor.dto.RecordTelemetryRequest;
 import com.interviewos.proctor.dto.TelemetrySummaryResponse;
 import com.interviewos.proctor.entity.TelemetryEvent;
@@ -20,6 +21,7 @@ import java.util.List;
 public class ProctorSentinelService {
 
     private final TelemetryEventRepository eventRepository;
+    private final ProctorScoringProperties scoringProperties;
 
     @Transactional
     public TelemetrySummaryResponse.TelemetryEventResponse recordEvent(RecordTelemetryRequest request) {
@@ -53,23 +55,23 @@ public class ProctorSentinelService {
         for (TelemetryEvent e : events) {
             if (e.getEventType() == TelemetryEventType.TAB_BLUR) {
                 tabSwitches++;
-                totalPenalty += 5; // 5 pts per tab switch
+                totalPenalty += scoringProperties.getTabBlurPenalty();
                 if (e.getDurationSeconds() != null && e.getDurationSeconds() > 10) {
                     anomalyFlags.add("Candidate was away from interview tab for " + e.getDurationSeconds() + " seconds.");
                 }
             } else if (e.getEventType() == TelemetryEventType.PASTE_DUMP) {
                 pasteDumps++;
-                totalPenalty += 15; // 15 pts per instant code paste dump
-                anomalyFlags.add("Instantaneous paste dump detected (" + (e.getCharacterCount() != null ? e.getCharacterCount() : ">150") + " characters).");
+                totalPenalty += scoringProperties.getPasteDumpPenalty();
+                anomalyFlags.add("Instantaneous paste dump detected (" + (e.getCharacterCount() != null ? e.getCharacterCount() : ">" + scoringProperties.getPasteCharacterThreshold()) + " characters).");
             } else if (e.getEventType() == TelemetryEventType.KEYSTROKE_BURST) {
                 keystrokeBursts++;
-                totalPenalty += 10;
-                anomalyFlags.add("Unnatural high-frequency keystroke burst detected.");
+                totalPenalty += scoringProperties.getKeystrokeBurstPenalty();
+                anomalyFlags.add("Unnatural high-frequency keystroke burst detected (> " + scoringProperties.getKeystrokeBurstCpmThreshold() + " CPM).");
             }
         }
 
-        // Cap score between 0 and 100
-        int finalScore = Math.max(0, 100 - totalPenalty);
+        // Cap score between 0 and initial integrity score
+        int finalScore = Math.max(0, scoringProperties.getInitialIntegrityScore() - totalPenalty);
 
         IntegrityRiskLevel riskLevel;
         String verdict;
@@ -104,7 +106,7 @@ public class ProctorSentinelService {
     }
 
     private boolean isEventSuspicious(RecordTelemetryRequest req) {
-        if (req.eventType() == TelemetryEventType.PASTE_DUMP && req.characterCount() != null && req.characterCount() > 100) {
+        if (req.eventType() == TelemetryEventType.PASTE_DUMP && req.characterCount() != null && req.characterCount() > scoringProperties.getPasteCharacterThreshold()) {
             return true;
         }
         if (req.eventType() == TelemetryEventType.TAB_BLUR && req.durationSeconds() != null && req.durationSeconds() > 5) {
