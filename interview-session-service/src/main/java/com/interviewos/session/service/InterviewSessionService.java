@@ -1,11 +1,13 @@
 package com.interviewos.session.service;
 
+import com.interviewos.session.document.InterviewSessionDocument;
 import com.interviewos.session.dto.AddMessageRequest;
 import com.interviewos.session.dto.CreateSessionRequest;
 import com.interviewos.session.dto.SessionResponse;
 import com.interviewos.session.entity.InterviewSession;
 import com.interviewos.session.entity.SessionMessage;
 import com.interviewos.session.model.SessionStatus;
+import com.interviewos.session.repository.InterviewSessionMongoRepository;
 import com.interviewos.session.repository.InterviewSessionRepository;
 import com.interviewos.session.repository.SessionMessageRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -25,6 +29,7 @@ public class InterviewSessionService {
 
     private final InterviewSessionRepository sessionRepository;
     private final SessionMessageRepository messageRepository;
+    private final InterviewSessionMongoRepository mongoSessionRepository;
 
     @Transactional
     public SessionResponse createSession(CreateSessionRequest request) {
@@ -41,6 +46,30 @@ public class InterviewSessionService {
                 .build();
 
         InterviewSession saved = sessionRepository.save(session);
+
+        // Sync to MongoDB Document Store (Safe Upsert)
+        try {
+            InterviewSessionDocument mongoDoc = mongoSessionRepository
+                    .findFirstBySessionIdOrderByCreatedAtDesc(saved.getId())
+                    .orElseGet(() -> InterviewSessionDocument.builder()
+                            .sessionId(saved.getId())
+                            .candidateId(request.candidateId())
+                            .candidateName(request.candidateId())
+                            .targetRoleTitle(request.roleTitle())
+                            .interviewTrack(request.track().name())
+                            .seniorityLevel(request.difficulty().name())
+                            .targetCompany(request.targetCompany())
+                            .status(SessionStatus.INITIALIZED.name())
+                            .transcript(new ArrayList<>())
+                            .createdAt(LocalDateTime.now())
+                            .build());
+
+            mongoDoc.setStatus(SessionStatus.INITIALIZED.name());
+            mongoSessionRepository.save(mongoDoc);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to mirror session to MongoDB: {}", e.getMessage());
+        }
+
         return SessionResponse.fromEntity(saved);
     }
 
@@ -56,7 +85,20 @@ public class InterviewSessionService {
         session.setStartedAt(Instant.now());
         log.info("Session {} transitioned to IN_PROGRESS", sessionId);
 
-        return SessionResponse.fromEntity(sessionRepository.save(session));
+        InterviewSession saved = sessionRepository.save(session);
+
+        // Update Mongo document safely
+        try {
+            mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
+                doc.setStatus(SessionStatus.IN_PROGRESS.name());
+                doc.setStartedAt(LocalDateTime.now());
+                mongoSessionRepository.save(doc);
+            });
+        } catch (Exception e) {
+            log.warn("⚠️ MongoDB sync warning on startSession: {}", e.getMessage());
+        }
+
+        return SessionResponse.fromEntity(saved);
     }
 
     @Transactional
@@ -79,6 +121,27 @@ public class InterviewSessionService {
         SessionMessage saved = messageRepository.save(message);
         log.info("Added {} message to session {}", request.senderRole(), sessionId);
 
+        // Sync turn to Mongo document transcript safely
+        try {
+            mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
+                if (doc.getTranscript() == null) {
+                    doc.setTranscript(new ArrayList<>());
+                }
+                InterviewSessionDocument.TranscriptTurn turn = InterviewSessionDocument.TranscriptTurn.builder()
+                        .turnNumber(doc.getTranscript().size() + 1)
+                        .senderRole(request.senderRole().toUpperCase())
+                        .messageType(request.messageType().name())
+                        .content(request.content())
+                        .codeSnippet(request.codeSnippet())
+                        .timestamp(LocalDateTime.now())
+                        .build();
+                doc.getTranscript().add(turn);
+                mongoSessionRepository.save(doc);
+            });
+        } catch (Exception e) {
+            log.warn("⚠️ MongoDB sync warning on addMessage: {}", e.getMessage());
+        }
+
         return SessionResponse.MessageResponse.fromEntity(saved);
     }
 
@@ -100,8 +163,7 @@ public class InterviewSessionService {
     public SessionResponse completeSession(Long sessionId) {
         InterviewSession session = findSessionOrThrow(sessionId);
 
-        if (session.getStatus() == SessionStatus.COMPLETED || session.getStatus() == SessionStatus.EVALUATED) {
-            log.info("Session {} already completed", sessionId);
+        if (session.getStatus() == SessionStatus.COMPLETED) {
             return SessionResponse.fromEntity(session);
         }
 
@@ -109,18 +171,29 @@ public class InterviewSessionService {
         session.setCompletedAt(Instant.now());
 
         if (session.getStartedAt() != null) {
-            session.setDurationSeconds(Duration.between(session.getStartedAt(), session.getCompletedAt()).getSeconds());
-        } else {
-            session.setDurationSeconds(0L);
+            session.setDurationSeconds(Duration.between(session.getStartedAt(), session.getCompletedAt()).toSeconds());
         }
 
-        log.info("Session {} marked as COMPLETED. Duration: {} seconds", sessionId, session.getDurationSeconds());
-        return SessionResponse.fromEntity(sessionRepository.save(session));
+        log.info("Session {} COMPLETED. Total duration: {}s", sessionId, session.getDurationSeconds());
+        InterviewSession saved = sessionRepository.save(session);
+
+        // Sync completion to MongoDB safely
+        try {
+            mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
+                doc.setStatus(SessionStatus.COMPLETED.name());
+                doc.setCompletedAt(LocalDateTime.now());
+                mongoSessionRepository.save(doc);
+            });
+        } catch (Exception e) {
+            log.warn("⚠️ MongoDB sync warning on completeSession: {}", e.getMessage());
+        }
+
+        return SessionResponse.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)
     public List<SessionResponse> getCandidateSessions(String candidateId) {
-        return sessionRepository.findByCandidateIdOrderByCreatedAtDesc(candidateId).stream()
+        return sessionRepository.findByCandidateId(candidateId).stream()
                 .map(SessionResponse::fromEntity)
                 .toList();
     }

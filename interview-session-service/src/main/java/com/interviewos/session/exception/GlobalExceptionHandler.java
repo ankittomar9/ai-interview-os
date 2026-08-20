@@ -49,9 +49,16 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        log.warn("HTTP Method not supported: {} for URI: {}", ex.getMethod(), request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ErrorResponse.of(HttpStatus.METHOD_NOT_ALLOWED.value(), "Method Not Allowed", ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
-        log.error("Internal error: ", ex);
+        log.error("Unhandled exception at URI: {} - Error: ", request.getRequestURI(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Internal Server Error", "An unexpected error occurred", request.getRequestURI()));
     }

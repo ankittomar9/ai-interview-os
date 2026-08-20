@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Camera, Mic, Monitor, Wifi, ArrowRight, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Camera, Mic, Monitor, Wifi, ArrowRight, ShieldCheck, AlertTriangle, Cpu } from 'lucide-react';
 
 interface Props {
     sessionId: number;
@@ -20,6 +20,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
     const [screenOk, setScreenOk] = useState(true);
     const [devBypassScreen, setDevBypassScreen] = useState(false);
     const [networkOk] = useState(true);
+    const [envMode, setEnvMode] = useState<'dev' | 'prod'>('dev');
     const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
 
     // Dynamic host URL for the QR code
@@ -68,7 +69,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 };
                 updateAudioMeter();
             } catch (err) {
-                console.warn('Hardware access error:', err);
+                console.warn('Hardware access note:', err);
             }
 
             // Check for extended / multi displays
@@ -92,40 +93,114 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         };
     }, []);
 
-    const isScreenCheckSatisfied = screenOk || devBypassScreen;
-    const allChecksPassed = cameraOk && micOk && isScreenCheckSatisfied && networkOk;
+    const isScreenCheckSatisfied = envMode === 'dev' ? true : (screenOk || devBypassScreen);
+    const allChecksPassed = envMode === 'dev' ? true : (cameraOk && micOk && isScreenCheckSatisfied && networkOk);
 
     return (
-        <div style={{ maxWidth: '850px', margin: '40px auto', padding: '0 20px 60px' }}>
-            <div className="glass-card" style={{ padding: '36px' }}>
+        <div style={{ maxWidth: '880px', margin: '30px auto', padding: '0 20px 60px' }}>
+            <div className="glass-card" style={{ padding: '36px', background: '#0f172a', border: '1px solid #1e293b' }}>
 
-                <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '20px', marginBottom: '28px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <ShieldCheck size={28} color="#6366f1" />
-                        <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Pre-Assessment System Verification</h1>
+                {/* Header & Mode Switcher */}
+                <div style={{ borderBottom: '1px solid #1e293b', paddingBottom: '20px', marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <ShieldCheck size={28} color="#6366f1" />
+                            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f8fafc' }}>Pre-Assessment System Verification</h1>
+                        </div>
+                        <p style={{ color: '#94a3b8', marginTop: '4px', fontSize: '0.9rem' }}>
+                            Candidate Readiness Check for <strong>{roleTitle}</strong> • Session #{sessionId}
+                        </p>
                     </div>
-                    <p style={{ color: 'var(--text-secondary)', marginTop: '4px', fontSize: '0.9rem' }}>
-                        Candidate Readiness Check for <strong>{roleTitle}</strong> • Session #{sessionId}
-                    </p>
+
+                    {/* Mode Toggle (Dev vs Production) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#090d16', padding: '4px', borderRadius: '8px', border: '1px solid #334155' }}>
+                        <button
+                            type="button"
+                            onClick={() => setEnvMode('dev')}
+                            style={{
+                                padding: '6px 12px',
+                                fontSize: '0.78rem',
+                                fontWeight: 600,
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: envMode === 'dev' ? '#6366f1' : 'transparent',
+                                color: envMode === 'dev' ? '#ffffff' : '#94a3b8',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                            }}
+                        >
+                            <Cpu size={14} /> Dev Mode (Bypassable)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEnvMode('prod')}
+                            style={{
+                                padding: '6px 12px',
+                                fontSize: '0.78rem',
+                                fontWeight: 600,
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: envMode === 'prod' ? '#10b981' : 'transparent',
+                                color: envMode === 'prod' ? '#ffffff' : '#94a3b8',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                            }}
+                        >
+                            <ShieldCheck size={14} /> Production (Strict)
+                        </button>
+                    </div>
                 </div>
+
+                {envMode === 'dev' && (
+                    <div style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '12px 16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Cpu size={18} color="#818cf8" />
+                            <span style={{ fontSize: '0.85rem', color: '#c7d2fe' }}>
+                                <strong>Development Mode Active</strong>: Hardware constraints can be bypassed for testing.
+                            </span>
+                        </div>
+                        <button
+                            onClick={onProceed}
+                            style={{
+                                padding: '6px 14px',
+                                background: '#6366f1',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                        >
+                            ⚡ Instant Launch Interview <ArrowRight size={14} />
+                        </button>
+                    </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
 
                     {/* Left: Camera & Microphone */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                        <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-card)', borderRadius: '10px', padding: '16px' }}>
+                        <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc' }}>
                                     <Camera size={16} color={cameraOk ? '#34d399' : '#f87171'} />
                                     <span>1. Frontal Webcam Video</span>
                                 </div>
-                                <span className={`badge ${cameraOk ? 'badge-success' : 'badge-danger'}`}>
-                  {cameraOk ? 'Verified' : 'Access Required'}
-                </span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: cameraOk ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: cameraOk ? '#34d399' : '#f87171' }}>
+                                    {cameraOk ? 'Verified' : 'Access Required'}
+                                </span>
                             </div>
 
-                            <div style={{ width: '100%', height: '150px', background: '#0a0a0f', borderRadius: '6px', overflow: 'hidden' }}>
+                            <div style={{ width: '100%', height: '150px', background: '#030712', borderRadius: '6px', overflow: 'hidden' }}>
                                 <video
                                     ref={videoPreviewRef}
                                     autoPlay
@@ -136,18 +211,18 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                             </div>
                         </div>
 
-                        <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-card)', borderRadius: '10px', padding: '16px' }}>
+                        <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc' }}>
                                     <Mic size={16} color={micOk ? '#34d399' : '#f87171'} />
                                     <span>2. Microphone Audio Input</span>
                                 </div>
-                                <span className={`badge ${micOk ? 'badge-success' : 'badge-warning'}`}>
-                  {micOk ? 'Audio Detected' : 'Speak to Test'}
-                </span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: micOk ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)', color: micOk ? '#34d399' : '#fbbf24' }}>
+                                    {micOk ? 'Audio Detected' : 'Speak to Test'}
+                                </span>
                             </div>
 
-                            <div style={{ height: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', overflow: 'hidden' }}>
+                            <div style={{ height: '12px', background: 'rgba(255,255,255,0.08)', borderRadius: '6px', overflow: 'hidden' }}>
                                 <div
                                     style={{
                                         height: '100%',
@@ -157,9 +232,9 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                                     }}
                                 />
                             </div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
-                Say a sentence aloud to verify your microphone level.
-              </span>
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginTop: '6px' }}>
+                                Say a sentence aloud to verify your microphone level.
+                            </span>
                         </div>
 
                     </div>
@@ -167,67 +242,67 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                     {/* Right: Displays & Phone Companion QR */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                        <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-card)', borderRadius: '10px', padding: '16px' }}>
+                        <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc' }}>
                                     <Monitor size={16} color={isScreenCheckSatisfied ? '#34d399' : '#f87171'} />
                                     <span>3. Single Monitor Check</span>
                                 </div>
-                                <span className={`badge ${isScreenCheckSatisfied ? 'badge-success' : 'badge-danger'}`}>
-                  {screenOk ? 'Single Display' : devBypassScreen ? 'Dev Bypass Active' : 'Multi-Display Detected'}
-                </span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: isScreenCheckSatisfied ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: isScreenCheckSatisfied ? '#34d399' : '#f87171' }}>
+                                    {screenOk ? 'Single Display' : devBypassScreen ? 'Dev Bypass Active' : 'Multi-Display Detected'}
+                                </span>
                             </div>
 
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                {screenOk
-                    ? 'No external monitors detected.'
-                    : 'External monitor/HDMI detected. Please disconnect external displays.'}
-              </span>
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>
+                                {screenOk
+                                    ? 'No external monitors detected.'
+                                    : 'External monitor/HDMI detected. Please disconnect external displays.'}
+                            </span>
 
-                            {!screenOk && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                            {!screenOk && envMode === 'prod' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>
                                     <input
                                         type="checkbox"
                                         checked={devBypassScreen}
                                         onChange={(e) => setDevBypassScreen(e.target.checked)}
                                     />
-                                    <span>(Dev Mode: Allow Multi-Monitor Testing)</span>
+                                    <span>(Allow Multi-Monitor Testing)</span>
                                 </label>
                             )}
                         </div>
 
                         <div style={{ background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '10px', padding: '16px', display: 'flex', gap: '16px', alignItems: 'center' }}>
                             <div style={{ background: 'white', padding: '6px', borderRadius: '8px' }}>
-                                <QRCodeSVG value={phoneProctorUrl} size={84} />
+                                <QRCodeSVG value={phoneProctorUrl} size={80} />
                             </div>
                             <div>
                                 <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#818cf8', marginBottom: '4px' }}>
                                     4. Dual-Camera Phone Link (Optional)
                                 </div>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                <p style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: '1.4' }}>
                                     Scan with your phone on same Wi-Fi to stream 45° angle desk feed.
                                 </p>
                             </div>
                         </div>
 
-                        <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-card)', borderRadius: '10px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }}>
+                        <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc' }}>
                                 <Wifi size={16} color="#34d399" />
                                 <span>5. Network Connection</span>
                             </div>
-                            <span className="badge badge-success">Localhost / LAN (0 ms)</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>Localhost / LAN (0 ms)</span>
                         </div>
 
                     </div>
 
                 </div>
 
-                {!allChecksPassed && (
+                {!allChecksPassed && envMode === 'prod' && (
                     <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '12px 16px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
                         <AlertTriangle size={18} color="#fbbf24" />
                         <span style={{ fontSize: '0.85rem', color: '#fbbf24' }}>
-              Please satisfy hardware checks (or check Dev Bypass) to unlock the assessment.
-            </span>
+                            Please satisfy hardware checks (or switch to Dev Mode) to unlock the assessment.
+                        </span>
                     </div>
                 )}
 
@@ -235,9 +310,9 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                     className="btn btn-primary"
                     onClick={onProceed}
                     disabled={!allChecksPassed}
-                    style={{ width: '100%', padding: '14px', fontSize: '1rem', opacity: allChecksPassed ? 1 : 0.5 }}
+                    style={{ width: '100%', padding: '14px', fontSize: '1rem', opacity: allChecksPassed ? 1 : 0.5, background: '#6366f1', color: '#ffffff', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                    All Systems Verified ➡️ Start Interview
+                    {allChecksPassed ? 'All Systems Verified ➡️ Start Interview' : 'Hardware Access Required'}
                     <ArrowRight size={18} />
                 </button>
 

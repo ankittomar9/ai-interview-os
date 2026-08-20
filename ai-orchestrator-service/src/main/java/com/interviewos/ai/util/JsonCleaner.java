@@ -1,9 +1,15 @@
 package com.interviewos.ai.util;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
- * Utility to strip markdown fences (```json ... ```) produced by LLMs.
+ * Robust JSON extraction utility that extracts valid JSON payloads from LLM outputs
+ * even when surrounded by markdown fences, commentary, or conversational prefixes.
  */
 public final class JsonCleaner {
+
+    private static final Pattern JSON_BLOCK_PATTERN = Pattern.compile("```(?:json)?\\s*([\\s\\S]*?)\\s*```", Pattern.CASE_INSENSITIVE);
 
     private JsonCleaner() {}
 
@@ -11,15 +17,26 @@ public final class JsonCleaner {
         if (rawOutput == null || rawOutput.isBlank()) {
             return "{}";
         }
-        String clean = rawOutput.trim();
-        if (clean.startsWith("```json")) {
-            clean = clean.substring(7);
-        } else if (clean.startsWith("```")) {
-            clean = clean.substring(3);
+
+        // 1. Try markdown code block extraction
+        Matcher matcher = JSON_BLOCK_PATTERN.matcher(rawOutput);
+        if (matcher.find()) {
+            String extracted = matcher.group(1).trim();
+            int firstBrace = extracted.indexOf('{');
+            int lastBrace = extracted.lastIndexOf('}');
+            if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+                return extracted.substring(firstBrace, lastBrace + 1).trim();
+            }
+            return extracted;
         }
-        if (clean.endsWith("```")) {
-            clean = clean.substring(0, clean.length() - 3);
+
+        // 2. Try finding outermost JSON curly braces { ... }
+        int firstBrace = rawOutput.indexOf('{');
+        int lastBrace = rawOutput.lastIndexOf('}');
+        if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+            return rawOutput.substring(firstBrace, lastBrace + 1).trim();
         }
-        return clean.trim();
+
+        return rawOutput.trim();
     }
 }

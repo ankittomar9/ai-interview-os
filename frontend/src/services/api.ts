@@ -104,6 +104,27 @@ export const processDialogueTurn = async (payload: {
     return res.json();
 };
 
+/**
+ * Groq Whisper Neural Speech-to-Text (180ms LPU transcription).
+ */
+export const transcribeAudio = async (
+    audioBlob: Blob,
+    apiKey?: string,
+    model?: string
+): Promise<{ text: string; status: string; latencyMs?: string }> => {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.webm');
+    if (apiKey) formData.append('apiKey', apiKey);
+    if (model) formData.append('model', model);
+
+    const res = await fetch(`${AI_API}/transcribe`, {
+        method: 'POST',
+        body: formData
+    });
+    if (!res.ok) throw new Error('Failed to transcribe audio via Whisper');
+    return res.json();
+};
+
 // --- Proctor Sentinel (Routed via Gateway -> :8083) ---
 export const sendTelemetryEvent = async (payload: {
     sessionId: number;
@@ -127,5 +148,47 @@ export const sendTelemetryEvent = async (payload: {
 export const generateDiagnosticReport = async (sessionId: number): Promise<DiagnosticReportResponse> => {
     const res = await fetch(`${REPORT_API}/generate/${sessionId}`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to generate diagnostic report via Gateway');
+    return res.json();
+};
+
+// --- Resume Ingestion Engine (Routed via Gateway -> :8081) ---
+export const uploadResumeFile = async (
+    file: File,
+    candidateId: string,
+    candidateName: string,
+    resumeTitle?: string
+) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('candidateId', candidateId);
+    formData.append('candidateName', candidateName);
+    if (resumeTitle) formData.append('resumeTitle', resumeTitle);
+
+    const res = await fetch(`${SESSION_API}/resume/upload`, {
+        method: 'POST',
+        body: formData
+    });
+    if (!res.ok) throw new Error('Failed to upload and parse resume');
+    return res.json();
+};
+
+export const uploadResumeText = async (payload: {
+    candidateId: string;
+    candidateName: string;
+    resumeTitle?: string;
+    resumeText: string;
+}) => {
+    const res = await fetch(`${SESSION_API}/resume/text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to ingest resume text');
+    return res.json();
+};
+
+export const fetchSessionTranscript = async (sessionId: number) => {
+    const res = await fetch(`${SESSION_API}/resume/transcript/${sessionId}`);
+    if (!res.ok) throw new Error('Failed to fetch session transcript');
     return res.json();
 };

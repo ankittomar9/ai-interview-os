@@ -41,7 +41,8 @@ public class OllamaClient implements AiClient {
         String endpoint = config.endpoint();
         String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
 
-        log.info("Dispatching prompt to Local Ollama at {} using model: {}", endpoint, model);
+        log.info("Connecting to Local Ollama at: {} | Model: {} | Prompt length: {} chars",
+                endpoint, model, (systemInstruction.length() + userPrompt.length()));
 
         Map<String, Object> requestPayload = Map.of(
                 "model", model,
@@ -51,20 +52,26 @@ public class OllamaClient implements AiClient {
         );
 
         RestClient restClient = restClientBuilder.build();
-
-        String rawResponse = restClient.post()
-                .uri(endpoint)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(requestPayload)
-                .retrieve()
-                .body(String.class);
+        long start = System.currentTimeMillis();
 
         try {
+            String rawResponse = restClient.post()
+                    .uri(endpoint)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(requestPayload)
+                    .retrieve()
+                    .body(String.class);
+
+            long duration = System.currentTimeMillis() - start;
             JsonNode root = objectMapper.readTree(rawResponse);
-            return root.path("response").asText();
+            String output = root.path("response").asText();
+
+            log.info("Ollama inference completed in {}ms (Output: {} chars)", duration, output.length());
+            return output;
         } catch (Exception e) {
-            log.error("Failed to parse Ollama response: {}", rawResponse, e);
-            throw new RuntimeException("Error communicating with local Ollama instance at " + endpoint, e);
+            long duration = System.currentTimeMillis() - start;
+            log.error("Failed communicating with Ollama at '{}' after {}ms. Error: {}", endpoint, duration, e.getMessage(), e);
+            throw new RuntimeException("Error communicating with local Ollama instance at " + endpoint + ": " + e.getMessage(), e);
         }
     }
 }

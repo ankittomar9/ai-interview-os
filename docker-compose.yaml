@@ -1,8 +1,26 @@
 networks:
   ai-interview-net:
+    name: ai-interview-net
     driver: bridge
 
 services:
+  # 0. MongoDB Document Store (Resumes, Sessions, Transcripts)
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - ai-interview-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # 1. Eureka Service Discovery
   service-discovery-service:
     build:
@@ -43,7 +61,7 @@ services:
       retries: 6
       start_period: 20s
 
-  # 3. Interview Session Service
+  # 3. Interview Session Service (Connected to MongoDB & Resume Parser)
   interview-session-service:
     build:
       context: ./interview-session-service
@@ -57,8 +75,11 @@ services:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
       - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/interviewos
     depends_on:
       cloud-config-server:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
 
   # 4. AI Orchestrator Service (Connected to Host Ollama)
@@ -134,11 +155,10 @@ services:
     networks:
       - ai-interview-net
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
       - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
     depends_on:
-      cloud-config-server:
+      service-discovery-service:
         condition: service_healthy
 
   # 8. Frontend React Cockpit
@@ -153,3 +173,6 @@ services:
       - ai-interview-net
     depends_on:
       - api-gateway-service
+
+volumes:
+  mongodb_data:

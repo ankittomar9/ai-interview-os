@@ -6,9 +6,13 @@ spring:
     name: cloud-config-server
   profiles:
     active: native
+  config:
+    import: ""
   cloud:
     config:
+      enabled: false
       server:
+        bootstrap: false
         native:
           search-locations: classpath:/config-repo
 
@@ -21,4 +25,4 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,busrefresh
+        include: health,info,busrefresh,metrics,prometheus

@@ -38,6 +38,17 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+    </dependencies>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -47,12 +58,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
-            <dependency>
-                <groupId>io.micrometer</groupId>
-                <artifactId>micrometer-tracing-bridge-brave</artifactId>
-            </dependency>
-
         </dependencies>
     </dependencyManagement>
 

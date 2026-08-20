@@ -21,10 +21,17 @@ management:
   endpoint:
     health:
       show-details: always
+    prometheus:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
 
 logging:
   pattern:
     level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}] [%t] %-40.40logger{39} : %m%n"
   level:
-    com.interviewos: DEBUG
+    com.interviewos: INFO
     org.springframework.cloud.gateway: INFO
+    org.springframework.web: INFO

@@ -1,0 +1,92 @@
+networks:
+  ai-interview-net:
+    name: ai-interview-net
+    driver: bridge
+
+services:
+  # 1. Prometheus (Metrics Scraper & Time-Series DB)
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - ai-interview-net
+
+  # 2. Grafana Loki (Log Aggregation Engine)
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/observability/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - ai-interview-net
+
+  # 3. Promtail (Docker Container Log Forwarder -> Loki)
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail
+    volumes:
+      - ./docker/observability/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - ai-interview-net
+    depends_on:
+      - loki
+
+  # 4. Grafana Tempo (Distributed Tracing Store)
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: tempo
+    ports:
+      - "3200:3200" # tempo HTTP
+      - "4317:4317" # otlp grpc
+      - "4318:4318" # otlp http
+      - "9411:9411" # zipkin
+    volumes:
+      - ./docker/observability/tempo-config.yml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    networks:
+      - ai-interview-net
+
+  # 5. Grafana Dashboard (Single Pane of Glass UI)
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./docker/observability/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./docker/observability/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
+      - ./docker/observability/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - ai-interview-net
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+volumes:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:
