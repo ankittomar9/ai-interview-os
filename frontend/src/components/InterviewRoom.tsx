@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import type { GenerateQuestionResponse, ModelProvider } from '../types';
-import { addMessageToSession, completeSession, processDialogueTurn, transcribeAudio, executeCode } from '../services/api';
+import { addMessageToSession, completeSession, processDialogueTurn, transcribeAudio, getStoredApiKey, executeCode } from '../services/api';
 import { useProctorSentinel } from '../hooks/useProctorSentinel';
 import { StageStepper, type InterviewStage } from './StageStepper';
 import { AiAvatarWaveform } from './AiAvatarWaveform';
@@ -30,6 +30,19 @@ interface Props {
     apiKey: string;
     onFinish: () => void;
 }
+
+const END_PHRASES = [
+    "that's my answer",
+    "that is my answer",
+    "over to you",
+    "i'm done",
+    "i am done",
+    "that's all",
+    "that is all",
+    "that's it",
+    "that is it",
+    "back to you"
+];
 
 export const InterviewRoom: React.FC<Props> = ({
     sessionId,
@@ -83,6 +96,8 @@ export const InterviewRoom: React.FC<Props> = ({
     const audioChunksRef = useRef<Blob[]>([]);
     const silenceTimeoutRef = useRef<any>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const isSessionEndedRef = useRef(false);
+    const hasSpokenIntroRef = useRef(false);
 
     // --- Execution Console ---
     const [executionOutput, setExecutionOutput] = useState<string | null>(null);
@@ -95,8 +110,6 @@ export const InterviewRoom: React.FC<Props> = ({
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isAiResponding]);
-
-    const isSessionEndedRef = useRef(false);
 
     // --- Echo-Safe Text-To-Speech (AI Voice) ---
     const speakText = useCallback((text: string) => {
@@ -148,7 +161,18 @@ export const InterviewRoom: React.FC<Props> = ({
         window.speechSynthesis.speak(utterance);
     }, [voiceOutputEnabled]);
 
-    // --- Full Duplex Speech Recognition & Whisper Backup ---
+    // P2 #1: Greeting TTS spoken once on mount
+    useEffect(() => {
+        if (!hasSpokenIntroRef.current && messages.length > 0 && voiceOutputEnabled) {
+            hasSpokenIntroRef.current = true;
+            const timer = setTimeout(() => {
+                speakText(messages[0].content);
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [speakText, voiceOutputEnabled, messages]);
+
+    // --- P1: Full Duplex Continuous Speech Recognition with 9s Buffer & End Phrases ---
     const startListening = useCallback(() => {
         if (isSessionEndedRef.current || isAiSpeaking) return;
 
@@ -164,7 +188,7 @@ export const InterviewRoom: React.FC<Props> = ({
             }
 
             const rec = new SpeechRec();
-            rec.continuous = false;
+            rec.continuous = true;
             rec.interimResults = true;
             rec.lang = 'en-US';
 
@@ -186,16 +210,27 @@ export const InterviewRoom: React.FC<Props> = ({
                     }
                 }
 
-                setChatInput(final || interim);
+                const currentText = (final || interim).trim();
+                setChatInput(currentText);
 
+                const lower = currentText.toLowerCase();
+                const hasEndPhrase = END_PHRASES.some((phrase) => lower.includes(phrase));
+
+                if (hasEndPhrase) {
+                    if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+                    rec.stop();
+                    void triggerCandidateTurn(currentText);
+                    return;
+                }
+
+                // Generous 9.0-second thinking buffer for candidate reasoning aloud
                 if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
                 silenceTimeoutRef.current = setTimeout(() => {
-                    const textToSend = final || interim;
-                    if (textToSend.trim().length > 3) {
+                    if (currentText.length > 3) {
                         rec.stop();
-                        void triggerCandidateTurn(textToSend.trim());
+                        void triggerCandidateTurn(currentText);
                     }
-                }, 1800);
+                }, 9000);
             };
 
             rec.onerror = (event: any) => {
@@ -256,13 +291,13 @@ export const InterviewRoom: React.FC<Props> = ({
         };
     }, []);
 
-    // Countdown Timer
+    // P2 #4: Countdown Timer with 60s Grace Re-Arm on Cancel
     useEffect(() => {
         const interval = setInterval(() => {
             setTimeLeft((prev) => {
                 if (prev <= 1) {
                     clearInterval(interval);
-                    void handleEndInterview();
+                    void handleEndInterview(true);
                     return 0;
                 }
                 return prev - 1;
@@ -287,7 +322,9 @@ export const InterviewRoom: React.FC<Props> = ({
         if (audioChunksRef.current.length > 0 && (!candidateText || candidateText.length < 5)) {
             try {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                const whisperResult = await transcribeAudio(audioBlob, apiKey);
+                // P2 #2: Use BYOK Groq Whisper key if present, fallback to session apiKey
+                const whisperApiKey = getStoredApiKey('GROQ') || apiKey;
+                const whisperResult = await transcribeAudio(audioBlob, whisperApiKey);
                 if (whisperResult && whisperResult.transcript && whisperResult.transcript.trim().length > 3) {
                     candidateText = whisperResult.transcript.trim();
                 }
@@ -310,14 +347,11 @@ export const InterviewRoom: React.FC<Props> = ({
             codeSnippet: code
         });
 
-        // Stage progression heuristics
+        // Stage progression heuristics based on turns (no aggressive snatching)
         if (currentStage === 'INTRODUCTION') {
             setCurrentStage('CORE_TECH');
         } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
             setCurrentStage('CODING_DSA');
-        } else if (currentStage === 'CODING_DSA' && (messages.length >= 8 || testStatus === 'passed')) {
-            setCurrentStage('SYSTEM_DESIGN');
-            setEditorTab('whiteboard');
         }
 
         setIsAiResponding(true);
@@ -462,8 +496,12 @@ export const InterviewRoom: React.FC<Props> = ({
         }
     };
 
-    const handleEndInterview = async () => {
-        if (window.confirm('Are you ready to conclude your interview session and generate your 360° Diagnostic Report?')) {
+    const handleEndInterview = async (isAutoExpiry = false) => {
+        const message = isAutoExpiry
+            ? 'Assessment time has expired. Conclude interview and generate your 360° Diagnostic Report?'
+            : 'Are you ready to conclude your interview session and generate your 360° Diagnostic Report?';
+
+        if (window.confirm(message)) {
             isSessionEndedRef.current = true;
             stopListening();
             window.speechSynthesis?.cancel();
@@ -474,6 +512,9 @@ export const InterviewRoom: React.FC<Props> = ({
                 console.error('Session complete error:', err);
                 onFinish();
             }
+        } else if (isAutoExpiry) {
+            // Re-arm 60s grace period if candidate cancels auto-expiry prompt
+            setTimeLeft(60);
         }
     };
 
@@ -588,7 +629,7 @@ export const InterviewRoom: React.FC<Props> = ({
 
                     {/* End & Report Button (Variant: Danger) */}
                     <button
-                        onClick={handleEndInterview}
+                        onClick={() => void handleEndInterview(false)}
                         style={{
                             background: '#dc2626',
                             color: '#ffffff',
