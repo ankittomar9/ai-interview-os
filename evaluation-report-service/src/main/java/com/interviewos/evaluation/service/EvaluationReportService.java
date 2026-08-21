@@ -94,11 +94,22 @@ public class EvaluationReportService {
             communicationScore = Math.min(92, (int) (40 + (candidateTurns * 7)));
             codeQualityScore = codeSubmissions > 0 ? Math.min(95, (int) (50 + (codeSubmissions * 20))) : 20;
 
+            // Stopgap Honesty Check: Verify real sandbox execution passes
+            long verifiedPasses = transcript.stream()
+                    .filter(m -> "CODE_EXECUTION".equalsIgnoreCase(m.messageType()) || "CODE_SUBMISSION".equalsIgnoreCase(m.messageType()))
+                    .filter(m -> m.content() != null && (m.content().contains("PASSED") || m.content().contains("ALL") || m.content().matches("(?i).*\\b[1-9][0-9]*\\s*/\\s*[1-9][0-9]*\\s*tests?\\s*passed.*")))
+                    .count();
+
+            if (verifiedPasses == 0) {
+                codeQualityScore = Math.min(codeQualityScore, 40);
+                technicalScore = Math.min(technicalScore, 60);
+            }
+
             int aggregateScore = (technicalScore + problemSolvingScore + communicationScore + codeQualityScore + integrityScore) / 5;
 
-            if (aggregateScore >= 85 && integrityScore >= 80 && codeSubmissions >= 2) {
+            if (aggregateScore >= 85 && integrityScore >= 80 && verifiedPasses >= 1) {
                 verdict = HiringVerdict.STRONG_HIRE;
-            } else if (aggregateScore >= 72 && integrityScore >= 70 && codeSubmissions >= 1) {
+            } else if (aggregateScore >= 70 && integrityScore >= 70 && verifiedPasses >= 1) {
                 verdict = HiringVerdict.HIRE;
             } else if (aggregateScore >= 55) {
                 verdict = HiringVerdict.LEAN_HIRE;
@@ -111,7 +122,12 @@ public class EvaluationReportService {
                     durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, aggregateScore, verdict
             );
 
-            if (codeSubmissions > 0) strengths.add("Produced functional code with clear algorithmic structure.");
+            if (verifiedPasses == 0) {
+                summary += " No verified code execution passed during this session.";
+                weaknesses.add("No verified code execution passed in the sandbox environment.");
+            }
+
+            if (verifiedPasses > 0) strengths.add("Produced functional code passing verified sandbox test fixtures.");
             if (candidateTurns >= 5) strengths.add("Actively engaged in technical follow-ups with structured explanations.");
             if (integrityScore >= 85) strengths.add("Maintained high integrity with natural browser focus.");
 

@@ -28,7 +28,24 @@ public class CodeExecutionService {
     public ExecutionResultResponse executeCode(Long sessionId, ExecuteCodeRequest request) {
         log.info("Executing code for session {} [Language: {}, Problem: {}]", sessionId, request.language(), request.problemSlug());
 
-        ProblemDocument problem = resolveProblem(request.problemSlug());
+        // 1. Resolve Problem Definition (Zero Silent Fallback)
+        Optional<ProblemDocument> problemOpt = resolveProblem(request.problemSlug());
+        if (problemOpt.isEmpty()) {
+            log.warn("❌ Problem definition not found for slug: {}", request.problemSlug());
+            return ExecutionResultResponse.builder()
+                    .status("PROBLEM_NOT_FOUND")
+                    .totalTests(0)
+                    .passedTests(0)
+                    .executionTimeMs(0.0)
+                    .memoryUsedMb(0.0)
+                    .stdout("")
+                    .stderr("Problem definition not found in catalog for slug: '" + request.problemSlug() + "'. Zero silent fallback.")
+                    .compilerOutput("")
+                    .testResults(List.of())
+                    .build();
+        }
+
+        ProblemDocument problem = problemOpt.get();
         int languageId = resolveLanguageId(request.language());
         double timeLimitSec = (double) problem.getLimits().timeLimitMs() / 1000.0;
         int memoryLimitKb = problem.getLimits().memoryLimitMb() * 1024;
@@ -40,14 +57,14 @@ public class CodeExecutionService {
         StringBuilder aggregatedStdout = new StringBuilder();
         StringBuilder aggregatedStderr = new StringBuilder();
 
-        // 1. Unified sequence of Sample Tests + Hidden Tests
+        // 2. Unified sequence of Sample Tests + Hidden Tests
         List<TestDescriptor> allTests = new ArrayList<>();
         problem.getSampleTests().forEach(st -> allTests.add(new TestDescriptor(st.name(), st.input(), st.expectedOutput(), false)));
         problem.getHiddenTests().forEach(ht -> allTests.add(new TestDescriptor(ht.name(), ht.input(), ht.expectedOutput(), true)));
 
         int totalTests = allTests.size();
 
-        // 2. Per-Test-Case Execution Loop
+        // 3. Per-Test-Case Execution Loop
         for (int i = 0; i < allTests.size(); i++) {
             TestDescriptor test = allTests.get(i);
 
@@ -161,7 +178,7 @@ public class CodeExecutionService {
                 .testResults(testResults)
                 .build();
 
-        // 3. Persist Execution Turn into MongoDB Transcript as CODE_EXECUTION (never inflate CODE_SUBMISSION)
+        // 4. Persist Execution Turn into MongoDB Transcript as CODE_EXECUTION
         try {
             sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
                 if (doc.getTranscript() == null) {
@@ -187,28 +204,11 @@ public class CodeExecutionService {
         return finalResult;
     }
 
-    private ProblemDocument resolveProblem(String slug) {
+    private Optional<ProblemDocument> resolveProblem(String slug) {
         if (slug != null && !slug.isBlank()) {
-            Optional<ProblemDocument> found = problemRepository.findByProblemSlug(slug);
-            if (found.isPresent()) return found.get();
+            return problemRepository.findByProblemSlug(slug);
         }
-
-        return ProblemDocument.builder()
-                .problemSlug("reverse-a-string")
-                .title("Reverse a String")
-                .track("ALGORITHMS_DATA_STRUCTURES")
-                .difficulty("JUNIOR")
-                .problemStatement("Write a complete program that reads a single line from standard input and prints the reversed string to standard output.")
-                .sampleTests(List.of(
-                        new ProblemDocument.TestCase("Sample 1: Basic Inversion", "Hello, World!", "!dlroW ,olleH"),
-                        new ProblemDocument.TestCase("Sample 2: Palindrome", "racecar", "racecar")
-                ))
-                .hiddenTests(List.of(
-                        new ProblemDocument.HiddenTestCase("Hidden 1: Punctuation & Spacing", "OpenSource AI Interview OS", "SO weivretnI IA ecruoSnepO", 1),
-                        new ProblemDocument.HiddenTestCase("Hidden 2: Digits Inversion", "1234567890", "0987654321", 2)
-                ))
-                .limits(new ProblemDocument.ExecutionLimits(512, 2000))
-                .build();
+        return Optional.empty();
     }
 
     private int resolveLanguageId(String language) {

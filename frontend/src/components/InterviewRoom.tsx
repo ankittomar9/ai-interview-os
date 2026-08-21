@@ -43,11 +43,15 @@ export const InterviewRoom: React.FC<Props> = ({
     const [timeLeft, setTimeLeft] = useState(45 * 60);
     const [currentStage, setCurrentStage] = useState<'INTRODUCTION' | 'CORE_TECH' | 'CODING_DSA' | 'SYSTEM_DESIGN'>('INTRODUCTION');
 
+    const getStarterForLang = (lang: string) => {
+        if (question.starterCodeMap && question.starterCodeMap[lang]) {
+            return question.starterCodeMap[lang];
+        }
+        return question.starterCode || '// Write your standard I/O solution here\n';
+    };
+
     // --- State: Code & Scratchpad ---
-    const [code, setCode] = useState(
-        question.starterCode ||
-        '// Java 21 Solution Sandbox\npublic class LRUCache {\n    public LRUCache(int capacity) {\n        // Initialize your data structure here\n    }\n    public int get(int key) {\n        return -1;\n    }\n    public void put(int key, int value) {\n        // Insert or update\n    }\n    public void remove(int key) {\n        // Remove key\n    }\n}\n'
-    );
+    const [code, setCode] = useState(getStarterForLang('java'));
     const [language, setLanguage] = useState<'java' | 'python' | 'javascript'>('java');
     const [scratchpadNotes, setScratchpadNotes] = useState<string>(
         '// Architecture & Thought Scratchpad\n// 1. Core Assumptions:\n// 2. Algorithm & Complexity (Time / Space):\n// 3. Edge Cases to Test:\n'
@@ -379,6 +383,14 @@ export const InterviewRoom: React.FC<Props> = ({
         }
     };
 
+    const handleLanguageChange = (newLang: 'java' | 'python' | 'javascript') => {
+        const oldStarter = getStarterForLang(language);
+        if (code.trim() === oldStarter.trim() || code.trim().length === 0) {
+            setCode(getStarterForLang(newLang));
+        }
+        setLanguage(newLang);
+    };
+
     // --- Real Judge0 CE Sandbox Test Runner ---
     const handleRunCode = async () => {
         setTestStatus('running');
@@ -388,7 +400,7 @@ export const InterviewRoom: React.FC<Props> = ({
             const lang = language.toLowerCase().includes('python') ? 'python' :
                          language.toLowerCase().includes('script') ? 'javascript' : 'java';
 
-            const slug = question.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const slug = question.problemSlug || question.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
             const result = await executeCode(sessionId, {
                 language: lang,
@@ -396,7 +408,17 @@ export const InterviewRoom: React.FC<Props> = ({
                 problemSlug: slug
             });
 
-            if (result.status === 'COMPILE_ERROR') {
+            if (result.status === 'ENGINE_UNAVAILABLE') {
+                setTestStatus('failed');
+                setExecutionOutput(
+                    `🛑 [Execution Engine Offline]\n${result.stderr || 'Judge0 execution engine is currently unreachable. Start the judge0 container to enable sandbox execution.'}\n\n⚠️ Status: ENGINE_UNAVAILABLE (0 / ${result.totalTests} Tests Passed)`
+                );
+            } else if (result.status === 'PROBLEM_NOT_FOUND') {
+                setTestStatus('failed');
+                setExecutionOutput(
+                    `❌ [Catalog Error]\nProblem definition not found in catalog for slug: '${slug}'. Zero silent fallback enforced.\n\n⚠️ Status: PROBLEM_NOT_FOUND`
+                );
+            } else if (result.status === 'COMPILE_ERROR') {
                 setTestStatus('failed');
                 setExecutionOutput(
                     `[Compiler Output] Compilation Failed:\n${result.compilerOutput || result.stderr || 'Syntax error encountered during build.'}\n\n❌ Status: COMPILE_ERROR (0 / ${result.totalTests} Tests Passed)`
@@ -757,7 +779,7 @@ export const InterviewRoom: React.FC<Props> = ({
                                     fontSize: '0.78rem'
                                 }}
                                 value={language}
-                                onChange={(e) => setLanguage(e.target.value as any)}
+                                onChange={(e) => handleLanguageChange(e.target.value as any)}
                             >
                                 <option value="java">Java 21 LTS</option>
                                 <option value="python">Python 3.12</option>

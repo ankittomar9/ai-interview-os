@@ -3,6 +3,7 @@ package com.interviewos.ai.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewos.ai.client.AiClient;
 import com.interviewos.ai.client.AiClientFactory;
+import com.interviewos.ai.client.ProblemCatalogClient;
 import com.interviewos.ai.dto.AiDialogueRequest;
 import com.interviewos.ai.dto.AiDialogueResponse;
 import com.interviewos.ai.dto.GenerateQuestionRequest;
@@ -15,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -22,48 +25,60 @@ import java.util.List;
 public class AiOrchestratorService {
 
     private final AiClientFactory clientFactory;
+    private final ProblemCatalogClient problemCatalogClient;
     private final ObjectMapper objectMapper;
 
     /**
-     * Generates a tailored interview question based on the role and track.
+     * Generates a tailored interview question driven by the verified Problem Catalog.
      */
     public GenerateQuestionResponse generateQuestion(GenerateQuestionRequest request) {
-        AiClient client = clientFactory.getClient(request.modelProvider());
+        String trackStr = request.track() != null ? request.track().name() : "";
+        String diffStr = request.difficulty() != null ? request.difficulty().name() : "";
 
-        String systemInstruction = """
-                You are a Principal Software Engineer and Staff Technical Interviewer at a Tier-1 tech company.
-                Generate a realistic, challenging technical interview question tailored to the candidate's track and seniority.
-                
-                CRITICAL INSTRUCTION: You MUST reply ONLY with a valid raw JSON object matching this schema with NO conversational text:
-                {
-                  "title": "Short problem title",
-                  "track": "%s",
-                  "difficulty": "%s",
-                  "problemStatement": "Detailed description, constraints, and 2-3 examples with Input/Output",
-                  "starterCode": "Initial starter code snippet in Java/Python/JS",
-                  "hints": ["Hint 1: Conceptual hint", "Hint 2: Edge case to consider"],
-                  "evaluationCriteria": ["Time & space complexity", "Concurrency/Edge cases", "Code cleanliness"]
-                }
-                """.formatted(request.track(), request.difficulty());
+        // 1. Fetch Verified Problems from Catalog
+        List<ProblemCatalogClient.ProblemCatalogItem> catalog = problemCatalogClient.fetchProblems(trackStr, diffStr);
 
-        String userPrompt = """
-                Target Role: %s
-                Seniority: %s
-                Interview Track: %s
-                Target Job Description Context: %s
-                Previously Asked Questions to Avoid: %s
-                
-                Generate a fresh, high-signal interview question now in strict JSON format.
-                """.formatted(
-                request.roleTitle(),
-                request.difficulty(),
-                request.track(),
-                request.jobDescription() != null ? request.jobDescription() : "Standard Enterprise Tech Profile",
-                request.previousQuestions() != null ? request.previousQuestions() : "None"
-        );
+        ProblemCatalogClient.ProblemCatalogItem selectedItem = null;
+        if (!catalog.isEmpty()) {
+            List<String> previous = request.previousQuestions() != null ? request.previousQuestions() : List.of();
+            selectedItem = catalog.stream()
+                    .filter(p -> !previous.contains(p.problemSlug()) && !previous.contains(p.title()))
+                    .findFirst()
+                    .orElse(catalog.get(0));
+        }
 
+        if (selectedItem == null) {
+            // Default resilient fallback catalog item with standard I/O contract
+            selectedItem = new ProblemCatalogClient.ProblemCatalogItem(
+                    "lru-cache",
+                    "LRU Cache Implementation",
+                    request.track() != null ? request.track().name() : "ALGORITHMS_DATA_STRUCTURES",
+                    request.difficulty() != null ? request.difficulty().name() : "SENIOR",
+                    "Implement an LRU Cache with standard I/O operations (Line 1: capacity, followed by put k v / get k).",
+                    Map.of("java", "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        // LRU Cache Standard I/O\n    }\n}"),
+                    List.of(new GenerateQuestionResponse.TestCaseView("Sample 1", "2\nput 1 1\nget 1", "1"))
+            );
+        }
+
+        // 2. Personalize Problem Statement using LLM (Grounding in Resume / Candidate Profile)
+        String finalStatement = selectedItem.problemStatement();
         try {
-            String rawResponse = client.generateCompletion(
+            AiClient client = clientFactory.getClient(request.modelProvider());
+            String systemInstruction = """
+                    You are a Principal Software Engineer conducting a high-signal technical assessment.
+                    The candidate is applying for: %s (%s).
+                    Resume/Job Context: %s
+                    
+                    Your task: Introduce this technical challenge to the candidate in a realistic, professional interviewer voice, grounding it in their context.
+                    CRITICAL: You MUST preserve the EXACT input/output format, constraints, and operational commands intact. Return ONLY the plain text description.
+                    """.formatted(
+                    request.roleTitle(),
+                    request.difficulty(),
+                    request.jobDescription() != null ? request.jobDescription() : "Standard Enterprise Tech Profile"
+            );
+
+            String userPrompt = "Canonical Challenge:\n" + selectedItem.problemStatement();
+            String personalized = client.generateCompletion(
                     request.modelProvider(),
                     systemInstruction,
                     userPrompt,
@@ -71,13 +86,36 @@ public class AiOrchestratorService {
                     request.modelName()
             );
 
-            String cleanJson = JsonCleaner.extractPureJson(rawResponse);
-            return objectMapper.readValue(cleanJson, GenerateQuestionResponse.class);
+            if (personalized != null && !personalized.isBlank() && !personalized.contains("error")) {
+                finalStatement = personalized.trim();
+            }
         } catch (Exception e) {
-            log.warn("⚠️ LLM JSON extraction warning for provider {}: {}. Generating resilient curated problem...",
-                    request.modelProvider(), e.getMessage());
-            return generateCuratedFallbackQuestion(request.track(), request.difficulty(), request.roleTitle());
+            log.info("Using canonical catalog problem statement: {}", e.getMessage());
         }
+
+        String primaryStarter = selectedItem.starterCode() != null
+                ? selectedItem.starterCode().getOrDefault("java", selectedItem.starterCode().values().stream().findFirst().orElse(""))
+                : "";
+
+        return GenerateQuestionResponse.builder()
+                .problemSlug(selectedItem.problemSlug())
+                .title(selectedItem.title())
+                .track(request.track())
+                .difficulty(request.difficulty())
+                .problemStatement(finalStatement)
+                .starterCode(primaryStarter)
+                .starterCodeMap(selectedItem.starterCode())
+                .sampleTests(selectedItem.sampleTests())
+                .hints(List.of(
+                        "Think about the core data structure trade-offs for constant-time lookup and ordering.",
+                        "Verify boundary conditions such as capacity eviction, duplicate keys, and empty inputs."
+                ))
+                .evaluationCriteria(List.of(
+                        "O(1) Time Complexity on core operations",
+                        "Correct standard I/O execution with zero compiler warnings",
+                        "Clean exception and capacity handling"
+                ))
+                .build();
     }
 
     /**
@@ -102,16 +140,20 @@ public class AiOrchestratorService {
                 """;
 
         String userPrompt = """
-                Problem Context: %s
-                Candidate Explanation: %s
+                Problem Context:
+                %s
+                
+                Candidate Latest Explanation:
+                %s
+                
                 Candidate Code Snippet:
                 %s
                 
-                Provide your evaluation and follow-up question now in JSON.
+                Generate realistic, natural interviewer dialogue response in strict JSON format.
                 """.formatted(
                 request.questionContext(),
-                request.candidateExplanation() != null ? request.candidateExplanation() : "Candidate provided initial thoughts.",
-                request.candidateCode() != null ? request.candidateCode() : "No code submitted yet."
+                request.candidateExplanation(),
+                request.candidateCode() != null ? request.candidateCode() : "No code written yet"
         );
 
         try {
@@ -126,7 +168,7 @@ public class AiOrchestratorService {
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);
             return objectMapper.readValue(cleanJson, AiDialogueResponse.class);
         } catch (Exception e) {
-            log.warn("⚠️ Dialogue fallback triggered: {}", e.getMessage());
+            log.warn("⚠️ LLM dialogue extraction warning: {}. Using structured fallback dialogue turn.", e.getMessage());
             return new AiDialogueResponse(
                     "Thank you for sharing your approach. I see your logic taking shape.",
                     "How would you optimize this solution for higher concurrent throughput or handle edge cases where input is empty or scaled to 10M records?",
@@ -136,83 +178,5 @@ public class AiOrchestratorService {
                     List.of("Explicit Big-O complexity analysis", "Edge-case error handling")
             );
         }
-    }
-
-    private GenerateQuestionResponse generateCuratedFallbackQuestion(
-            InterviewTrack track,
-            DifficultyLevel difficulty,
-            String roleTitle
-    ) {
-        if (track == InterviewTrack.SYSTEM_DESIGN) {
-            return new GenerateQuestionResponse(
-                    "Design a High-Throughput Distributed Rate Limiter",
-                    track,
-                    difficulty,
-                    """
-                    ### Problem Statement
-                    Design a distributed Rate Limiter service that can handle 100,000 requests per second across a cluster of API Gateways.
-                    
-                    ### Functional Requirements
-                    - Support per-user / per-IP rate limits (e.g., max 100 requests per minute).
-                    - Return HTTP 429 Too Many Requests with Retry-After header when exceeded.
-                    - Low latency (< 2ms evaluation overhead per request).
-                    
-                    ### Architectural Questions to Address
-                    1. Which rate limiting algorithm (Token Bucket, Leaky Bucket, Sliding Window Log, Sliding Window Counter) would you choose and why?
-                    2. How will you store and synchronize token states across multiple distributed instances without race conditions?
-                    3. How do you handle Redis cache failures gracefully?
-                    """,
-                    """
-                    // Architectural Interface Draft
-                    public interface RateLimiter {
-                        boolean allowRequest(String clientId, int maxRequests, long windowMillis);
-                    }
-                    """,
-                    List.of("Consider Redis EVAL scripts or Lua scripts for atomic increments.", "Think about local memory caching with batch sync to reduce Redis hops."),
-                    List.of("Distributed state consistency", "CAP theorem latency trade-offs", "Thread-safety")
-            );
-        }
-
-        // Default DSA / Java problem
-        return new GenerateQuestionResponse(
-                "Implement an In-Memory LRU Cache with O(1) Operations",
-                track != null ? track : InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
-                difficulty != null ? difficulty : DifficultyLevel.SENIOR,
-                """
-                ### Problem Statement
-                Design and implement a data structure for a Least Recently Used (LRU) Cache with capacity `capacity`.
-                
-                ### Constraints & Operations
-                - `int get(int key)`: Return value of key if key exists, otherwise return `-1`.
-                - `void put(int key, int value)`: Update or insert value. If keys exceed capacity, evict the least recently used key.
-                - Both operations MUST run in `O(1)` average time complexity.
-                
-                ### Example
-                Input:
-                LRUCache cache = new LRUCache(2);
-                cache.put(1, 1);
-                cache.put(2, 2);
-                cache.get(1);    // returns 1
-                cache.put(3, 3); // evicts key 2
-                cache.get(2);    // returns -1 (not found)
-                """,
-                """
-                class LRUCache {
-                    public LRUCache(int capacity) {
-                        // Initialize your data structure here
-                    }
-                    
-                    public int get(int key) {
-                        return -1;
-                    }
-                    
-                    public void put(int key, int value) {
-                        // Your code here
-                    }
-                }
-                """,
-                List.of("Use a HashMap combined with a Doubly Linked List for O(1) lookups and O(1) removals.", "Keep track of head and tail dummy pointers to avoid null checks."),
-                List.of("O(1) Time Complexity", "Correct eviction under capacity limits", "Null safety")
-        );
     }
 }

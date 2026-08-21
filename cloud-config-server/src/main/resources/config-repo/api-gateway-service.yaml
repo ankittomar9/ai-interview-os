@@ -31,6 +31,12 @@ spring:
           predicates:
             - Path=/api/v1/sessions/**
 
+        # Route 1.1: Problem Catalog (:8081)
+        - id: problem-catalog-route
+          uri: lb://interview-session-service
+          predicates:
+            - Path=/api/v1/problems/**
+
         # Route 2: AI Orchestrator Service (:8082)
         - id: ai-orchestrator-route
           uri: lb://ai-orchestrator-service

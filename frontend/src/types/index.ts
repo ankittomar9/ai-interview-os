@@ -36,11 +36,14 @@ export interface SessionResponse {
 }
 
 export interface GenerateQuestionResponse {
+    problemSlug?: string;
     title: string;
     track: InterviewTrack;
     difficulty: DifficultyLevel;
     problemStatement: string;
     starterCode: string;
+    starterCodeMap?: Record<string, string>;
+    sampleTests?: Array<{ name: string; input: string; expectedOutput: string }>;
     hints: string[];
     evaluationCriteria: string[];
 }

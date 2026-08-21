@@ -212,7 +212,7 @@ export interface TestCaseResult {
 }
 
 export interface ExecutionResultResponse {
-    status: 'PASSED' | 'PARTIAL' | 'FAILED' | 'COMPILE_ERROR' | 'TIMEOUT' | 'MEMORY_EXCEEDED';
+    status: 'PASSED' | 'PARTIAL' | 'FAILED' | 'COMPILE_ERROR' | 'TIMEOUT' | 'MEMORY_EXCEEDED' | 'ENGINE_UNAVAILABLE' | 'PROBLEM_NOT_FOUND';
     totalTests: number;
     passedTests: number;
     executionTimeMs: number;
