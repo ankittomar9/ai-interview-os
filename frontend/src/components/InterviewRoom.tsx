@@ -1,27 +1,26 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import type { GenerateQuestionResponse, ModelProvider } from '../types';
-import { addMessageToSession, completeSession, processDialogueTurn, transcribeAudio, getStoredApiKey, executeCode } from '../services/api';
+import { addMessageToSession, completeSession, processDialogueTurn, transcribeAudio, executeCode } from '../services/api';
 import { useProctorSentinel } from '../hooks/useProctorSentinel';
-import { CameraProctorHUD } from './CameraProctorHUD';
+import { StageStepper, type InterviewStage } from './StageStepper';
+import { AiAvatarWaveform } from './AiAvatarWaveform';
+import { WebcamTile } from './WebcamTile';
+import { HldWhiteboardCanvas } from './HldWhiteboardCanvas';
 import {
     Timer,
-    ShieldAlert,
     Send,
     Play,
     Code,
-    MessageSquare,
     Mic,
     MicOff,
-    Volume2,
-    VolumeX,
-    CheckCircle,
-    XCircle,
     FileText,
     Sparkles,
-    Radio,
-    Zap,
-    RotateCcw
+    ShieldCheck,
+    ShieldAlert,
+    Layers,
+    Copy,
+    Check
 } from 'lucide-react';
 
 interface Props {
@@ -41,7 +40,7 @@ export const InterviewRoom: React.FC<Props> = ({
 }) => {
     // --- State: Timer & Stages ---
     const [timeLeft, setTimeLeft] = useState(45 * 60);
-    const [currentStage, setCurrentStage] = useState<'INTRODUCTION' | 'CORE_TECH' | 'CODING_DSA' | 'SYSTEM_DESIGN'>('INTRODUCTION');
+    const [currentStage, setCurrentStage] = useState<InterviewStage>('INTRODUCTION');
 
     const getStarterForLang = (lang: string) => {
         if (question.starterCodeMap && question.starterCodeMap[lang]) {
@@ -50,14 +49,16 @@ export const InterviewRoom: React.FC<Props> = ({
         return question.starterCode || '// Write your standard I/O solution here\n';
     };
 
-    // --- State: Code & Scratchpad ---
+    // --- State: Code & Tabs ---
     const [code, setCode] = useState(getStarterForLang('java'));
     const [language, setLanguage] = useState<'java' | 'python' | 'javascript'>('java');
+    const [editorTab, setEditorTab] = useState<'solution' | 'tests' | 'whiteboard'>('solution');
+    const [leftPanelTab, setLeftPanelTab] = useState<'problem' | 'examples' | 'scratchpad'>('problem');
     const [scratchpadNotes, setScratchpadNotes] = useState<string>(
         '// Architecture & Thought Scratchpad\n// 1. Core Assumptions:\n// 2. Algorithm & Complexity (Time / Space):\n// 3. Edge Cases to Test:\n'
     );
-    const [activeTab, setActiveTab] = useState<'problem' | 'scratchpad'>('problem');
     const [latestExecution, setLatestExecution] = useState<{ status: string; passedTests: number; totalTests: number; executionTimeMs: number; memoryUsedMb: number } | null>(null);
+    const [architectureSummary, setArchitectureSummary] = useState<string>('');
 
     // --- State: Conversation & Dialogue ---
     const [messages, setMessages] = useState<Array<{ role: 'interviewer' | 'candidate'; content: string; timestamp?: string }>>([
@@ -71,6 +72,7 @@ export const InterviewRoom: React.FC<Props> = ({
     const [isAiResponding, setIsAiResponding] = useState(false);
     const [isAiSpeaking, setIsAiSpeaking] = useState(false);
     const [isWindowBlurred, setIsWindowBlurred] = useState(false);
+    const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
     // --- Voice Management (Echo-Safe Full Duplex) ---
     const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
@@ -95,16 +97,13 @@ export const InterviewRoom: React.FC<Props> = ({
     }, [messages, isAiResponding]);
 
     const isSessionEndedRef = useRef(false);
-    const hasSpokenIntroRef = useRef(false);
 
     // --- Echo-Safe Text-To-Speech (AI Voice) ---
     const speakText = useCallback((text: string) => {
         if (isSessionEndedRef.current || !voiceOutputEnabled || !('speechSynthesis' in window)) return;
 
-        // Cancel previous speech synthesis
         window.speechSynthesis.cancel();
 
-        // Stop microphone immediately to prevent recording laptop speaker output
         if (recognitionRef.current) {
             try {
                 recognitionRef.current.abort();
@@ -129,7 +128,6 @@ export const InterviewRoom: React.FC<Props> = ({
         utterance.onend = () => {
             setIsAiSpeaking(false);
             if (isSessionEndedRef.current) return;
-            // Wait 600ms safety buffer before re-enabling mic listening
             setTimeout(() => {
                 if (!isSessionEndedRef.current) {
                     startListening();
@@ -150,130 +148,103 @@ export const InterviewRoom: React.FC<Props> = ({
         window.speechSynthesis.speak(utterance);
     }, [voiceOutputEnabled]);
 
-    // Initial greeting aloud on start - spoken strictly ONCE on mount
-    useEffect(() => {
-        if (!hasSpokenIntroRef.current) {
-            hasSpokenIntroRef.current = true;
-            const timer = setTimeout(() => {
-                speakText("Welcome to your technical assessment. I am your AI Interviewer. Please introduce yourself and discuss your recent engineering projects.");
-            }, 800);
-            return () => clearTimeout(timer);
+    // --- Full Duplex Speech Recognition & Whisper Backup ---
+    const startListening = useCallback(() => {
+        if (isSessionEndedRef.current || isAiSpeaking) return;
+
+        const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRec) {
+            console.warn('Web Speech API not supported in this browser.');
+            return;
         }
-    }, [speakText]);
 
-    // --- Microphone Speech-To-Text & MediaRecorder Setup ---
-    const startListening = () => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (isAiSpeaking) return;
-
-        // 1. Initialize High-Resolution Audio Recording for Groq Whisper
         try {
-            navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-                const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-                audioChunksRef.current = [];
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        audioChunksRef.current.push(event.data);
-                    }
-                };
-                mediaRecorder.start(250);
-                mediaRecorderRef.current = mediaRecorder;
-            }).catch((err) => console.warn('MediaRecorder audio setup:', err));
-        } catch (e) {
-            console.warn('Audio stream recording warning:', e);
-        }
+            if (recognitionRef.current) {
+                recognitionRef.current.abort();
+            }
 
-        // 2. Real-time Web Speech Transcription
-        if (SpeechRecognition) {
-            try {
-                if (recognitionRef.current) {
-                    recognitionRef.current.abort();
+            const rec = new SpeechRec();
+            rec.continuous = false;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onstart = () => {
+                setIsListening(true);
+                setIsSpeakingNow(false);
+            };
+
+            rec.onresult = (event: any) => {
+                setIsSpeakingNow(true);
+                let interim = '';
+                let final = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        final += event.results[i][0].transcript;
+                    } else {
+                        interim += event.results[i][0].transcript;
+                    }
                 }
 
-                const recognition = new SpeechRecognition();
-                recognition.continuous = true;
-                recognition.interimResults = true;
-                recognition.lang = 'en-US';
+                setChatInput(final || interim);
 
-                recognition.onstart = () => {
-                    setIsListening(true);
-                };
-
-                recognition.onresult = (event: any) => {
-                    let fullTranscript = '';
-                    for (let i = 0; i < event.results.length; i++) {
-                        fullTranscript += event.results[i][0].transcript;
+                if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+                silenceTimeoutRef.current = setTimeout(() => {
+                    const textToSend = final || interim;
+                    if (textToSend.trim().length > 3) {
+                        rec.stop();
+                        void triggerCandidateTurn(textToSend.trim());
                     }
+                }, 1800);
+            };
 
-                    if (fullTranscript.trim()) {
-                        setChatInput(fullTranscript);
-                        setIsSpeakingNow(true);
+            rec.onerror = (event: any) => {
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    console.warn('Speech recognition warning:', event.error);
+                }
+                setIsListening(false);
+                setIsSpeakingNow(false);
+            };
 
-                        // Natural phrase termination ("that's my answer", "over to you", "I'm done", "that's all")
-                        const lower = fullTranscript.toLowerCase();
-                        const hasEndPhrase = lower.includes("that's my answer") ||
-                                             lower.includes("thats my answer") ||
-                                             lower.includes("over to you") ||
-                                             lower.includes("i'm done") ||
-                                             lower.includes("i am done") ||
-                                             lower.includes("that is all") ||
-                                             lower.includes("thats all");
+            rec.onend = () => {
+                setIsListening(false);
+                setIsSpeakingNow(false);
+            };
 
-                        if (hasEndPhrase) {
-                            if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-                            setIsSpeakingNow(false);
-                            triggerCandidateTurn(fullTranscript.trim());
-                            return;
-                        }
+            recognitionRef.current = rec;
+            rec.start();
 
-                        // Generous 9.0-second thinking buffer: Candidates can speak continuously for minutes without cutoffs
-                        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-                        silenceTimeoutRef.current = setTimeout(() => {
-                            setIsSpeakingNow(false);
-                            if (fullTranscript.trim().length > 8 && !isAiSpeaking && !isSessionEndedRef.current) {
-                                triggerCandidateTurn(fullTranscript.trim());
-                            }
-                        }, 9000);
-                    }
+            // Native MediaRecorder for high-accuracy Whisper fallback
+            navigator.mediaDevices?.getUserMedia({ audio: true }).then((stream) => {
+                audioChunksRef.current = [];
+                const mr = new MediaRecorder(stream);
+                mr.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunksRef.current.push(e.data);
                 };
+                mr.start();
+                mediaRecorderRef.current = mr;
+            }).catch(() => {});
 
-                recognition.onend = () => {
-                    setIsListening(false);
-                    setIsSpeakingNow(false);
-                };
-
-                recognition.onerror = (err: any) => {
-                    if (err.error !== 'no-speech' && err.error !== 'aborted') {
-                        console.warn('Speech recognition notice:', err.error);
-                    }
-                    setIsListening(false);
-                    setIsSpeakingNow(false);
-                };
-
-                recognitionRef.current = recognition;
-                recognition.start();
-            } catch (e) {
-                console.warn('Failed to start speech recognition:', e);
-            }
-        }
-    };
-
-    const stopListening = () => {
-        if (recognitionRef.current) {
-            try {
-                recognitionRef.current.stop();
-            } catch {}
+        } catch (e) {
+            console.warn('Could not start speech recognition:', e);
             setIsListening(false);
-            setIsSpeakingNow(false);
+        }
+    }, [isAiSpeaking]);
+
+    const stopListening = useCallback(() => {
+        if (recognitionRef.current) {
+            recognitionRef.current.abort();
+            recognitionRef.current = null;
         }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            try {
-                mediaRecorderRef.current.stop();
-            } catch {}
+            mediaRecorderRef.current.stop();
         }
-    };
+        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+        setIsListening(false);
+        setIsSpeakingNow(false);
+    }, []);
 
-    // Window Focus / Blur monitoring
+    // Tab blur window telemetry tracking
     useEffect(() => {
         const onBlur = () => setIsWindowBlurred(true);
         const onFocus = () => setIsWindowBlurred(false);
@@ -285,41 +256,43 @@ export const InterviewRoom: React.FC<Props> = ({
         };
     }, []);
 
-    // Timer Countdown
+    // Countdown Timer
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+        const interval = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    void handleEndInterview();
+                    return 0;
+                }
+                return prev - 1;
+            });
         }, 1000);
-        return () => clearInterval(timer);
+        return () => clearInterval(interval);
     }, []);
 
-    const formatTimer = (seconds: number) => {
+    // Format mm:ss
+    const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    // --- Candidate Turn Dispatcher ---
-    const triggerCandidateTurn = async (inputText: string) => {
-        if (isAiResponding) return;
-
-        let candidateText = inputText.trim();
+    // Candidate Turn Submission
+    const triggerCandidateTurn = async (explicitText?: string) => {
+        let candidateText = explicitText !== undefined ? explicitText : chatInput;
         setChatInput('');
-        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
         stopListening();
 
-        // High-Precision Neural ASR with Groq Whisper if audio was recorded
-        if (audioChunksRef.current.length > 0) {
+        if (audioChunksRef.current.length > 0 && (!candidateText || candidateText.length < 5)) {
             try {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                const groqApiKey = getStoredApiKey('GROQ') || apiKey;
-                const whisperResult = await transcribeAudio(audioBlob, groqApiKey);
-                if (whisperResult && whisperResult.transcript && whisperResult.transcript.trim().length > 0) {
-                    console.log('🎙️ Whisper neural transcript received:', whisperResult.transcript);
+                const whisperResult = await transcribeAudio(audioBlob, apiKey);
+                if (whisperResult && whisperResult.transcript && whisperResult.transcript.trim().length > 3) {
                     candidateText = whisperResult.transcript.trim();
                 }
             } catch (err) {
-                console.warn('Whisper fallback to Web Speech:', err);
+                console.warn('Whisper fallback note:', err);
             }
             audioChunksRef.current = [];
         }
@@ -337,19 +310,20 @@ export const InterviewRoom: React.FC<Props> = ({
             codeSnippet: code
         });
 
-        // Advance Stages
+        // Stage progression heuristics
         if (currentStage === 'INTRODUCTION') {
             setCurrentStage('CORE_TECH');
         } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
             setCurrentStage('CODING_DSA');
-        } else if (currentStage === 'CODING_DSA' && messages.length >= 8) {
+        } else if (currentStage === 'CODING_DSA' && (messages.length >= 8 || testStatus === 'passed')) {
             setCurrentStage('SYSTEM_DESIGN');
+            setEditorTab('whiteboard');
         }
 
         setIsAiResponding(true);
 
         try {
-            const contextPayload = `Problem: ${question.title}\nDescription: ${question.problemStatement}\nCandidate Scratchpad:\n${scratchpadNotes}\n[Current Stage: ${currentStage}]`;
+            const contextPayload = `Problem: ${question.title}\nDescription: ${question.problemStatement}\nCandidate Scratchpad:\n${scratchpadNotes}\n[Current Stage: ${currentStage}]\n${architectureSummary ? `\n[System Design Architecture Canvas Context]:\n${architectureSummary}` : ''}`;
 
             const dialogue = await processDialogueTurn({
                 questionContext: contextPayload,
@@ -374,7 +348,7 @@ export const InterviewRoom: React.FC<Props> = ({
                 content: replyText
             });
         } catch {
-            const fallback = "I see your technical direction. Looking at your data structure choices and scratchpad notes, how would you handle thread contention and cache eviction under peak write load?";
+            const fallback = "I see your technical direction. Looking at your data structure choices and architecture scratchpad, how would you handle thread contention and cache eviction under peak write load?";
             setMessages((prev) => [
                 ...prev,
                 { role: 'interviewer', content: fallback, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
@@ -393,7 +367,28 @@ export const InterviewRoom: React.FC<Props> = ({
         setLanguage(newLang);
     };
 
-    // --- Real Judge0 CE Sandbox Test Runner ---
+    // Generate read-only sample tests view for the tests tab
+    const generateSampleTestsCode = () => {
+        if (!question.sampleTests || question.sampleTests.length === 0) {
+            return '// No public sample assertions specified for this problem.\n';
+        }
+        let content = `// ==========================================================\n`;
+        content += `// SAMPLE TEST FIXTURES (Standard I/O Verification)\n`;
+        content += `// Problem: ${question.title}\n`;
+        content += `// ==========================================================\n\n`;
+
+        question.sampleTests.forEach((t, i) => {
+            content += `// Sample Case #${i + 1}: ${t.name}\n`;
+            content += `// Standard Input (stdin):\n`;
+            t.input.split('\n').forEach((l) => { content += `//   ${l}\n`; });
+            content += `// Expected Output (stdout):\n`;
+            t.expectedOutput.split('\n').forEach((l) => { content += `//   ${l}\n`; });
+            content += `\n`;
+        });
+        return content;
+    };
+
+    // Real Judge0 CE Sandbox Test Runner
     const handleRunCode = async () => {
         setTestStatus('running');
         setExecutionOutput('[Judge0 CE Sandbox] Submitting solution to zero-trust container sandbox...\nCompiling & executing test fixtures...\n');
@@ -470,169 +465,263 @@ export const InterviewRoom: React.FC<Props> = ({
     const handleEndInterview = async () => {
         if (window.confirm('Are you ready to conclude your interview session and generate your 360° Diagnostic Report?')) {
             isSessionEndedRef.current = true;
-            window.speechSynthesis?.cancel();
-            if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
             stopListening();
+            window.speechSynthesis?.cancel();
             try {
                 await completeSession(sessionId);
-            } catch (e) {
-                console.warn('Session completion status:', e);
+                onFinish();
+            } catch (err) {
+                console.error('Session complete error:', err);
+                onFinish();
             }
-            onFinish();
         }
     };
 
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0b0f17', color: '#f1f5f9', fontFamily: 'var(--font-sans)', overflow: 'hidden' }}>
+    const handleCopyExample = (text: string, index: number) => {
+        navigator.clipboard.writeText(text);
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 1500);
+    };
 
-            {/* Top Navigation Bar: Minimalist Micro1 Style */}
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#070b14', color: '#f8fafc', overflow: 'hidden' }}>
+
+            {/* TOP BAR */}
             <header style={{
-                height: '52px',
+                height: '56px',
+                background: '#090d16',
                 borderBottom: '1px solid #1e293b',
-                padding: '0 20px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: 'rgba(15, 23, 42, 0.9)',
-                backdropFilter: 'blur(12px)',
-                zIndex: 10
+                padding: '0 20px',
+                zIndex: 20
             }}>
+                {/* Brand & Problem Title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 0 12px rgba(99, 102, 241, 0.4)'
+                        }}>
+                            <Sparkles size={16} color="#ffffff" />
+                        </div>
+                        <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em', color: '#f8fafc' }}>
+                            AI Interview OS
+                        </span>
+                    </div>
+
+                    <div style={{ width: '1px', height: '20px', background: '#1e293b' }} />
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e2e8f0' }}>
+                            {question.title}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontWeight: 700 }}>
+                            {question.track}
+                        </span>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', fontWeight: 700 }}>
+                            {question.difficulty}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Center / Right Telemetry & Actions */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '0.95rem' }}>
-                        <Zap size={18} color="#6366f1" />
-                        <span>{question.title}</span>
-                    </div>
-                    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontWeight: 600 }}>
-                        {currentStage}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '6px', background: 'rgba(234, 179, 8, 0.15)', color: '#fbbf24', fontWeight: 600 }}>
-                        {question.difficulty}
-                    </span>
-                </div>
-
-                {/* Center: Live Voice Activity Status Indicator */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '4px 16px',
-                    borderRadius: '20px',
-                    background: isAiSpeaking ? 'rgba(99, 102, 241, 0.15)' : isSpeakingNow ? 'rgba(16, 185, 129, 0.2)' : isListening ? 'rgba(30, 41, 59, 0.6)' : 'rgba(15, 23, 42, 0.5)',
-                    border: `1px solid ${isAiSpeaking ? '#6366f1' : isSpeakingNow ? '#10b981' : '#334155'}`
-                }}>
-                    <Radio size={14} color={isAiSpeaking ? '#818cf8' : isSpeakingNow ? '#34d399' : '#94a3b8'} className={isAiSpeaking || isSpeakingNow ? 'animate-pulse' : ''} />
-                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isAiSpeaking ? '#c7d2fe' : isSpeakingNow ? '#6ee7b7' : '#94a3b8' }}>
-                        {isAiSpeaking ? 'AI Interviewer Speaking...' : isSpeakingNow ? 'Transcribing Your Voice...' : isListening ? 'Listening (Speak when ready)...' : 'Microphone Ready'}
-                    </span>
-                </div>
-
-                {/* Right: Controls & Timer */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button
-                        onClick={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
-                        style={{ background: 'transparent', border: 'none', color: voiceOutputEnabled ? '#34d399' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem' }}
-                        title="Toggle AI Vocal Output"
-                    >
-                        {voiceOutputEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                        <span>{voiceOutputEnabled ? 'AI Voice ON' : 'Muted'}</span>
-                    </button>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: (tabSwitches > 0 || pasteDumps > 0) ? '#f87171' : '#34d399' }}>
-                        <ShieldAlert size={15} />
-                        <span>Proctor: {tabSwitches === 0 && pasteDumps === 0 ? 'Clean' : `${tabSwitches} blurs | ${pasteDumps} pastes`}</span>
+                    {/* Voice State Pill */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        background: isSpeakingNow ? 'rgba(6, 182, 212, 0.15)' : isListening ? 'rgba(16, 185, 129, 0.15)' : '#1e293b',
+                        border: `1px solid ${isSpeakingNow ? 'rgba(6, 182, 212, 0.4)' : isListening ? 'rgba(16, 185, 129, 0.3)' : '#334155'}`,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: isSpeakingNow ? '#38bdf8' : isListening ? '#34d399' : '#94a3b8'
+                    }}>
+                        <Mic size={13} color={isSpeakingNow ? '#38bdf8' : isListening ? '#34d399' : '#94a3b8'} />
+                        <span>{isSpeakingNow ? 'Voice Active' : isListening ? 'Listening...' : 'Mic Ready'}</span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: timeLeft < 300 ? '#ef4444' : '#f8fafc', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
-                        <Timer size={16} />
-                        <span>{formatTimer(timeLeft)}</span>
+                    {/* Proctor Chip */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        background: isWindowBlurred || tabSwitches > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.12)',
+                        border: `1px solid ${isWindowBlurred || tabSwitches > 0 ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.25)'}`,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: isWindowBlurred || tabSwitches > 0 ? '#f87171' : '#34d399'
+                    }}>
+                        {isWindowBlurred || tabSwitches > 0 ? <ShieldAlert size={13} /> : <ShieldCheck size={13} />}
+                        <span>{isWindowBlurred ? 'Focus Lost' : tabSwitches > 0 ? `${tabSwitches} Blurs` : 'Proctor: Clean'}</span>
                     </div>
 
+                    {/* Countdown Timer */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        background: '#1e293b',
+                        border: '1px solid #334155',
+                        fontSize: '0.82rem',
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 700,
+                        color: timeLeft < 300 ? '#f87171' : '#f8fafc'
+                    }}>
+                        <Timer size={14} color={timeLeft < 300 ? '#f87171' : '#818cf8'} />
+                        <span>{formatTime(timeLeft)}</span>
+                    </div>
+
+                    {/* End & Report Button (Variant: Danger) */}
                     <button
                         onClick={handleEndInterview}
                         style={{
-                            background: '#ef4444',
+                            background: '#dc2626',
                             color: '#ffffff',
                             border: 'none',
+                            borderRadius: '8px',
                             padding: '6px 14px',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            cursor: 'pointer'
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 0 12px rgba(220, 38, 38, 0.35)',
+                            transition: 'all 0.2s ease'
                         }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#b91c1c')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#dc2626')}
                     >
                         End & Report
                     </button>
                 </div>
             </header>
 
-            {/* Main Split Layout */}
-            <div style={{ display: 'grid', gridTemplateColumns: '42% 58%', flex: 1, overflow: 'hidden' }}>
+            {/* STAGE STEPPER (4 STAGES) */}
+            <StageStepper
+                currentStage={currentStage}
+                onStageClick={(stage) => {
+                    setCurrentStage(stage);
+                    if (stage === 'SYSTEM_DESIGN') setEditorTab('whiteboard');
+                    else if (editorTab === 'whiteboard') setEditorTab('solution');
+                }}
+            />
 
-                {/* Left Column: Problem / Scratchpad + Dialogue Stream */}
-                <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e293b', background: '#0f172a', overflow: 'hidden' }}>
+            {/* THREE-PANEL INTERVIEW ARENA */}
+            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 340px', flex: 1, overflow: 'hidden' }}>
 
-                    {/* Tabs */}
-                    <div style={{ display: 'flex', borderBottom: '1px solid #1e293b', background: '#090d16' }}>
-                        <button
-                            onClick={() => setActiveTab('problem')}
-                            style={{
-                                flex: 1,
-                                padding: '10px 14px',
-                                background: activeTab === 'problem' ? '#0f172a' : 'transparent',
-                                border: 'none',
-                                borderBottom: activeTab === 'problem' ? '2px solid #6366f1' : '2px solid transparent',
-                                color: activeTab === 'problem' ? '#f8fafc' : '#94a3b8',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px'
-                            }}
-                        >
-                            <FileText size={15} />
-                            <span>Problem Statement</span>
-                        </button>
-
-                        <button
-                            onClick={() => setActiveTab('scratchpad')}
-                            style={{
-                                flex: 1,
-                                padding: '10px 14px',
-                                background: activeTab === 'scratchpad' ? '#0f172a' : 'transparent',
-                                border: 'none',
-                                borderBottom: activeTab === 'scratchpad' ? '2px solid #6366f1' : '2px solid transparent',
-                                color: activeTab === 'scratchpad' ? '#f8fafc' : '#94a3b8',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px'
-                            }}
-                        >
-                            <Sparkles size={15} color="#818cf8" />
-                            <span>Live Scratchpad & Notes</span>
-                        </button>
+                {/* LEFT PANEL: Problem | Examples | Scratchpad */}
+                <div style={{
+                    background: '#090d16',
+                    borderRight: '1px solid #1e293b',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                }}>
+                    {/* Left Tabs */}
+                    <div style={{
+                        display: 'flex',
+                        borderBottom: '1px solid #1e293b',
+                        background: '#050811'
+                    }}>
+                        {(['problem', 'examples', 'scratchpad'] as const).map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setLeftPanelTab(tab)}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 8px',
+                                    background: leftPanelTab === tab ? '#090d16' : 'transparent',
+                                    border: 'none',
+                                    borderBottom: leftPanelTab === tab ? '2px solid #6366f1' : '2px solid transparent',
+                                    color: leftPanelTab === tab ? '#f8fafc' : '#94a3b8',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    textTransform: 'capitalize'
+                                }}
+                            >
+                                {tab === 'problem' ? 'Problem' : tab === 'examples' ? `Examples (${question.sampleTests?.length || 0})` : 'Scratchpad'}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Top Left: Problem or Scratchpad */}
-                    <div style={{ height: '38%', padding: '16px', overflowY: 'auto', borderBottom: '1px solid #1e293b', background: '#0f172a' }}>
-                        {activeTab === 'problem' ? (
+                    {/* Left Content */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                        {leftPanelTab === 'problem' && (
                             <div>
-                                <h4 style={{ fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                                    Requirements & Constraints
-                                </h4>
-                                <div style={{ color: '#cbd5e1', fontSize: '0.88rem', lineHeight: '1.55', whiteSpace: 'pre-line' }}>
+                                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', marginBottom: '8px' }}>
+                                    {question.title}
+                                </h2>
+                                <div style={{ color: '#cbd5e1', fontSize: '0.88rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', marginBottom: '16px' }}>
                                     {question.problemStatement}
                                 </div>
+
+                                {question.evaluationCriteria && question.evaluationCriteria.length > 0 && (
+                                    <div style={{ marginTop: '16px', background: '#040711', border: '1px solid #1e293b', borderRadius: '8px', padding: '12px' }}>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#818cf8', marginBottom: '6px' }}>
+                                            Evaluation Criteria:
+                                        </div>
+                                        <ul style={{ margin: 0, paddingLeft: '16px', color: '#94a3b8', fontSize: '0.78rem', lineHeight: '1.5' }}>
+                                            {question.evaluationCriteria.map((c, i) => <li key={i}>{c}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
-                        ) : (
+                        )}
+
+                        {leftPanelTab === 'examples' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {question.sampleTests && question.sampleTests.length > 0 ? (
+                                    question.sampleTests.map((test, i) => (
+                                        <div key={i} style={{ background: '#040711', border: '1px solid #1e293b', borderRadius: '8px', padding: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8' }}>
+                                                    {test.name}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleCopyExample(test.input, i)}
+                                                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                                                    title="Copy Input"
+                                                >
+                                                    {copiedIndex === i ? <Check size={12} color="#34d399" /> : <Copy size={12} />}
+                                                </button>
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: '2px' }}>Input:</div>
+                                            <pre style={{ background: '#090d16', padding: '6px 8px', borderRadius: '4px', color: '#34d399', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: '0 0 8px', overflowX: 'auto' }}>
+                                                {test.input}
+                                            </pre>
+                                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: '2px' }}>Expected Output:</div>
+                                            <pre style={{ background: '#090d16', padding: '6px 8px', borderRadius: '4px', color: '#cbd5e1', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0, overflowX: 'auto' }}>
+                                                {test.expectedOutput}
+                                            </pre>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ color: '#64748b', fontSize: '0.85rem' }}>No public sample test fixtures.</div>
+                                )}
+                            </div>
+                        )}
+
+                        {leftPanelTab === 'scratchpad' && (
                             <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#818cf8', marginBottom: '6px', fontWeight: 600 }}>
-                                    💡 The AI reads your scratchpad thoughts in real time to ask deeper architectural questions.
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px' }}>
+                                    Live Thought Scratchpad (Visible to AI Reviewer):
                                 </div>
                                 <textarea
                                     value={scratchpadNotes}
@@ -640,196 +729,161 @@ export const InterviewRoom: React.FC<Props> = ({
                                     style={{
                                         flex: 1,
                                         width: '100%',
-                                        background: '#090d16',
-                                        border: '1px solid #334155',
-                                        borderRadius: '6px',
-                                        padding: '10px',
-                                        color: '#e2e8f0',
+                                        minHeight: '260px',
+                                        background: '#040711',
+                                        border: '1px solid #1e293b',
+                                        borderRadius: '8px',
+                                        color: '#cbd5e1',
                                         fontFamily: 'var(--font-mono)',
-                                        fontSize: '0.85rem',
-                                        resize: 'none'
+                                        fontSize: '0.82rem',
+                                        padding: '12px',
+                                        resize: 'none',
+                                        outline: 'none',
+                                        lineHeight: '1.4'
                                     }}
-                                    placeholder="Jot down algorithm trade-offs, Big-O complexity, and concurrency notes..."
                                 />
                             </div>
                         )}
                     </div>
-
-                    {/* Bottom Left: Live Dialogue Stream */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#090d16' }}>
-                        <div style={{ padding: '8px 16px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <MessageSquare size={14} color="#6366f1" />
-                                <span>Live Dialogue Transcript</span>
-                            </div>
-                            {isListening && (
-                                <span style={{ color: '#34d399', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399' }} /> Mic Active
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Transcript Messages */}
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            {messages.map((m, idx) => (
-                                <div
-                                    key={idx}
-                                    style={{
-                                        alignSelf: m.role === 'candidate' ? 'flex-end' : 'flex-start',
-                                        maxWidth: '88%',
-                                        padding: '12px 16px',
-                                        borderRadius: '12px',
-                                        fontSize: '0.88rem',
-                                        lineHeight: '1.5',
-                                        background: m.role === 'candidate' ? '#4f46e5' : '#1e293b',
-                                        color: '#f8fafc',
-                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)',
-                                        whiteSpace: 'pre-wrap'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: m.role === 'candidate' ? '#c7d2fe' : '#94a3b8', marginBottom: '4px', fontWeight: 600 }}>
-                                        <span>{m.role === 'candidate' ? 'You (Candidate)' : 'AI Principal Interviewer'}</span>
-                                        {m.timestamp && <span>{m.timestamp}</span>}
-                                    </div>
-                                    {m.content}
-                                </div>
-                            ))}
-
-                            {isAiResponding && (
-                                <div style={{ alignSelf: 'flex-start', color: '#818cf8', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px' }}>
-                                    <Sparkles size={16} className="animate-spin" />
-                                    <span>AI Interviewer is analyzing your response...</span>
-                                </div>
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        {/* Speech / Text Input Bar */}
-                        <div style={{ padding: '12px', borderTop: '1px solid #1e293b', background: '#0f172a', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <button
-                                type="button"
-                                onClick={isListening ? stopListening : startListening}
-                                style={{
-                                    padding: '10px 12px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: isListening ? '#10b981' : '#334155',
-                                    color: '#ffffff',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                }}
-                                title={isListening ? 'Click to Mute Mic' : 'Click to Speak via Mic'}
-                            >
-                                {isListening ? <Mic size={16} /> : <MicOff size={16} />}
-                            </button>
-
-                            <input
-                                style={{
-                                    flex: 1,
-                                    background: '#1e293b',
-                                    border: '1px solid #334155',
-                                    borderRadius: '8px',
-                                    padding: '10px 14px',
-                                    color: '#f8fafc',
-                                    fontSize: '0.88rem',
-                                    outline: 'none'
-                                }}
-                                placeholder={isListening ? 'Listening to your microphone...' : 'Speak or type your explanation here...'}
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && triggerCandidateTurn(chatInput)}
-                            />
-
-                            <button
-                                style={{
-                                    padding: '10px 16px',
-                                    borderRadius: '8px',
-                                    border: 'none',
-                                    background: '#6366f1',
-                                    color: '#ffffff',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                                onClick={() => triggerCandidateTurn(chatInput)}
-                                disabled={isAiResponding}
-                            >
-                                <Send size={16} />
-                            </button>
-                        </div>
-                    </div>
                 </div>
 
-                {/* Right Column: Monaco Editor IDE + Live Compiler Runner */}
-                <div style={{ display: 'flex', flexDirection: 'column', background: '#1e1e1e', overflow: 'hidden' }}>
-
-                    {/* Control Bar */}
+                {/* CENTER PANEL: Monaco Workspace + Test Console / Whiteboard */}
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    background: '#070b14',
+                    overflow: 'hidden'
+                }}>
+                    {/* Workspace Tabs Header */}
                     <div style={{
-                        padding: '10px 16px',
-                        borderBottom: '1px solid #334155',
+                        height: '44px',
+                        background: '#090d16',
+                        borderBottom: '1px solid #1e293b',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: '#18181b'
+                        padding: '0 14px'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc' }}>
-                                <Code size={16} color="#10b981" />
-                                <span>Monaco Code Workspace</span>
-                            </div>
-
-                            <select
-                                style={{
-                                    background: '#27272a',
-                                    border: '1px solid #3f3f46',
-                                    color: '#f8fafc',
-                                    padding: '3px 8px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.78rem'
-                                }}
-                                value={language}
-                                onChange={(e) => handleLanguageChange(e.target.value as any)}
-                            >
-                                <option value="java">Java 21 LTS</option>
-                                <option value="python">Python 3.12</option>
-                                <option value="javascript">TypeScript / Node</option>
-                            </select>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <button
-                                onClick={handleRunCode}
+                                onClick={() => setEditorTab('solution')}
                                 style={{
-                                    background: '#27272a',
-                                    color: '#f8fafc',
-                                    border: '1px solid #3f3f46',
-                                    padding: '5px 12px',
+                                    background: editorTab === 'solution' ? '#1e293b' : 'transparent',
+                                    border: `1px solid ${editorTab === 'solution' ? '#334155' : 'transparent'}`,
                                     borderRadius: '6px',
+                                    padding: '5px 12px',
+                                    color: editorTab === 'solution' ? '#f8fafc' : '#94a3b8',
                                     fontSize: '0.8rem',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '6px'
                                 }}
                             >
-                                <Play size={13} color="#10b981" /> Run Test Suite
+                                <Code size={14} color="#818cf8" />
+                                Solution.{language === 'python' ? 'py' : language === 'javascript' ? 'js' : 'java'}
                             </button>
 
                             <button
-                                onClick={() => triggerCandidateTurn(`I have updated the code in the editor:\n\`\`\`${language}\n${code}\n\`\`\``)}
+                                onClick={() => setEditorTab('tests')}
                                 style={{
-                                    background: '#6366f1',
+                                    background: editorTab === 'tests' ? '#1e293b' : 'transparent',
+                                    border: `1px solid ${editorTab === 'tests' ? '#334155' : 'transparent'}`,
+                                    borderRadius: '6px',
+                                    padding: '5px 12px',
+                                    color: editorTab === 'tests' ? '#f8fafc' : '#94a3b8',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                <FileText size={14} color="#38bdf8" />
+                                tests.{language === 'python' ? 'py' : 'java'} (Read-Only)
+                            </button>
+
+                            <button
+                                onClick={() => setEditorTab('whiteboard')}
+                                style={{
+                                    background: editorTab === 'whiteboard' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                    border: `1px solid ${editorTab === 'whiteboard' ? '#6366f1' : 'transparent'}`,
+                                    borderRadius: '6px',
+                                    padding: '5px 12px',
+                                    color: editorTab === 'whiteboard' ? '#c7d2fe' : '#94a3b8',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                <Layers size={14} color="#a855f7" />
+                                System Design Whiteboard
+                            </button>
+                        </div>
+
+                        {/* Language Selector & Actions */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <select
+                                value={language}
+                                onChange={(e) => handleLanguageChange(e.target.value as any)}
+                                style={{
+                                    background: '#1e293b',
+                                    color: '#f8fafc',
+                                    border: '1px solid #334155',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 600,
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <option value="java">Java 21 LTS</option>
+                                <option value="python">Python 3.12</option>
+                                <option value="javascript">JavaScript (Node)</option>
+                            </select>
+
+                            <button
+                                onClick={handleRunCode}
+                                disabled={testStatus === 'running'}
+                                style={{
+                                    background: testStatus === 'running' ? '#334155' : 'linear-gradient(135deg, #10b981, #059669)',
                                     color: '#ffffff',
                                     border: 'none',
-                                    padding: '5px 14px',
                                     borderRadius: '6px',
+                                    padding: '5px 14px',
                                     fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer'
+                                    fontWeight: 700,
+                                    cursor: testStatus === 'running' ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    boxShadow: '0 0 12px rgba(16, 185, 129, 0.3)'
+                                }}
+                            >
+                                <Play size={13} fill="#ffffff" />
+                                {testStatus === 'running' ? 'Executing...' : 'Run Test Suite'}
+                            </button>
+
+                            <button
+                                onClick={() => void triggerCandidateTurn('I have updated and tested my code in the editor.')}
+                                style={{
+                                    background: '#4f46e5',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '5px 12px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
                                 }}
                             >
                                 Submit Code Turn
@@ -837,51 +891,264 @@ export const InterviewRoom: React.FC<Props> = ({
                         </div>
                     </div>
 
-                    {/* Monaco Canvas */}
-                    <div style={{ flex: 1, minHeight: '300px' }}>
-                        <Editor
-                            height="100%"
-                            theme="vs-dark"
-                            language={language}
-                            value={code}
-                            onChange={(val) => setCode(val || '')}
-                            options={{
-                                fontSize: 14,
-                                fontFamily: 'var(--font-mono)',
-                                minimap: { enabled: false },
-                                scrollBeyondLastLine: false,
-                                automaticLayout: true,
-                                tabSize: 4
-                            }}
-                        />
+                    {/* Main Workspace Area */}
+                    <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                        {editorTab === 'solution' && (
+                            <Editor
+                                height="100%"
+                                language={language === 'python' ? 'python' : language === 'javascript' ? 'javascript' : 'java'}
+                                theme="vs-dark"
+                                value={code}
+                                onChange={(val) => setCode(val || '')}
+                                options={{
+                                    fontSize: 14,
+                                    minimap: { enabled: false },
+                                    fontFamily: "var(--font-mono), 'Fira Code', monospace",
+                                    automaticLayout: true,
+                                    tabSize: 4,
+                                    scrollBeyondLastLine: false,
+                                    lineNumbersMinChars: 3
+                                }}
+                            />
+                        )}
+
+                        {editorTab === 'tests' && (
+                            <Editor
+                                height="100%"
+                                language={language === 'python' ? 'python' : 'java'}
+                                theme="vs-dark"
+                                value={generateSampleTestsCode()}
+                                options={{
+                                    fontSize: 14,
+                                    readOnly: true,
+                                    minimap: { enabled: false },
+                                    fontFamily: "var(--font-mono), 'Fira Code', monospace",
+                                    automaticLayout: true
+                                }}
+                            />
+                        )}
+
+                        {editorTab === 'whiteboard' && (
+                            <div style={{ height: '100%', padding: '8px' }}>
+                                <HldWhiteboardCanvas onArchitectureUpdate={(sum) => setArchitectureSummary(sum)} />
+                            </div>
+                        )}
                     </div>
 
-                    {/* Execution Output Console */}
+                    {/* Bottom Test Suite Runner Console */}
                     {executionOutput && (
-                        <div style={{ height: '140px', borderTop: '1px solid #334155', background: '#090d16', padding: '12px', overflowY: 'auto', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                                    {testStatus === 'passed' && <CheckCircle size={14} color="#34d399" />}
-                                    {testStatus === 'failed' && <XCircle size={14} color="#f87171" />}
-                                    <span style={{ color: testStatus === 'passed' ? '#34d399' : testStatus === 'failed' ? '#f87171' : '#94a3b8' }}>
-                                        Test Fixture Results ({testStatus.toUpperCase()})
-                                    </span>
-                                </div>
+                        <div style={{
+                            height: '160px',
+                            background: '#040711',
+                            borderTop: '1px solid #1e293b',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}>
+                            <div style={{
+                                padding: '6px 14px',
+                                background: '#090d16',
+                                borderBottom: '1px solid #1e293b',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Code size={13} /> Judge0 CE Sandbox Console
+                                </span>
                                 <button
                                     onClick={() => setExecutionOutput(null)}
-                                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '0.72rem', cursor: 'pointer' }}
                                 >
-                                    <RotateCcw size={12} /> Clear
+                                    ✕ Close
                                 </button>
                             </div>
-                            <pre style={{ color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{executionOutput}</pre>
+                            <pre style={{
+                                flex: 1,
+                                margin: 0,
+                                padding: '10px 14px',
+                                overflowY: 'auto',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '0.8rem',
+                                color: testStatus === 'passed' ? '#34d399' : '#f87171',
+                                lineHeight: '1.45'
+                            }}>
+                                {executionOutput}
+                            </pre>
                         </div>
                     )}
                 </div>
+
+                {/* RIGHT PANEL: AI Persona Card, Dialogue Transcript & Controls */}
+                <div style={{
+                    background: '#090d16',
+                    borderLeft: '1px solid #1e293b',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    position: 'relative'
+                }}>
+                    {/* AI Avatar & Audio Waveform */}
+                    <div style={{ padding: '14px 14px 8px' }}>
+                        <AiAvatarWaveform
+                            personaName="Dr. Anya Chen"
+                            personaTitle="AI Principal Bar Raiser"
+                            isAiSpeaking={isAiSpeaking}
+                            voiceEnabled={voiceOutputEnabled}
+                            onToggleVoice={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
+                            currentStage={currentStage}
+                        />
+                    </div>
+
+                    {/* Dialogue Transcript */}
+                    <div style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        padding: '10px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                    }}>
+                        {messages.map((m, idx) => (
+                            <div
+                                key={idx}
+                                style={{
+                                    padding: '12px 14px',
+                                    borderRadius: '10px',
+                                    background: m.role === 'candidate' ? '#1e1b4b' : '#0f172a',
+                                    border: `1px solid ${m.role === 'candidate' ? '#4f46e5' : '#1e293b'}`,
+                                    fontSize: '0.85rem',
+                                    lineHeight: '1.5'
+                                }}
+                            >
+                                <div style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    color: m.role === 'candidate' ? '#c7d2fe' : '#818cf8',
+                                    marginBottom: '4px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <span>{m.role === 'candidate' ? 'You (Candidate)' : 'AI Principal Interviewer'}</span>
+                                    {m.timestamp && <span style={{ color: '#64748b', fontWeight: 500 }}>{m.timestamp}</span>}
+                                </div>
+                                <div style={{ color: '#f8fafc', whiteSpace: 'pre-wrap' }}>
+                                    {m.content}
+                                </div>
+                            </div>
+                        ))}
+
+                        {isAiResponding && (
+                            <div style={{
+                                padding: '10px 14px',
+                                borderRadius: '8px',
+                                background: '#0f172a',
+                                border: '1px solid #1e293b',
+                                color: '#818cf8',
+                                fontSize: '0.82rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                <Sparkles size={14} className="animate-spin" />
+                                AI Interviewer is evaluating technical response...
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Candidate Input & Mic Controller */}
+                    <div style={{
+                        padding: '12px 14px',
+                        borderTop: '1px solid #1e293b',
+                        background: '#040711'
+                    }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button
+                                onClick={() => {
+                                    if (isListening) stopListening();
+                                    else startListening();
+                                }}
+                                style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '8px',
+                                    background: isListening ? '#dc2626' : '#1e293b',
+                                    border: `1px solid ${isListening ? '#ef4444' : '#334155'}`,
+                                    color: '#ffffff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    boxShadow: isListening ? '0 0 12px rgba(239, 68, 68, 0.5)' : 'none',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                title={isListening ? 'Stop Speaking' : 'Start Speaking'}
+                            >
+                                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                            </button>
+
+                            <input
+                                type="text"
+                                placeholder="Speak or type your explanation here..."
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        void triggerCandidateTurn();
+                                    }
+                                }}
+                                style={{
+                                    flex: 1,
+                                    background: '#090d16',
+                                    border: '1px solid #1e293b',
+                                    borderRadius: '8px',
+                                    padding: '8px 12px',
+                                    color: '#f8fafc',
+                                    fontSize: '0.85rem',
+                                    outline: 'none'
+                                }}
+                            />
+
+                            <button
+                                onClick={() => void triggerCandidateTurn()}
+                                disabled={isAiResponding}
+                                style={{
+                                    width: '38px',
+                                    height: '38px',
+                                    borderRadius: '8px',
+                                    background: '#4f46e5',
+                                    border: 'none',
+                                    color: '#ffffff',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <Send size={16} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Floating Corner Proctor Tile */}
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '72px',
+                        right: '16px',
+                        zIndex: 30
+                    }}>
+                        <WebcamTile
+                            isTabBlurred={isWindowBlurred}
+                            tabSwitchCount={tabSwitches}
+                            pasteCount={pasteDumps}
+                        />
+                    </div>
+
+                </div>
+
             </div>
 
-            {/* Permanent Locked Webcam HUD */}
-            <CameraProctorHUD isTabBlurred={isWindowBlurred} tabSwitches={tabSwitches} />
         </div>
     );
 };
