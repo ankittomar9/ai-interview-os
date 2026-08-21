@@ -1,5 +1,7 @@
 package com.interviewos.evaluation.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interviewos.evaluation.client.AiRubricClient;
 import com.interviewos.evaluation.client.ProctorServiceClient;
 import com.interviewos.evaluation.client.SessionServiceClient;
 import com.interviewos.evaluation.dto.DiagnosticReportResponse;
@@ -11,10 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -24,6 +25,8 @@ public class EvaluationReportService {
     private final EvaluationReportRepository reportRepository;
     private final SessionServiceClient sessionClient;
     private final ProctorServiceClient proctorClient;
+    private final AiRubricClient aiRubricClient;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public DiagnosticReportResponse generateReport(Long sessionId) {
@@ -33,23 +36,21 @@ public class EvaluationReportService {
             return DiagnosticReportResponse.fromEntity(existing.get());
         }
 
-        log.info("Starting diagnostic evaluation synthesis for session {}", sessionId);
+        log.info("Starting qualitative diagnostic evaluation synthesis for session {}", sessionId);
 
-        // 1. Fetch Session and Transcript
+        // 1. Fetch Session Details & MongoDB Transcript Turns
         SessionServiceClient.SessionDetailsDto session = sessionClient.getSessionById(sessionId);
         List<SessionServiceClient.TranscriptMessageDto> transcript = sessionClient.getSessionTranscript(sessionId);
 
-        // 2. Fetch Proctor Telemetry (Fail-neutral, never fail open to 100)
+        // 2. Fetch Proctor Telemetry (Fail-neutral 70 default)
         int integrityScore = 70;
-        boolean proctorVerified = false;
         try {
             ProctorServiceClient.ProctorSummaryDto proctor = proctorClient.getSessionSummary(sessionId);
             if (proctor != null) {
                 integrityScore = proctor.integrityScore();
-                proctorVerified = true;
             }
         } catch (Exception e) {
-            log.warn("Proctor service unreachable for session {}, defaulting integrity to NEUTRAL 70 (never fail open): {}", sessionId, e.getMessage());
+            log.warn("Proctor service unreachable for session {}, defaulting integrity to NEUTRAL 70: {}", sessionId, e.getMessage());
         }
 
         long durationSeconds = session.durationSeconds() != null ? session.durationSeconds() : 0;
@@ -57,96 +58,201 @@ public class EvaluationReportService {
                 .filter(m -> "CANDIDATE".equalsIgnoreCase(m.senderRole()))
                 .count();
 
-        long codeSubmissions = transcript.stream()
-                .filter(m -> "CODE_SUBMISSION".equalsIgnoreCase(m.messageType()) || (m.codeSnippet() != null && m.codeSnippet().length() > 30))
+        // 3. Deterministic Ground Truth Execution Score
+        List<SessionServiceClient.TranscriptMessageDto> executionTurns = transcript.stream()
+                .filter(m -> "CODE_EXECUTION".equalsIgnoreCase(m.messageType()))
+                .toList();
+
+        double bestRatio = 0.0;
+        int compileErrorCount = 0;
+        boolean hasTimeout = false;
+        int totalExecutionRuns = executionTurns.size();
+        List<AiRubricClient.ExecutionDto> executionDtos = new ArrayList<>();
+        String latestCodeSnippet = "";
+
+        Pattern execPattern = Pattern.compile("(?i)(\\d+)/(\\d+)\\s*tests?\\s*passed\\s*\\(([^)]+)\\)(?:\\s*in\\s*([\\d.]+)ms)?");
+
+        for (SessionServiceClient.TranscriptMessageDto turn : transcript) {
+            if (turn.codeSnippet() != null && !turn.codeSnippet().isBlank()) {
+                latestCodeSnippet = turn.codeSnippet();
+            }
+
+            if ("CODE_EXECUTION".equalsIgnoreCase(turn.messageType())) {
+                String content = turn.content() != null ? turn.content() : "";
+                int passed = 0;
+                int total = 0;
+                String status = "UNKNOWN";
+                double execTimeMs = 0.0;
+
+                Matcher m = execPattern.matcher(content);
+                if (m.find()) {
+                    passed = Integer.parseInt(m.group(1));
+                    total = Integer.parseInt(m.group(2));
+                    status = m.group(3);
+                    if (m.group(4) != null) {
+                        try {
+                            execTimeMs = Double.parseDouble(m.group(4));
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+
+                if ("COMPILE_ERROR".equalsIgnoreCase(status) || content.contains("COMPILE_ERROR")) {
+                    compileErrorCount++;
+                }
+                if ("TIMEOUT".equalsIgnoreCase(status) || content.contains("TIMEOUT")) {
+                    hasTimeout = true;
+                }
+
+                if (total > 0) {
+                    double ratio = (double) passed / total;
+                    if (ratio > bestRatio) {
+                        bestRatio = ratio;
+                    }
+                }
+
+                executionDtos.add(new AiRubricClient.ExecutionDto(status, passed, total, execTimeMs, 0.0));
+            }
+        }
+
+        int executionScore = (int) Math.round(bestRatio * 100);
+        if (totalExecutionRuns == 0) {
+            executionScore = 0;
+        } else if (compileErrorCount == totalExecutionRuns) {
+            executionScore = Math.min(executionScore, 35);
+        } else if (hasTimeout) {
+            executionScore = Math.min(executionScore, 50);
+        }
+
+        long verifiedPasses = executionDtos.stream()
+                .filter(e -> e.passedTests() > 0 && ("PASSED".equalsIgnoreCase(e.status()) || e.passedTests() == e.totalTests()))
                 .count();
+
+        // 4. Request Qualitative Multi-Rubric from AI Orchestrator
+        List<AiRubricClient.TurnDto> turnDtos = transcript.stream()
+                .map(t -> new AiRubricClient.TurnDto(t.senderRole(), t.messageType(), t.content(), t.codeSnippet()))
+                .toList();
+
+        AiRubricClient.RubricEvaluationRequestDto rubricRequest = AiRubricClient.RubricEvaluationRequestDto.builder()
+                .problemSlug(session.roleTitle() != null ? session.roleTitle().toLowerCase().replaceAll("[^a-z0-9]+", "-") : "technical-assessment")
+                .problemStatement("Technical assessment for " + session.roleTitle() + " (" + session.difficulty() + ")")
+                .track(session.track())
+                .difficulty(session.difficulty())
+                .transcript(turnDtos)
+                .executions(executionDtos)
+                .finalCode(latestCodeSnippet)
+                .language("java")
+                .build();
+
+        Optional<AiRubricClient.RubricResponseDto> rubricOpt = aiRubricClient.evaluateRubric(rubricRequest);
 
         int technicalScore;
         int problemSolvingScore;
         int communicationScore;
         int codeQualityScore;
-        HiringVerdict verdict;
-        String summary;
+        int requirementsClarityScore;
+        boolean rubricLlmGenerated = false;
+
         List<String> strengths = new ArrayList<>();
         List<String> weaknesses = new ArrayList<>();
+        List<String> studyPlan = new ArrayList<>();
+        String executiveSummary;
+        String rubricJson = null;
 
-        // 🚨 STRICT RULE 1: Premature / Abandoned Session Check (< 3 mins or < 3 responses)
-        if (durationSeconds < 180 || candidateTurns < 3) {
-            technicalScore = 20;
-            problemSolvingScore = 15;
-            communicationScore = 25;
-            codeQualityScore = codeSubmissions > 0 ? 30 : 0;
-            verdict = HiringVerdict.NO_HIRE;
-            summary = String.format(
-                    "Assessment ended prematurely after only %d seconds with %d candidate responses. Minimum 15-45 minutes of active technical dialogue and code execution is required for hiring consideration.",
-                    durationSeconds, candidateTurns
-            );
-            weaknesses.add("Interview session was aborted prematurely without completing core assessment stages.");
-            weaknesses.add("Insufficient verbal or written explanations to gauge engineering seniority.");
-            if (codeSubmissions == 0) {
-                weaknesses.add("No code implementation was submitted in the IDE workspace.");
+        if (rubricOpt.isPresent() && rubricOpt.get().llmGenerated() && rubricOpt.get().dimensions() != null && !rubricOpt.get().dimensions().isEmpty()) {
+            AiRubricClient.RubricResponseDto rubric = rubricOpt.get();
+            rubricLlmGenerated = true;
+
+            Map<String, Integer> dimScores = new HashMap<>();
+            for (AiRubricClient.DimensionScoreDto d : rubric.dimensions()) {
+                dimScores.put(d.dimension().toUpperCase(), d.score());
             }
-            strengths.add("Initiated system check and entered interview environment.");
+
+            int reqScore = dimScores.getOrDefault("REQUIREMENTS_CLARIFICATION", 40);
+            int algoScore = dimScores.getOrDefault("ALGORITHMIC_REASONING", 40);
+            int edgeScore = dimScores.getOrDefault("EDGE_CASE_THOROUGHNESS", 40);
+            int commScore = dimScores.getOrDefault("COMMUNICATION_CLARITY", 40);
+            int codeScore = dimScores.getOrDefault("CODE_QUALITY", 40);
+
+            technicalScore = (int) Math.round(0.5 * executionScore + 0.5 * algoScore);
+            problemSolvingScore = edgeScore;
+            communicationScore = commScore;
+            codeQualityScore = (int) Math.round(0.5 * executionScore + 0.5 * codeScore);
+            requirementsClarityScore = reqScore;
+
+            strengths.addAll(rubric.strengths());
+            weaknesses.addAll(rubric.weaknesses());
+            studyPlan.addAll(rubric.studyPlan());
+            executiveSummary = rubric.executiveSummary();
+
+            try {
+                rubricJson = objectMapper.writeValueAsString(rubric.dimensions());
+            } catch (Exception e) {
+                log.warn("Failed to serialize rubric dimensions to JSON: {}", e.getMessage());
+            }
         } else {
-            // Full Genuine Interview Evaluation
-            technicalScore = Math.min(95, (int) (40 + (candidateTurns * 5) + (codeSubmissions * 20)));
-            problemSolvingScore = Math.min(90, (int) (35 + (candidateTurns * 6)));
-            communicationScore = Math.min(92, (int) (40 + (candidateTurns * 7)));
-            codeQualityScore = codeSubmissions > 0 ? Math.min(95, (int) (50 + (codeSubmissions * 20))) : 20;
+            // Deterministic Fallback Score Math
+            technicalScore = Math.min(executionScore, 60);
+            codeQualityScore = Math.min(executionScore, (int) Math.round(40 + 0.2 * executionScore));
+            problemSolvingScore = Math.min(70, 30 + executionScore / 2);
+            communicationScore = Math.min(75, 30 + (int) candidateTurns * 5);
+            requirementsClarityScore = Math.min(60, 40);
 
-            // Stopgap Honesty Check: Verify real sandbox execution passes
-            long verifiedPasses = transcript.stream()
-                    .filter(m -> "CODE_EXECUTION".equalsIgnoreCase(m.messageType()) || "CODE_SUBMISSION".equalsIgnoreCase(m.messageType()))
-                    .filter(m -> m.content() != null && (m.content().contains("PASSED") || m.content().contains("ALL") || m.content().matches("(?i).*\\b[1-9][0-9]*\\s*/\\s*[1-9][0-9]*\\s*tests?\\s*passed.*")))
-                    .count();
+            // Dynamic Fallback Narratives based on lowest dimensions & execution stats
+            if (verifiedPasses > 0) {
+                strengths.add(String.format("Verified %d sandbox execution runs with passing test suites in the IDE.", verifiedPasses));
+            }
+            if (candidateTurns >= 4) {
+                strengths.add(String.format("Engaged actively with %d conversational dialogue turns across the assessment.", candidateTurns));
+            }
+            if (integrityScore >= 80) {
+                strengths.add(String.format("Demonstrated high exam integrity (%d%%) with focused browser environment.", integrityScore));
+            }
 
             if (verifiedPasses == 0) {
-                codeQualityScore = Math.min(codeQualityScore, 40);
-                technicalScore = Math.min(technicalScore, 60);
+                weaknesses.add(String.format("Weak ALGORITHMIC_REASONING: 0 verified test suites passed (Execution Score: %d/100).", executionScore));
             }
-
-            int aggregateScore = (technicalScore + problemSolvingScore + communicationScore + codeQualityScore + integrityScore) / 5;
-
-            if (aggregateScore >= 85 && integrityScore >= 80 && verifiedPasses >= 1) {
-                verdict = HiringVerdict.STRONG_HIRE;
-            } else if (aggregateScore >= 70 && integrityScore >= 70 && verifiedPasses >= 1) {
-                verdict = HiringVerdict.HIRE;
-            } else if (aggregateScore >= 55) {
-                verdict = HiringVerdict.LEAN_HIRE;
-            } else {
-                verdict = HiringVerdict.NO_HIRE;
+            if (candidateTurns < 4) {
+                weaknesses.add(String.format("Low COMMUNICATION_CLARITY: Only %d candidate responses recorded before session completion.", candidateTurns));
             }
+            weaknesses.add(String.format("EDGE_CASE_THOROUGHNESS: Gaps identified in boundary condition handling (Score: %d/100).", problemSolvingScore));
 
-            summary = String.format(
-                    "Candidate completed %d minutes of technical assessment for %s (%s) with %d interactive turns. Overall Score: %d/100. Hiring Verdict: %s.",
-                    durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, aggregateScore, verdict
+            studyPlan.add(String.format("Day 1: Algorithmic Drill: Master time/space complexity analysis for %s.", session.track() != null ? session.track() : "Core Data Structures"));
+            studyPlan.add("Day 2: Edge Case Analysis: Implement boundary validation for empty, single-element, and maximum bounds.");
+            studyPlan.add("Day 3: Clean Code & Architecture: Refactor solutions for optimal modularity and idiomatic syntax.");
+            studyPlan.add("Day 4: Live Code Verification: Practice timed standard I/O problems under 30-minute sandbox constraints.");
+            studyPlan.add("Day 5: Behavioral Articulation: Structure technical explanations using top-down design thinking.");
+            studyPlan.add("Day 6: Concurrency & Scaling: Explore thread safety, cache eviction, and memory overheads.");
+            studyPlan.add("Day 7: Mock Diagnostic Review: Re-attempt failed assessment tracks with comprehensive verification.");
+
+            executiveSummary = String.format(
+                    "Candidate completed %d minutes of technical assessment for %s (%s) across %d interactive turns. Execution Score: %d/100. Deterministic evaluation generated.",
+                    durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, executionScore
             );
-
             if (verifiedPasses == 0) {
-                summary += " No verified code execution passed during this session.";
-                weaknesses.add("No verified code execution passed in the sandbox environment.");
+                executiveSummary += " No verified code execution passed during this session.";
             }
-
-            if (verifiedPasses > 0) strengths.add("Produced functional code passing verified sandbox test fixtures.");
-            if (candidateTurns >= 5) strengths.add("Actively engaged in technical follow-ups with structured explanations.");
-            if (integrityScore >= 85) strengths.add("Maintained high integrity with natural browser focus.");
-
-            if (codeSubmissions == 0) weaknesses.add("Did not submit executable code in the editor workspace.");
-            if (integrityScore < 75) weaknesses.add("Frequent window blur or paste bursts detected during assessment.");
-            weaknesses.add("Could discuss algorithmic Big-O space/time trade-offs more proactively.");
         }
+
+        // Clamp Scores to 0..100
+        technicalScore = Math.max(0, Math.min(100, technicalScore));
+        problemSolvingScore = Math.max(0, Math.min(100, problemSolvingScore));
+        communicationScore = Math.max(0, Math.min(100, communicationScore));
+        codeQualityScore = Math.max(0, Math.min(100, codeQualityScore));
+        requirementsClarityScore = Math.max(0, Math.min(100, requirementsClarityScore));
 
         int overallScore = (technicalScore + problemSolvingScore + communicationScore + codeQualityScore + integrityScore) / 5;
 
-        List<String> studyPlan = List.of(
-                "Day 1: Master Java 21 Virtual Threads & Structured Concurrency internals.",
-                "Day 2: Deep dive into Spring Boot 3.4 Transactional boundaries and JPA query optimization.",
-                "Day 3: Practice 5 High-Frequency LeetCode Mediums on Sliding Window & Monotonic Stack.",
-                "Day 4: System Design: Design a distributed rate limiter with Redis Token Bucket & Lua scripts.",
-                "Day 5: Behavioral: Refine 3 project stories using the STAR framework (Situation, Task, Action, Result).",
-                "Day 6: Mock interview practice under strict 45-minute timed constraints with zero tab switching.",
-                "Day 7: Full review of past interview notes, edge case handling, and Big-O complexity proofs."
-        );
+        // Hiring Verdict Thresholds (M1.5 Rule: verifiedPasses >= 1 required for HIRE / STRONG_HIRE)
+        HiringVerdict verdict;
+        if (overallScore >= 85 && integrityScore >= 80 && verifiedPasses >= 1) {
+            verdict = HiringVerdict.STRONG_HIRE;
+        } else if (overallScore >= 70 && integrityScore >= 70 && verifiedPasses >= 1) {
+            verdict = HiringVerdict.HIRE;
+        } else if (overallScore >= 55) {
+            verdict = HiringVerdict.LEAN_HIRE;
+        } else {
+            verdict = HiringVerdict.NO_HIRE;
+        }
 
         EvaluationReport report = EvaluationReport.builder()
                 .sessionId(sessionId)
@@ -161,7 +267,10 @@ public class EvaluationReportService {
                 .communicationClarityScore(communicationScore)
                 .codeQualityScore(codeQualityScore)
                 .integrityScore(integrityScore)
-                .executiveSummary(summary)
+                .requirementsClarificationScore(requirementsClarityScore)
+                .executiveSummary(executiveSummary)
+                .rubricJson(rubricJson)
+                .rubricLlmGenerated(rubricLlmGenerated)
                 .keyStrengths(strengths)
                 .areasForImprovement(weaknesses)
                 .sevenDayStudyPlan(studyPlan)

@@ -100,6 +100,13 @@ export const processDialogueTurn = async (payload: {
     candidateCode?: string;
     modelProvider?: string;
     apiKey?: string;
+    latestExecution?: {
+        status: string;
+        passedTests: number;
+        totalTests: number;
+        executionTimeMs: number;
+        memoryUsedMb: number;
+    };
 }): Promise<AiDialogueResponse> => {
     const res = await fetch(`${AI_API}/dialogue`, {
         method: 'POST',

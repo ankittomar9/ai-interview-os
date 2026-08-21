@@ -40,10 +40,18 @@ public class EvaluationReport {
     private int communicationClarityScore;
     private int codeQualityScore;
     private int integrityScore;
+    private Integer requirementsClarificationScore;
 
     @Lob
     @Column(columnDefinition = "TEXT")
     private String executiveSummary;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String rubricJson;
+
+    @Builder.Default
+    private Boolean rubricLlmGenerated = false;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "report_strengths", joinColumns = @JoinColumn(name = "report_id"))

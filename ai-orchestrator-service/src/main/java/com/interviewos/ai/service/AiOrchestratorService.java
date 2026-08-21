@@ -124,7 +124,7 @@ public class AiOrchestratorService {
     public AiDialogueResponse processDialogue(AiDialogueRequest request) {
         AiClient client = clientFactory.getClient(request.modelProvider());
 
-        String systemInstruction = """
+        StringBuilder systemInstructionBuilder = new StringBuilder("""
                 You are an empathetic yet rigorous Senior Technical Interviewer conducting a live interview.
                 Assess the candidate's explanation and code submission against the problem context.
                 
@@ -137,7 +137,21 @@ public class AiOrchestratorService {
                   "keyStrengths": ["Strength 1", "Strength 2"],
                   "areasToImprove": ["Area 1"]
                 }
-                """;
+                """);
+
+        if (request.latestExecution() != null) {
+            systemInstructionBuilder.append(String.format("""
+                    
+                    Latest sandbox result: %d/%d passed (%s) in %.1fms.
+                    If the candidate has already passed all tests, acknowledge it and ask about complexity/edge cases. Do NOT claim the code is incomplete or missing.
+                    """,
+                    request.latestExecution().passedTests(),
+                    request.latestExecution().totalTests(),
+                    request.latestExecution().status(),
+                    request.latestExecution().executionTimeMs()));
+        }
+
+        String systemInstruction = systemInstructionBuilder.toString();
 
         String userPrompt = """
                 Problem Context:

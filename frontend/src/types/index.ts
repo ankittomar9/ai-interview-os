@@ -48,6 +48,14 @@ export interface GenerateQuestionResponse {
     evaluationCriteria: string[];
 }
 
+export interface ExecutionDto {
+    status: string;
+    passedTests: number;
+    totalTests: number;
+    executionTimeMs: number;
+    memoryUsedMb: number;
+}
+
 export interface AiDialogueResponse {
     interviewerReply: string;
     followUpQuestion: string;
@@ -55,6 +63,13 @@ export interface AiDialogueResponse {
     codeAnalysis?: string;
     keyStrengths: string[];
     areasToImprove: string[];
+}
+
+export interface DimensionScore {
+    dimension: string;
+    score: number;
+    rationale: string;
+    evidence: string;
 }
 
 export interface DiagnosticReportResponse {
@@ -72,10 +87,14 @@ export interface DiagnosticReportResponse {
         communicationClarity: number;
         codeQuality: number;
         integrityScore: number;
+        requirementsClarification?: number;
     };
     executiveSummary: string;
     keyStrengths: string[];
     areasForImprovement: string[];
     sevenDayStudyPlan: string[];
+    dimensions?: DimensionScore[];
+    llmGenerated?: boolean;
+    requirementsClarityScore?: number;
     generatedAt: string;
 }

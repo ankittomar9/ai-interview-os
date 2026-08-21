@@ -57,6 +57,7 @@ export const InterviewRoom: React.FC<Props> = ({
         '// Architecture & Thought Scratchpad\n// 1. Core Assumptions:\n// 2. Algorithm & Complexity (Time / Space):\n// 3. Edge Cases to Test:\n'
     );
     const [activeTab, setActiveTab] = useState<'problem' | 'scratchpad'>('problem');
+    const [latestExecution, setLatestExecution] = useState<{ status: string; passedTests: number; totalTests: number; executionTimeMs: number; memoryUsedMb: number } | null>(null);
 
     // --- State: Conversation & Dialogue ---
     const [messages, setMessages] = useState<Array<{ role: 'interviewer' | 'candidate'; content: string; timestamp?: string }>>([
@@ -355,7 +356,8 @@ export const InterviewRoom: React.FC<Props> = ({
                 candidateExplanation: candidateText,
                 candidateCode: code,
                 modelProvider: provider,
-                apiKey
+                apiKey,
+                latestExecution: latestExecution || undefined
             });
 
             const replyText = `${dialogue.interviewerReply}\n\n${dialogue.followUpQuestion}`;
@@ -406,6 +408,14 @@ export const InterviewRoom: React.FC<Props> = ({
                 language: lang,
                 codeSnippet: code,
                 problemSlug: slug
+            });
+
+            setLatestExecution({
+                status: result.status,
+                passedTests: result.passedTests,
+                totalTests: result.totalTests,
+                executionTimeMs: result.executionTimeMs,
+                memoryUsedMb: result.memoryUsedMb
             });
 
             if (result.status === 'ENGINE_UNAVAILABLE') {

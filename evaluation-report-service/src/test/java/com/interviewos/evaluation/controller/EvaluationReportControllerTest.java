@@ -30,13 +30,13 @@ class EvaluationReportControllerTest {
     @Test
     @DisplayName("POST /api/v1/reports/generate/{sessionId} should return 201 CREATED")
     void testGenerateReport() throws Exception {
-        DiagnosticReportResponse.ScorecardBreakdown scorecard = new DiagnosticReportResponse.ScorecardBreakdown(85, 80, 90, 85, 95);
+        DiagnosticReportResponse.ScorecardBreakdown scorecard = new DiagnosticReportResponse.ScorecardBreakdown(85, 80, 90, 85, 95, 80);
         DiagnosticReportResponse mockReport = new DiagnosticReportResponse(
                 1L, 1L, "candidate-123", "Senior Java Engineer", "JAVA_SPRING_BOOT", "SENIOR",
                 HiringVerdict.STRONG_HIRE, 87, scorecard,
                 "Strong candidate with deep concurrency knowledge.",
                 List.of("Solid problem solving"), List.of("Minor syntax details"),
-                List.of("Day 1: Concurrency drills"), Instant.now()
+                List.of("Day 1: Concurrency drills"), List.of(), true, 80, Instant.now()
         );
 
         when(reportService.generateReport(1L)).thenReturn(mockReport);

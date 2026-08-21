@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { DiagnosticReportResponse } from '../types';
 import { fetchSessionTranscript } from '../services/api';
-import { Award, CheckCircle2, AlertTriangle, Calendar, Printer, RotateCcw, Download, MessageSquare } from 'lucide-react';
+import { Award, CheckCircle2, AlertTriangle, Calendar, Printer, RotateCcw, Download, MessageSquare, Sparkles, BookOpen, Quote } from 'lucide-react';
 
 interface Props {
     report: DiagnosticReportResponse;
@@ -30,6 +30,16 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     };
 
     const badge = getVerdictBadge(report.verdict);
+
+    const getDimensionColor = (score: number) => {
+        if (score >= 70) return '#34d399';
+        if (score >= 40) return '#fbbf24';
+        return '#f87171';
+    };
+
+    const formatDimensionName = (dim: string) => {
+        return dim.replace(/_/g, ' ');
+    };
 
     // Export Transcript to text file for recruiters / hiring managers
     const handleDownloadTranscript = () => {
@@ -66,7 +76,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     };
 
     return (
-        <div style={{ maxWidth: '940px', margin: '30px auto', padding: '0 20px 60px' }}>
+        <div style={{ maxWidth: '960px', margin: '30px auto', padding: '0 20px 60px' }}>
 
             {/* Top Action Bar */}
             <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -146,8 +156,19 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                     {/* Banner */}
                     <div style={{ borderBottom: '1px solid #1e293b', paddingBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                            <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f8fafc' }}>360° Candidate Diagnostic Report</h1>
-                            <p style={{ color: '#94a3b8', marginTop: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>360° Candidate Diagnostic Report</h1>
+                                {report.llmGenerated ? (
+                                    <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '12px', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', border: '1px solid rgba(52, 211, 153, 0.3)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
+                                        <Sparkles size={12} /> LLM Rubric
+                                    </span>
+                                ) : (
+                                    <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '12px', background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', border: '1px solid rgba(251, 191, 36, 0.3)', fontWeight: 700 }}>
+                                        Deterministic Fallback
+                                    </span>
+                                )}
+                            </div>
+                            <p style={{ color: '#94a3b8', marginTop: '6px' }}>
                                 Target: <strong>{report.roleTitle}</strong> ({report.difficulty}) • Track: <strong>{report.track}</strong>
                             </p>
                         </div>
@@ -162,20 +183,21 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                         </div>
                     </div>
 
-                    {/* 5-Dimension Scorecard Grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', margin: '28px 0' }}>
+                    {/* 6-Metric Breakdown Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', margin: '28px 0' }}>
                         {[
                             { label: 'Technical Accuracy', score: report.scorecard.technicalAccuracy },
                             { label: 'Problem Solving', score: report.scorecard.problemSolving },
                             { label: 'Communication', score: report.scorecard.communicationClarity },
                             { label: 'Code Quality', score: report.scorecard.codeQuality },
+                            { label: 'Requirements Clarity', score: report.scorecard.requirementsClarification ?? 40 },
                             { label: 'Integrity Index', score: report.scorecard.integrityScore }
                         ].map((item, idx) => (
-                            <div key={idx} style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '8px', padding: '14px', textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: item.score >= 80 ? '#34d399' : item.score >= 65 ? '#fbbf24' : '#f87171', fontFamily: 'var(--font-mono)' }}>
+                            <div key={idx} style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '8px', padding: '12px 8px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: getDimensionColor(item.score), fontFamily: 'var(--font-mono)' }}>
                                     {item.score}%
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>{item.label}</div>
+                                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px', lineHeight: '1.2' }}>{item.label}</div>
                             </div>
                         ))}
                     </div>
@@ -190,13 +212,62 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                         </p>
                     </div>
 
+                    {/* Qualitative 5-Dimension Rubric Cards */}
+                    {report.dimensions && report.dimensions.length > 0 && (
+                        <div style={{ marginBottom: '28px' }}>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <BookOpen size={18} color="#818cf8" /> Qualitative Dimension Rubric Breakdown
+                            </h3>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                {report.dimensions.map((dim, idx) => {
+                                    const dimColor = getDimensionColor(dim.score);
+                                    return (
+                                        <div key={idx} style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <span style={{ fontSize: '0.82rem', padding: '2px 8px', borderRadius: '4px', background: '#1e293b', color: '#cbd5e1', fontWeight: 700 }}>
+                                                        DIMENSION {idx + 1}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc' }}>
+                                                        {formatDimensionName(dim.dimension)}
+                                                    </span>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ width: '100px', height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+                                                        <div style={{ width: `${dim.score}%`, height: '100%', background: dimColor }} />
+                                                    </div>
+                                                    <span style={{ fontSize: '1rem', fontWeight: 800, color: dimColor, fontFamily: 'var(--font-mono)' }}>
+                                                        {dim.score}/100
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <p style={{ color: '#cbd5e1', fontSize: '0.88rem', lineHeight: '1.5', margin: '0 0 12px' }}>
+                                                {dim.rationale}
+                                            </p>
+
+                                            <div style={{ background: '#0f172a', borderLeft: `3px solid ${dimColor}`, padding: '10px 14px', borderRadius: '0 6px 6px 0', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                                <Quote size={14} color={dimColor} style={{ marginTop: '2px', flexShrink: 0 }} />
+                                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic', fontFamily: 'var(--font-mono)', lineHeight: '1.4' }}>
+                                                    <strong>Verbatim Evidence:</strong> "{dim.evidence}"
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Strengths & Weaknesses */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
                         <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '18px', borderRadius: '8px' }}>
                             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#34d399', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <CheckCircle2 size={18} /> Key Strengths Observed
                             </h3>
-                            <ul style={{ paddingLeft: '18px', color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                            <ul style={{ paddingLeft: '18px', color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.6', margin: 0 }}>
                                 {report.keyStrengths.map((s, i) => <li key={i}>{s}</li>)}
                             </ul>
                         </div>
@@ -205,7 +276,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fbbf24', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <AlertTriangle size={18} /> Focus & Improvement Areas
                             </h3>
-                            <ul style={{ paddingLeft: '18px', color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                            <ul style={{ paddingLeft: '18px', color: '#cbd5e1', fontSize: '0.85rem', lineHeight: '1.6', margin: 0 }}>
                                 {report.areasForImprovement.map((w, i) => <li key={i}>{w}</li>)}
                             </ul>
                         </div>
