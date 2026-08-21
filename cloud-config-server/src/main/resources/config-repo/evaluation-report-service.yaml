@@ -24,3 +24,4 @@ services:
     url: ${SERVICES_PROCTOR_SERVICE_URL:http://proctor-sentinel-service:8083}
   ai-orchestrator:
     url: ${SERVICES_AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}
+    timeout-seconds: ${AI_ORCHESTRATOR_TIMEOUT_SECONDS:65}

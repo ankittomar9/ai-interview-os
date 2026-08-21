@@ -16,6 +16,18 @@ public interface SessionServiceClient {
     @GetMapping("/api/v1/sessions/{id}/transcript")
     List<TranscriptMessageDto> getSessionTranscript(@PathVariable("id") Long id);
 
+    @GetMapping("/api/v1/problems/{slug}")
+    ProblemDetailsDto getProblemBySlug(@PathVariable("slug") String slug);
+
+    record ProblemDetailsDto(
+            String id,
+            String problemSlug,
+            String title,
+            String track,
+            String difficulty,
+            String problemStatement
+    ) {}
+
     record SessionDetailsDto(
             Long id,
             String candidateId,

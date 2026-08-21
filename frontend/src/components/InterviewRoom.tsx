@@ -410,13 +410,15 @@ export const InterviewRoom: React.FC<Props> = ({
                 problemSlug: slug
             });
 
-            setLatestExecution({
-                status: result.status,
-                passedTests: result.passedTests,
-                totalTests: result.totalTests,
-                executionTimeMs: result.executionTimeMs,
-                memoryUsedMb: result.memoryUsedMb
-            });
+            if (result.status !== 'ENGINE_UNAVAILABLE' && result.status !== 'PROBLEM_NOT_FOUND') {
+                setLatestExecution({
+                    status: result.status,
+                    passedTests: result.passedTests,
+                    totalTests: result.totalTests,
+                    executionTimeMs: result.executionTimeMs,
+                    memoryUsedMb: result.memoryUsedMb
+                });
+            }
 
             if (result.status === 'ENGINE_UNAVAILABLE') {
                 setTestStatus('failed');

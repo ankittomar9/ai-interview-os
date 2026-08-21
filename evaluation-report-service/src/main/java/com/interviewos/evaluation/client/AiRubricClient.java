@@ -20,11 +20,12 @@ public class AiRubricClient {
     private final RestClient restClient;
 
     public AiRubricClient(
-            @Value("${services.ai-orchestrator.url:http://ai-orchestrator-service:8082}") String aiOrchestratorUrl
+            @Value("${services.ai-orchestrator.url:http://ai-orchestrator-service:8082}") String aiOrchestratorUrl,
+            @Value("${services.ai-orchestrator.timeout-seconds:65}") int timeoutSeconds
     ) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(65));
+        factory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
 
         this.restClient = RestClient.builder()
                 .requestFactory(factory)

@@ -188,8 +188,8 @@ public class CodeExecutionService {
                         .turnNumber(doc.getTranscript().size() + 1)
                         .senderRole("CANDIDATE")
                         .messageType("CODE_EXECUTION")
-                        .content(String.format("Candidate executed code: %d/%d tests passed (%s) in %.1fms.",
-                                finalResult.passedTests(), finalResult.totalTests(), finalResult.status(), finalResult.executionTimeMs()))
+                        .content(String.format("Candidate executed code: %d/%d tests passed (%s) in %.1fms. [problem:%s]",
+                                finalResult.passedTests(), finalResult.totalTests(), finalResult.status(), finalResult.executionTimeMs(), request.problemSlug()))
                         .codeSnippet(request.codeSnippet())
                         .timestamp(LocalDateTime.now())
                         .build();

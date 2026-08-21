@@ -58,7 +58,7 @@ public class EvaluationReportService {
                 .filter(m -> "CANDIDATE".equalsIgnoreCase(m.senderRole()))
                 .count();
 
-        // 3. Deterministic Ground Truth Execution Score
+        // 3. Deterministic Ground Truth Execution Score & Problem Extraction
         List<SessionServiceClient.TranscriptMessageDto> executionTurns = transcript.stream()
                 .filter(m -> "CODE_EXECUTION".equalsIgnoreCase(m.messageType()))
                 .toList();
@@ -69,12 +69,21 @@ public class EvaluationReportService {
         int totalExecutionRuns = executionTurns.size();
         List<AiRubricClient.ExecutionDto> executionDtos = new ArrayList<>();
         String latestCodeSnippet = "";
+        String extractedProblemSlug = null;
 
         Pattern execPattern = Pattern.compile("(?i)(\\d+)/(\\d+)\\s*tests?\\s*passed\\s*\\(([^)]+)\\)(?:\\s*in\\s*([\\d.]+)ms)?");
+        Pattern slugPattern = Pattern.compile("\\[problem:([^\\]]+)\\]");
 
         for (SessionServiceClient.TranscriptMessageDto turn : transcript) {
             if (turn.codeSnippet() != null && !turn.codeSnippet().isBlank()) {
                 latestCodeSnippet = turn.codeSnippet();
+            }
+
+            if (turn.content() != null) {
+                Matcher sm = slugPattern.matcher(turn.content());
+                if (sm.find()) {
+                    extractedProblemSlug = sm.group(1).trim();
+                }
             }
 
             if ("CODE_EXECUTION".equalsIgnoreCase(turn.messageType())) {
@@ -127,14 +136,30 @@ public class EvaluationReportService {
                 .filter(e -> e.passedTests() > 0 && ("PASSED".equalsIgnoreCase(e.status()) || e.passedTests() == e.totalTests()))
                 .count();
 
-        // 4. Request Qualitative Multi-Rubric from AI Orchestrator
+        // 4. Resolve Canonical Problem Details (P1 Fix)
+        String canonicalProblemSlug = extractedProblemSlug != null ? extractedProblemSlug :
+                (session.roleTitle() != null ? session.roleTitle().toLowerCase().replaceAll("[^a-z0-9]+", "-") : "technical-assessment");
+        String canonicalProblemStatement = "Technical assessment for " + session.roleTitle() + " (" + session.difficulty() + ")";
+
+        if (extractedProblemSlug != null && !extractedProblemSlug.isBlank()) {
+            try {
+                SessionServiceClient.ProblemDetailsDto prob = sessionClient.getProblemBySlug(extractedProblemSlug);
+                if (prob != null && prob.problemStatement() != null && !prob.problemStatement().isBlank()) {
+                    canonicalProblemStatement = prob.problemStatement();
+                }
+            } catch (Exception e) {
+                log.warn("Could not retrieve problem details for slug '{}': {}", extractedProblemSlug, e.getMessage());
+            }
+        }
+
+        // 5. Request Qualitative Multi-Rubric from AI Orchestrator
         List<AiRubricClient.TurnDto> turnDtos = transcript.stream()
                 .map(t -> new AiRubricClient.TurnDto(t.senderRole(), t.messageType(), t.content(), t.codeSnippet()))
                 .toList();
 
         AiRubricClient.RubricEvaluationRequestDto rubricRequest = AiRubricClient.RubricEvaluationRequestDto.builder()
-                .problemSlug(session.roleTitle() != null ? session.roleTitle().toLowerCase().replaceAll("[^a-z0-9]+", "-") : "technical-assessment")
-                .problemStatement("Technical assessment for " + session.roleTitle() + " (" + session.difficulty() + ")")
+                .problemSlug(canonicalProblemSlug)
+                .problemStatement(canonicalProblemStatement)
                 .track(session.track())
                 .difficulty(session.difficulty())
                 .transcript(turnDtos)
@@ -252,6 +277,12 @@ public class EvaluationReportService {
             verdict = HiringVerdict.LEAN_HIRE;
         } else {
             verdict = HiringVerdict.NO_HIRE;
+        }
+
+        // P2 Fix: Premature / Abandoned Session Guard (< 180 seconds or < 3 candidate turns)
+        if (durationSeconds < 180 || candidateTurns < 3) {
+            verdict = HiringVerdict.NO_HIRE;
+            executiveSummary += String.format(" Assessment ended prematurely (%ds, %d turns); minimum viable interview not reached.", durationSeconds, candidateTurns);
         }
 
         EvaluationReport report = EvaluationReport.builder()
