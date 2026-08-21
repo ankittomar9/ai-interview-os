@@ -21,53 +21,118 @@ public class ProblemDataInitializer implements CommandLineRunner {
     public void run(String... args) {
         try {
             if (problemRepository.count() == 0) {
-                log.info("Seeding initial technical interview problem library into MongoDB...");
+                log.info("Seeding initial technical interview problem library with standard I/O contracts...");
 
-                // 1. Reverse a String
+                // 1. Reverse a String (Standard I/O)
                 ProblemDocument reverseString = ProblemDocument.builder()
                         .problemSlug("reverse-a-string")
                         .title("Reverse a String")
                         .track("ALGORITHMS_DATA_STRUCTURES")
                         .difficulty("JUNIOR")
-                        .problemStatement("Write a function that takes a string as input and returns the reversed string without using built-in functions.")
+                        .problemStatement("Read a single line from standard input and print the reversed string to standard output.")
                         .starterCode(Map.of(
-                                "java", "public class ReverseString {\n    public static String reverse(String str) {\n        // Your code here\n        return str;\n    }\n}",
-                                "python", "def reverse_string(s: str) -> str:\n    # Your code here\n    return s"
+                                "java", """
+                                        import java.util.Scanner;
+
+                                        public class Main {
+                                            public static void main(String[] args) {
+                                                Scanner scanner = new Scanner(System.in);
+                                                if (scanner.hasNextLine()) {
+                                                    String input = scanner.nextLine();
+                                                    // TODO: Reverse the string and print
+                                                    System.out.println(input);
+                                                }
+                                            }
+                                        }
+                                        """,
+                                "python", """
+                                          import sys
+
+                                          def main():
+                                              lines = sys.stdin.read().splitlines()
+                                              if lines:
+                                                  input_str = lines[0]
+                                                  # TODO: Reverse string and print
+                                                  print(input_str)
+
+                                          if __name__ == '__main__':
+                                              main()
+                                          """,
+                                "javascript", """
+                                              const fs = require('fs');
+
+                                              function main() {
+                                                  const input = fs.readFileSync(0, 'utf-8').trim();
+                                                  // TODO: Reverse string and print
+                                                  console.log(input);
+                                              }
+
+                                              main();
+                                              """
                         ))
                         .sampleTests(List.of(
                                 new ProblemDocument.TestCase("Sample 1: Basic Inversion", "Hello, World!", "!dlroW ,olleH"),
                                 new ProblemDocument.TestCase("Sample 2: Palindrome", "racecar", "racecar")
                         ))
                         .hiddenTests(List.of(
-                                new ProblemDocument.HiddenTestCase("Hidden 1: Null / Empty Guard", "", "", 1),
-                                new ProblemDocument.HiddenTestCase("Hidden 2: Large Buffer Inversion", "large_input", "large_reversed", 2)
+                                new ProblemDocument.HiddenTestCase("Hidden 1: Punctuation & Spacing", "OpenSource AI Interview OS", "SO weivretnI IA ecruoSnepO", 1),
+                                new ProblemDocument.HiddenTestCase("Hidden 2: Numeric Sequence", "1234567890", "0987654321", 2)
                         ))
                         .limits(new ProblemDocument.ExecutionLimits(512, 2000))
                         .build();
 
-                // 2. LRU Cache
-                ProblemDocument lruCache = ProblemDocument.builder()
-                        .problemSlug("lru-cache")
-                        .title("LRU Cache")
+                // 2. Two Sum (Standard I/O: Line 1 array elements, Line 2 target)
+                ProblemDocument twoSum = ProblemDocument.builder()
+                        .problemSlug("two-sum")
+                        .title("Two Sum")
                         .track("ALGORITHMS_DATA_STRUCTURES")
-                        .difficulty("SENIOR")
-                        .problemStatement("Design and implement a data structure for Least Recently Used (LRU) cache with O(1) time complexity get and put operations.")
+                        .difficulty("MID")
+                        .problemStatement("Given an array of integers on line 1 and a target integer on line 2, print the indices of the two numbers such that they add up to the target (space-separated, e.g. '0 1').")
                         .starterCode(Map.of(
-                                "java", "public class LRUCache {\n    public LRUCache(int capacity) {\n        // Initialize\n    }\n    public int get(int key) {\n        return -1;\n    }\n    public void put(int key, int value) {}\n}",
-                                "python", "class LRUCache:\n    def __init__(self, capacity: int):\n        pass\n    def get(self, key: int) -> int:\n        return -1\n    def put(self, key: int, value: int) -> None:\n        pass"
+                                "java", """
+                                        import java.util.Scanner;
+                                        import java.util.HashMap;
+                                        import java.util.Map;
+
+                                        public class Main {
+                                            public static void main(String[] args) {
+                                                Scanner scanner = new Scanner(System.in);
+                                                if (scanner.hasNextLine()) {
+                                                    String[] parts = scanner.nextLine().trim().split("\\\\s+");
+                                                    int target = Integer.parseInt(scanner.nextLine().trim());
+                                                    // TODO: Implement O(n) Two Sum and print "i j"
+                                                    System.out.println("0 1");
+                                                }
+                                            }
+                                        }
+                                        """,
+                                "python", """
+                                          import sys
+
+                                          def main():
+                                              lines = sys.stdin.read().splitlines()
+                                              if len(lines) >= 2:
+                                                  nums = [int(x) for x in lines[0].split()]
+                                                  target = int(lines[1])
+                                                  # TODO: Implement Two Sum and print "i j"
+                                                  print("0 1")
+
+                                          if __name__ == '__main__':
+                                              main()
+                                          """
                         ))
                         .sampleTests(List.of(
-                                new ProblemDocument.TestCase("Sample 1: Basic Get / Put", "capacity=2, put(1,1), put(2,2), get(1)", "1"),
-                                new ProblemDocument.TestCase("Sample 2: Eviction Check", "put(3,3) -> evicts 2, get(2)", "-1")
+                                new ProblemDocument.TestCase("Sample 1: Basic Target", "2 7 11 15\n9", "0 1"),
+                                new ProblemDocument.TestCase("Sample 2: Unsorted Array", "3 2 4\n6", "1 2")
                         ))
                         .hiddenTests(List.of(
-                                new ProblemDocument.HiddenTestCase("Hidden 1: High-Frequency Read Eviction", "sequence", "expected", 2),
-                                new ProblemDocument.HiddenTestCase("Hidden 2: Zero Capacity Edge Case", "capacity=0", "exception", 1)
+                                new ProblemDocument.HiddenTestCase("Hidden 1: Duplicate Values", "3 3\n6", "0 1", 1),
+                                new ProblemDocument.HiddenTestCase("Hidden 2: Negative Numbers", "-3 4 3 90\n0", "0 2", 2)
                         ))
                         .limits(new ProblemDocument.ExecutionLimits(512, 2000))
                         .build();
 
-                problemRepository.saveAll(List.of(reverseString, lruCache));
+                problemRepository.saveAll(List.of(reverseString, twoSum));
                 log.info("Successfully seeded {} interview problems into MongoDB.", 2);
             }
         } catch (Exception e) {

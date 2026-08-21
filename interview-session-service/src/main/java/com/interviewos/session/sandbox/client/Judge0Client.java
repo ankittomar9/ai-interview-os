@@ -4,9 +4,11 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.Optional;
 
 @Slf4j
@@ -17,9 +19,15 @@ public class Judge0Client {
 
     public Judge0Client(
             @Value("${judge0.url:http://judge0:2358}") String judge0Url,
-            @Value("${judge0.auth-token:}") String authToken
+            @Value("${judge0.auth-token:}") String authToken,
+            @Value("${judge0.wait-timeout-seconds:10}") int waitTimeoutSeconds
     ) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(5));
+        requestFactory.setReadTimeout(Duration.ofSeconds(waitTimeoutSeconds));
+
         RestClient.Builder builder = RestClient.builder()
+                .requestFactory(requestFactory)
                 .baseUrl(judge0Url);
 
         if (authToken != null && !authToken.isBlank()) {
