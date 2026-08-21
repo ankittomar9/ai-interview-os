@@ -20,7 +20,16 @@ import {
     ShieldAlert,
     Layers,
     Copy,
-    Check
+    Check,
+    Maximize2,
+    Minimize2,
+    PanelLeftClose,
+    PanelLeftOpen,
+    PanelRightClose,
+    PanelRightOpen,
+    ChevronUp,
+    ChevronDown,
+    X
 } from 'lucide-react';
 
 interface Props {
@@ -66,12 +75,26 @@ export const InterviewRoom: React.FC<Props> = ({
     const [code, setCode] = useState(getStarterForLang('java'));
     const [language, setLanguage] = useState<'java' | 'python' | 'javascript'>('java');
     const [editorTab, setEditorTab] = useState<'solution' | 'tests' | 'whiteboard'>('solution');
-    const [leftPanelTab, setLeftPanelTab] = useState<'problem' | 'examples' | 'scratchpad'>('problem');
+    const [leftPanelTab, setLeftPanelTab] = useState<'description' | 'scratchpad'>('description');
     const [scratchpadNotes, setScratchpadNotes] = useState<string>(
         '// Architecture & Thought Scratchpad\n// 1. Core Assumptions:\n// 2. Algorithm & Complexity (Time / Space):\n// 3. Edge Cases to Test:\n'
     );
     const [latestExecution, setLatestExecution] = useState<{ status: string; passedTests: number; totalTests: number; executionTimeMs: number; memoryUsedMb: number } | null>(null);
     const [architectureSummary, setArchitectureSummary] = useState<string>('');
+
+    // --- State: Resizable & Detachable Panels (LeetCode Style) ---
+    const [leftWidth, setLeftWidth] = useState<number>(380);
+    const [rightWidth, setRightWidth] = useState<number>(370);
+    const [consoleHeight, setConsoleHeight] = useState<number>(180);
+    const [isLeftCollapsed, setIsLeftCollapsed] = useState<boolean>(false);
+    const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(false);
+    const [isEditorMaximized, setIsEditorMaximized] = useState<boolean>(false);
+    const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(false);
+
+    // Active drag state
+    const [isDraggingLeft, setIsDraggingLeft] = useState<boolean>(false);
+    const [isDraggingRight, setIsDraggingRight] = useState<boolean>(false);
+    const [isDraggingConsole, setIsDraggingConsole] = useState<boolean>(false);
 
     // --- State: Conversation & Dialogue ---
     const [messages, setMessages] = useState<Array<{ role: 'interviewer' | 'candidate'; content: string; timestamp?: string }>>([
@@ -110,6 +133,46 @@ export const InterviewRoom: React.FC<Props> = ({
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isAiResponding]);
+
+    // --- Global Mouse Move & Up Listeners for Smooth Panel Resizing ---
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (isDraggingLeft) {
+                const newWidth = Math.max(240, Math.min(window.innerWidth * 0.55, e.clientX));
+                setLeftWidth(newWidth);
+            } else if (isDraggingRight) {
+                const newWidth = Math.max(260, Math.min(window.innerWidth * 0.55, window.innerWidth - e.clientX));
+                setRightWidth(newWidth);
+            } else if (isDraggingConsole) {
+                const container = document.getElementById('center-panel-container');
+                if (container) {
+                    const rect = container.getBoundingClientRect();
+                    const newHeight = Math.max(70, Math.min(rect.height - 100, rect.bottom - e.clientY));
+                    setConsoleHeight(newHeight);
+                }
+            }
+        };
+
+        const handleMouseUp = () => {
+            if (isDraggingLeft) setIsDraggingLeft(false);
+            if (isDraggingRight) setIsDraggingRight(false);
+            if (isDraggingConsole) setIsDraggingConsole(false);
+        };
+
+        if (isDraggingLeft || isDraggingRight || isDraggingConsole) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            document.body.style.userSelect = 'none';
+        } else {
+            document.body.style.userSelect = '';
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.userSelect = '';
+        };
+    }, [isDraggingLeft, isDraggingRight, isDraggingConsole]);
 
     // --- Echo-Safe Text-To-Speech (AI Voice) ---
     const speakText = useCallback((text: string) => {
@@ -161,7 +224,7 @@ export const InterviewRoom: React.FC<Props> = ({
         window.speechSynthesis.speak(utterance);
     }, [voiceOutputEnabled]);
 
-    // P2 #1: Greeting TTS spoken once on mount
+    // Greeting TTS spoken once on mount
     useEffect(() => {
         if (!hasSpokenIntroRef.current && messages.length > 0 && voiceOutputEnabled) {
             hasSpokenIntroRef.current = true;
@@ -172,7 +235,7 @@ export const InterviewRoom: React.FC<Props> = ({
         }
     }, [speakText, voiceOutputEnabled, messages]);
 
-    // --- P1: Full Duplex Continuous Speech Recognition with 9s Buffer & End Phrases ---
+    // Full Duplex Continuous Speech Recognition with 9s Buffer & End Phrases
     const startListening = useCallback(() => {
         if (isSessionEndedRef.current || isAiSpeaking) return;
 
@@ -223,7 +286,7 @@ export const InterviewRoom: React.FC<Props> = ({
                     return;
                 }
 
-                // Generous 9.0-second thinking buffer for candidate reasoning aloud
+                // 9.0-second thinking buffer for candidates thinking aloud
                 if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
                 silenceTimeoutRef.current = setTimeout(() => {
                     if (currentText.length > 3) {
@@ -291,7 +354,7 @@ export const InterviewRoom: React.FC<Props> = ({
         };
     }, []);
 
-    // P2 #4: Countdown Timer with 60s Grace Re-Arm on Cancel
+    // Countdown Timer with 60s Grace Re-Arm on Cancel
     useEffect(() => {
         const interval = setInterval(() => {
             setTimeLeft((prev) => {
@@ -322,7 +385,6 @@ export const InterviewRoom: React.FC<Props> = ({
         if (audioChunksRef.current.length > 0 && (!candidateText || candidateText.length < 5)) {
             try {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                // P2 #2: Use BYOK Groq Whisper key if present, fallback to session apiKey
                 const whisperApiKey = getStoredApiKey('GROQ') || apiKey;
                 const whisperResult = await transcribeAudio(audioBlob, whisperApiKey);
                 if (whisperResult && whisperResult.transcript && whisperResult.transcript.trim().length > 3) {
@@ -347,7 +409,7 @@ export const InterviewRoom: React.FC<Props> = ({
             codeSnippet: code
         });
 
-        // Stage progression heuristics based on turns (no aggressive snatching)
+        // Stage progression heuristics
         if (currentStage === 'INTRODUCTION') {
             setCurrentStage('CORE_TECH');
         } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
@@ -424,6 +486,7 @@ export const InterviewRoom: React.FC<Props> = ({
 
     // Real Judge0 CE Sandbox Test Runner
     const handleRunCode = async () => {
+        setIsConsoleOpen(true);
         setTestStatus('running');
         setExecutionOutput('[Judge0 CE Sandbox] Submitting solution to zero-trust container sandbox...\nCompiling & executing test fixtures...\n');
 
@@ -513,7 +576,6 @@ export const InterviewRoom: React.FC<Props> = ({
                 onFinish();
             }
         } else if (isAutoExpiry) {
-            // Re-arm 60s grace period if candidate cancels auto-expiry prompt
             setTimeLeft(60);
         }
     };
@@ -529,17 +591,17 @@ export const InterviewRoom: React.FC<Props> = ({
 
             {/* TOP BAR */}
             <header style={{
-                height: '56px',
+                height: '54px',
                 background: '#090d16',
                 borderBottom: '1px solid #1e293b',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '0 20px',
+                padding: '0 16px',
                 zIndex: 20
             }}>
                 {/* Brand & Problem Title */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{
                             width: '28px',
@@ -553,7 +615,7 @@ export const InterviewRoom: React.FC<Props> = ({
                         }}>
                             <Sparkles size={16} color="#ffffff" />
                         </div>
-                        <span style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.02em', color: '#f8fafc' }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.95rem', letterSpacing: '-0.02em', color: '#f8fafc' }}>
                             AI Interview OS
                         </span>
                     </div>
@@ -561,20 +623,20 @@ export const InterviewRoom: React.FC<Props> = ({
                     <div style={{ width: '1px', height: '20px', background: '#1e293b' }} />
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#e2e8f0' }}>
+                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#e2e8f0' }}>
                             {question.title}
                         </span>
-                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontWeight: 700 }}>
                             {question.track}
                         </span>
-                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', fontWeight: 700 }}>
                             {question.difficulty}
                         </span>
                     </div>
                 </div>
 
                 {/* Center / Right Telemetry & Actions */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {/* Voice State Pill */}
                     <div style={{
                         display: 'flex',
@@ -618,7 +680,7 @@ export const InterviewRoom: React.FC<Props> = ({
                         borderRadius: '8px',
                         background: '#1e293b',
                         border: '1px solid #334155',
-                        fontSize: '0.82rem',
+                        fontSize: '0.8rem',
                         fontFamily: 'var(--font-mono)',
                         fontWeight: 700,
                         color: timeLeft < 300 ? '#f87171' : '#f8fafc'
@@ -636,7 +698,7 @@ export const InterviewRoom: React.FC<Props> = ({
                             border: 'none',
                             borderRadius: '8px',
                             padding: '6px 14px',
-                            fontSize: '0.82rem',
+                            fontSize: '0.8rem',
                             fontWeight: 700,
                             cursor: 'pointer',
                             display: 'flex',
@@ -663,147 +725,264 @@ export const InterviewRoom: React.FC<Props> = ({
                 }}
             />
 
-            {/* THREE-PANEL INTERVIEW ARENA */}
-            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr 340px', flex: 1, overflow: 'hidden' }}>
+            {/* RESIZABLE THREE-PANEL ARENA */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
 
-                {/* LEFT PANEL: Problem | Examples | Scratchpad */}
-                <div style={{
-                    background: '#090d16',
-                    borderRight: '1px solid #1e293b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden'
-                }}>
-                    {/* Left Tabs */}
+                {/* 1. LEFT PANEL: LeetCode-style Problem Description & Scratchpad */}
+                {!isEditorMaximized && !isLeftCollapsed && (
                     <div style={{
+                        width: `${leftWidth}px`,
+                        minWidth: '240px',
+                        background: '#090d16',
                         display: 'flex',
-                        borderBottom: '1px solid #1e293b',
-                        background: '#050811'
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        position: 'relative'
                     }}>
-                        {(['problem', 'examples', 'scratchpad'] as const).map((tab) => (
+                        {/* Header Tabs with Collapse Toggle */}
+                        <div style={{
+                            height: '42px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderBottom: '1px solid #1e293b',
+                            background: '#050811',
+                            padding: '0 8px'
+                        }}>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                    onClick={() => setLeftPanelTab('description')}
+                                    style={{
+                                        padding: '6px 12px',
+                                        background: leftPanelTab === 'description' ? '#090d16' : 'transparent',
+                                        border: 'none',
+                                        borderBottom: leftPanelTab === 'description' ? '2px solid #6366f1' : '2px solid transparent',
+                                        color: leftPanelTab === 'description' ? '#f8fafc' : '#94a3b8',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Description
+                                </button>
+                                <button
+                                    onClick={() => setLeftPanelTab('scratchpad')}
+                                    style={{
+                                        padding: '6px 12px',
+                                        background: leftPanelTab === 'scratchpad' ? '#090d16' : 'transparent',
+                                        border: 'none',
+                                        borderBottom: leftPanelTab === 'scratchpad' ? '2px solid #6366f1' : '2px solid transparent',
+                                        color: leftPanelTab === 'scratchpad' ? '#f8fafc' : '#94a3b8',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Scratchpad
+                                </button>
+                            </div>
+
                             <button
-                                key={tab}
-                                onClick={() => setLeftPanelTab(tab)}
-                                style={{
-                                    flex: 1,
-                                    padding: '10px 8px',
-                                    background: leftPanelTab === tab ? '#090d16' : 'transparent',
-                                    border: 'none',
-                                    borderBottom: leftPanelTab === tab ? '2px solid #6366f1' : '2px solid transparent',
-                                    color: leftPanelTab === tab ? '#f8fafc' : '#94a3b8',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    textTransform: 'capitalize'
-                                }}
+                                onClick={() => setIsLeftCollapsed(true)}
+                                title="Collapse Panel"
+                                style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
                             >
-                                {tab === 'problem' ? 'Problem' : tab === 'examples' ? `Examples (${question.sampleTests?.length || 0})` : 'Scratchpad'}
+                                <PanelLeftClose size={15} />
                             </button>
-                        ))}
-                    </div>
+                        </div>
 
-                    {/* Left Content */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-                        {leftPanelTab === 'problem' && (
-                            <div>
-                                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', marginBottom: '8px' }}>
-                                    {question.title}
-                                </h2>
-                                <div style={{ color: '#cbd5e1', fontSize: '0.88rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', marginBottom: '16px' }}>
-                                    {question.problemStatement}
-                                </div>
+                        {/* Left Scrollable Content: LeetCode Layout with Problem + Inline Examples + Constraints */}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                            {leftPanelTab === 'description' && (
+                                <div>
+                                    <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', marginBottom: '8px' }}>
+                                        {question.title}
+                                    </h2>
 
-                                {question.evaluationCriteria && question.evaluationCriteria.length > 0 && (
-                                    <div style={{ marginTop: '16px', background: '#040711', border: '1px solid #1e293b', borderRadius: '8px', padding: '12px' }}>
-                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#818cf8', marginBottom: '6px' }}>
-                                            Evaluation Criteria:
+                                    <div style={{ display: 'flex', gap: '6px', marginBottom: '16px' }}>
+                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', fontWeight: 700 }}>
+                                            {question.difficulty}
+                                        </span>
+                                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontWeight: 700 }}>
+                                            {question.track}
+                                        </span>
+                                    </div>
+
+                                    {/* Problem Statement */}
+                                    <div style={{ color: '#cbd5e1', fontSize: '0.88rem', lineHeight: '1.65', whiteSpace: 'pre-wrap', marginBottom: '24px' }}>
+                                        {question.problemStatement}
+                                    </div>
+
+                                    {/* Inline Examples (LeetCode Style) */}
+                                    {question.sampleTests && question.sampleTests.length > 0 && (
+                                        <div style={{ marginBottom: '24px' }}>
+                                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#94a3b8', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                Examples:
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                                {question.sampleTests.map((test, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        style={{
+                                                            background: '#040711',
+                                                            border: '1px solid #1e293b',
+                                                            borderRadius: '8px',
+                                                            padding: '12px 14px'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc' }}>
+                                                                Example {idx + 1}: <span style={{ color: '#38bdf8', fontWeight: 500 }}>{test.name}</span>
+                                                            </span>
+                                                            <button
+                                                                onClick={() => handleCopyExample(test.input, idx)}
+                                                                style={{
+                                                                    background: '#1e293b',
+                                                                    border: '1px solid #334155',
+                                                                    borderRadius: '4px',
+                                                                    padding: '2px 6px',
+                                                                    color: '#94a3b8',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px',
+                                                                    fontSize: '0.7rem'
+                                                                }}
+                                                                title="Copy Input"
+                                                            >
+                                                                {copiedIndex === idx ? <Check size={11} color="#34d399" /> : <Copy size={11} />}
+                                                                <span>{copiedIndex === idx ? 'Copied' : 'Copy'}</span>
+                                                            </button>
+                                                        </div>
+
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
+                                                            <div>
+                                                                <span style={{ color: '#94a3b8', fontWeight: 600 }}>Input: </span>
+                                                                <span style={{ color: '#34d399', background: '#090d16', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '2px', wordBreak: 'break-all' }}>
+                                                                    {test.input}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span style={{ color: '#94a3b8', fontWeight: 600 }}>Output: </span>
+                                                                <span style={{ color: '#cbd5e1', background: '#090d16', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '2px', wordBreak: 'break-all' }}>
+                                                                    {test.expectedOutput}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <ul style={{ margin: 0, paddingLeft: '16px', color: '#94a3b8', fontSize: '0.78rem', lineHeight: '1.5' }}>
-                                            {question.evaluationCriteria.map((c, i) => <li key={i}>{c}</li>)}
+                                    )}
+
+                                    {/* Constraints */}
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#94a3b8', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            Constraints:
+                                        </div>
+                                        <ul style={{ margin: 0, paddingLeft: '18px', color: '#94a3b8', fontSize: '0.8rem', lineHeight: '1.6', fontFamily: 'var(--font-mono)' }}>
+                                            <li>Standard I/O stream execution (stdin / stdout)</li>
+                                            <li>Time Complexity: O(N) or O(log N) recommended</li>
+                                            <li>Memory Allocation Limit: 256 MB</li>
                                         </ul>
                                     </div>
-                                )}
-                            </div>
-                        )}
 
-                        {leftPanelTab === 'examples' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {question.sampleTests && question.sampleTests.length > 0 ? (
-                                    question.sampleTests.map((test, i) => (
-                                        <div key={i} style={{ background: '#040711', border: '1px solid #1e293b', borderRadius: '8px', padding: '12px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8' }}>
-                                                    {test.name}
-                                                </span>
-                                                <button
-                                                    onClick={() => handleCopyExample(test.input, i)}
-                                                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}
-                                                    title="Copy Input"
-                                                >
-                                                    {copiedIndex === i ? <Check size={12} color="#34d399" /> : <Copy size={12} />}
-                                                </button>
+                                    {/* Evaluation Criteria */}
+                                    {question.evaluationCriteria && question.evaluationCriteria.length > 0 && (
+                                        <div style={{ background: '#040711', border: '1px solid #1e293b', borderRadius: '8px', padding: '12px 14px' }}>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#818cf8', marginBottom: '6px' }}>
+                                                Evaluation Criteria:
                                             </div>
-                                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: '2px' }}>Input:</div>
-                                            <pre style={{ background: '#090d16', padding: '6px 8px', borderRadius: '4px', color: '#34d399', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: '0 0 8px', overflowX: 'auto' }}>
-                                                {test.input}
-                                            </pre>
-                                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: '2px' }}>Expected Output:</div>
-                                            <pre style={{ background: '#090d16', padding: '6px 8px', borderRadius: '4px', color: '#cbd5e1', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', margin: 0, overflowX: 'auto' }}>
-                                                {test.expectedOutput}
-                                            </pre>
+                                            <ul style={{ margin: 0, paddingLeft: '16px', color: '#94a3b8', fontSize: '0.78rem', lineHeight: '1.5' }}>
+                                                {question.evaluationCriteria.map((c, i) => <li key={i}>{c}</li>)}
+                                            </ul>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div style={{ color: '#64748b', fontSize: '0.85rem' }}>No public sample test fixtures.</div>
-                                )}
-                            </div>
-                        )}
-
-                        {leftPanelTab === 'scratchpad' && (
-                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px' }}>
-                                    Live Thought Scratchpad (Visible to AI Reviewer):
+                                    )}
                                 </div>
-                                <textarea
-                                    value={scratchpadNotes}
-                                    onChange={(e) => setScratchpadNotes(e.target.value)}
-                                    style={{
-                                        flex: 1,
-                                        width: '100%',
-                                        minHeight: '260px',
-                                        background: '#040711',
-                                        border: '1px solid #1e293b',
-                                        borderRadius: '8px',
-                                        color: '#cbd5e1',
-                                        fontFamily: 'var(--font-mono)',
-                                        fontSize: '0.82rem',
-                                        padding: '12px',
-                                        resize: 'none',
-                                        outline: 'none',
-                                        lineHeight: '1.4'
-                                    }}
-                                />
-                            </div>
-                        )}
-                    </div>
-                </div>
+                            )}
 
-                {/* CENTER PANEL: Monaco Workspace + Test Console / Whiteboard */}
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: '#070b14',
-                    overflow: 'hidden'
-                }}>
-                    {/* Workspace Tabs Header */}
+                            {leftPanelTab === 'scratchpad' && (
+                                <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '6px' }}>
+                                        Live Thought Scratchpad (Visible to AI Reviewer):
+                                    </div>
+                                    <textarea
+                                        value={scratchpadNotes}
+                                        onChange={(e) => setScratchpadNotes(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            width: '100%',
+                                            minHeight: '300px',
+                                            background: '#040711',
+                                            border: '1px solid #1e293b',
+                                            borderRadius: '8px',
+                                            color: '#cbd5e1',
+                                            fontFamily: 'var(--font-mono)',
+                                            fontSize: '0.82rem',
+                                            padding: '12px',
+                                            resize: 'none',
+                                            outline: 'none',
+                                            lineHeight: '1.45'
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Left Panel Expand Trigger when Collapsed */}
+                {!isEditorMaximized && isLeftCollapsed && (
+                    <div style={{ width: '32px', background: '#090d16', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
+                        <button
+                            onClick={() => setIsLeftCollapsed(false)}
+                            title="Expand Problem Panel"
+                            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                        >
+                            <PanelLeftOpen size={16} />
+                        </button>
+                        <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '0.75rem', color: '#64748b', marginTop: '16px', letterSpacing: '0.1em' }}>
+                            PROBLEM
+                        </div>
+                    </div>
+                )}
+
+                {/* DRAG SPLITTER: Left to Center */}
+                {!isEditorMaximized && !isLeftCollapsed && (
+                    <div
+                        onMouseDown={() => setIsDraggingLeft(true)}
+                        style={{
+                            width: '5px',
+                            cursor: 'col-resize',
+                            background: isDraggingLeft ? '#6366f1' : '#1e293b',
+                            transition: 'background 0.2s ease',
+                            zIndex: 15
+                        }}
+                        title="Drag to resize panel"
+                    />
+                )}
+
+                {/* 2. CENTER PANEL: Monaco Workspace + Resizable Test Console */}
+                <div
+                    id="center-panel-container"
+                    style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        background: '#070b14',
+                        overflow: 'hidden',
+                        position: 'relative'
+                    }}
+                >
+                    {/* Workspace Header Toolbar */}
                     <div style={{
-                        height: '44px',
+                        height: '42px',
                         background: '#090d16',
                         borderBottom: '1px solid #1e293b',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '0 14px'
+                        padding: '0 12px'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <button
@@ -812,9 +991,9 @@ export const InterviewRoom: React.FC<Props> = ({
                                     background: editorTab === 'solution' ? '#1e293b' : 'transparent',
                                     border: `1px solid ${editorTab === 'solution' ? '#334155' : 'transparent'}`,
                                     borderRadius: '6px',
-                                    padding: '5px 12px',
+                                    padding: '4px 10px',
                                     color: editorTab === 'solution' ? '#f8fafc' : '#94a3b8',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.78rem',
                                     fontWeight: 700,
                                     cursor: 'pointer',
                                     display: 'flex',
@@ -822,7 +1001,7 @@ export const InterviewRoom: React.FC<Props> = ({
                                     gap: '6px'
                                 }}
                             >
-                                <Code size={14} color="#818cf8" />
+                                <Code size={13} color="#818cf8" />
                                 Solution.{language === 'python' ? 'py' : language === 'javascript' ? 'js' : 'java'}
                             </button>
 
@@ -832,9 +1011,9 @@ export const InterviewRoom: React.FC<Props> = ({
                                     background: editorTab === 'tests' ? '#1e293b' : 'transparent',
                                     border: `1px solid ${editorTab === 'tests' ? '#334155' : 'transparent'}`,
                                     borderRadius: '6px',
-                                    padding: '5px 12px',
+                                    padding: '4px 10px',
                                     color: editorTab === 'tests' ? '#f8fafc' : '#94a3b8',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.78rem',
                                     fontWeight: 700,
                                     cursor: 'pointer',
                                     display: 'flex',
@@ -842,8 +1021,8 @@ export const InterviewRoom: React.FC<Props> = ({
                                     gap: '6px'
                                 }}
                             >
-                                <FileText size={14} color="#38bdf8" />
-                                tests.{language === 'python' ? 'py' : 'java'} (Read-Only)
+                                <FileText size={13} color="#38bdf8" />
+                                tests.{language === 'python' ? 'py' : 'java'}
                             </button>
 
                             <button
@@ -852,9 +1031,9 @@ export const InterviewRoom: React.FC<Props> = ({
                                     background: editorTab === 'whiteboard' ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
                                     border: `1px solid ${editorTab === 'whiteboard' ? '#6366f1' : 'transparent'}`,
                                     borderRadius: '6px',
-                                    padding: '5px 12px',
+                                    padding: '4px 10px',
                                     color: editorTab === 'whiteboard' ? '#c7d2fe' : '#94a3b8',
-                                    fontSize: '0.8rem',
+                                    fontSize: '0.78rem',
                                     fontWeight: 700,
                                     cursor: 'pointer',
                                     display: 'flex',
@@ -862,13 +1041,13 @@ export const InterviewRoom: React.FC<Props> = ({
                                     gap: '6px'
                                 }}
                             >
-                                <Layers size={14} color="#a855f7" />
-                                System Design Whiteboard
+                                <Layers size={13} color="#a855f7" />
+                                HLD Whiteboard
                             </button>
                         </div>
 
-                        {/* Language Selector & Actions */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {/* Language Selector, Run Tests & Maximize */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <select
                                 value={language}
                                 onChange={(e) => handleLanguageChange(e.target.value as any)}
@@ -877,8 +1056,8 @@ export const InterviewRoom: React.FC<Props> = ({
                                     color: '#f8fafc',
                                     border: '1px solid #334155',
                                     borderRadius: '6px',
-                                    padding: '4px 8px',
-                                    fontSize: '0.78rem',
+                                    padding: '3px 8px',
+                                    fontSize: '0.75rem',
                                     fontWeight: 600,
                                     outline: 'none',
                                     cursor: 'pointer'
@@ -897,18 +1076,18 @@ export const InterviewRoom: React.FC<Props> = ({
                                     color: '#ffffff',
                                     border: 'none',
                                     borderRadius: '6px',
-                                    padding: '5px 14px',
-                                    fontSize: '0.8rem',
+                                    padding: '4px 12px',
+                                    fontSize: '0.78rem',
                                     fontWeight: 700,
                                     cursor: testStatus === 'running' ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px',
-                                    boxShadow: '0 0 12px rgba(16, 185, 129, 0.3)'
+                                    gap: '5px',
+                                    boxShadow: '0 0 10px rgba(16, 185, 129, 0.3)'
                                 }}
                             >
-                                <Play size={13} fill="#ffffff" />
-                                {testStatus === 'running' ? 'Executing...' : 'Run Test Suite'}
+                                <Play size={12} fill="#ffffff" />
+                                {testStatus === 'running' ? 'Running...' : 'Run Tests'}
                             </button>
 
                             <button
@@ -918,21 +1097,39 @@ export const InterviewRoom: React.FC<Props> = ({
                                     color: '#ffffff',
                                     border: 'none',
                                     borderRadius: '6px',
-                                    padding: '5px 12px',
-                                    fontSize: '0.8rem',
+                                    padding: '4px 10px',
+                                    fontSize: '0.78rem',
                                     fontWeight: 700,
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px'
+                                    gap: '5px'
                                 }}
                             >
-                                Submit Code Turn
+                                Submit Code
+                            </button>
+
+                            <button
+                                onClick={() => setIsEditorMaximized(!isEditorMaximized)}
+                                title={isEditorMaximized ? 'Restore Panels' : 'Maximize Editor'}
+                                style={{
+                                    background: isEditorMaximized ? '#334155' : 'transparent',
+                                    border: '1px solid #334155',
+                                    borderRadius: '6px',
+                                    padding: '4px 6px',
+                                    color: '#94a3b8',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                {isEditorMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                             </button>
                         </div>
                     </div>
 
-                    {/* Main Workspace Area */}
+                    {/* Monaco Editor / Canvas */}
                     <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                         {editorTab === 'solution' && (
                             <Editor
@@ -976,217 +1173,300 @@ export const InterviewRoom: React.FC<Props> = ({
                         )}
                     </div>
 
-                    {/* Bottom Test Suite Runner Console */}
-                    {executionOutput && (
+                    {/* DRAG SPLITTER: Editor to Bottom Console */}
+                    {isConsoleOpen && (
+                        <div
+                            onMouseDown={() => setIsDraggingConsole(true)}
+                            style={{
+                                height: '5px',
+                                cursor: 'row-resize',
+                                background: isDraggingConsole ? '#6366f1' : '#1e293b',
+                                transition: 'background 0.2s ease',
+                                zIndex: 15
+                            }}
+                            title="Drag to resize console"
+                        />
+                    )}
+
+                    {/* Resizable Bottom Execution Console */}
+                    {isConsoleOpen && (
                         <div style={{
-                            height: '160px',
+                            height: `${consoleHeight}px`,
                             background: '#040711',
                             borderTop: '1px solid #1e293b',
                             display: 'flex',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            position: 'relative'
                         }}>
                             <div style={{
-                                padding: '6px 14px',
+                                padding: '4px 12px',
                                 background: '#090d16',
                                 borderBottom: '1px solid #1e293b',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center'
                             }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Code size={13} /> Judge0 CE Sandbox Console
+                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Code size={12} /> Sandbox Execution Output
                                 </span>
-                                <button
-                                    onClick={() => setExecutionOutput(null)}
-                                    style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '0.72rem', cursor: 'pointer' }}
-                                >
-                                    ✕ Close
-                                </button>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                        onClick={() => setConsoleHeight(consoleHeight > 250 ? 120 : 320)}
+                                        title={consoleHeight > 250 ? 'Minimize Console' : 'Expand Console'}
+                                        style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px' }}
+                                    >
+                                        {consoleHeight > 250 ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                                    </button>
+                                    <button
+                                        onClick={() => setIsConsoleOpen(false)}
+                                        title="Close Console"
+                                        style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px' }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
                             </div>
+
                             <pre style={{
                                 flex: 1,
                                 margin: 0,
-                                padding: '10px 14px',
+                                padding: '8px 12px',
                                 overflowY: 'auto',
                                 fontFamily: 'var(--font-mono)',
-                                fontSize: '0.8rem',
+                                fontSize: '0.78rem',
                                 color: testStatus === 'passed' ? '#34d399' : '#f87171',
-                                lineHeight: '1.45'
+                                lineHeight: '1.4'
                             }}>
-                                {executionOutput}
+                                {executionOutput || 'Ready to execute. Click "Run Tests" to test against sandbox test fixtures.'}
                             </pre>
                         </div>
                     )}
                 </div>
 
-                {/* RIGHT PANEL: AI Persona Card, Dialogue Transcript & Controls */}
-                <div style={{
-                    background: '#090d16',
-                    borderLeft: '1px solid #1e293b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
-                    position: 'relative'
-                }}>
-                    {/* AI Avatar & Audio Waveform */}
-                    <div style={{ padding: '14px 14px 8px' }}>
-                        <AiAvatarWaveform
-                            personaName="Dr. Anya Chen"
-                            personaTitle="AI Principal Bar Raiser"
-                            isAiSpeaking={isAiSpeaking}
-                            voiceEnabled={voiceOutputEnabled}
-                            onToggleVoice={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
-                            currentStage={currentStage}
-                        />
-                    </div>
+                {/* DRAG SPLITTER: Center to Right */}
+                {!isEditorMaximized && !isRightCollapsed && (
+                    <div
+                        onMouseDown={() => setIsDraggingRight(true)}
+                        style={{
+                            width: '5px',
+                            cursor: 'col-resize',
+                            background: isDraggingRight ? '#6366f1' : '#1e293b',
+                            transition: 'background 0.2s ease',
+                            zIndex: 15
+                        }}
+                        title="Drag to resize panel"
+                    />
+                )}
 
-                    {/* Dialogue Transcript */}
+                {/* 3. RIGHT PANEL: AI Persona Card, Dialogue Transcript & Proctor */}
+                {!isEditorMaximized && !isRightCollapsed && (
                     <div style={{
-                        flex: 1,
-                        overflowY: 'auto',
-                        padding: '10px 14px',
+                        width: `${rightWidth}px`,
+                        minWidth: '260px',
+                        background: '#090d16',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px'
+                        overflow: 'hidden',
+                        position: 'relative'
                     }}>
-                        {messages.map((m, idx) => (
-                            <div
-                                key={idx}
-                                style={{
-                                    padding: '12px 14px',
-                                    borderRadius: '10px',
-                                    background: m.role === 'candidate' ? '#1e1b4b' : '#0f172a',
-                                    border: `1px solid ${m.role === 'candidate' ? '#4f46e5' : '#1e293b'}`,
-                                    fontSize: '0.85rem',
-                                    lineHeight: '1.5'
-                                }}
-                            >
-                                <div style={{
-                                    fontSize: '0.7rem',
-                                    fontWeight: 700,
-                                    color: m.role === 'candidate' ? '#c7d2fe' : '#818cf8',
-                                    marginBottom: '4px',
-                                    display: 'flex',
-                                    justifyContent: 'space-between'
-                                }}>
-                                    <span>{m.role === 'candidate' ? 'You (Candidate)' : 'AI Principal Interviewer'}</span>
-                                    {m.timestamp && <span style={{ color: '#64748b', fontWeight: 500 }}>{m.timestamp}</span>}
-                                </div>
-                                <div style={{ color: '#f8fafc', whiteSpace: 'pre-wrap' }}>
-                                    {m.content}
-                                </div>
-                            </div>
-                        ))}
-
-                        {isAiResponding && (
-                            <div style={{
-                                padding: '10px 14px',
-                                borderRadius: '8px',
-                                background: '#0f172a',
-                                border: '1px solid #1e293b',
-                                color: '#818cf8',
-                                fontSize: '0.82rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                            }}>
-                                <Sparkles size={14} className="animate-spin" />
-                                AI Interviewer is evaluating technical response...
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Candidate Input & Mic Controller */}
-                    <div style={{
-                        padding: '12px 14px',
-                        borderTop: '1px solid #1e293b',
-                        background: '#040711'
-                    }}>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* Header with Collapse Toggle */}
+                        <div style={{
+                            height: '42px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderBottom: '1px solid #1e293b',
+                            background: '#050811',
+                            padding: '0 12px'
+                        }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f8fafc' }}>
+                                AI Principal Interviewer
+                            </span>
                             <button
-                                onClick={() => {
-                                    if (isListening) stopListening();
-                                    else startListening();
-                                }}
-                                style={{
-                                    width: '38px',
-                                    height: '38px',
-                                    borderRadius: '8px',
-                                    background: isListening ? '#dc2626' : '#1e293b',
-                                    border: `1px solid ${isListening ? '#ef4444' : '#334155'}`,
-                                    color: '#ffffff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    boxShadow: isListening ? '0 0 12px rgba(239, 68, 68, 0.5)' : 'none',
-                                    transition: 'all 0.2s ease'
-                                }}
-                                title={isListening ? 'Stop Speaking' : 'Start Speaking'}
+                                onClick={() => setIsRightCollapsed(true)}
+                                title="Collapse AI Chat"
+                                style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
                             >
-                                {isListening ? <MicOff size={18} /> : <Mic size={18} />}
-                            </button>
-
-                            <input
-                                type="text"
-                                placeholder="Speak or type your explanation here..."
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        void triggerCandidateTurn();
-                                    }
-                                }}
-                                style={{
-                                    flex: 1,
-                                    background: '#090d16',
-                                    border: '1px solid #1e293b',
-                                    borderRadius: '8px',
-                                    padding: '8px 12px',
-                                    color: '#f8fafc',
-                                    fontSize: '0.85rem',
-                                    outline: 'none'
-                                }}
-                            />
-
-                            <button
-                                onClick={() => void triggerCandidateTurn()}
-                                disabled={isAiResponding}
-                                style={{
-                                    width: '38px',
-                                    height: '38px',
-                                    borderRadius: '8px',
-                                    background: '#4f46e5',
-                                    border: 'none',
-                                    color: '#ffffff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <Send size={16} />
+                                <PanelRightClose size={15} />
                             </button>
                         </div>
-                    </div>
 
-                    {/* Floating Corner Proctor Tile */}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '72px',
-                        right: '16px',
-                        zIndex: 30
-                    }}>
-                        <WebcamTile
-                            isTabBlurred={isWindowBlurred}
-                            tabSwitchCount={tabSwitches}
-                            pasteCount={pasteDumps}
-                        />
-                    </div>
+                        {/* AI Avatar & Animated Audio Waveform */}
+                        <div style={{ padding: '12px 12px 6px' }}>
+                            <AiAvatarWaveform
+                                personaName="Dr. Anya Chen"
+                                personaTitle="AI Principal Bar Raiser"
+                                isAiSpeaking={isAiSpeaking}
+                                voiceEnabled={voiceOutputEnabled}
+                                onToggleVoice={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
+                                currentStage={currentStage}
+                            />
+                        </div>
 
-                </div>
+                        {/* Dialogue Transcript */}
+                        <div style={{
+                            flex: 1,
+                            overflowY: 'auto',
+                            padding: '8px 12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                        }}>
+                            {messages.map((m, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        padding: '10px 12px',
+                                        borderRadius: '8px',
+                                        background: m.role === 'candidate' ? '#1e1b4b' : '#0f172a',
+                                        border: `1px solid ${m.role === 'candidate' ? '#4f46e5' : '#1e293b'}`,
+                                        fontSize: '0.82rem',
+                                        lineHeight: '1.5'
+                                    }}
+                                >
+                                    <div style={{
+                                        fontSize: '0.68rem',
+                                        fontWeight: 700,
+                                        color: m.role === 'candidate' ? '#c7d2fe' : '#818cf8',
+                                        marginBottom: '4px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                        <span>{m.role === 'candidate' ? 'You (Candidate)' : 'AI Principal Interviewer'}</span>
+                                        {m.timestamp && <span style={{ color: '#64748b', fontWeight: 500 }}>{m.timestamp}</span>}
+                                    </div>
+                                    <div style={{ color: '#f8fafc', whiteSpace: 'pre-wrap' }}>
+                                        {m.content}
+                                    </div>
+                                </div>
+                            ))}
+
+                            {isAiResponding && (
+                                <div style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    background: '#0f172a',
+                                    border: '1px solid #1e293b',
+                                    color: '#818cf8',
+                                    fontSize: '0.78rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <Sparkles size={13} className="animate-spin" />
+                                    AI Interviewer is evaluating technical response...
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Candidate Input & Mic Controller */}
+                        <div style={{
+                            padding: '10px 12px',
+                            borderTop: '1px solid #1e293b',
+                            background: '#040711'
+                        }}>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <button
+                                    onClick={() => {
+                                        if (isListening) stopListening();
+                                        else startListening();
+                                    }}
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '8px',
+                                        background: isListening ? '#dc2626' : '#1e293b',
+                                        border: `1px solid ${isListening ? '#ef4444' : '#334155'}`,
+                                        color: '#ffffff',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        boxShadow: isListening ? '0 0 10px rgba(239, 68, 68, 0.5)' : 'none',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    title={isListening ? 'Stop Speaking' : 'Start Speaking'}
+                                >
+                                    {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                                </button>
+
+                                <input
+                                    type="text"
+                                    placeholder="Speak or type explanation..."
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            void triggerCandidateTurn();
+                                        }
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        background: '#090d16',
+                                        border: '1px solid #1e293b',
+                                        borderRadius: '8px',
+                                        padding: '7px 10px',
+                                        color: '#f8fafc',
+                                        fontSize: '0.82rem',
+                                        outline: 'none'
+                                    }}
+                                />
+
+                                <button
+                                    onClick={() => void triggerCandidateTurn()}
+                                    disabled={isAiResponding}
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '8px',
+                                        background: '#4f46e5',
+                                        border: 'none',
+                                        color: '#ffffff',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Send size={15} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Floating Corner Proctor Tile */}
+                        <div style={{
+                            position: 'absolute',
+                            bottom: '68px',
+                            right: '12px',
+                            zIndex: 30
+                        }}>
+                            <WebcamTile
+                                isTabBlurred={isWindowBlurred}
+                                tabSwitchCount={tabSwitches}
+                                pasteCount={pasteDumps}
+                            />
+                        </div>
+
+                    </div>
+                )}
+
+                {/* Right Panel Expand Trigger when Collapsed */}
+                {!isEditorMaximized && isRightCollapsed && (
+                    <div style={{ width: '32px', background: '#090d16', borderLeft: '1px solid #1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
+                        <button
+                            onClick={() => setIsRightCollapsed(false)}
+                            title="Expand AI Chat Panel"
+                            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+                        >
+                            <PanelRightOpen size={16} />
+                        </button>
+                        <div style={{ writingMode: 'vertical-rl', fontSize: '0.75rem', color: '#64748b', marginTop: '16px', letterSpacing: '0.1em' }}>
+                            AI DIALOGUE
+                        </div>
+                    </div>
+                )}
 
             </div>
 
