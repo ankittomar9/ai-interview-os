@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import type { GenerateQuestionResponse, ModelProvider } from '../types';
-import { addMessageToSession, completeSession, processDialogueTurn, transcribeAudio, getStoredApiKey } from '../services/api';
+import { addMessageToSession, completeSession, processDialogueTurn, transcribeAudio, getStoredApiKey, executeCode } from '../services/api';
 import { useProctorSentinel } from '../hooks/useProctorSentinel';
 import { CameraProctorHUD } from './CameraProctorHUD';
 import {
@@ -309,9 +309,9 @@ export const InterviewRoom: React.FC<Props> = ({
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                 const groqApiKey = getStoredApiKey('GROQ') || apiKey;
                 const whisperResult = await transcribeAudio(audioBlob, groqApiKey);
-                if (whisperResult && whisperResult.text && whisperResult.text.trim().length > 0) {
-                    console.log('🎙️ Whisper neural transcript received:', whisperResult.text);
-                    candidateText = whisperResult.text.trim();
+                if (whisperResult && whisperResult.transcript && whisperResult.transcript.trim().length > 0) {
+                    console.log('🎙️ Whisper neural transcript received:', whisperResult.transcript);
+                    candidateText = whisperResult.transcript.trim();
                 }
             } catch (err) {
                 console.warn('Whisper fallback to Web Speech:', err);
@@ -379,28 +379,58 @@ export const InterviewRoom: React.FC<Props> = ({
         }
     };
 
-    // --- Smart Code Judge Test Runner ---
-    const handleRunCode = () => {
+    // --- Real Judge0 CE Sandbox Test Runner ---
+    const handleRunCode = async () => {
         setTestStatus('running');
-        setExecutionOutput('Compiling & running unit test fixtures against Java 21 Sandbox...\n');
+        setExecutionOutput('[Judge0 CE Sandbox] Submitting solution to zero-trust container sandbox...\nCompiling & executing test fixtures...\n');
 
-        setTimeout(() => {
-            const isSkeleton =
-                code.includes('// Initialize your data structure here') ||
-                code.includes('return -1;') && !code.includes('map') && !code.includes('Map') && !code.includes('HashMap');
+        try {
+            const lang = language.toLowerCase().includes('python') ? 'python' :
+                         language.toLowerCase().includes('script') ? 'javascript' : 'java';
 
-            if (isSkeleton) {
+            const slug = question.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+            const result = await executeCode(sessionId, {
+                language: lang,
+                codeSnippet: code,
+                problemSlug: slug
+            });
+
+            if (result.status === 'COMPILE_ERROR') {
                 setTestStatus('failed');
                 setExecutionOutput(
-                    `[Java 21 Compiler] Built solution successfully.\n[TestRunner] Executing 3 test fixtures:\n\n❌ Test 1: get(1) ➔ FAILED\n   Expected: 1, Actual: -1 (Cache miss / Not implemented)\n\n❌ Test 2: put(2, 200) followed by get(2) ➔ FAILED\n   Expected: 200, Actual: -1\n\n❌ Test 3: Capacity Eviction Check ➔ FAILED\n   Least recently used key not evicted.\n\n⚠️ 0 / 3 Tests Passed. Please implement cache storage (e.g. LinkedHashMap or ConcurrentHashMap) and eviction logic.`
+                    `[Compiler Output] Compilation Failed:\n${result.compilerOutput || result.stderr || 'Syntax error encountered during build.'}\n\n❌ Status: COMPILE_ERROR (0 / ${result.totalTests} Tests Passed)`
                 );
-            } else {
-                setTestStatus('passed');
+            } else if (result.status === 'TIMEOUT') {
+                setTestStatus('failed');
                 setExecutionOutput(
-                    `[Java 21 JVM] Solution compiled without errors.\n[TestRunner] Executing test fixtures:\n\n✅ Test 1: Basic Get / Put Operations ➔ PASS (1.1ms)\n✅ Test 2: High-Volume Capacity & Eviction ➔ PASS (1.8ms)\n✅ Test 3: Concurrency & Thread-Safety ➔ PASS (1.4ms)\n\n🎉 Status: ALL 3 TEST FIXTURES PASSED (Memory: 31.4MB, Garbage Collector: G1)`
+                    `[Execution Limit] Time Limit Exceeded (${result.executionTimeMs}ms):\n${result.stderr || 'Execution aborted due to infinite loop or slow algorithm.'}\n\n❌ Status: TIMEOUT (0 / ${result.totalTests} Tests Passed)`
                 );
+            } else if (result.status === 'PASSED') {
+                setTestStatus('passed');
+                let output = `[Sandbox Status] Execution Succeeded in ${result.executionTimeMs.toFixed(1)}ms (Heap: ${result.memoryUsedMb.toFixed(1)}MB)\n\n`;
+                result.testResults.forEach((t) => {
+                    output += `✅ ${t.name} ➔ PASS (${t.durationMs.toFixed(1)}ms)\n`;
+                });
+                output += `\n🎉 Status: ALL ${result.passedTests} / ${result.totalTests} TEST FIXTURES PASSED!`;
+                setExecutionOutput(output);
+            } else {
+                setTestStatus('failed');
+                let output = `[Sandbox Status] Execution Completed in ${result.executionTimeMs.toFixed(1)}ms (Heap: ${result.memoryUsedMb.toFixed(1)}MB)\n\n`;
+                result.testResults.forEach((t) => {
+                    if (t.status === 'PASS') {
+                        output += `✅ ${t.name} ➔ PASS (${t.durationMs.toFixed(1)}ms)\n`;
+                    } else {
+                        output += `❌ ${t.name} ➔ FAILED (${t.durationMs.toFixed(1)}ms)\n   ${t.error || 'Expected match not met'}\n`;
+                    }
+                });
+                output += `\n⚠️ Status: ${result.passedTests} / ${result.totalTests} Tests Passed.`;
+                setExecutionOutput(output);
             }
-        }, 700);
+        } catch (err: any) {
+            setTestStatus('failed');
+            setExecutionOutput(`[Sandbox Error] Could not connect to execution engine: ${err.message || 'Unknown network error'}`);
+        }
     };
 
     const handleEndInterview = async () => {

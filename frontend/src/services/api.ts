@@ -1,27 +1,29 @@
 import type {
-    DiagnosticReportResponse,
-    DifficultyLevel,
-    GenerateQuestionResponse,
-    InterviewTrack,
-    ModelProvider,
     SessionResponse,
-    TelemetryEventType,
-    AiDialogueResponse
+    AiDialogueResponse,
+    DiagnosticReportResponse,
+    InterviewTrack,
+    DifficultyLevel,
+    TelemetryEventType
 } from '../types';
 
-// Relative paths: Served directly through Nginx/Vite proxy with zero cross-origin issues
-const SESSION_API = '/api/v1/sessions';
-const AI_API = '/api/v1/ai';
-const PROCTOR_API = '/api/v1/proctor';
-const REPORT_API = '/api/v1/reports';
+const GATEWAY_BASE = '/api/v1';
+const SESSION_API = `${GATEWAY_BASE}/sessions`;
+const AI_API = `${GATEWAY_BASE}/ai`;
+const PROCTOR_API = `${GATEWAY_BASE}/proctor`;
+const REPORT_API = `${GATEWAY_BASE}/reports`;
 
-// --- BYOK Local Storage ---
-export const getStoredApiKey = (provider: ModelProvider): string => {
+// Helper: Read stored BYOK Keys
+export const getStoredApiKey = (provider: string): string => {
     return localStorage.getItem(`byok_${provider}`) || '';
 };
 
-export const setStoredApiKey = (provider: ModelProvider, key: string): void => {
-    localStorage.setItem(`byok_${provider}`, key);
+export const setStoredApiKey = (provider: string, key: string): void => {
+    if (key.trim()) {
+        localStorage.setItem(`byok_${provider}`, key.trim());
+    } else {
+        localStorage.removeItem(`byok_${provider}`);
+    }
 };
 
 // --- Session Service (Routed via Gateway -> :8081) ---
@@ -51,14 +53,19 @@ export const startSession = async (sessionId: number): Promise<SessionResponse> 
 
 export const addMessageToSession = async (
     sessionId: number,
-    payload: { senderRole: string; messageType: string; content: string; codeSnippet?: string }
+    payload: {
+        senderRole: 'AI' | 'CANDIDATE';
+        messageType: 'EXPLANATION' | 'CODE_SUBMISSION' | 'CLARIFICATION' | 'FEEDBACK';
+        content: string;
+        codeSnippet?: string;
+    }
 ) => {
     const res = await fetch(`${SESSION_API}/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Failed to save message via Gateway');
+    if (!res.ok) throw new Error('Failed to add message to session');
     return res.json();
 };
 
@@ -68,32 +75,30 @@ export const completeSession = async (sessionId: number): Promise<SessionRespons
     return res.json();
 };
 
-// --- AI Orchestrator (Routed via Gateway -> :8082) ---
+// --- AI Orchestrator Service (Routed via Gateway -> :8082) ---
 export const generateQuestion = async (payload: {
     roleTitle: string;
     track: InterviewTrack;
     difficulty: DifficultyLevel;
+    targetCompany?: string;
     jobDescription?: string;
-    modelProvider: ModelProvider;
+    modelProvider?: string;
     apiKey?: string;
-}): Promise<GenerateQuestionResponse> => {
+}) => {
     const res = await fetch(`${AI_API}/generate-question`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ message: 'AI generation failed' }));
-        throw new Error(errorData.message || 'Failed to generate question via Gateway');
-    }
+    if (!res.ok) throw new Error('Failed to generate interview question');
     return res.json();
 };
 
 export const processDialogueTurn = async (payload: {
     questionContext: string;
-    candidateExplanation?: string;
+    candidateExplanation: string;
     candidateCode?: string;
-    modelProvider: ModelProvider;
+    modelProvider?: string;
     apiKey?: string;
 }): Promise<AiDialogueResponse> => {
     const res = await fetch(`${AI_API}/dialogue`, {
@@ -101,35 +106,33 @@ export const processDialogueTurn = async (payload: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Dialogue turn failed via Gateway');
+    if (!res.ok) throw new Error('Failed to process dialogue turn');
     return res.json();
 };
 
-/**
- * Groq Whisper Neural Speech-to-Text (180ms LPU transcription).
- */
+// --- Groq Whisper Speech-To-Text Transcription Endpoint (:8082) ---
 export const transcribeAudio = async (
     audioBlob: Blob,
     apiKey?: string,
-    model?: string
-): Promise<{ text: string; status: string; latencyMs?: string }> => {
+    promptContext?: string
+): Promise<{ transcript: string; durationSeconds: number; provider: string }> => {
     const formData = new FormData();
-    formData.append('file', audioBlob, 'audio.webm');
+    formData.append('audio', audioBlob, 'candidate_speech.webm');
     if (apiKey) formData.append('apiKey', apiKey);
-    if (model) formData.append('model', model);
+    if (promptContext) formData.append('promptContext', promptContext);
 
     const res = await fetch(`${AI_API}/transcribe`, {
         method: 'POST',
         body: formData
     });
-    if (!res.ok) throw new Error('Failed to transcribe audio via Whisper');
+    if (!res.ok) throw new Error('Speech transcription request failed');
     return res.json();
 };
 
-// --- Proctor Sentinel (Routed via Gateway -> :8083) ---
-export const sendTelemetryEvent = async (payload: {
+// --- Proctor Sentinel Service (Routed via Gateway -> :8083) ---
+export const sendProctorTelemetry = async (payload: {
     sessionId: number;
-    eventType: TelemetryEventType;
+    eventType: TelemetryEventType | string;
     characterCount?: number;
     durationSeconds?: number;
     metadataDetails?: string;
@@ -144,6 +147,8 @@ export const sendTelemetryEvent = async (payload: {
         console.warn('Telemetry event send failed:', err);
     }
 };
+
+export const sendTelemetryEvent = sendProctorTelemetry;
 
 // --- Evaluation Report (Routed via Gateway -> :8084) ---
 export const generateDiagnosticReport = async (sessionId: number): Promise<DiagnosticReportResponse> => {
@@ -191,5 +196,46 @@ export const uploadResumeText = async (payload: {
 export const fetchSessionTranscript = async (sessionId: number) => {
     const res = await fetch(`${SESSION_API}/resume/transcript/${sessionId}`);
     if (!res.ok) throw new Error('Failed to fetch session transcript');
+    return res.json();
+};
+
+// --- Judge0 CE Zero-Trust Code Execution Sandbox (:8081) ---
+export interface TestCaseResult {
+    name: string;
+    status: 'PASS' | 'FAIL' | 'ERROR';
+    durationMs: number;
+    input: string;
+    expectedOutput: string;
+    actualOutput: string;
+    error?: string;
+    isHidden: boolean;
+}
+
+export interface ExecutionResultResponse {
+    status: 'PASSED' | 'PARTIAL' | 'FAILED' | 'COMPILE_ERROR' | 'TIMEOUT' | 'MEMORY_EXCEEDED';
+    totalTests: number;
+    passedTests: number;
+    executionTimeMs: number;
+    memoryUsedMb: number;
+    stdout: string;
+    stderr: string;
+    compilerOutput: string;
+    testResults: TestCaseResult[];
+}
+
+export const executeCode = async (
+    sessionId: number,
+    payload: {
+        language: string;
+        codeSnippet: string;
+        problemSlug?: string;
+    }
+): Promise<ExecutionResultResponse> => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to execute code in sandbox');
     return res.json();
 };

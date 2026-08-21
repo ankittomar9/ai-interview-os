@@ -19,3 +19,8 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongodb:27017/interviewos}
+
+judge0:
+  url: ${JUDGE0_URL:http://judge0:2358}
+  auth-token: ${JUDGE0_AUTH_TOKEN:}
+  wait-timeout-seconds: 10
