@@ -65,13 +65,18 @@ public class AiOrchestratorController {
      */
     @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> transcribeAudio(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "audio", required = false) MultipartFile audio,
             @RequestParam(value = "apiKey", required = false) String apiKey,
             @RequestParam(value = "model", required = false) String model
     ) {
+        MultipartFile targetFile = file != null ? file : audio;
+        if (targetFile == null || targetFile.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No audio file provided in request"));
+        }
         log.info("🎙️ Transcribe Audio Request Received: File='{}', Size={} bytes",
-                file.getOriginalFilename(), file.getSize());
-        Map<String, String> result = whisperService.transcribeAudio(file, apiKey, model);
+                targetFile.getOriginalFilename(), targetFile.getSize());
+        Map<String, String> result = whisperService.transcribeAudio(targetFile, apiKey, model);
         return ResponseEntity.ok(result);
     }
 }

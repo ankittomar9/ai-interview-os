@@ -1,5 +1,8 @@
 package com.interviewos.session.sandbox.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,27 +57,30 @@ public class Judge0Client {
     }
 
     @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Judge0SubmissionRequest(
-            String source_code,
-            int language_id,
-            String stdin,
-            String expected_output,
-            Double cpu_time_limit,
-            Integer memory_limit
+            @JsonProperty("source_code") String source_code,
+            @JsonProperty("language_id") int language_id,
+            @JsonProperty("stdin") String stdin,
+            @JsonProperty("expected_output") String expected_output,
+            @JsonProperty("cpu_time_limit") Double cpu_time_limit,
+            @JsonProperty("memory_limit") Integer memory_limit
     ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record Judge0SubmissionResponse(
-            String stdout,
-            String stderr,
-            String compile_output,
-            String message,
-            String time,
-            Double memory,
-            Judge0Status status
+            @JsonProperty("stdout") String stdout,
+            @JsonProperty("stderr") String stderr,
+            @JsonProperty("compile_output") String compile_output,
+            @JsonProperty("message") String message,
+            @JsonProperty("time") String time,
+            @JsonProperty("memory") Double memory,
+            @JsonProperty("status") Judge0Status status
     ) {}
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record Judge0Status(
-            int id,
-            String description
+            @JsonProperty("id") int id,
+            @JsonProperty("description") String description
     ) {}
 }

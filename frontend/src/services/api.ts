@@ -117,6 +117,7 @@ export const transcribeAudio = async (
     promptContext?: string
 ): Promise<{ transcript: string; durationSeconds: number; provider: string }> => {
     const formData = new FormData();
+    formData.append('file', audioBlob, 'candidate_speech.webm');
     formData.append('audio', audioBlob, 'candidate_speech.webm');
     if (apiKey) formData.append('apiKey', apiKey);
     if (promptContext) formData.append('promptContext', promptContext);
