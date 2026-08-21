@@ -3,6 +3,7 @@ package com.interviewos.session.sandbox.client;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -19,12 +22,15 @@ import java.util.Optional;
 public class Judge0Client {
 
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
 
     public Judge0Client(
             @Value("${judge0.url:http://judge0:2358}") String judge0Url,
             @Value("${judge0.auth-token:}") String authToken,
-            @Value("${judge0.wait-timeout-seconds:10}") int waitTimeoutSeconds
+            @Value("${judge0.wait-timeout-seconds:20}") int waitTimeoutSeconds,
+            ObjectMapper objectMapper
     ) {
+        this.objectMapper = objectMapper;
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(5));
         requestFactory.setReadTimeout(Duration.ofSeconds(waitTimeoutSeconds));
@@ -42,13 +48,29 @@ public class Judge0Client {
 
     public Optional<Judge0SubmissionResponse> submitAndAwait(Judge0SubmissionRequest request) {
         try {
-            Judge0SubmissionResponse response = restClient.post()
+            Map<String, Object> payloadMap = new HashMap<>();
+            payloadMap.put("source_code", request.source_code());
+            payloadMap.put("language_id", request.language_id());
+            if (request.stdin() != null) payloadMap.put("stdin", request.stdin());
+            if (request.expected_output() != null) payloadMap.put("expected_output", request.expected_output());
+            if (request.cpu_time_limit() != null) payloadMap.put("cpu_time_limit", request.cpu_time_limit());
+            if (request.memory_limit() != null) payloadMap.put("memory_limit", request.memory_limit());
+
+            String jsonPayload = objectMapper.writeValueAsString(payloadMap);
+            log.info("Sending payload to Judge0: {}", jsonPayload);
+
+            String rawResponseBody = restClient.post()
                     .uri("/submissions?base64_encoded=false&wait=true")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(request)
+                    .body(jsonPayload)
                     .retrieve()
-                    .body(Judge0SubmissionResponse.class);
+                    .body(String.class);
 
+            if (rawResponseBody == null || rawResponseBody.isBlank()) {
+                return Optional.empty();
+            }
+
+            Judge0SubmissionResponse response = objectMapper.readValue(rawResponseBody, Judge0SubmissionResponse.class);
             return Optional.ofNullable(response);
         } catch (Exception e) {
             log.warn("⚠️ Judge0 submission error: {}", e.getMessage());

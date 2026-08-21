@@ -47,8 +47,8 @@ public class CodeExecutionService {
 
         ProblemDocument problem = problemOpt.get();
         int languageId = resolveLanguageId(request.language());
-        double timeLimitSec = (double) problem.getLimits().timeLimitMs() / 1000.0;
-        int memoryLimitKb = problem.getLimits().memoryLimitMb() * 1024;
+        double timeLimitSec = Math.min(5.0, (double) problem.getLimits().timeLimitMs() / 1000.0);
+        int memoryLimitKb = Math.min(256000, problem.getLimits().memoryLimitMb() * 1000);
 
         List<ExecutionResultResponse.TestCaseResult> testResults = new ArrayList<>();
         int passedCount = 0;
