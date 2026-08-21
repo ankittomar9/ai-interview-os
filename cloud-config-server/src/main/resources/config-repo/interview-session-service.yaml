@@ -23,4 +23,4 @@ spring:
 judge0:
   url: ${JUDGE0_URL:http://judge0:2358}
   auth-token: ${JUDGE0_AUTH_TOKEN:}
-  wait-timeout-seconds: 10
+  wait-timeout-seconds: 20

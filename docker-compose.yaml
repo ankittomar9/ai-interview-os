@@ -42,34 +42,82 @@ services:
       retries: 5
       start_period: 10s
 
-  # 0.2 Redis for Judge0 Submission Queue
+  # 0.2 Judge0 Dedicated PostgreSQL 13 Database
+  judge0-db:
+    image: postgres:13-alpine
+    container_name: judge0-db
+    environment:
+      - POSTGRES_USER=judge0
+      - POSTGRES_PASSWORD=judge0pass
+      - POSTGRES_DB=judge0
+    volumes:
+      - judge0_db_data:/var/lib/postgresql/data
+    networks:
+      - ai-interview-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # 0.3 Redis for Judge0 Submission Queue
   judge0-redis:
     image: redis:7-alpine
     container_name: judge0-redis
     networks:
       - ai-interview-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
-  # 0.3 Judge0 CE Zero-Trust Code Sandbox
+  # 0.4 Judge0 CE Zero-Trust Code Sandbox API Server
   judge0:
     image: judge0/judge0:1.13.1
     container_name: judge0-server
     ports:
       - "2358:2358"
     privileged: true
-    volumes:
-      - ./docker/judge0/judge0.conf:/judge0.conf:ro
     environment:
       - REDIS_HOST=judge0-redis
       - REDIS_PORT=6379
-      - POSTGRES_HOST=postgres
-      - POSTGRES_SERVER=postgres
+      - POSTGRES_HOST=judge0-db
+      - POSTGRES_SERVER=judge0-db
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=judge0
+      - POSTGRES_USER=judge0
+      - POSTGRES_PASSWORD=judge0pass
     depends_on:
-      - judge0-redis
-      - postgres
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - ai-interview-net
+
+  # 0.5 Judge0 Sandbox Execution Workers
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-workers
+    command: ["./scripts/workers"]
+    privileged: true
+    environment:
+      - REDIS_HOST=judge0-redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=judge0-db
+      - POSTGRES_SERVER=judge0-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=judge0
+      - POSTGRES_USER=judge0
+      - POSTGRES_PASSWORD=judge0pass
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - ai-interview-net
 
@@ -243,3 +291,4 @@ services:
 volumes:
   mongodb_data:
   postgres_data:
+  judge0_db_data:
