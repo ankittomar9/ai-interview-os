@@ -82,14 +82,19 @@ export const InterviewRoom: React.FC<Props> = ({
     const [latestExecution, setLatestExecution] = useState<{ status: string; passedTests: number; totalTests: number; executionTimeMs: number; memoryUsedMb: number } | null>(null);
     const [architectureSummary, setArchitectureSummary] = useState<string>('');
 
-    // --- State: Resizable & Detachable Panels (LeetCode Style) ---
-    const [leftWidth, setLeftWidth] = useState<number>(380);
-    const [rightWidth, setRightWidth] = useState<number>(370);
-    const [consoleHeight, setConsoleHeight] = useState<number>(180);
+    // --- State: Resizable & Detachable Panels (Persisted in localStorage) ---
+    const [leftWidth, setLeftWidth] = useState<number>(() => Number(localStorage.getItem('ui.leftWidth')) || 380);
+    const [rightWidth, setRightWidth] = useState<number>(() => Number(localStorage.getItem('ui.rightWidth')) || 370);
+    const [consoleHeight, setConsoleHeight] = useState<number>(() => Number(localStorage.getItem('ui.consoleHeight')) || 180);
     const [isLeftCollapsed, setIsLeftCollapsed] = useState<boolean>(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(false);
     const [isEditorMaximized, setIsEditorMaximized] = useState<boolean>(false);
     const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(false);
+
+    // Synchronize layout dimensions to localStorage
+    useEffect(() => { localStorage.setItem('ui.leftWidth', String(leftWidth)); }, [leftWidth]);
+    useEffect(() => { localStorage.setItem('ui.rightWidth', String(rightWidth)); }, [rightWidth]);
+    useEffect(() => { localStorage.setItem('ui.consoleHeight', String(consoleHeight)); }, [consoleHeight]);
 
     // Active drag state
     const [isDraggingLeft, setIsDraggingLeft] = useState<boolean>(false);
@@ -224,16 +229,27 @@ export const InterviewRoom: React.FC<Props> = ({
         window.speechSynthesis.speak(utterance);
     }, [voiceOutputEnabled]);
 
-    // Greeting TTS spoken once on mount
+    // Greeting: speak exactly once, unlocked by first user interaction (Chrome autoplay policy)
     useEffect(() => {
-        if (!hasSpokenIntroRef.current && messages.length > 0 && voiceOutputEnabled) {
+        if (messages.length === 0 || !voiceOutputEnabled) return;
+
+        const speakGreeting = () => {
+            if (hasSpokenIntroRef.current) return;
             hasSpokenIntroRef.current = true;
-            const timer = setTimeout(() => {
-                speakText(messages[0].content);
-            }, 800);
-            return () => clearTimeout(timer);
+            speakText(messages[0].content);
+        };
+
+        if ((navigator as any).userActivation?.hasBeenActive) {
+            speakGreeting();
+            return;
         }
-    }, [speakText, voiceOutputEnabled, messages]);
+        window.addEventListener('pointerdown', speakGreeting, { once: true });
+        window.addEventListener('keydown', speakGreeting, { once: true });
+        return () => {
+            window.removeEventListener('pointerdown', speakGreeting);
+            window.removeEventListener('keydown', speakGreeting);
+        };
+    }, [messages, voiceOutputEnabled, speakText]);
 
     // Full Duplex Continuous Speech Recognition with 9s Buffer & End Phrases
     const startListening = useCallback(() => {
@@ -409,7 +425,7 @@ export const InterviewRoom: React.FC<Props> = ({
             codeSnippet: code
         });
 
-        // Stage progression heuristics
+        // Stage progression heuristics based on turns
         if (currentStage === 'INTRODUCTION') {
             setCurrentStage('CORE_TECH');
         } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
@@ -947,19 +963,40 @@ export const InterviewRoom: React.FC<Props> = ({
                     </div>
                 )}
 
-                {/* DRAG SPLITTER: Left to Center */}
+                {/* DRAG SPLITTER: Left to Center (8px hit area with grip dots) */}
                 {!isEditorMaximized && !isLeftCollapsed && (
                     <div
                         onMouseDown={() => setIsDraggingLeft(true)}
                         style={{
-                            width: '5px',
+                            width: '8px',
                             cursor: 'col-resize',
                             background: isDraggingLeft ? '#6366f1' : '#1e293b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             transition: 'background 0.2s ease',
-                            zIndex: 15
+                            zIndex: 15,
+                            userSelect: 'none'
                         }}
-                        title="Drag to resize panel"
-                    />
+                        onMouseEnter={(e) => {
+                            if (!isDraggingLeft) e.currentTarget.style.background = 'rgba(99, 102, 241, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isDraggingLeft) e.currentTarget.style.background = '#1e293b';
+                        }}
+                        title="Drag to resize problem panel"
+                    >
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '3px',
+                            pointerEvents: 'none'
+                        }}>
+                            <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                            <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                            <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                        </div>
+                    </div>
                 )}
 
                 {/* 2. CENTER PANEL: Monaco Workspace + Resizable Test Console */}
@@ -1173,19 +1210,40 @@ export const InterviewRoom: React.FC<Props> = ({
                         )}
                     </div>
 
-                    {/* DRAG SPLITTER: Editor to Bottom Console */}
+                    {/* DRAG SPLITTER: Editor to Bottom Console (8px hit area with grip dots) */}
                     {isConsoleOpen && (
                         <div
                             onMouseDown={() => setIsDraggingConsole(true)}
                             style={{
-                                height: '5px',
+                                height: '8px',
                                 cursor: 'row-resize',
                                 background: isDraggingConsole ? '#6366f1' : '#1e293b',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 transition: 'background 0.2s ease',
-                                zIndex: 15
+                                zIndex: 15,
+                                userSelect: 'none'
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!isDraggingConsole) e.currentTarget.style.background = 'rgba(99, 102, 241, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!isDraggingConsole) e.currentTarget.style.background = '#1e293b';
                             }}
                             title="Drag to resize console"
-                        />
+                        >
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'row',
+                                gap: '3px',
+                                pointerEvents: 'none'
+                            }}>
+                                <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                                <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                                <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                            </div>
+                        </div>
                     )}
 
                     {/* Resizable Bottom Execution Console */}
@@ -1243,19 +1301,40 @@ export const InterviewRoom: React.FC<Props> = ({
                     )}
                 </div>
 
-                {/* DRAG SPLITTER: Center to Right */}
+                {/* DRAG SPLITTER: Center to Right (8px hit area with grip dots) */}
                 {!isEditorMaximized && !isRightCollapsed && (
                     <div
                         onMouseDown={() => setIsDraggingRight(true)}
                         style={{
-                            width: '5px',
+                            width: '8px',
                             cursor: 'col-resize',
                             background: isDraggingRight ? '#6366f1' : '#1e293b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                             transition: 'background 0.2s ease',
-                            zIndex: 15
+                            zIndex: 15,
+                            userSelect: 'none'
                         }}
-                        title="Drag to resize panel"
-                    />
+                        onMouseEnter={(e) => {
+                            if (!isDraggingRight) e.currentTarget.style.background = 'rgba(99, 102, 241, 0.4)';
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!isDraggingRight) e.currentTarget.style.background = '#1e293b';
+                        }}
+                        title="Drag to resize AI dialogue panel"
+                    >
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '3px',
+                            pointerEvents: 'none'
+                        }}>
+                            <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                            <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                            <div style={{ width: '2px', height: '2px', borderRadius: '50%', background: '#64748b' }} />
+                        </div>
+                    </div>
                 )}
 
                 {/* 3. RIGHT PANEL: AI Persona Card, Dialogue Transcript & Proctor */}
