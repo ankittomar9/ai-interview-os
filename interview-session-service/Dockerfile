@@ -8,6 +8,7 @@ COPY interview-session-service/pom.xml ./interview-session-service/
 COPY ai-orchestrator-service/pom.xml ./ai-orchestrator-service/
 COPY proctor-sentinel-service/pom.xml ./proctor-sentinel-service/
 COPY evaluation-report-service/pom.xml ./evaluation-report-service/
+COPY question-bank-service/pom.xml ./question-bank-service/
 COPY interview-session-service/src ./interview-session-service/src
 RUN mvn -B clean package -pl interview-session-service -am -DskipTests
 
