@@ -17,14 +17,26 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const lastPosRef = useRef<number>(0);
+  const lastTapRef = useRef<number>(0);
 
   const isCol = direction === 'horizontal';
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore if pointer capture unavailable
+    }
     setIsDragging(true);
     lastPosRef.current = isCol ? e.clientX : e.clientY;
+
+    // Support double-tap on touch screens
+    const now = Date.now();
+    if (now - lastTapRef.current < 320) {
+      if (onDoubleClick) onDoubleClick();
+    }
+    lastTapRef.current = now;
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
