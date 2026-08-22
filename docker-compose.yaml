@@ -46,6 +46,8 @@ services:
   judge0-db:
     image: postgres:13-alpine
     container_name: judge0-db
+    profiles:
+      - engines
     environment:
       - POSTGRES_USER=judge0
       - POSTGRES_PASSWORD=judge0pass
@@ -64,6 +66,8 @@ services:
   judge0-redis:
     image: redis:7-alpine
     container_name: judge0-redis
+    profiles:
+      - engines
     networks:
       - ai-interview-net
     healthcheck:
@@ -76,6 +80,8 @@ services:
   judge0:
     image: judge0/judge0:1.13.1
     container_name: judge0-server
+    profiles:
+      - engines
     ports:
       - "2358:2358"
     privileged: true
@@ -101,6 +107,8 @@ services:
   judge0-workers:
     image: judge0/judge0:1.13.1
     container_name: judge0-workers
+    profiles:
+      - engines
     command: ["./scripts/workers"]
     privileged: true
     environment:
@@ -127,6 +135,8 @@ services:
       context: ./docker/lld-runner
       dockerfile: Dockerfile
     image: ai-interview-os/lld-runner:latest
+    profiles:
+      - engines
     entrypoint: ["true"]
 
   # 1. Eureka Service Discovery
@@ -267,6 +277,27 @@ services:
       cloud-config-server:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+
+  # 6.5 Question Bank Service (Connected to MongoDB & Eureka)
+  question-bank-service:
+    build:
+      context: .
+      dockerfile: ./question-bank-service/Dockerfile
+    container_name: question-bank-service
+    ports:
+      - "8086:8086"
+    networks:
+      - ai-interview-net
+    environment:
+      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/questionbank
+    depends_on:
+      cloud-config-server:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
 
   # 7. Spring Cloud API Gateway

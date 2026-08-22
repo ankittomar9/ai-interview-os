@@ -26,6 +26,13 @@ schema_config:
         prefix: index_
         period: 24h
 
+limits_config:
+  retention_period: 168h
+
+compactor:
+  retention_enabled: true
+  working_directory: /loki/compactor
+
 ruler:
   alertmanager_url: http://localhost:9093
 
