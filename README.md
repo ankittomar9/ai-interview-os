@@ -146,16 +146,28 @@ docker compose -f docker-compose.observability.yaml up -d
 
 ---
 
-### Step 3: Launch Core Application Microservices & MongoDB
+### Step 3: Launch Application Microservices (Compose Profiles)
+
+AI Interview OS supports modular **Docker Compose Profiles** to keep local developer machines fast and lightweight:
+
+| Compose Command | What Boots | Memory | Best For |
+|---|---|---|---|
+| `docker compose up -d` | **Core Stack** (Gateway, Eureka, Config, Session, AI Orchestrator, Proctor, Reports, Question Bank, Mongo, Postgres) | ~2.5 GB | Behavioral Interviews, System Design (HLD), Resume Ingestion, AI Dialogue |
+| `docker compose --profile engines up -d` | **Core Stack + Execution Engines** (+ Judge0 CE Sandbox, Judge0 Workers/DB/Redis, Docker Maven Runner) | ~4.5 GB | DSA Coding Track & Spring Boot Multi-File LLD execution |
+
 ```powershell
-docker compose build --no-cache
+# Launch Core Application Stack:
 docker compose up -d
+
+# Or Launch with Live DSA / LLD Execution Sandboxes:
+docker compose --profile engines up -d
 ```
 
 Check running containers:
 ```powershell
 docker compose ps
 ```
+
 
 ---
 
@@ -199,11 +211,24 @@ docker compose ps
 | `POST` | `/api/v1/proctor/events` | Record telemetry anomalies (Tab Switch, Blur, Paste Dump). |
 | `GET` | `/api/v1/proctor/sessions/{id}/summary` | Retrieve full proctor audit telemetry summary. |
 
-### 4. Evaluation Report Service (`/api/v1/reports`)
+### 4. Question Bank Service (`/api/v1/questions`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/questions` | Query verified problem catalog (filter by track, difficulty, tags). |
+| `GET` | `/api/v1/questions/{slug}` | Retrieve public problem statement, starter code, and sample tests. |
+| `POST` | `/api/v1/questions/match` | Match and optionally LLM re-rank optimal problem based on resume skills and JD. |
+
+### 5. Evaluation Report Service (`/api/v1/reports`)
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/v1/reports/generate/{id}` | Generate multi-dimensional hiring scorecard and verdict. |
 | `GET` | `/api/v1/reports/sessions/{id}` | Fetch previously generated diagnostic report. |
+
+### 6. System Platform Readiness (`/api/v1/system`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/system/capabilities` | Preflight capability probe across execution engines, microservices, and storage. |
+
 
 ---
 

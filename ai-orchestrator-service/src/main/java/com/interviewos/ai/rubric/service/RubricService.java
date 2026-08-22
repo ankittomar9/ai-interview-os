@@ -3,6 +3,7 @@ package com.interviewos.ai.rubric.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewos.ai.client.AiClient;
 import com.interviewos.ai.client.AiClientFactory;
+import com.interviewos.ai.client.ProblemCatalogClient;
 import com.interviewos.ai.model.ModelProvider;
 import com.interviewos.ai.rubric.dto.DimensionScore;
 import com.interviewos.ai.rubric.dto.RubricEvaluationRequest;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -23,6 +25,7 @@ import java.util.List;
 public class RubricService {
 
     private final AiClientFactory clientFactory;
+    private final ProblemCatalogClient problemCatalogClient;
     private final ObjectMapper objectMapper;
 
     @Value("${rubric.provider:ollama}")
@@ -127,6 +130,23 @@ public class RubricService {
         sb.append("Challenge: ").append(req.problemSlug()).append("\n");
         sb.append("Track: ").append(req.track()).append(" | Difficulty: ").append(req.difficulty()).append("\n\n");
         sb.append("Canonical Problem Statement:\n").append(req.problemStatement()).append("\n\n");
+
+        // Grounding with Question Bank specific rubric checkpoints
+        if (req.problemSlug() != null && !req.problemSlug().isBlank()) {
+            try {
+                Optional<ProblemCatalogClient.QuestionFullDetail> detailOpt = problemCatalogClient.getFullQuestionDetail(req.problemSlug());
+                if (detailOpt.isPresent()) {
+                    var detail = detailOpt.get();
+                    if (detail.interviewerNotes() != null && detail.interviewerNotes().rubricCheckpoints() != null && !detail.interviewerNotes().rubricCheckpoints().isEmpty()) {
+                        sb.append("Target Problem Rubric Checkpoints (Observe these specific behaviors):\n");
+                        for (String cp : detail.interviewerNotes().rubricCheckpoints()) {
+                            sb.append("- ").append(cp).append("\n");
+                        }
+                        sb.append("\n");
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
 
         sb.append("Sandbox Execution Summary:\n");
         if (req.executions() != null && !req.executions().isEmpty()) {

@@ -19,3 +19,7 @@ rubric:
   provider: ${RUBRIC_PROVIDER:ollama}
   api-key: ${RUBRIC_API_KEY:}
   timeout-seconds: 60
+
+question:
+  bank:
+    url: ${QUESTION_BANK_URL:http://question-bank-service:8086}

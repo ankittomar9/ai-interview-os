@@ -1,13 +1,15 @@
 package com.interviewos.ai.client;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.interviewos.ai.dto.GenerateQuestionResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,51 +21,109 @@ public class ProblemCatalogClient {
     private final RestClient restClient;
 
     public ProblemCatalogClient(
-            @Value("${session.service.url:http://interview-session-service:8081}") String sessionServiceUrl
+            @Value("${question.bank.url:http://question-bank-service:8086}") String questionBankUrl
     ) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(10));
+
         this.restClient = RestClient.builder()
-                .baseUrl(sessionServiceUrl)
+                .requestFactory(factory)
+                .baseUrl(questionBankUrl)
                 .build();
     }
 
-    public List<ProblemCatalogItem> fetchProblems(String track, String difficulty) {
+    public Optional<QuestionMatchResult> matchQuestion(
+            String track,
+            String difficulty,
+            List<String> resumeSkills,
+            String jdText,
+            String provider,
+            String apiKey
+    ) {
         try {
-            return restClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/api/v1/problems")
-                            .queryParam("track", track != null ? track : "")
-                            .queryParam("difficulty", difficulty != null ? difficulty : "")
-                            .build())
-                    .accept(MediaType.APPLICATION_JSON)
-                    .retrieve()
-                    .body(new ParameterizedTypeReference<List<ProblemCatalogItem>>() {});
-        } catch (Exception e) {
-            log.warn("⚠️ Failed to fetch problem catalog from session service: {}", e.getMessage());
-            return List.of();
-        }
-    }
+            Map<String, Object> body = Map.of(
+                    "track", track != null ? track : "ALGORITHMS_DATA_STRUCTURES",
+                    "difficulty", difficulty != null ? difficulty : "JUNIOR",
+                    "resumeSkills", resumeSkills != null ? resumeSkills : List.of(),
+                    "jdText", jdText != null ? jdText : "",
+                    "provider", provider != null ? provider : "",
+                    "apiKey", apiKey != null ? apiKey : ""
+            );
 
-    public Optional<ProblemCatalogItem> getProblemBySlug(String slug) {
-        try {
-            ProblemCatalogItem item = restClient.get()
-                    .uri("/api/v1/problems/{slug}", slug)
-                    .accept(MediaType.APPLICATION_JSON)
+            QuestionMatchResult resp = restClient.post()
+                    .uri("/api/v1/questions/match")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
                     .retrieve()
-                    .body(ProblemCatalogItem.class);
-            return Optional.ofNullable(item);
+                    .body(QuestionMatchResult.class);
+
+            return Optional.ofNullable(resp);
         } catch (Exception e) {
-            log.warn("⚠️ Failed to fetch problem by slug '{}': {}", slug, e.getMessage());
+            log.warn("⚠️ Failed to match question from Question Bank: {}", e.getMessage());
             return Optional.empty();
         }
     }
 
-    public record ProblemCatalogItem(
-            String problemSlug,
+    public Optional<QuestionFullDetail> getFullQuestionDetail(String slug) {
+        try {
+            QuestionFullDetail detail = restClient.get()
+                    .uri("/internal/v1/questions/{slug}/full", slug)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(QuestionFullDetail.class);
+            return Optional.ofNullable(detail);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to fetch full question detail for slug '{}': {}", slug, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record QuestionMatchResult(
+            QuestionPublicItem question,
+            String rationale,
+            boolean llmAssisted
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record QuestionPublicItem(
+            String slug,
+            String title,
+            String track,
+            String difficulty,
+            List<String> tags,
+            String problemStatement,
+            String starterCode,
+            Map<String, String> starterCodeMap,
+            Map<String, String> starterFiles,
+            List<String> editablePaths,
+            List<GenerateQuestionResponse.TestCaseView> sampleTests,
+            List<String> evaluationCriteria
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record QuestionFullDetail(
+            String slug,
             String title,
             String track,
             String difficulty,
             String problemStatement,
-            Map<String, String> starterCode,
-            List<GenerateQuestionResponse.TestCaseView> sampleTests
+            InterviewerNotesDto interviewerNotes,
+            CoachingDto coaching
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record InterviewerNotesDto(
+            List<String> expectedConcepts,
+            List<String> followUpSeeds,
+            List<String> rubricCheckpoints
+    ) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CoachingDto(
+            List<String> commonMistakes,
+            String modelAnswerOutline,
+            List<String> presentationTips
     ) {}
 }

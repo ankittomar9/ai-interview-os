@@ -29,38 +29,47 @@ public class AiOrchestratorService {
     private final ObjectMapper objectMapper;
 
     /**
-     * Generates a tailored interview question driven by the verified Problem Catalog.
+     * Generates a tailored interview question matched via Question Bank and personalized by LLM.
      */
     public GenerateQuestionResponse generateQuestion(GenerateQuestionRequest request) {
-        String trackStr = request.track() != null ? request.track().name() : "";
-        String diffStr = request.difficulty() != null ? request.difficulty().name() : "";
+        String trackStr = request.track() != null ? request.track().name() : "ALGORITHMS_DATA_STRUCTURES";
+        String diffStr = request.difficulty() != null ? request.difficulty().name() : "JUNIOR";
+        String providerStr = request.modelProvider() != null ? request.modelProvider().name() : "";
 
-        // 1. Fetch Verified Problems from Catalog
-        List<ProblemCatalogClient.ProblemCatalogItem> catalog = problemCatalogClient.fetchProblems(trackStr, diffStr);
+        // 1. Fetch matched problem from centralized Question Bank
+        Optional<ProblemCatalogClient.QuestionMatchResult> matchOpt = problemCatalogClient.matchQuestion(
+                trackStr,
+                diffStr,
+                List.of(),
+                request.jobDescription(),
+                providerStr,
+                request.apiKey()
+        );
 
-        ProblemCatalogClient.ProblemCatalogItem selectedItem = null;
-        if (!catalog.isEmpty()) {
-            List<String> previous = request.previousQuestions() != null ? request.previousQuestions() : List.of();
-            selectedItem = catalog.stream()
-                    .filter(p -> !previous.contains(p.problemSlug()) && !previous.contains(p.title()))
-                    .findFirst()
-                    .orElse(catalog.get(0));
-        }
-
-        if (selectedItem == null) {
-            // Default resilient fallback catalog item with standard I/O contract
-            selectedItem = new ProblemCatalogClient.ProblemCatalogItem(
+        ProblemCatalogClient.QuestionPublicItem selectedItem;
+        if (matchOpt.isPresent() && matchOpt.get().question() != null) {
+            selectedItem = matchOpt.get().question();
+            log.info("Matched Question Bank problem '{}' ({}) - LLM Assisted: {}",
+                    selectedItem.slug(), selectedItem.title(), matchOpt.get().llmAssisted());
+        } else {
+            // Resilient fallback item
+            selectedItem = new ProblemCatalogClient.QuestionPublicItem(
                     "lru-cache",
                     "LRU Cache Implementation",
-                    request.track() != null ? request.track().name() : "ALGORITHMS_DATA_STRUCTURES",
-                    request.difficulty() != null ? request.difficulty().name() : "SENIOR",
+                    trackStr,
+                    diffStr,
+                    List.of("data-structures", "caching"),
                     "Implement an LRU Cache with standard I/O operations (Line 1: capacity, followed by put k v / get k).",
-                    Map.of("java", "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        // LRU Cache Standard I/O\n    }\n}"),
-                    List.of(new GenerateQuestionResponse.TestCaseView("Sample 1", "2\nput 1 1\nget 1", "1"))
+                    "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        // LRU Cache\n    }\n}",
+                    Map.of("java", "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        // LRU Cache\n    }\n}"),
+                    Map.of(),
+                    List.of(),
+                    List.of(new GenerateQuestionResponse.TestCaseView("Sample 1", "2\nput 1 1\nget 1", "1")),
+                    List.of("O(1) Get and Put", "Capacity eviction")
             );
         }
 
-        // 2. Personalize Problem Statement using LLM (Grounding in Resume / Candidate Profile)
+        // 2. Personalize Problem Statement using LLM (Grounding in Candidate Role / JD)
         String finalStatement = selectedItem.problemStatement();
         try {
             AiClient client = clientFactory.getClient(request.modelProvider());
@@ -90,30 +99,33 @@ public class AiOrchestratorService {
                 finalStatement = personalized.trim();
             }
         } catch (Exception e) {
-            log.info("Using canonical catalog problem statement: {}", e.getMessage());
+            log.info("Using canonical question statement: {}", e.getMessage());
         }
 
-        String primaryStarter = selectedItem.starterCode() != null
-                ? selectedItem.starterCode().getOrDefault("java", selectedItem.starterCode().values().stream().findFirst().orElse(""))
-                : "";
+        String primaryStarter = selectedItem.starterCode();
+        if ((primaryStarter == null || primaryStarter.isBlank()) && selectedItem.starterCodeMap() != null) {
+            primaryStarter = selectedItem.starterCodeMap().getOrDefault("java",
+                    selectedItem.starterCodeMap().values().stream().findFirst().orElse(""));
+        }
 
         return GenerateQuestionResponse.builder()
-                .problemSlug(selectedItem.problemSlug())
+                .problemSlug(selectedItem.slug())
                 .title(selectedItem.title())
                 .track(request.track())
                 .difficulty(request.difficulty())
                 .problemStatement(finalStatement)
                 .starterCode(primaryStarter)
-                .starterCodeMap(selectedItem.starterCode())
-                .sampleTests(selectedItem.sampleTests())
+                .starterCodeMap(selectedItem.starterCodeMap() != null ? selectedItem.starterCodeMap() : Map.of())
+                .starterFiles(selectedItem.starterFiles() != null ? selectedItem.starterFiles() : Map.of())
+                .editablePaths(selectedItem.editablePaths() != null ? selectedItem.editablePaths() : List.of())
+                .sampleTests(selectedItem.sampleTests() != null ? selectedItem.sampleTests() : List.of())
                 .hints(List.of(
-                        "Think about the core data structure trade-offs for constant-time lookup and ordering.",
-                        "Verify boundary conditions such as capacity eviction, duplicate keys, and empty inputs."
+                        "Think about core data structure mechanics, operational complexity, and invariant guarantees.",
+                        "Verify boundary conditions such as capacity limits, empty collections, and duplicate entries."
                 ))
-                .evaluationCriteria(List.of(
-                        "O(1) Time Complexity on core operations",
-                        "Correct standard I/O execution with zero compiler warnings",
-                        "Clean exception and capacity handling"
+                .evaluationCriteria(selectedItem.evaluationCriteria() != null ? selectedItem.evaluationCriteria() : List.of(
+                        "Optimal time and space complexity",
+                        "Clean exception and boundary condition handling"
                 ))
                 .build();
     }

@@ -3,11 +3,11 @@ package com.interviewos.session.sandbox.service;
 import com.interviewos.session.document.InterviewSessionDocument;
 import com.interviewos.session.repository.InterviewSessionMongoRepository;
 import com.interviewos.session.runner.TrackRunner;
+import com.interviewos.session.sandbox.client.QuestionBankClient;
 import com.interviewos.session.sandbox.document.ProblemDocument;
 import com.interviewos.session.sandbox.dto.ExecuteCodeRequest;
 import com.interviewos.session.sandbox.dto.ExecuteProjectRequest;
 import com.interviewos.session.sandbox.dto.ExecutionResultResponse;
-import com.interviewos.session.sandbox.repository.ProblemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ import java.util.Optional;
 public class CodeExecutionService {
 
     private final List<TrackRunner> trackRunners;
-    private final ProblemRepository problemRepository;
+    private final QuestionBankClient questionBankClient;
     private final InterviewSessionMongoRepository sessionMongoRepository;
 
     /**
@@ -102,7 +102,7 @@ public class CodeExecutionService {
 
     private Optional<ProblemDocument> resolveProblem(String slug) {
         if (slug != null && !slug.isBlank()) {
-            return problemRepository.findByProblemSlug(slug);
+            return questionBankClient.fetchProblemBySlug(slug);
         }
         return Optional.empty();
     }
@@ -115,7 +115,7 @@ public class CodeExecutionService {
                 .executionTimeMs(0.0)
                 .memoryUsedMb(0.0)
                 .stdout("")
-                .stderr("Problem definition not found in catalog for slug: '" + slug + "'. Zero silent fallback.")
+                .stderr("Problem definition not found in Question Bank for slug: '" + slug + "'. Zero silent fallback.")
                 .compilerOutput("")
                 .testResults(List.of())
                 .build();
