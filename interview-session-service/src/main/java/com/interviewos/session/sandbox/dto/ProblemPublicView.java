@@ -14,6 +14,9 @@ public record ProblemPublicView(
         String difficulty,
         String problemStatement,
         Map<String, String> starterCode,
+        Map<String, String> starterFiles,
+        List<String> editablePaths,
+        String buildProfile,
         List<ProblemDocument.TestCase> sampleTests,
         ProblemDocument.ExecutionLimits limits
 ) {
@@ -25,6 +28,9 @@ public record ProblemPublicView(
                 .difficulty(doc.getDifficulty())
                 .problemStatement(doc.getProblemStatement())
                 .starterCode(doc.getStarterCode())
+                .starterFiles(doc.getStarterFiles())
+                .editablePaths(doc.getEditablePaths())
+                .buildProfile(doc.getBuildProfile())
                 .sampleTests(doc.getSampleTests())
                 .limits(doc.getLimits())
                 .build();

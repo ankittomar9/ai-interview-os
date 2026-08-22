@@ -24,3 +24,8 @@ judge0:
   url: ${JUDGE0_URL:http://judge0:2358}
   auth-token: ${JUDGE0_AUTH_TOKEN:}
   wait-timeout-seconds: 20
+
+runner:
+  maven:
+    image: ${RUNNER_MAVEN_IMAGE:ai-interview-os/lld-runner:latest}
+    timeout-seconds: ${RUNNER_MAVEN_TIMEOUT_SECONDS:240}

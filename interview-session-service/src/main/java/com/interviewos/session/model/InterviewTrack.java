@@ -4,5 +4,7 @@ public enum InterviewTrack {
     JAVA_SPRING_BOOT,
     ALGORITHMS_DATA_STRUCTURES,
     SYSTEM_DESIGN,
-    BEHAVIORAL_STAR
+    BEHAVIORAL_STAR,
+    SPRING_LLD,
+    LLD
 }

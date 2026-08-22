@@ -34,6 +34,18 @@ public class ProblemDocument {
     private Map<String, String> starterCode = Map.of();
 
     @Builder.Default
+    private Map<String, String> starterFiles = Map.of();
+
+    @Builder.Default
+    private List<String> editablePaths = new ArrayList<>();
+
+    @Builder.Default
+    private Map<String, String> hiddenTestFiles = Map.of();
+
+    @Builder.Default
+    private String buildProfile = "judge0";
+
+    @Builder.Default
     private List<TestCase> sampleTests = new ArrayList<>();
 
     @Builder.Default
