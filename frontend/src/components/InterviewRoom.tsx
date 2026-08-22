@@ -666,7 +666,8 @@ export const InterviewRoom: React.FC<Props> = ({
         );
       } else if (result.status === 'PASSED') {
         setTestStatus('passed');
-        let output = `[Sandbox Status] Execution Succeeded in ${result.executionTimeMs.toFixed(1)}ms (Heap: ${result.memoryUsedMb.toFixed(1)}MB)\n\n`;
+        let output = `[Phase 1] Compilation: ✅ SUCCESSFUL (${lang.toUpperCase()})\n`;
+        output += `[Phase 2] Test Fixtures Execution in ${result.executionTimeMs.toFixed(1)}ms (Heap: ${result.memoryUsedMb.toFixed(1)}MB)\n\n`;
         result.testResults.forEach((t) => {
           output += `✅ ${t.name} ➔ PASS (${t.durationMs.toFixed(1)}ms)\n`;
         });
@@ -674,12 +675,16 @@ export const InterviewRoom: React.FC<Props> = ({
         setExecutionOutput(output);
       } else {
         setTestStatus('failed');
-        let output = `[Sandbox Status] Execution Completed in ${result.executionTimeMs.toFixed(1)}ms (Heap: ${result.memoryUsedMb.toFixed(1)}MB)\n\n`;
+        let output = `[Phase 1] Compilation: ✅ SUCCESSFUL (${lang.toUpperCase()})\n`;
+        output += `[Phase 2] Test Fixtures Execution in ${result.executionTimeMs.toFixed(1)}ms (Heap: ${result.memoryUsedMb.toFixed(1)}MB)\n\n`;
         result.testResults.forEach((t) => {
           if (t.status === 'PASS') {
             output += `✅ ${t.name} ➔ PASS (${t.durationMs.toFixed(1)}ms)\n`;
           } else {
             output += `❌ ${t.name} ➔ FAILED (${t.durationMs.toFixed(1)}ms)\n   ${t.error || 'Expected match not met'}\n`;
+            if (t.error && (t.error.includes('Got:') || t.error.includes('\n'))) {
+              output += `   💡 Hint: Check for unintended extra print statements (e.g. System.out.println) in your solution.\n`;
+            }
           }
         });
         output += `\n⚠️ Status: ${result.passedTests} / ${result.totalTests} Tests Passed.`;

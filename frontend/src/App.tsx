@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider } from './types';
 import { createSession, generateDiagnosticReport, generateQuestion, startSession } from './services/api';
 import { SetupScreen } from './components/SetupScreen';
@@ -28,6 +29,7 @@ export function App() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [candidateId, setCandidateId] = useState('candidate-01');
   const [roleTitle, setRoleTitle] = useState('Senior Java Backend Engineer');
   const [question, setQuestion] = useState<GenerateQuestionResponse | null>(null);
@@ -83,12 +85,15 @@ export function App() {
 
   const handleFinishInterview = async () => {
     if (!sessionId) return;
+    setIsGeneratingReport(true);
     try {
       const rep = await generateDiagnosticReport(sessionId);
       setReport(rep);
       setView('REPORT');
     } catch (err: any) {
       alert(`Failed to generate diagnostic report: ${err.message}`);
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -98,7 +103,30 @@ export function App() {
   }
 
   return (
-    <div>
+    <div className="relative">
+      {/* FULL-SCREEN REPORT GENERATION OVERLAY */}
+      {isGeneratingReport && (
+        <div className="fixed inset-0 z-50 bg-bg/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center mb-6 shadow-lg shadow-primary/10 relative">
+            <Award className="w-8 h-8 text-primary animate-pulse" />
+            <Sparkles className="w-4 h-4 text-warning absolute -top-1 -right-1 animate-bounce" />
+          </div>
+
+          <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+            Synthesizing 360° Diagnostic Report
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
+          </h2>
+          <p className="text-xs text-text-3 max-w-md mb-6 leading-relaxed">
+            Auditing conversation transcript, code executions, and evaluating multi-dimensional rubric with Bar Raiser criteria...
+          </p>
+
+          <div className="w-64 bg-elevated rounded-full h-1.5 overflow-hidden border border-border">
+            <div className="h-full bg-gradient-to-r from-primary via-primary-2 to-sky-400 rounded-full animate-pulse w-3/4" />
+          </div>
+          <span className="text-[11px] font-mono text-text-3 mt-3">Evaluating 5 competency dimensions &amp; generating 7-day study plan</span>
+        </div>
+      )}
+
       {view === 'SETUP' && (
         <SetupScreen onStart={handleStartInterview} isLoading={isLoading} />
       )}
