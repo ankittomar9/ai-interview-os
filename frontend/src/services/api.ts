@@ -4,7 +4,11 @@ import type {
     DiagnosticReportResponse,
     InterviewTrack,
     DifficultyLevel,
-    TelemetryEventType
+    TelemetryEventType,
+    AttachmentUploadResponse,
+    DesignEvaluateRequest,
+    DesignEvaluateResponse,
+    MessageType
 } from '../types';
 
 const GATEWAY_BASE = '/api/v1';
@@ -55,7 +59,7 @@ export const addMessageToSession = async (
     sessionId: number,
     payload: {
         senderRole: 'AI' | 'CANDIDATE';
-        messageType: 'EXPLANATION' | 'CODE_SUBMISSION' | 'CLARIFICATION' | 'FEEDBACK';
+        messageType: MessageType;
         content: string;
         codeSnippet?: string;
     }
@@ -73,6 +77,43 @@ export const completeSession = async (sessionId: number): Promise<SessionRespons
     const res = await fetch(`${SESSION_API}/${sessionId}/complete`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to complete session via Gateway');
     return res.json();
+};
+
+// --- Attachments & Canvas Snapshot Engine (:8081) ---
+export const uploadCanvasPngAttachment = async (
+    sessionId: number,
+    pngBlob: Blob
+): Promise<AttachmentUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', pngBlob, 'canvas-architecture.png');
+    formData.append('kind', 'CANVAS_PNG');
+
+    const res = await fetch(`${SESSION_API}/${sessionId}/attachments`, {
+        method: 'POST',
+        body: formData
+    });
+    if (!res.ok) throw new Error('Failed to upload canvas PNG attachment');
+    return res.json();
+};
+
+export const uploadCanvasJsonAttachment = async (
+    sessionId: number,
+    canvasData: string
+): Promise<AttachmentUploadResponse> => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/attachments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            kind: 'CANVAS_JSON',
+            canvasData
+        })
+    });
+    if (!res.ok) throw new Error('Failed to upload canvas JSON snapshot');
+    return res.json();
+};
+
+export const getAttachmentUrl = (sessionId: number, attachmentId: string): string => {
+    return `${SESSION_API}/${sessionId}/attachments/${attachmentId}`;
 };
 
 // --- AI Orchestrator Service (Routed via Gateway -> :8082) ---
@@ -114,6 +155,18 @@ export const processDialogueTurn = async (payload: {
         body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('Failed to process dialogue turn');
+    return res.json();
+};
+
+export const evaluateArchitectureDesign = async (
+    payload: DesignEvaluateRequest
+): Promise<DesignEvaluateResponse> => {
+    const res = await fetch(`${AI_API}/design-evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to evaluate system design architecture');
     return res.json();
 };
 

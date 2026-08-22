@@ -6,7 +6,7 @@ export type DifficultyLevel = 'JUNIOR' | 'MID' | 'SENIOR' | 'STAFF';
 
 export type SessionStatus = 'INITIALIZED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'EVALUATED';
 
-export type MessageType = 'QUESTION' | 'EXPLANATION' | 'CODE_SUBMISSION' | 'HINT' | 'FEEDBACK' | 'SYSTEM_EVENT';
+export type MessageType = 'QUESTION' | 'EXPLANATION' | 'CODE_SUBMISSION' | 'HINT' | 'FEEDBACK' | 'SYSTEM_EVENT' | 'SYSTEM_DESIGN';
 
 export type HiringVerdict = 'STRONG_HIRE' | 'HIRE' | 'LEAN_HIRE' | 'NO_HIRE';
 
@@ -97,4 +97,30 @@ export interface DiagnosticReportResponse {
     llmGenerated?: boolean;
     requirementsClarityScore?: number;
     generatedAt: string;
+}
+
+export interface AttachmentUploadResponse {
+    attachmentId: string;
+    kind: 'CANVAS_PNG' | 'CANVAS_JSON';
+    sizeBytes: number;
+}
+
+export interface DesignEvaluateRequest {
+    sessionId: number;
+    canvasJsonAttachmentId?: string;
+    pngAttachmentId?: string;
+    requirements?: {
+        dau?: string;
+        peakFactor?: string;
+        readWriteRatio?: string;
+    };
+    modelProvider?: ModelProvider;
+    apiKey?: string;
+}
+
+export interface DesignEvaluateResponse {
+    feedback: string[];
+    score: number;
+    evidence: string;
+    llmGenerated: boolean;
 }

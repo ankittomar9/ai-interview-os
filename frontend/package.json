@@ -12,6 +12,8 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@xyflow/react": "^12.11.3",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^1.31.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.8",

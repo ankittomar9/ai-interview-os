@@ -956,7 +956,12 @@ export const InterviewRoom: React.FC<Props> = ({
 
             {editorTab === 'whiteboard' && (
               <div className="h-full p-2">
-                <HldWhiteboardCanvas onArchitectureUpdate={(sum) => setArchitectureSummary(sum)} />
+                <HldWhiteboardCanvas
+                  sessionId={sessionId}
+                  provider={provider}
+                  apiKey={apiKey}
+                  onArchitectureUpdate={(sum) => setArchitectureSummary(sum)}
+                />
               </div>
             )}
           </div>
