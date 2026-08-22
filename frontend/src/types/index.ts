@@ -32,6 +32,7 @@ export interface SessionResponse {
         content: string;
         codeSnippet?: string;
         timestamp: string;
+        metadata?: Record<string, string>;
     }>;
 }
 
@@ -66,6 +67,9 @@ export interface AiDialogueResponse {
     codeAnalysis?: string;
     keyStrengths: string[];
     areasToImprove: string[];
+    detectedIntent?: 'CLARIFYING' | 'EXPLAINING_APPROACH' | 'CODING' | 'STUCK' | 'COMPLETE' | string;
+    turnSummary?: string;
+    recommendedAction?: 'PROBE_DEEPER' | 'OFFER_HINT' | 'ADVANCE_STAGE' | 'ANSWER_CLARIFICATION' | string;
 }
 
 export interface DimensionScore {

@@ -1,20 +1,25 @@
 package com.interviewos.ai.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewos.ai.client.AiClient;
 import com.interviewos.ai.client.AiClientFactory;
 import com.interviewos.ai.client.ProblemCatalogClient;
+import com.interviewos.ai.client.SessionTranscriptClient;
 import com.interviewos.ai.dto.AiDialogueRequest;
 import com.interviewos.ai.dto.AiDialogueResponse;
 import com.interviewos.ai.dto.GenerateQuestionRequest;
 import com.interviewos.ai.dto.GenerateQuestionResponse;
+import com.interviewos.ai.dto.TranscriptTurnDto;
 import com.interviewos.ai.model.DifficultyLevel;
 import com.interviewos.ai.model.InterviewTrack;
+import com.interviewos.ai.util.DialogueMemoryBuilder;
 import com.interviewos.ai.util.JsonCleaner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +31,7 @@ public class AiOrchestratorService {
 
     private final AiClientFactory clientFactory;
     private final ProblemCatalogClient problemCatalogClient;
+    private final SessionTranscriptClient sessionTranscriptClient;
     private final ObjectMapper objectMapper;
 
     /**
@@ -59,63 +65,24 @@ public class AiOrchestratorService {
                     "LRU Cache Implementation",
                     trackStr,
                     diffStr,
-                    List.of("data-structures", "caching"),
-                    "Implement an LRU Cache with standard I/O operations (Line 1: capacity, followed by put k v / get k).",
-                    "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        // LRU Cache\n    }\n}",
-                    Map.of("java", "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        // LRU Cache\n    }\n}"),
+                    List.of("HashMap", "DoublyLinkedList", "O(1)"),
+                    "Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.",
+                    "// Implement LRU Cache\n",
+                    Map.of("java", "// Java starter\n"),
                     Map.of(),
                     List.of(),
-                    List.of(new GenerateQuestionResponse.TestCaseView("Sample 1", "2\nput 1 1\nget 1", "1")),
-                    List.of("O(1) Get and Put", "Capacity eviction")
+                    List.of(),
+                    List.of("O(1) get and put operations", "Clean eviction mechanics")
             );
-        }
-
-        // 2. Personalize Problem Statement using LLM (Grounding in Candidate Role / JD)
-        String finalStatement = selectedItem.problemStatement();
-        try {
-            AiClient client = clientFactory.getClient(request.modelProvider());
-            String systemInstruction = """
-                    You are a Principal Software Engineer conducting a high-signal technical assessment.
-                    The candidate is applying for: %s (%s).
-                    Resume/Job Context: %s
-                    
-                    Your task: Introduce this technical challenge to the candidate in a realistic, professional interviewer voice, grounding it in their context.
-                    CRITICAL: You MUST preserve the EXACT input/output format, constraints, and operational commands intact. Return ONLY the plain text description.
-                    """.formatted(
-                    request.roleTitle(),
-                    request.difficulty(),
-                    request.jobDescription() != null ? request.jobDescription() : "Standard Enterprise Tech Profile"
-            );
-
-            String userPrompt = "Canonical Challenge:\n" + selectedItem.problemStatement();
-            String personalized = client.generateCompletion(
-                    request.modelProvider(),
-                    systemInstruction,
-                    userPrompt,
-                    request.apiKey(),
-                    request.modelName()
-            );
-
-            if (personalized != null && !personalized.isBlank() && !personalized.contains("error")) {
-                finalStatement = personalized.trim();
-            }
-        } catch (Exception e) {
-            log.info("Using canonical question statement: {}", e.getMessage());
-        }
-
-        String primaryStarter = selectedItem.starterCode();
-        if ((primaryStarter == null || primaryStarter.isBlank()) && selectedItem.starterCodeMap() != null) {
-            primaryStarter = selectedItem.starterCodeMap().getOrDefault("java",
-                    selectedItem.starterCodeMap().values().stream().findFirst().orElse(""));
         }
 
         return GenerateQuestionResponse.builder()
                 .problemSlug(selectedItem.slug())
                 .title(selectedItem.title())
-                .track(request.track())
-                .difficulty(request.difficulty())
-                .problemStatement(finalStatement)
-                .starterCode(primaryStarter)
+                .track(InterviewTrack.valueOf(selectedItem.track()))
+                .difficulty(DifficultyLevel.valueOf(selectedItem.difficulty()))
+                .problemStatement(selectedItem.problemStatement())
+                .starterCode(selectedItem.starterCode())
                 .starterCodeMap(selectedItem.starterCodeMap() != null ? selectedItem.starterCodeMap() : Map.of())
                 .starterFiles(selectedItem.starterFiles() != null ? selectedItem.starterFiles() : Map.of())
                 .editablePaths(selectedItem.editablePaths() != null ? selectedItem.editablePaths() : List.of())
@@ -132,14 +99,67 @@ public class AiOrchestratorService {
     }
 
     /**
-     * Handles live conversational dialogue, probing follow-up questions grounded in Question Bank seeds, and code review.
+     * Handles live conversational dialogue, memory construction, adaptive directives, and single-pass intent extraction.
      */
     public AiDialogueResponse processDialogue(AiDialogueRequest request) {
         AiClient client = clientFactory.getClient(request.modelProvider());
 
+        // 1. Fetch lightweight session transcript for memory (graceful fallback to empty list)
+        List<TranscriptTurnDto> transcript = List.of();
+        if (request.sessionId() != null) {
+            transcript = sessionTranscriptClient.fetchSessionTranscript(request.sessionId());
+        }
+
+        // 2. Fetch full question details for followUpSeeds & coaching hints
+        String resolvedSlug = resolveProblemSlug(request);
+        String coachingHint = null;
+        List<String> followUpSeeds = new ArrayList<>();
+
+        if (resolvedSlug != null && !resolvedSlug.isBlank()) {
+            try {
+                Optional<ProblemCatalogClient.QuestionFullDetail> detailOpt = problemCatalogClient.getFullQuestionDetail(resolvedSlug);
+                if (detailOpt.isPresent()) {
+                    var detail = detailOpt.get();
+                    if (detail.interviewerNotes() != null && detail.interviewerNotes().followUpSeeds() != null) {
+                        followUpSeeds.addAll(detail.interviewerNotes().followUpSeeds());
+                    }
+                    if (detail.coaching() != null) {
+                        List<String> mistakes = detail.coaching().commonMistakes();
+                        String outline = detail.coaching().modelAnswerOutline();
+                        StringBuilder coachSb = new StringBuilder();
+                        if (mistakes != null && !mistakes.isEmpty()) {
+                            coachSb.append("Common Mistakes: ").append(String.join("; ", mistakes)).append(". ");
+                        }
+                        if (outline != null && !outline.isBlank()) {
+                            coachSb.append("Model Approach Outline: ").append(outline);
+                        }
+                        coachingHint = coachSb.toString().trim();
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Notice on fetching question coaching details: {}", e.getMessage());
+            }
+        }
+
+        // 3. Build Conversation Memory & Adaptive Directives
+        DialogueMemoryBuilder.MemoryView memory = DialogueMemoryBuilder.buildMemory(
+                transcript,
+                request.candidateExplanation(),
+                coachingHint
+        );
+
         StringBuilder systemInstructionBuilder = new StringBuilder("""
                 You are an empathetic yet rigorous Senior Technical Interviewer conducting a live interview.
                 Assess the candidate's explanation and code submission against the problem context.
+                
+                CONVERSATION MEMORY:
+                - Running summary: %s
+                - Last turns verbatim:
+                %s
+                - Intent history: %s
+                
+                ADAPTIVE DIRECTIVE (apply exactly this guidance in your response):
+                - %s
                 
                 CRITICAL INSTRUCTION: You MUST reply ONLY with a valid raw JSON object matching this schema:
                 {
@@ -148,26 +168,22 @@ public class AiOrchestratorService {
                   "isSolutionComplete": true/false,
                   "codeAnalysis": "Short evaluation of time/space complexity or code quality",
                   "keyStrengths": ["Strength 1", "Strength 2"],
-                  "areasToImprove": ["Area 1"]
+                  "areasToImprove": ["Area 1"],
+                  "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
+                  "turnSummary": "Concise summary of this candidate turn in <= 25 words",
+                  "recommendedAction": "PROBE_DEEPER | OFFER_HINT | ADVANCE_STAGE | ANSWER_CLARIFICATION"
                 }
-                """);
+                """.formatted(
+                memory.runningSummary(),
+                memory.recentVerbatim(),
+                memory.intentHistory().isEmpty() ? "[]" : memory.intentHistory().toString(),
+                memory.adaptiveDirective()
+        ));
 
-        // Grounding with Question Bank follow-up seeds
-        String resolvedSlug = resolveProblemSlug(request);
-        if (resolvedSlug != null && !resolvedSlug.isBlank()) {
-            try {
-                Optional<ProblemCatalogClient.QuestionFullDetail> detailOpt = problemCatalogClient.getFullQuestionDetail(resolvedSlug);
-                if (detailOpt.isPresent()) {
-                    var detail = detailOpt.get();
-                    if (detail.interviewerNotes() != null && detail.interviewerNotes().followUpSeeds() != null && !detail.interviewerNotes().followUpSeeds().isEmpty()) {
-                        systemInstructionBuilder.append("\nSuggested Follow-Up Topics for this challenge (probe candidate on these when appropriate):\n");
-                        for (String seed : detail.interviewerNotes().followUpSeeds()) {
-                            systemInstructionBuilder.append("- ").append(seed).append("\n");
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                log.debug("Notice on fetching question followUpSeeds: {}", e.getMessage());
+        if (!followUpSeeds.isEmpty()) {
+            systemInstructionBuilder.append("\nSuggested Follow-Up Topics for this challenge (probe candidate on these when appropriate):\n");
+            for (String seed : followUpSeeds) {
+                systemInstructionBuilder.append("- ").append(seed).append("\n");
             }
         }
 
@@ -212,7 +228,46 @@ public class AiOrchestratorService {
             );
 
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);
-            return objectMapper.readValue(cleanJson, AiDialogueResponse.class);
+            JsonNode root = objectMapper.readTree(cleanJson);
+
+            String reply = root.hasNonNull("interviewerReply") ? root.get("interviewerReply").asText() : "I see your technical direction.";
+            String followUp = root.hasNonNull("followUpQuestion") ? root.get("followUpQuestion").asText() : "How would you handle boundary conditions and scale?";
+            boolean isComplete = root.hasNonNull("isSolutionComplete") && root.get("isSolutionComplete").asBoolean(false);
+            String codeAnalysis = root.hasNonNull("codeAnalysis") ? root.get("codeAnalysis").asText() : "";
+
+            List<String> strengths = new ArrayList<>();
+            if (root.has("keyStrengths") && root.get("keyStrengths").isArray()) {
+                root.get("keyStrengths").forEach(s -> strengths.add(s.asText()));
+            }
+            List<String> areas = new ArrayList<>();
+            if (root.has("areasToImprove") && root.get("areasToImprove").isArray()) {
+                root.get("areasToImprove").forEach(a -> areas.add(a.asText()));
+            }
+
+            // Defaults for new M6.5 intent and action fields
+            String detectedIntent = root.hasNonNull("detectedIntent") && !root.get("detectedIntent").asText().isBlank()
+                    ? root.get("detectedIntent").asText().trim()
+                    : "EXPLAINING_APPROACH";
+
+            String turnSummary = root.hasNonNull("turnSummary") && !root.get("turnSummary").asText().isBlank()
+                    ? root.get("turnSummary").asText().trim()
+                    : "Candidate shared technical explanation.";
+
+            String recommendedAction = root.hasNonNull("recommendedAction") && !root.get("recommendedAction").asText().isBlank()
+                    ? root.get("recommendedAction").asText().trim()
+                    : "PROBE_DEEPER";
+
+            return new AiDialogueResponse(
+                    reply,
+                    followUp,
+                    isComplete,
+                    codeAnalysis,
+                    strengths,
+                    areas,
+                    detectedIntent,
+                    turnSummary,
+                    recommendedAction
+            );
         } catch (Exception e) {
             log.warn("⚠️ LLM dialogue extraction warning: {}. Using structured fallback dialogue turn.", e.getMessage());
             return new AiDialogueResponse(
@@ -221,7 +276,10 @@ public class AiOrchestratorService {
                     false,
                     "Algorithmic structure looks promising. Focus on time/space trade-offs and boundary condition validation.",
                     List.of("Clear communicative thought process", "Structured problem breakdown"),
-                    List.of("Explicit Big-O complexity analysis", "Edge-case error handling")
+                    List.of("Explicit Big-O complexity analysis", "Edge-case error handling"),
+                    "EXPLAINING_APPROACH",
+                    "Candidate provided technical explanation.",
+                    "PROBE_DEEPER"
             );
         }
     }

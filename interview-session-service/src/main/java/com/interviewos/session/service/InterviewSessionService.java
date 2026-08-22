@@ -133,6 +133,7 @@ public class InterviewSessionService {
                         .messageType(request.messageType().name())
                         .content(request.content())
                         .codeSnippet(request.codeSnippet())
+                        .metadata(request.metadata())
                         .timestamp(LocalDateTime.now())
                         .build();
                 doc.getTranscript().add(turn);
@@ -142,7 +143,15 @@ public class InterviewSessionService {
             log.warn("⚠️ MongoDB sync warning on addMessage: {}", e.getMessage());
         }
 
-        return SessionResponse.MessageResponse.fromEntity(saved);
+        return new SessionResponse.MessageResponse(
+                saved.getId(),
+                saved.getSenderRole(),
+                saved.getMessageType(),
+                saved.getContent(),
+                saved.getCodeSnippet(),
+                saved.getTimestamp(),
+                request.metadata()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -154,6 +163,25 @@ public class InterviewSessionService {
     @Transactional(readOnly = true)
     public List<SessionResponse.MessageResponse> getSessionTranscript(Long sessionId) {
         findSessionOrThrow(sessionId); // Verify exists
+        try {
+            var mongoDocOpt = mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId);
+            if (mongoDocOpt.isPresent() && mongoDocOpt.get().getTranscript() != null && !mongoDocOpt.get().getTranscript().isEmpty()) {
+                return mongoDocOpt.get().getTranscript().stream()
+                        .map(t -> new SessionResponse.MessageResponse(
+                                (long) t.getTurnNumber(),
+                                t.getSenderRole(),
+                                t.getMessageType() != null ? com.interviewos.session.model.MessageType.valueOf(t.getMessageType()) : com.interviewos.session.model.MessageType.EXPLANATION,
+                                t.getContent(),
+                                t.getCodeSnippet(),
+                                t.getTimestamp() != null ? t.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant() : Instant.now(),
+                                t.getMetadata()
+                        ))
+                        .toList();
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ MongoDB transcript fetch fallback: {}", e.getMessage());
+        }
+
         return messageRepository.findBySessionIdOrderByTimestampAsc(sessionId).stream()
                 .map(SessionResponse.MessageResponse::fromEntity)
                 .toList();

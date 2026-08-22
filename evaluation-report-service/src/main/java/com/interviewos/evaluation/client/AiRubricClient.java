@@ -62,7 +62,11 @@ public class AiRubricClient {
             String language
     ) {}
 
-    public record TurnDto(String role, String messageType, String content, String codeSnippet) {}
+    public record TurnDto(String role, String messageType, String content, String codeSnippet, java.util.Map<String, String> metadata) {
+        public TurnDto(String role, String messageType, String content, String codeSnippet) {
+            this(role, messageType, content, codeSnippet, null);
+        }
+    }
     public record ExecutionDto(String status, int passedTests, int totalTests, double executionTimeMs, double memoryUsedMb) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)

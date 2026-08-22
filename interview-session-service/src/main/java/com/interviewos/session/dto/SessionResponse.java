@@ -9,6 +9,7 @@ import com.interviewos.session.model.SessionStatus;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 public record SessionResponse(
         Long id,
@@ -31,8 +32,13 @@ public record SessionResponse(
             MessageType messageType,
             String content,
             String codeSnippet,
-            Instant timestamp
+            Instant timestamp,
+            Map<String, String> metadata
     ) {
+        public MessageResponse(Long id, String senderRole, MessageType messageType, String content, String codeSnippet, Instant timestamp) {
+            this(id, senderRole, messageType, content, codeSnippet, timestamp, null);
+        }
+
         public static MessageResponse fromEntity(SessionMessage entity) {
             return new MessageResponse(
                     entity.getId(),
@@ -40,7 +46,8 @@ public record SessionResponse(
                     entity.getMessageType(),
                     entity.getContent(),
                     entity.getCodeSnippet(),
-                    entity.getTimestamp()
+                    entity.getTimestamp(),
+                    null
             );
         }
     }

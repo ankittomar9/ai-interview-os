@@ -1,5 +1,6 @@
 import type {
     SessionResponse,
+    GenerateQuestionResponse,
     AiDialogueResponse,
     DiagnosticReportResponse,
     InterviewTrack,
@@ -62,6 +63,7 @@ export const addMessageToSession = async (
         messageType: MessageType;
         content: string;
         codeSnippet?: string;
+        metadata?: Record<string, string>;
     }
 ) => {
     const res = await fetch(`${SESSION_API}/${sessionId}/messages`, {
@@ -118,14 +120,15 @@ export const getAttachmentUrl = (sessionId: number, attachmentId: string): strin
 
 // --- AI Orchestrator Service (Routed via Gateway -> :8082) ---
 export const generateQuestion = async (payload: {
-    roleTitle: string;
+    roleTitle?: string;
+    targetCompany?: string;
     track: InterviewTrack;
     difficulty: DifficultyLevel;
-    targetCompany?: string;
     jobDescription?: string;
     modelProvider?: string;
     apiKey?: string;
-}) => {
+    resumeSkills?: string[];
+}): Promise<GenerateQuestionResponse> => {
     const res = await fetch(`${AI_API}/generate-question`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,6 +140,7 @@ export const generateQuestion = async (payload: {
 
 export const processDialogueTurn = async (payload: {
     questionContext: string;
+    sessionId?: number;
     problemSlug?: string;
     candidateExplanation: string;
     candidateCode?: string;

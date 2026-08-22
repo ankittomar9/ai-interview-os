@@ -154,7 +154,7 @@ public class EvaluationReportService {
 
         // 5. Request Qualitative Multi-Rubric from AI Orchestrator
         List<AiRubricClient.TurnDto> turnDtos = transcript.stream()
-                .map(t -> new AiRubricClient.TurnDto(t.senderRole(), t.messageType(), t.content(), t.codeSnippet()))
+                .map(t -> new AiRubricClient.TurnDto(t.senderRole(), t.messageType(), t.content(), t.codeSnippet(), t.metadata()))
                 .toList();
 
         AiRubricClient.RubricEvaluationRequestDto rubricRequest = AiRubricClient.RubricEvaluationRequestDto.builder()

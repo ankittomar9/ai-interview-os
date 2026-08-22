@@ -4,6 +4,8 @@ import com.interviewos.session.model.MessageType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.Map;
+
 public record AddMessageRequest(
         @NotBlank(message = "Sender role is required (AI or CANDIDATE)")
         String senderRole,
@@ -14,5 +16,11 @@ public record AddMessageRequest(
         @NotBlank(message = "Content cannot be blank")
         String content,
 
-        String codeSnippet
-) {}
+        String codeSnippet,
+
+        Map<String, String> metadata
+) {
+    public AddMessageRequest(String senderRole, MessageType messageType, String content, String codeSnippet) {
+        this(senderRole, messageType, content, codeSnippet, null);
+    }
+}

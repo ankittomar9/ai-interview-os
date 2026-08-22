@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @FeignClient(name = "interview-session-service")
 public interface SessionServiceClient {
@@ -45,6 +46,11 @@ public interface SessionServiceClient {
             String messageType,
             String content,
             String codeSnippet,
-            Instant timestamp
-    ) {}
+            Instant timestamp,
+            Map<String, String> metadata
+    ) {
+        public TranscriptMessageDto(Long id, String senderRole, String messageType, String content, String codeSnippet, Instant timestamp) {
+            this(id, senderRole, messageType, content, codeSnippet, timestamp, null);
+        }
+    }
 }

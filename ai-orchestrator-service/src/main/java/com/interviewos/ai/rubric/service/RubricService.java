@@ -6,6 +6,7 @@ import com.interviewos.ai.client.AiClientFactory;
 import com.interviewos.ai.client.ProblemCatalogClient;
 import com.interviewos.ai.model.ModelProvider;
 import com.interviewos.ai.rubric.dto.DimensionScore;
+import com.interviewos.ai.rubric.dto.ExecutionDto;
 import com.interviewos.ai.rubric.dto.RubricEvaluationRequest;
 import com.interviewos.ai.rubric.dto.RubricResponse;
 import com.interviewos.ai.rubric.dto.TurnDto;
@@ -65,8 +66,9 @@ public class RubricService {
                 CRITICAL RULES:
                 1. Every dimension score MUST carry an "evidence" field with a VERBATIM quote from the candidate transcript.
                 2. If no observable evidence exists in the transcript for a dimension, the score MUST be <= 50 and evidence MUST be exactly "No observable evidence in transcript.".
-                3. "studyPlan" MUST contain exactly 7 high-impact, actionable daily drills specifically addressing the TWO WEAKEST scored dimensions.
-                4. Return ONLY a valid, raw JSON object matching the schema below with NO conversational preamble or markdown backticks:
+                3. In COMMUNICATION_CLARITY and problem-solving rationales (ALGORITHMIC_REASONING), consider candidate persistence, responsiveness to hints, and recovery from stuck states if present in Coaching Signals.
+                4. "studyPlan" MUST contain exactly 7 high-impact, actionable daily drills specifically addressing the TWO WEAKEST scored dimensions.
+                5. Return ONLY a valid, raw JSON object matching the schema below with NO conversational preamble or markdown backticks:
                 
                 {
                   "dimensions": [
@@ -148,6 +150,12 @@ public class RubricService {
             } catch (Exception ignored) {}
         }
 
+        // Coaching Signals computed deterministically from transcript metadata
+        String coachingSignals = computeCoachingSignals(req.transcript(), req.executions());
+        if (coachingSignals != null) {
+            sb.append(coachingSignals).append("\n");
+        }
+
         sb.append("Sandbox Execution Summary:\n");
         if (req.executions() != null && !req.executions().isEmpty()) {
             req.executions().forEach(e -> sb.append(String.format("- Run: %d/%d tests passed (%s) in %.1fms (Memory: %.1fMB)\n",
@@ -194,6 +202,49 @@ public class RubricService {
             prompt = prompt.substring(0, 12000) + "\n... [Remaining transcript truncated for token safety]";
         }
         return prompt;
+    }
+
+    String computeCoachingSignals(List<TurnDto> transcript, List<ExecutionDto> executions) {
+        if (transcript == null || transcript.isEmpty()) return null;
+
+        List<String> intentSequence = new ArrayList<>();
+        int hintEpisodes = 0;
+        int stuckEpisodes = 0;
+
+        for (TurnDto turn : transcript) {
+            if (turn.metadata() != null) {
+                String intent = turn.metadata().get("detectedIntent");
+                if (intent != null && !intent.isBlank()) {
+                    intentSequence.add(intent.trim());
+                    if ("STUCK".equalsIgnoreCase(intent.trim())) {
+                        stuckEpisodes++;
+                    }
+                }
+                String action = turn.metadata().get("recommendedAction");
+                if ("OFFER_HINT".equalsIgnoreCase(action)) {
+                    hintEpisodes++;
+                }
+            }
+        }
+
+        if (intentSequence.isEmpty() && hintEpisodes == 0 && stuckEpisodes == 0) {
+            return null; // No metadata recorded
+        }
+
+        boolean recovery = false;
+        if (stuckEpisodes > 0 && executions != null) {
+            recovery = executions.stream().anyMatch(e -> "PASSED".equalsIgnoreCase(e.status()) || (e.totalTests() > 0 && e.passedTests() == e.totalTests()));
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Coaching Signals:\n");
+        sb.append("- Intent Sequence: ").append(intentSequence.isEmpty() ? "None recorded" : String.join(" -> ", intentSequence)).append("\n");
+        sb.append("- Hint Episodes Count: ").append(hintEpisodes).append("\n");
+        sb.append("- Stuck Episodes Count: ").append(stuckEpisodes).append("\n");
+        if (stuckEpisodes > 0) {
+            sb.append("- Recovery after being stuck (Passed execution later): ").append(recovery ? "true" : "false").append("\n");
+        }
+        return sb.toString();
     }
 
     private ModelProvider resolveProvider(String providerStr) {

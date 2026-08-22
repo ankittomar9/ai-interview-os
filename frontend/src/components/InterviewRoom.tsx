@@ -158,7 +158,12 @@ export const InterviewRoom: React.FC<Props> = ({
   }, [question]);
 
   // --- State: Conversation & Dialogue ---
-  const [messages, setMessages] = useState<Array<{ role: 'interviewer' | 'candidate'; content: string; timestamp?: string }>>([
+  const [messages, setMessages] = useState<Array<{
+    role: 'interviewer' | 'candidate';
+    content: string;
+    timestamp?: string;
+    metadata?: Record<string, string>;
+  }>>([
     {
       role: 'interviewer',
       content: `Welcome to your technical assessment! 👋\n\nI am your AI Principal Interviewer. Let's begin with a brief introduction. Please tell me about your engineering background and recent backend systems you've built.`,
@@ -500,19 +505,13 @@ export const InterviewRoom: React.FC<Props> = ({
       // Ignore
     }
 
-    // Stage progression
-    if (currentStage === 'INTRODUCTION') {
-      setCurrentStage('CORE_TECH');
-    } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
-      setCurrentStage('CODING_DSA');
-    }
-
     setIsAiResponding(true);
 
     try {
       const contextPayload = `Problem: ${question.title}\nDescription: ${question.problemStatement}\nCandidate Scratchpad:\n${scratchpadNotes}\n[Current Stage: ${currentStage}]\n${architectureSummary ? `\n[System Design Architecture Canvas Context]:\n${architectureSummary}` : ''}`;
 
       const dialogue = await processDialogueTurn({
+        sessionId,
         questionContext: contextPayload,
         problemSlug: question.problemSlug,
         candidateExplanation: candidateText,
@@ -522,10 +521,39 @@ export const InterviewRoom: React.FC<Props> = ({
         latestExecution: latestExecution || undefined
       });
 
+      // Adaptive Stage Progression
+      if (dialogue.recommendedAction === 'ADVANCE_STAGE') {
+        if (currentStage === 'INTRODUCTION') {
+          setCurrentStage('CORE_TECH');
+        } else if (currentStage === 'CORE_TECH') {
+          setCurrentStage('CODING_DSA');
+        } else if (currentStage === 'CODING_DSA') {
+          setCurrentStage('SYSTEM_DESIGN');
+        }
+      } else {
+        // Fallback heuristic
+        if (currentStage === 'INTRODUCTION') {
+          setCurrentStage('CORE_TECH');
+        } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
+          setCurrentStage('CODING_DSA');
+        }
+      }
+
       const replyText = `${dialogue.interviewerReply}\n\n${dialogue.followUpQuestion}`;
+      const meta: Record<string, string> = {
+        detectedIntent: dialogue.detectedIntent || 'EXPLAINING_APPROACH',
+        turnSummary: dialogue.turnSummary || '',
+        recommendedAction: dialogue.recommendedAction || 'PROBE_DEEPER'
+      };
+
       setMessages((prev) => [
         ...prev,
-        { role: 'interviewer', content: replyText, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+        {
+          role: 'interviewer',
+          content: replyText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          metadata: meta
+        }
       ]);
 
       speakText(`${dialogue.interviewerReply}. ${dialogue.followUpQuestion}`);
@@ -533,7 +561,8 @@ export const InterviewRoom: React.FC<Props> = ({
       await addMessageToSession(sessionId, {
         senderRole: 'AI',
         messageType: 'FEEDBACK',
-        content: replyText
+        content: replyText,
+        metadata: meta
       });
     } catch {
       const fallback = "I see your technical direction. Looking at your data structure choices and architecture scratchpad, how would you handle thread contention and cache eviction under peak write load?";
@@ -1246,8 +1275,15 @@ export const InterviewRoom: React.FC<Props> = ({
                       : 'bg-elevated border-border'
                   }`}
                 >
-                  <div className="text-[11px] font-bold text-primary-2 mb-1 flex justify-between">
-                    <span>{m.role === 'candidate' ? 'You (Candidate)' : 'AI Principal Interviewer'}</span>
+                  <div className="text-[11px] font-bold text-primary-2 mb-1 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span>{m.role === 'candidate' ? 'You (Candidate)' : 'AI Principal Interviewer'}</span>
+                      {m.metadata?.recommendedAction === 'OFFER_HINT' && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-1">
+                          💡 Hint Offered
+                        </span>
+                      )}
+                    </div>
                     {m.timestamp && <span className="text-text-3 font-normal">{m.timestamp}</span>}
                   </div>
                   <div className="text-text whitespace-pre-wrap">

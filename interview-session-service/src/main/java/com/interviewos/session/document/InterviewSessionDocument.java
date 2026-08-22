@@ -66,6 +66,7 @@ public class InterviewSessionDocument {
         private String content;
         private String codeSnippet;
         private String scratchpadSnapshot;
+        private java.util.Map<String, String> metadata;
         private LocalDateTime timestamp;
     }
 }

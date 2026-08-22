@@ -74,4 +74,81 @@ class InterviewSessionControllerTest {
                 .andExpect(jsonPath("$.status").value("INITIALIZED"))
                 .andExpect(jsonPath("$.candidateId").value("candidate-123"));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions/{id}/messages with metadata should return 201 CREATED and metadata")
+    void testAddMessageWithMetadata() throws Exception {
+        com.interviewos.session.dto.AddMessageRequest request = new com.interviewos.session.dto.AddMessageRequest(
+                "AI",
+                com.interviewos.session.model.MessageType.FEEDBACK,
+                "Good start. Let's explore concurrency.",
+                null,
+                java.util.Map.of(
+                        "detectedIntent", "EXPLAINING_APPROACH",
+                        "turnSummary", "Candidate explained locking strategy.",
+                        "recommendedAction", "PROBE_DEEPER"
+                )
+        );
+
+        SessionResponse.MessageResponse mockResponse = new SessionResponse.MessageResponse(
+                10L,
+                "AI",
+                com.interviewos.session.model.MessageType.FEEDBACK,
+                "Good start. Let's explore concurrency.",
+                null,
+                Instant.now(),
+                java.util.Map.of(
+                        "detectedIntent", "EXPLAINING_APPROACH",
+                        "turnSummary", "Candidate explained locking strategy.",
+                        "recommendedAction", "PROBE_DEEPER"
+                )
+        );
+
+        when(sessionService.addMessage(any(), any(com.interviewos.session.dto.AddMessageRequest.class))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/v1/sessions/1/messages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(10))
+                .andExpect(jsonPath("$.metadata.detectedIntent").value("EXPLAINING_APPROACH"))
+                .andExpect(jsonPath("$.metadata.recommendedAction").value("PROBE_DEEPER"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/sessions/{id}/transcript should return transcript list with metadata")
+    void testGetTranscriptWithMetadata() throws Exception {
+        SessionResponse.MessageResponse turn1 = new SessionResponse.MessageResponse(
+                1L,
+                "CANDIDATE",
+                com.interviewos.session.model.MessageType.EXPLANATION,
+                "I will use a HashMap and DoublyLinkedList.",
+                null,
+                Instant.now(),
+                null
+        );
+
+        SessionResponse.MessageResponse turn2 = new SessionResponse.MessageResponse(
+                2L,
+                "AI",
+                com.interviewos.session.model.MessageType.FEEDBACK,
+                "Sounds solid. How do you handle thread safety?",
+                null,
+                Instant.now(),
+                java.util.Map.of(
+                        "detectedIntent", "EXPLAINING_APPROACH",
+                        "turnSummary", "Candidate proposed HashMap + DLL.",
+                        "recommendedAction", "PROBE_DEEPER"
+                )
+        );
+
+        when(sessionService.getSessionTranscript(1L)).thenReturn(List.of(turn1, turn2));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/sessions/1/transcript")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[1].metadata.detectedIntent").value("EXPLAINING_APPROACH"))
+                .andExpect(jsonPath("$[1].metadata.recommendedAction").value("PROBE_DEEPER"));
+    }
 }

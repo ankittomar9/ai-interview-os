@@ -9,12 +9,14 @@ import lombok.Builder;
 import java.util.List;
 
 /**
- * Candidate interaction turn payload.
+ * Candidate interaction turn payload with session memory linkage.
  */
 @Builder
 public record AiDialogueRequest(
         @NotBlank(message = "Question context is required")
         String questionContext,
+
+        Long sessionId,
 
         String problemSlug,
 
@@ -33,7 +35,7 @@ public record AiDialogueRequest(
 
         ExecutionDto latestExecution
 ) {
-    // Backwards-compatible constructor for testing
+    // Backwards-compatible constructor for testing & older callers
     public AiDialogueRequest(
             String questionContext,
             String candidateExplanation,
@@ -43,7 +45,21 @@ public record AiDialogueRequest(
             String apiKey,
             String modelName
     ) {
-        this(questionContext, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null);
+        this(questionContext, null, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null);
+    }
+
+    public AiDialogueRequest(
+            String questionContext,
+            String problemSlug,
+            String candidateExplanation,
+            String candidateCode,
+            List<ChatMessageDto> chatHistory,
+            ModelProvider modelProvider,
+            String apiKey,
+            String modelName,
+            ExecutionDto latestExecution
+    ) {
+        this(questionContext, null, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution);
     }
 
     public record ChatMessageDto(
