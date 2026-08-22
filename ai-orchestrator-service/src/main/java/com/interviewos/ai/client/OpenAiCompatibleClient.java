@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,14 +50,41 @@ public class OpenAiCompatibleClient implements AiClient {
             String apiKey,
             String customModel
     ) {
+        return generateCompletionWithVision(provider, systemInstruction, userPrompt, null, null, apiKey, customModel);
+    }
+
+    @Override
+    public String generateCompletionWithVision(
+            ModelProvider provider,
+            String systemInstruction,
+            String userPrompt,
+            byte[] imageBytes,
+            String mimeType,
+            String apiKey,
+            String customModel
+    ) {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(provider);
         String endpoint = config.endpoint();
         String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
 
-        log.info("Dispatching prompt to OpenAI-compatible provider: {} using model: {}", provider, model);
+        log.info("Dispatching prompt to OpenAI-compatible provider: {} using model: {} (vision: {})", provider, model, imageBytes != null);
 
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException("API Key is required for provider: " + provider);
+        }
+
+        Object userContent;
+        if (provider == ModelProvider.OPENAI && imageBytes != null && imageBytes.length > 0) {
+            String actualMime = (mimeType != null && !mimeType.isBlank()) ? mimeType : "image/png";
+            String base64Data = Base64.getEncoder().encodeToString(imageBytes);
+            userContent = List.of(
+                    Map.of("type", "text", "text", userPrompt),
+                    Map.of("type", "image_url", "image_url", Map.of(
+                            "url", "data:" + actualMime + ";base64," + base64Data
+                    ))
+            );
+        } else {
+            userContent = userPrompt;
         }
 
         // Build standard chat completions payload
@@ -64,7 +92,7 @@ public class OpenAiCompatibleClient implements AiClient {
                 "model", model,
                 "messages", List.of(
                         Map.of("role", "system", "content", systemInstruction),
-                        Map.of("role", "user", "content", userPrompt)
+                        Map.of("role", "user", "content", userContent)
                 ),
                 "temperature", 0.3
         );
