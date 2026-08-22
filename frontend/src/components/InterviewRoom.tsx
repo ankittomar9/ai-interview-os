@@ -12,17 +12,16 @@ import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { ResizeHandle } from './ui/ResizeHandle';
 import { TestConsole } from './ui/TestConsole';
+import { AutoGrowingChatInput } from './ui/AutoGrowingChatInput';
 import { ActivityBar } from './ide/ActivityBar';
 import { BreadcrumbBar } from './ide/BreadcrumbBar';
 import { StatusBar } from './ide/StatusBar';
 import { MarkdownProblem } from './ide/MarkdownProblem';
 import {
   Timer,
-  Send,
   Play,
   Code2,
   Mic,
-  MicOff,
   FileText,
   Sparkles,
   ShieldCheck,
@@ -1301,48 +1300,20 @@ export const InterviewRoom: React.FC<Props> = ({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Candidate Input & Mic Controller */}
+            {/* Candidate Auto-Growing Prompt Input & Voice Controller */}
             <div className="p-3 border-t border-border bg-surface shrink-0">
-              <div className="flex gap-1.5 items-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isListening) stopListening();
-                    else startListening();
-                  }}
-                  className={`w-9 h-9 rounded-md border flex items-center justify-center cursor-pointer transition-colors ${
-                    isListening
-                      ? 'bg-danger border-danger text-white'
-                      : 'bg-elevated border-border text-text hover:bg-border/60'
-                  }`}
-                  title={isListening ? 'Stop Speaking' : 'Start Speaking'}
-                >
-                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                </button>
-
-                <input
-                  type="text"
-                  placeholder="Speak or type explanation..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      void triggerCandidateTurn();
-                    }
-                  }}
-                  className="flex-1 bg-elevated border border-border rounded-md px-3 py-1.5 text-xs text-text placeholder:text-text-3 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void triggerCandidateTurn()}
-                  disabled={isAiResponding}
-                  icon={<Send className="w-3.5 h-3.5" />}
-                  className="w-9 h-9 p-0"
-                />
-              </div>
+              <AutoGrowingChatInput
+                value={chatInput}
+                onChange={setChatInput}
+                onSend={() => void triggerCandidateTurn()}
+                isListening={isListening}
+                onToggleListening={() => {
+                  if (isListening) stopListening();
+                  else startListening();
+                }}
+                isAiResponding={isAiResponding}
+                placeholder="Speak or type your explanation (e.g. data structure approach, Big-O, edge cases)..."
+              />
             </div>
 
             {/* Pinned Corner Webcam Tile (Strictly Non-Movable) */}
