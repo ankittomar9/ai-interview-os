@@ -1,12 +1,12 @@
 export type ModelProvider = 'GEMINI' | 'GROQ' | 'OPENAI' | 'ANTHROPIC' | 'QWEN' | 'GLM' | 'KIMI' | 'DEEPSEEK' | 'OLLAMA';
 
-export type InterviewTrack = 'JAVA_SPRING_BOOT' | 'ALGORITHMS_DATA_STRUCTURES' | 'SYSTEM_DESIGN' | 'BEHAVIORAL_STAR';
+export type InterviewTrack = 'JAVA_SPRING_BOOT' | 'ALGORITHMS_DATA_STRUCTURES' | 'SYSTEM_DESIGN' | 'BEHAVIORAL_STAR' | 'SPRING_LLD' | 'LLD';
 
 export type DifficultyLevel = 'JUNIOR' | 'MID' | 'SENIOR' | 'STAFF';
 
 export type SessionStatus = 'INITIALIZED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'EVALUATED';
 
-export type MessageType = 'QUESTION' | 'EXPLANATION' | 'CODE_SUBMISSION' | 'HINT' | 'FEEDBACK' | 'SYSTEM_EVENT' | 'SYSTEM_DESIGN';
+export type MessageType = 'QUESTION' | 'EXPLANATION' | 'CODE_SUBMISSION' | 'HINT' | 'FEEDBACK' | 'SYSTEM_EVENT' | 'SYSTEM_DESIGN' | 'CODE_EXECUTION';
 
 export type HiringVerdict = 'STRONG_HIRE' | 'HIRE' | 'LEAN_HIRE' | 'NO_HIRE';
 
@@ -43,7 +43,10 @@ export interface GenerateQuestionResponse {
     problemStatement: string;
     starterCode: string;
     starterCodeMap?: Record<string, string>;
-    sampleTests?: Array<{ name: string; input: string; expectedOutput: string }>;
+    starterFiles?: Record<string, string>;
+    editablePaths?: string[];
+    buildProfile?: string;
+    sampleTests?: Array<{ name: string; input?: string; expectedOutput?: string; description?: string }>;
     hints: string[];
     evaluationCriteria: string[];
 }

@@ -52,6 +52,12 @@ const TRACKS: Array<{
     icon: <Code2 className="w-5 h-5" />
   },
   {
+    track: 'SPRING_LLD',
+    title: 'Spring Boot LLD Projects',
+    description: 'Multi-file Spring Boot microservices, JPA repositories, REST controllers & Maven test suites',
+    icon: <Code2 className="w-5 h-5 text-emerald-400" />
+  },
+  {
     track: 'ALGORITHMS_DATA_STRUCTURES',
     title: 'Algorithms & Data Structures',
     description: 'LeetCode-style algorithmic problem solving, time/space complexity & standard I/O',

@@ -7,6 +7,7 @@ import { StageStepper, type InterviewStage } from './StageStepper';
 import { AiAvatarWaveform } from './AiAvatarWaveform';
 import { WebcamTile } from './WebcamTile';
 import { HldWhiteboardCanvas } from './HldWhiteboardCanvas';
+import { ProjectWorkspace } from './ProjectWorkspace';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { ResizeHandle } from './ui/ResizeHandle';
@@ -465,10 +466,17 @@ export const InterviewRoom: React.FC<Props> = ({
 
     question.sampleTests.forEach((t, i) => {
       content += `// Sample Case #${i + 1}: ${t.name}\n`;
-      content += `// Standard Input (stdin):\n`;
-      t.input.split('\n').forEach((l) => { content += `//   ${l}\n`; });
-      content += `// Expected Output (stdout):\n`;
-      t.expectedOutput.split('\n').forEach((l) => { content += `//   ${l}\n`; });
+      if (t.input) {
+        content += `// Standard Input (stdin):\n`;
+        t.input.split('\n').forEach((l) => { content += `//   ${l}\n`; });
+      }
+      if (t.expectedOutput) {
+        content += `// Expected Output (stdout):\n`;
+        t.expectedOutput.split('\n').forEach((l) => { content += `//   ${l}\n`; });
+      }
+      if (t.description) {
+        content += `// Description:\n//   ${t.description}\n`;
+      }
       content += `\n`;
     });
     return content;
@@ -740,29 +748,40 @@ export const InterviewRoom: React.FC<Props> = ({
                               <span className="text-xs font-bold text-white">
                                 Example {idx + 1}: <span className="text-primary-2 font-medium">{test.name}</span>
                               </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCopyExample(test.input, idx)}
-                                icon={copiedIndex === idx ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
-                              >
-                                {copiedIndex === idx ? 'Copied' : 'Copy'}
-                              </Button>
+                              {test.input && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleCopyExample(test.input || '', idx)}
+                                  icon={copiedIndex === idx ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
+                                >
+                                  {copiedIndex === idx ? 'Copied' : 'Copy'}
+                                </Button>
+                              )}
                             </div>
 
                             <div className="space-y-1.5 text-xs font-mono">
-                              <div>
-                                <span className="text-text-3 font-semibold">Input: </span>
-                                <span className="text-success bg-surface px-1.5 py-0.5 rounded inline-block break-all">
-                                  {test.input}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-text-3 font-semibold">Output: </span>
-                                <span className="text-text-2 bg-surface px-1.5 py-0.5 rounded inline-block break-all">
-                                  {test.expectedOutput}
-                                </span>
-                              </div>
+                              {test.input && (
+                                <div>
+                                  <span className="text-text-3 font-semibold">Input: </span>
+                                  <span className="text-success bg-surface px-1.5 py-0.5 rounded inline-block break-all">
+                                    {test.input}
+                                  </span>
+                                </div>
+                              )}
+                              {test.expectedOutput && (
+                                <div>
+                                  <span className="text-text-3 font-semibold">Output: </span>
+                                  <span className="text-text-2 bg-surface px-1.5 py-0.5 rounded inline-block break-all">
+                                    {test.expectedOutput}
+                                  </span>
+                                </div>
+                              )}
+                              {test.description && (
+                                <div className="text-text-3 text-[11px] font-sans">
+                                  {test.description}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -839,7 +858,23 @@ export const InterviewRoom: React.FC<Props> = ({
           />
         )}
 
-        {/* 2. CENTER PANEL: Monaco Workspace + Resizable Test Console */}
+        {/* 2. CENTER PANEL: ProjectWorkspace for Multi-File LLD OR Single-File Monaco Workspace */}
+        {question.starterFiles && Object.keys(question.starterFiles).length > 0 ? (
+          <div
+            id="center-panel-container"
+            className="flex-1 flex flex-col bg-bg overflow-hidden relative"
+          >
+            <ProjectWorkspace
+              sessionId={sessionId}
+              problemSlug={question.problemSlug || 'lld-order-service'}
+              starterFiles={question.starterFiles}
+              editablePaths={question.editablePaths || []}
+              onSubmitProject={(summary) => void triggerCandidateTurn(summary)}
+              isMaximized={isEditorMaximized}
+              onToggleMaximize={() => setIsEditorMaximized(!isEditorMaximized)}
+            />
+          </div>
+        ) : (
         <div
           id="center-panel-container"
           className="flex-1 flex flex-col bg-bg overflow-hidden relative"
@@ -990,6 +1025,7 @@ export const InterviewRoom: React.FC<Props> = ({
             />
           )}
         </div>
+        )}
 
         {/* RESIZE HANDLE: Center to Right */}
         {!isEditorMaximized && !isRightCollapsed && (

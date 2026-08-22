@@ -300,3 +300,19 @@ export const executeCode = async (
     if (!res.ok) throw new Error('Failed to execute code in sandbox');
     return res.json();
 };
+
+export const executeProject = async (
+    sessionId: number,
+    payload: {
+        problemSlug: string;
+        files: Record<string, string>;
+    }
+): Promise<ExecutionResultResponse> => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/execute-project`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to execute project tests');
+    return res.json();
+};
