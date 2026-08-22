@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider } from './types';
 import { createSession, generateDiagnosticReport, generateQuestion, startSession } from './services/api';
 import { SetupScreen } from './components/SetupScreen';
@@ -10,28 +10,30 @@ import { PhoneProctorView } from './components/PhoneProctorView';
 type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR';
 
 export function App() {
-  const [view, setView] = useState<ViewState>('SETUP');
+  const [sessionId, setSessionId] = useState<number | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionParam = params.get('session');
+    if (window.location.pathname.includes('phone-proctor') || sessionParam) {
+      return sessionParam ? parseInt(sessionParam, 10) : 1;
+    }
+    return null;
+  });
+
+  const [view, setView] = useState<ViewState>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.pathname.includes('phone-proctor') || params.get('session')) {
+      return 'PHONE_PROCTOR';
+    }
+    return 'SETUP';
+  });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<number | null>(null);
   const [candidateId, setCandidateId] = useState('candidate-01');
   const [roleTitle, setRoleTitle] = useState('Senior Java Backend Engineer');
   const [question, setQuestion] = useState<GenerateQuestionResponse | null>(null);
   const [report, setReport] = useState<DiagnosticReportResponse | null>(null);
   const [provider, setProvider] = useState<ModelProvider>('OLLAMA');
   const [apiKey, setApiKey] = useState('');
-
-  // Check if opened as mobile phone proctor URL: /phone-proctor?session=1
-  useEffect(() => {
-    const path = window.location.pathname;
-    const params = new URLSearchParams(window.location.search);
-    const sessionParam = params.get('session');
-
-    if (path.includes('phone-proctor') || sessionParam) {
-      const parsedId = sessionParam ? parseInt(sessionParam, 10) : 1;
-      setSessionId(parsedId);
-      setView('PHONE_PROCTOR');
-    }
-  }, []);
 
   const handleStartInterview = async (config: {
     candidateId: string;
@@ -96,37 +98,37 @@ export function App() {
   }
 
   return (
-      <div>
-        {view === 'SETUP' && (
-            <SetupScreen onStart={handleStartInterview} isLoading={isLoading} />
-        )}
+    <div>
+      {view === 'SETUP' && (
+        <SetupScreen onStart={handleStartInterview} isLoading={isLoading} />
+      )}
 
-        {view === 'CHECKLIST' && sessionId && (
-            <PreInterviewChecklist
-                sessionId={sessionId}
-                candidateId={candidateId}
-                roleTitle={roleTitle}
-                onProceed={() => setView('ROOM')}
-            />
-        )}
+      {view === 'CHECKLIST' && sessionId && (
+        <PreInterviewChecklist
+          sessionId={sessionId}
+          candidateId={candidateId}
+          roleTitle={roleTitle}
+          onProceed={() => setView('ROOM')}
+        />
+      )}
 
-        {view === 'ROOM' && sessionId && question && (
-            <InterviewRoom
-                sessionId={sessionId}
-                question={question}
-                provider={provider}
-                apiKey={apiKey}
-                onFinish={handleFinishInterview}
-            />
-        )}
+      {view === 'ROOM' && sessionId && question && (
+        <InterviewRoom
+          sessionId={sessionId}
+          question={question}
+          provider={provider}
+          apiKey={apiKey}
+          onFinish={handleFinishInterview}
+        />
+      )}
 
-        {view === 'REPORT' && report && (
-            <DiagnosticReportView
-                report={report}
-                onRestart={() => setView('SETUP')}
-            />
-        )}
-      </div>
+      {view === 'REPORT' && report && (
+        <DiagnosticReportView
+          report={report}
+          onRestart={() => setView('SETUP')}
+        />
+      )}
+    </div>
   );
 }
 

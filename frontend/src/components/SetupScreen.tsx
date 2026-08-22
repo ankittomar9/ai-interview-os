@@ -1,469 +1,491 @@
 import React, { useState } from 'react';
 import type { DifficultyLevel, InterviewTrack, ModelProvider } from '../types';
 import { getStoredApiKey, setStoredApiKey, uploadResumeFile, uploadResumeText } from '../services/api';
-import { Sparkles, Key, ArrowRight, ShieldCheck, Upload, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import {
+  Sparkles,
+  Key,
+  ArrowRight,
+  ShieldCheck,
+  Upload,
+  FileText,
+  CheckCircle2,
+  Code2,
+  Binary,
+  Layers,
+  Users2,
+  Building2,
+  Briefcase,
+  X
+} from 'lucide-react';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
+import { Input } from './ui/Input';
+import { Textarea } from './ui/Textarea';
+import { SegmentedControl } from './ui/SegmentedControl';
+import { TrackCard } from './ui/TrackCard';
+import { Chip } from './ui/Chip';
 
 interface Props {
-    onStart: (config: {
-        candidateId: string;
-        roleTitle: string;
-        track: InterviewTrack;
-        difficulty: DifficultyLevel;
-        targetCompany: string;
-        jobDescription: string;
-        provider: ModelProvider;
-        apiKey: string;
-    }) => void;
-    isLoading: boolean;
+  onStart: (config: {
+    candidateId: string;
+    roleTitle: string;
+    track: InterviewTrack;
+    difficulty: DifficultyLevel;
+    targetCompany: string;
+    jobDescription: string;
+    provider: ModelProvider;
+    apiKey: string;
+  }) => void;
+  isLoading: boolean;
 }
 
+const TRACKS: Array<{
+  track: InterviewTrack;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}> = [
+  {
+    track: 'JAVA_SPRING_BOOT',
+    title: 'Java & Spring Boot',
+    description: 'Java 21, Virtual Threads, Spring Boot 3.x, JPA & Concurrency patterns',
+    icon: <Code2 className="w-5 h-5" />
+  },
+  {
+    track: 'ALGORITHMS_DATA_STRUCTURES',
+    title: 'Algorithms & Data Structures',
+    description: 'LeetCode-style algorithmic problem solving, time/space complexity & standard I/O',
+    icon: <Binary className="w-5 h-5" />
+  },
+  {
+    track: 'SYSTEM_DESIGN',
+    title: 'High-Level System Design',
+    description: 'Distributed architectures, event-driven pipelines, caching & database sharding',
+    icon: <Layers className="w-5 h-5" />
+  },
+  {
+    track: 'BEHAVIORAL_STAR',
+    title: 'Behavioral & Leadership',
+    description: 'STAR method scenarios, engineering tradeoffs, bar raiser conflict resolution',
+    icon: <Users2 className="w-5 h-5" />
+  }
+];
+
 export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
-    const [candidateId, setCandidateId] = useState('candidate-01');
-    const [candidateName, setCandidateName] = useState('Harish Rahangdale');
-    const [roleTitle, setRoleTitle] = useState('Senior Java Backend Engineer');
-    const [track, setTrack] = useState<InterviewTrack>('JAVA_SPRING_BOOT');
-    const [difficulty, setDifficulty] = useState<DifficultyLevel>('SENIOR');
-    const [targetCompany, setTargetCompany] = useState('Amazon');
-    const [jobDescription, setJobDescription] = useState('Deep knowledge of Java 21 Virtual Threads, Spring Boot 3.4 microservices, JPA caching, and concurrency.');
-    const [provider, setProvider] = useState<ModelProvider>('GEMINI');
-    const [apiKey, setApiKey] = useState(getStoredApiKey('GEMINI'));
-    const [showKeyModal, setShowKeyModal] = useState(false);
+  const [candidateName, setCandidateName] = useState('Ankit Singh Tomar');
+  const [candidateId, setCandidateId] = useState('candidate-01');
+  const [isIdManuallyEdited, setIsIdManuallyEdited] = useState(false);
+  const [roleTitle, setRoleTitle] = useState('Java Backend Engineer');
+  const [track, setTrack] = useState<InterviewTrack>('JAVA_SPRING_BOOT');
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('JUNIOR');
+  const [targetCompany, setTargetCompany] = useState('Amazon');
+  const [jobDescription, setJobDescription] = useState('Core Java 21, Spring Boot 3.4 microservices, JPA caching, and concurrency.');
+  const [provider, setProvider] = useState<ModelProvider>('GEMINI');
+  const [apiKey, setApiKey] = useState(getStoredApiKey('GEMINI'));
+  const [showKeyModal, setShowKeyModal] = useState(false);
 
-    // --- Resume Ingestion State ---
-    const [resumeMode, setResumeMode] = useState<'upload' | 'paste'>('upload');
-    const [pastedResumeText, setPastedResumeText] = useState('');
-    const [isParsingResume, setIsParsingResume] = useState(false);
-    const [parsedResumeData, setParsedResumeData] = useState<{
-        id: string;
-        fileName: string;
-        skills: string[];
-        yearsOfExperience: number;
-        summary: string;
-    } | null>(null);
+  const handleCandidateNameChange = (name: string) => {
+    setCandidateName(name);
+    if (!isIdManuallyEdited) {
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      setCandidateId(slug || 'candidate-01');
+    }
+  };
 
-    const handleProviderChange = (newProvider: ModelProvider) => {
-        setProvider(newProvider);
-        setApiKey(getStoredApiKey(newProvider));
-    };
+  // --- Resume Ingestion State ---
+  const [resumeMode, setResumeMode] = useState<'upload' | 'paste'>('upload');
+  const [pastedResumeText, setPastedResumeText] = useState('');
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [parsedResumeData, setParsedResumeData] = useState<{
+    id: string;
+    fileName: string;
+    skills: string[];
+    yearsOfExperience: number;
+    summary: string;
+  } | null>(null);
 
-    const handleSaveKey = () => {
-        setStoredApiKey(provider, apiKey);
-        setShowKeyModal(false);
-    };
+  const handleProviderChange = (newProvider: ModelProvider) => {
+    setProvider(newProvider);
+    setApiKey(getStoredApiKey(newProvider));
+  };
 
-    // --- Resume File Upload Handler ---
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+  const handleSaveKey = () => {
+    setStoredApiKey(provider, apiKey);
+    setShowKeyModal(false);
+  };
 
-        setIsParsingResume(true);
-        try {
-            const result = await uploadResumeFile(file, candidateId, candidateName, `${roleTitle} Resume`);
-            setParsedResumeData({
-                id: result.id,
-                fileName: result.fileName,
-                skills: result.skills || [],
-                yearsOfExperience: result.yearsOfExperience || 4,
-                summary: result.summary || 'Resume parsed successfully.'
-            });
-            // Enrich the job description context automatically with candidate resume skills
-            if (result.summary) {
-                setJobDescription((prev) => `${prev}\n\n[Candidate Resume Context: ${result.summary}]`);
-            }
-        } catch (err) {
-            console.error('Resume upload failed:', err);
-            alert('Failed to parse resume file. Please ensure it is a valid PDF or text file.');
-        } finally {
-            setIsParsingResume(false);
-        }
-    };
+  // --- Resume File Upload Handler ---
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    // --- Resume Text Paste Ingest Handler ---
-    const handleTextIngest = async () => {
-        if (!pastedResumeText.trim()) return;
+    setIsParsingResume(true);
+    try {
+      const result = await uploadResumeFile(file, candidateId, candidateName, `${roleTitle} Resume`);
+      setParsedResumeData({
+        id: result.id,
+        fileName: result.fileName,
+        skills: result.skills || [],
+        yearsOfExperience: result.yearsOfExperience || 4,
+        summary: result.summary || 'Resume parsed successfully.'
+      });
+      if (result.summary) {
+        setJobDescription((prev) => `${prev}\n\n[Candidate Resume Context: ${result.summary}]`);
+      }
+    } catch (err) {
+      console.error('Resume upload failed:', err);
+      alert('Failed to parse resume file. Please ensure it is a valid PDF or text file.');
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
 
-        setIsParsingResume(true);
-        try {
-            const result = await uploadResumeText({
-                candidateId,
-                candidateName,
-                resumeTitle: `${roleTitle} Profile`,
-                resumeText: pastedResumeText
-            });
-            setParsedResumeData({
-                id: result.id,
-                fileName: result.fileName,
-                skills: result.skills || [],
-                yearsOfExperience: result.yearsOfExperience || 4,
-                summary: result.summary || 'Pasted text parsed successfully.'
-            });
-            if (result.summary) {
-                setJobDescription((prev) => `${prev}\n\n[Candidate Resume Context: ${result.summary}]`);
-            }
-        } catch (err) {
-            console.error('Resume text parsing failed:', err);
-        } finally {
-            setIsParsingResume(false);
-        }
-    };
+  // --- Resume Text Paste Ingest Handler ---
+  const handleTextIngest = async () => {
+    if (!pastedResumeText.trim()) return;
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onStart({
-            candidateId,
-            roleTitle,
-            track,
-            difficulty,
-            targetCompany,
-            jobDescription,
-            provider,
-            apiKey
-        });
-    };
+    setIsParsingResume(true);
+    try {
+      const result = await uploadResumeText({
+        candidateId,
+        candidateName,
+        resumeTitle: `${roleTitle} Profile`,
+        resumeText: pastedResumeText
+      });
+      setParsedResumeData({
+        id: result.id,
+        fileName: result.fileName,
+        skills: result.skills || [],
+        yearsOfExperience: result.yearsOfExperience || 4,
+        summary: result.summary || 'Pasted text parsed successfully.'
+      });
+      if (result.summary) {
+        setJobDescription((prev) => `${prev}\n\n[Candidate Resume Context: ${result.summary}]`);
+      }
+    } catch (err) {
+      console.error('Resume text parsing failed:', err);
+    } finally {
+      setIsParsingResume(false);
+    }
+  };
 
-    return (
-        <div style={{ maxWidth: '880px', margin: '30px auto', padding: '0 20px' }}>
-            <div className="glass-card" style={{ padding: '36px', background: '#0f172a', border: '1px solid #1e293b' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Sparkles size={24} color="#6366f1" />
-                            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#f8fafc' }}>AI Interview OS</h1>
-                        </div>
-                        <p style={{ color: '#94a3b8', marginTop: '4px', fontSize: '0.92rem' }}>
-                            Enterprise Autonomous Interview Simulator, Resume Pipeline & Real-Time Proctor Sentinel
-                        </p>
-                    </div>
+  const isFormValid = candidateName.trim().length > 0 && roleTitle.trim().length > 0 && !!track;
 
-                    <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => setShowKeyModal(true)}
-                        style={{ background: '#1e293b', color: '#e2e8f0', border: '1px solid #334155' }}
-                    >
-                        <Key size={16} />
-                        BYOK Settings ({provider})
-                    </button>
-                </div>
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid) return;
 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+    onStart({
+      candidateId: candidateId || 'candidate-01',
+      roleTitle,
+      track,
+      difficulty,
+      targetCompany,
+      jobDescription,
+      provider,
+      apiKey
+    });
+  };
 
-                    {/* Candidate Identity */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1' }}>
-                                Candidate Full Name
-                            </label>
-                            <input
-                                className="form-input"
-                                value={candidateName}
-                                onChange={(e) => setCandidateName(e.target.value)}
-                                placeholder="e.g. Harish Rahangdale"
-                                required
-                            />
-                        </div>
+  return (
+    <div className="min-h-screen bg-bg text-text py-10 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1' }}>
-                                Candidate ID
-                            </label>
-                            <input
-                                className="form-input"
-                                value={candidateId}
-                                onChange={(e) => setCandidateId(e.target.value)}
-                                placeholder="e.g. candidate-01"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {/* Role & Track Selection */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1' }}>
-                                Target Role Title
-                            </label>
-                            <input
-                                className="form-input"
-                                value={roleTitle}
-                                onChange={(e) => setRoleTitle(e.target.value)}
-                                placeholder="e.g. Senior Java Backend Engineer"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1' }}>
-                                Interview Track
-                            </label>
-                            <select
-                                className="form-select"
-                                value={track}
-                                onChange={(e) => setTrack(e.target.value as InterviewTrack)}
-                            >
-                                <option value="JAVA_SPRING_BOOT">☕ Java 21 & Spring Boot 3 Deep Dive</option>
-                                <option value="ALGORITHMS_DATA_STRUCTURES">🧩 Data Structures & Algorithms</option>
-                                <option value="SYSTEM_DESIGN">🏗️ System Design & Architecture (HLD/LLD)</option>
-                                <option value="BEHAVIORAL_STAR">🤝 Behavioral & Leadership (STAR Method)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1' }}>
-                                Seniority Level
-                            </label>
-                            <select
-                                className="form-select"
-                                value={difficulty}
-                                onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
-                            >
-                                <option value="JUNIOR">Junior (0-2 yrs)</option>
-                                <option value="MID">Mid-Level (2-5 yrs)</option>
-                                <option value="SENIOR">Senior (5-8+ yrs)</option>
-                                <option value="STAFF">Staff / Principal (8+ yrs)</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1' }}>
-                                Target Company
-                            </label>
-                            <input
-                                className="form-input"
-                                value={targetCompany}
-                                onChange={(e) => setTargetCompany(e.target.value)}
-                                placeholder="e.g. Google, Amazon, Netflix, Uber"
-                            />
-                        </div>
-                    </div>
-
-                    {/* ========================================================================= */}
-                    {/* RESUME INGESTION & PARSING PIPELINE (MongoDB Document Repository)        */}
-                    {/* ========================================================================= */}
-                    <div style={{ background: '#090d16', border: '1px solid #1e293b', borderRadius: '10px', padding: '18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <FileText size={18} color="#818cf8" />
-                                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc' }}>
-                                    Resume Ingestion Pipeline (MongoDB Powered)
-                                </span>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setResumeMode('upload')}
-                                    style={{
-                                        padding: '4px 10px',
-                                        fontSize: '0.75rem',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        background: resumeMode === 'upload' ? '#6366f1' : '#1e293b',
-                                        color: '#ffffff',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Upload PDF
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setResumeMode('paste')}
-                                    style={{
-                                        padding: '4px 10px',
-                                        fontSize: '0.75rem',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        background: resumeMode === 'paste' ? '#6366f1' : '#1e293b',
-                                        color: '#ffffff',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    Paste Text
-                                </button>
-                            </div>
-                        </div>
-
-                        {resumeMode === 'upload' ? (
-                            <div style={{
-                                border: '2px dashed #334155',
-                                borderRadius: '8px',
-                                padding: '20px',
-                                textAlign: 'center',
-                                background: 'rgba(30, 41, 59, 0.3)',
-                                cursor: 'pointer'
-                            }}>
-                                <input
-                                    type="file"
-                                    id="resume-file-input"
-                                    accept=".pdf,.txt,.docx"
-                                    onChange={handleFileUpload}
-                                    style={{ display: 'none' }}
-                                />
-                                <label htmlFor="resume-file-input" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                                    {isParsingResume ? (
-                                        <Loader2 size={28} color="#818cf8" className="animate-spin" />
-                                    ) : (
-                                        <Upload size={28} color="#94a3b8" />
-                                    )}
-                                    <span style={{ fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 500 }}>
-                                        {isParsingResume ? 'Parsing PDF via Apache PDFBox & MongoDB...' : 'Drop candidate resume PDF here or click to browse'}
-                                    </span>
-                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                        Supports PDF and TXT. Multi-page architectures supported.
-                                    </span>
-                                </label>
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <textarea
-                                    className="form-textarea"
-                                    rows={3}
-                                    value={pastedResumeText}
-                                    onChange={(e) => setPastedResumeText(e.target.value)}
-                                    placeholder="Paste resume text or key career highlights here..."
-                                    style={{ fontSize: '0.82rem' }}
-                                />
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={handleTextIngest}
-                                    disabled={isParsingResume || !pastedResumeText.trim()}
-                                    style={{ alignSelf: 'flex-end', padding: '6px 14px', fontSize: '0.78rem' }}
-                                >
-                                    {isParsingResume ? 'Ingesting...' : 'Ingest Resume Text'}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Extracted Resume Confirmation Card */}
-                        {parsedResumeData && (
-                            <div style={{
-                                marginTop: '14px',
-                                padding: '12px 16px',
-                                borderRadius: '8px',
-                                background: 'rgba(16, 185, 129, 0.1)',
-                                border: '1px solid rgba(16, 185, 129, 0.3)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '8px'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399', fontSize: '0.85rem', fontWeight: 600 }}>
-                                        <CheckCircle2 size={16} />
-                                        <span>Resume Ingested: {parsedResumeData.fileName} (~{parsedResumeData.yearsOfExperience} yrs exp)</span>
-                                    </div>
-                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Stored in MongoDB</span>
-                                </div>
-
-                                <div style={{ fontSize: '0.8rem', color: '#e2e8f0' }}>
-                                    {parsedResumeData.summary}
-                                </div>
-
-                                {parsedResumeData.skills.length > 0 && (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                                        {parsedResumeData.skills.map((skill, idx) => (
-                                            <span
-                                                key={idx}
-                                                style={{
-                                                    fontSize: '0.72rem',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '4px',
-                                                    background: 'rgba(99, 102, 241, 0.2)',
-                                                    color: '#a5b4fc',
-                                                    fontWeight: 600
-                                                }}
-                                            >
-                                                {skill}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Target Job Description */}
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1' }}>
-                            Target Job Description / Assessment Focus
-                        </label>
-                        <textarea
-                            className="form-textarea"
-                            rows={2}
-                            value={jobDescription}
-                            onChange={(e) => setJobDescription(e.target.value)}
-                            placeholder="Paste specific JD requirements or focus topics..."
-                        />
-                    </div>
-
-                    <div style={{ background: 'rgba(99, 102, 241, 0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <ShieldCheck size={20} color="#818cf8" />
-                        <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
-                            <strong>Personalized Grounding</strong>: The AI Interviewer uses your ingested resume and selected track to formulate deep, real-world technical scenarios.
-                        </span>
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="btn btn-primary"
-                        disabled={isLoading || isParsingResume}
-                        style={{ width: '100%', padding: '14px', fontSize: '1rem', marginTop: '6px', background: '#6366f1', color: '#ffffff', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                    >
-                        {isLoading ? 'Synthesizing Custom Question...' : 'Launch Technical Assessment'}
-                        {!isLoading && <ArrowRight size={18} />}
-                    </button>
-                </form>
+        {/* LEFT COLUMN: Branding & System Value Props */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          <Card padding="lg" variant="elevated" className="flex flex-col gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary-2 flex items-center justify-center shadow-md shadow-primary/30">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black tracking-tight text-white">AI Interview OS</h1>
+                <p className="text-xs text-primary-2 font-medium">Honest Technical Evaluation</p>
+              </div>
             </div>
 
-            {/* BYOK Modal */}
-            {showKeyModal && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-                    <div className="glass-card" style={{ width: '480px', padding: '28px', background: '#12121a', border: '1px solid #334155' }}>
-                        <h2 style={{ fontSize: '1.25rem', marginBottom: '16px', color: '#f8fafc' }}>🔑 BYOK Model & Key Settings</h2>
+            <div className="space-y-3">
+              <p className="text-sm text-text-2 leading-relaxed">
+                Experience a production-grade, zero-fluff engineering interview powered by autonomous AI bar raisers, live code sandboxes, and structured rubric grading.
+              </p>
+            </div>
 
-                        <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', color: '#cbd5e1' }}>Inference Provider</label>
-                            <select
-                                className="form-select"
-                                value={provider}
-                                onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
-                            >
-                                <option value="GEMINI">Google Gemini (Gemini 1.5 Flash - Free)</option>
-                                <option value="GROQ">Groq Cloud (Llama 3.3 70B - Fast & Free)</option>
-                                <option value="OLLAMA">Local Ollama (100% Offline / Zero Keys)</option>
-                                <option value="OPENAI">OpenAI (GPT-4o Mini)</option>
-                                <option value="QWEN">Qwen (Qwen 2.5 Coder)</option>
-                                <option value="GLM">GLM (Zhipu AI GLM-4)</option>
-                                <option value="KIMI">Kimi (Moonshot AI)</option>
-                                <option value="DEEPSEEK">DeepSeek (DeepSeek-V3)</option>
-                            </select>
-                        </div>
+            {/* Feature Badges */}
+            <div className="space-y-2.5 pt-2 border-t border-border">
+              <div className="flex items-start gap-2.5 text-xs text-text-2">
+                <ShieldCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                <span><strong>No Canned Metrics:</strong> 5-dimension rubric backed by verbatim dialogue quotes.</span>
+              </div>
+              <div className="flex items-start gap-2.5 text-xs text-text-2">
+                <Code2 className="w-4 h-4 text-primary-2 shrink-0 mt-0.5" />
+                <span><strong>Real Sandbox Execution:</strong> Isolated Judge0 container test runner with Standard I/O.</span>
+              </div>
+              <div className="flex items-start gap-2.5 text-xs text-text-2">
+                <Layers className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <span><strong>Interactive Whiteboard:</strong> High-Level System Design canvas evaluated in real-time.</span>
+              </div>
+            </div>
 
-                        {provider !== 'OLLAMA' && (
-                            <div style={{ marginBottom: '20px' }}>
-                                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', color: '#cbd5e1' }}>API Key for {provider}</label>
-                                <input
-                                    type="password"
-                                    className="form-input"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder={`Paste your ${provider} API key here`}
-                                />
-                                <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
-                                    Stored only in your browser localStorage. Never saved on any remote database.
-                                </span>
-                            </div>
-                        )}
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            <button className="btn btn-secondary" onClick={() => setShowKeyModal(false)}>Cancel</button>
-                            <button className="btn btn-primary" onClick={handleSaveKey}>Save Credentials</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* BYOK Status Card */}
+            <div className="p-3 bg-surface rounded-md border border-border flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs">
+                <Key className="w-4 h-4 text-text-3" />
+                <span className="text-text-3">AI Engine:</span>
+                <span className="font-bold text-text">{provider}</span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowKeyModal(true)}
+              >
+                Configure Keys
+              </Button>
+            </div>
+          </Card>
         </div>
-    );
+
+        {/* RIGHT COLUMN: Candidate Configuration Form */}
+        <div className="lg:col-span-7">
+          <Card padding="lg" variant="elevated">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+
+              <div>
+                <h2 className="text-lg font-bold text-white tracking-tight">Candidate Profile & Target Role</h2>
+                <p className="text-xs text-text-3 mt-0.5">Enter candidate details and customize the evaluation track.</p>
+              </div>
+
+              {/* Candidate Name & Candidate ID */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Candidate Full Name *"
+                  placeholder="e.g. Ankit Singh Tomar"
+                  value={candidateName}
+                  onChange={(e) => handleCandidateNameChange(e.target.value)}
+                  required
+                />
+                <Input
+                  label="Candidate ID (System Slug)"
+                  placeholder="e.g. candidate-01"
+                  value={candidateId}
+                  onChange={(e) => {
+                    setIsIdManuallyEdited(true);
+                    setCandidateId(e.target.value);
+                  }}
+                  hint="Used to identify transcripts & reports"
+                />
+              </div>
+
+              {/* Target Role & Target Company */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Target Role Title *"
+                  placeholder="e.g. Senior Java Backend Engineer"
+                  value={roleTitle}
+                  onChange={(e) => setRoleTitle(e.target.value)}
+                  icon={<Briefcase className="w-4 h-4" />}
+                  required
+                />
+                <Input
+                  label="Target Company (Optional)"
+                  placeholder="e.g. Amazon, Google, Stripe"
+                  value={targetCompany}
+                  onChange={(e) => setTargetCompany(e.target.value)}
+                  icon={<Building2 className="w-4 h-4" />}
+                />
+              </div>
+
+              {/* Track Selection (4 Track Cards) */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-text-2 tracking-wide">
+                  Interview Assessment Track *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {TRACKS.map((t) => (
+                    <TrackCard
+                      key={t.track}
+                      track={t.track}
+                      title={t.title}
+                      description={t.description}
+                      icon={t.icon}
+                      selected={track === t.track}
+                      onClick={() => setTrack(t.track)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Seniority Level (Segmented Control) */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-text-2 tracking-wide">
+                  Seniority Level
+                </label>
+                <SegmentedControl
+                  options={[
+                    { value: 'JUNIOR', label: 'Junior (0-2 YOE)' },
+                    { value: 'MID', label: 'Mid-Level (3-5 YOE)' },
+                    { value: 'SENIOR', label: 'Senior (5-8 YOE)' },
+                    { value: 'STAFF', label: 'Staff / Lead (8+ YOE)' }
+                  ]}
+                  value={difficulty}
+                  onChange={(val) => setDifficulty(val as DifficultyLevel)}
+                />
+              </div>
+
+              {/* Resume Ingestion Pipeline */}
+              <div className="p-4 bg-surface rounded-lg border border-border flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary-2" />
+                    <span className="text-xs font-bold text-text">Resume Ingestion (Optional)</span>
+                  </div>
+                  <SegmentedControl
+                    size="sm"
+                    options={[
+                      { value: 'upload', label: 'Upload File' },
+                      { value: 'paste', label: 'Paste Text' }
+                    ]}
+                    value={resumeMode}
+                    onChange={(val) => setResumeMode(val as 'upload' | 'paste')}
+                  />
+                </div>
+
+                {resumeMode === 'upload' ? (
+                  <label className="border-2 border-dashed border-border hover:border-primary/50 bg-elevated/40 rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-center">
+                    <Upload className="w-6 h-6 text-text-3" />
+                    <span className="text-xs text-text-2 font-medium">
+                      {isParsingResume ? 'Extracting candidate skills & experience...' : 'Drop your resume (PDF, TXT, DOCX) or click to browse'}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.txt,.docx"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={isParsingResume}
+                    />
+                  </label>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Textarea
+                      placeholder="Paste resume content, work history, tech stack, and key project bullets..."
+                      rows={3}
+                      value={pastedResumeText}
+                      onChange={(e) => setPastedResumeText(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleTextIngest}
+                      loading={isParsingResume}
+                      disabled={!pastedResumeText.trim()}
+                    >
+                      Extract Resume Signals
+                    </Button>
+                  </div>
+                )}
+
+                {/* Extracted Skills Chips Row */}
+                {parsedResumeData && parsedResumeData.skills.length > 0 && (
+                  <div className="pt-2 border-t border-border flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-success">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{parsedResumeData.fileName} parsed ({parsedResumeData.yearsOfExperience} YOE detected):</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {parsedResumeData.skills.map((skill, idx) => (
+                        <Chip key={idx} variant="primary" size="sm">
+                          {skill}
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Job Description & Custom Focus */}
+              <Textarea
+                label="Job Description & Focus Areas (Optional)"
+                placeholder="Paste key responsibilities, specific topics, or architectures to emphasize..."
+                rows={3}
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+              />
+
+              {/* Launch Action Button */}
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={isLoading}
+                disabled={!isFormValid}
+                icon={<ArrowRight className="w-5 h-5" />}
+                className="w-full mt-2"
+              >
+                {isLoading ? 'Synthesizing Problem & Initializing Sandbox...' : 'Launch Technical Assessment'}
+              </Button>
+
+            </form>
+          </Card>
+        </div>
+
+      </div>
+
+      {/* BYOK Settings Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card padding="lg" variant="elevated" className="w-full max-w-md flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2 font-bold text-white">
+                <Key className="w-4 h-4 text-primary-2" />
+                <span>Bring Your Own Key (BYOK)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKeyModal(false)}
+                className="text-text-3 hover:text-text p-1 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-semibold text-text-2">Model Provider</label>
+              <SegmentedControl
+                options={[
+                  { value: 'GEMINI', label: 'Gemini' },
+                  { value: 'GROQ', label: 'Groq' },
+                  { value: 'OPENAI', label: 'OpenAI' },
+                  { value: 'OLLAMA', label: 'Ollama' }
+                ]}
+                value={provider}
+                onChange={(val) => handleProviderChange(val as ModelProvider)}
+              />
+
+              <Input
+                label={`${provider} API Key`}
+                type="password"
+                placeholder={provider === 'OLLAMA' ? 'http://localhost:11434 (Optional)' : `Enter your ${provider} API key...`}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                hint="Keys are saved locally in your browser and never persisted on disk."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button type="button" variant="ghost" onClick={() => setShowKeyModal(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" onClick={handleSaveKey}>
+                Save & Apply
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
 };
