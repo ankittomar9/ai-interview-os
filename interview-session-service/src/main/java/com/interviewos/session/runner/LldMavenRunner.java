@@ -13,7 +13,6 @@ import com.github.dockerjava.core.DockerClientImpl;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.interviewos.session.sandbox.document.ProblemDocument;
 import com.interviewos.session.sandbox.dto.ExecutionResultResponse;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -44,9 +43,32 @@ public class LldMavenRunner implements TrackRunner {
 
     private DockerClient dockerClient;
     private boolean isDockerAvailable = false;
+    private boolean isInitialized = false;
 
-    @PostConstruct
-    public void initDockerClient() {
+    // Constructor for testing / injection
+    public LldMavenRunner(DockerClient dockerClient) {
+        this.dockerClient = dockerClient;
+        this.isDockerAvailable = dockerClient != null;
+        this.isInitialized = true;
+    }
+
+    public LldMavenRunner() {}
+
+    public synchronized boolean isDockerReady() {
+        ensureDockerInitialized();
+        if (!isDockerAvailable || dockerClient == null) {
+            return false;
+        }
+        try {
+            dockerClient.pingCmd().exec();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private synchronized void ensureDockerInitialized() {
+        if (isInitialized) return;
         try {
             DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
             ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
@@ -58,20 +80,14 @@ public class LldMavenRunner implements TrackRunner {
             this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
             this.dockerClient.pingCmd().exec();
             this.isDockerAvailable = true;
-            log.info("🐳 Docker Java client connected successfully for LLD Maven Sandbox. Image: {}", runnerImage);
+            log.info("🐳 Docker Java client initialized lazily for LLD Maven Sandbox. Image: {}", runnerImage);
         } catch (Throwable t) {
             this.isDockerAvailable = false;
             log.warn("⚠️ Docker daemon unavailable for LLD Maven Runner: {}. Sandbox will return ENGINE_UNAVAILABLE.", t.getMessage());
+        } finally {
+            this.isInitialized = true;
         }
     }
-
-    // Constructor for testing / injection
-    public LldMavenRunner(DockerClient dockerClient) {
-        this.dockerClient = dockerClient;
-        this.isDockerAvailable = dockerClient != null;
-    }
-
-    public LldMavenRunner() {}
 
     @Override
     public boolean supports(ProblemDocument problem) {
@@ -114,7 +130,10 @@ public class LldMavenRunner implements TrackRunner {
                 }
             }
 
-            // 5. Execute via Docker container
+            // 5. Ensure lazy Docker client is initialized
+            ensureDockerInitialized();
+
+            // 6. Execute via Docker container
             if (isDockerAvailable && dockerClient != null) {
                 return executeInDocker(tempWorkspace.toFile());
             } else {

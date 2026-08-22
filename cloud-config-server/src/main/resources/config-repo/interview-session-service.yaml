@@ -29,3 +29,19 @@ runner:
   maven:
     image: ${RUNNER_MAVEN_IMAGE:ai-interview-os/lld-runner:latest}
     timeout-seconds: ${RUNNER_MAVEN_TIMEOUT_SECONDS:240}
+
+storage:
+  retention-days: ${STORAGE_RETENTION_DAYS:14}
+  cleanup-cron: ${STORAGE_CLEANUP_CRON:0 0 3 * * ?}
+
+ai:
+  orchestrator:
+    url: ${AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}
+
+proctor:
+  sentinel:
+    url: ${PROCTOR_SENTINEL_URL:http://proctor-sentinel-service:8083}
+
+question:
+  bank:
+    url: ${QUESTION_BANK_URL:http://question-bank-service:8086}

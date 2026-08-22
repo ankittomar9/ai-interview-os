@@ -22,7 +22,9 @@ import java.util.Optional;
 public class Judge0Client {
 
     private final RestClient restClient;
+    private final RestClient pingClient;
     private final ObjectMapper objectMapper;
+    private final String judge0Url;
 
     public Judge0Client(
             @Value("${judge0.url:http://judge0:2358}") String judge0Url,
@@ -30,7 +32,9 @@ public class Judge0Client {
             @Value("${judge0.wait-timeout-seconds:20}") int waitTimeoutSeconds,
             ObjectMapper objectMapper
     ) {
+        this.judge0Url = judge0Url;
         this.objectMapper = objectMapper;
+
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(5));
         requestFactory.setReadTimeout(Duration.ofSeconds(waitTimeoutSeconds));
@@ -44,6 +48,36 @@ public class Judge0Client {
         }
 
         this.restClient = builder.build();
+
+        SimpleClientHttpRequestFactory pingFactory = new SimpleClientHttpRequestFactory();
+        pingFactory.setConnectTimeout(Duration.ofSeconds(2));
+        pingFactory.setReadTimeout(Duration.ofSeconds(2));
+
+        this.pingClient = RestClient.builder()
+                .requestFactory(pingFactory)
+                .baseUrl(judge0Url)
+                .build();
+    }
+
+    public boolean ping() {
+        try {
+            String resp = pingClient.get()
+                    .uri("/system_info")
+                    .retrieve()
+                    .body(String.class);
+            return resp != null && !resp.isBlank();
+        } catch (Exception e) {
+            try {
+                // Fallback probe to /about or /
+                String resp = pingClient.get()
+                        .uri("/about")
+                        .retrieve()
+                        .body(String.class);
+                return resp != null && !resp.isBlank();
+            } catch (Exception ex) {
+                return false;
+            }
+        }
     }
 
     public Optional<Judge0SubmissionResponse> submitAndAwait(Judge0SubmissionRequest request) {
