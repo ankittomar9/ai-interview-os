@@ -137,6 +137,7 @@ export const generateQuestion = async (payload: {
 
 export const processDialogueTurn = async (payload: {
     questionContext: string;
+    problemSlug?: string;
     candidateExplanation: string;
     candidateCode?: string;
     modelProvider?: string;

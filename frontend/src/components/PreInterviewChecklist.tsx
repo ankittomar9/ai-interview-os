@@ -122,7 +122,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
       }
       cancelAnimationFrame(animFrame);
     };
-  }, []);
+  }, [host]);
 
   const isScreenCheckSatisfied = envMode === 'dev' ? true : (screenOk || devBypassScreen);
   const allChecksPassed = envMode === 'dev' ? true : (cameraOk && micOk && isScreenCheckSatisfied && networkOk);

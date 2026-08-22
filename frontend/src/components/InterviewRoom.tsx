@@ -12,6 +12,10 @@ import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { ResizeHandle } from './ui/ResizeHandle';
 import { TestConsole } from './ui/TestConsole';
+import { ActivityBar } from './ide/ActivityBar';
+import { BreadcrumbBar } from './ide/BreadcrumbBar';
+import { StatusBar } from './ide/StatusBar';
+import { MarkdownProblem } from './ide/MarkdownProblem';
 import {
   Timer,
   Send,
@@ -40,6 +44,14 @@ interface Props {
   provider: ModelProvider;
   apiKey: string;
   onFinish: () => void;
+}
+
+let cachedTabId: string | null = null;
+function getSessionTabId(): string {
+  if (!cachedTabId && typeof window !== 'undefined') {
+    cachedTabId = `tab-${Math.random().toString(36).slice(2, 9)}`;
+  }
+  return cachedTabId || 'tab-main';
 }
 
 const END_PHRASES = [
@@ -97,10 +109,53 @@ export const InterviewRoom: React.FC<Props> = ({
   const [isEditorMaximized, setIsEditorMaximized] = useState<boolean>(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(false);
 
+  // --- State: IDE Caret & Engine Capabilities ---
+  const [cursor, setCursor] = useState<{ ln: number; col: number }>({ ln: 1, col: 1 });
+  const [engineReady, setEngineReady] = useState<boolean>(true);
+  const [showWorkspaceConflict, setShowWorkspaceConflict] = useState<boolean>(false);
+
+  // --- Workspace Lifecycle Guard (Client-side Tab Collision Prevention) ---
+  useEffect(() => {
+    const currentTab = getSessionTabId();
+    const key = `ws.active.${sessionId}`;
+    const existing = sessionStorage.getItem(key);
+    if (existing && existing !== currentTab) {
+      setTimeout(() => {
+        setShowWorkspaceConflict(true);
+      }, 0);
+    } else {
+      sessionStorage.setItem(key, currentTab);
+    }
+  }, [sessionId]);
+
   // Synchronize layout dimensions to localStorage
   useEffect(() => { localStorage.setItem('ui.leftWidth', String(leftWidth)); }, [leftWidth]);
   useEffect(() => { localStorage.setItem('ui.rightWidth', String(rightWidth)); }, [rightWidth]);
   useEffect(() => { localStorage.setItem('ui.consoleHeight', String(consoleHeight)); }, [consoleHeight]);
+
+
+
+  // --- System Capabilities Probe ---
+  useEffect(() => {
+    const probeCapabilities = async () => {
+      try {
+        const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+        const resp = await fetch(`http://${host}:8080/api/v1/system/capabilities`);
+        if (resp.ok) {
+          const data = await resp.json();
+          const track = question.track || '';
+          if (track.includes('LLD') || (question.starterFiles && Object.keys(question.starterFiles).length > 0)) {
+            setEngineReady(data.engines?.lld?.ready ?? true);
+          } else {
+            setEngineReady(data.engines?.dsa?.ready ?? true);
+          }
+        }
+      } catch {
+        // Resilient fallback
+      }
+    };
+    void probeCapabilities();
+  }, [question]);
 
   // --- State: Conversation & Dialogue ---
   const [messages, setMessages] = useState<Array<{ role: 'interviewer' | 'candidate'; content: string; timestamp?: string }>>([
@@ -150,253 +205,302 @@ export const InterviewRoom: React.FC<Props> = ({
 
     window.speechSynthesis.cancel();
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.abort();
-      } catch {
-        // Recognition aborted
-      }
-      setIsListening(false);
-      setIsSpeakingNow(false);
-    }
+    const cleanText = text
+      .replace(/[*_#`]/g, '')
+      .replace(/\n+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.05;
     utterance.pitch = 1.0;
 
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (v) =>
+        v.name.includes('Google UK English Female') ||
+        v.name.includes('Google US English') ||
+        v.name.includes('Samantha') ||
+        v.name.includes('Victoria') ||
+        v.name.includes('Natural') ||
+        v.name.includes('English')
+    );
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
     utterance.onstart = () => {
-      if (isSessionEndedRef.current) {
-        window.speechSynthesis.cancel();
-        setIsAiSpeaking(false);
-        return;
-      }
       setIsAiSpeaking(true);
     };
 
     utterance.onend = () => {
       setIsAiSpeaking(false);
-      if (isSessionEndedRef.current) return;
-      setTimeout(() => {
-        if (!isSessionEndedRef.current) {
-          startListeningRef.current();
-        }
-      }, 600);
+      if (!isSessionEndedRef.current) {
+        setTimeout(() => {
+          if (!isSessionEndedRef.current && startListeningRef.current) {
+            startListeningRef.current();
+          }
+        }, 400);
+      }
     };
 
     utterance.onerror = () => {
       setIsAiSpeaking(false);
-      if (isSessionEndedRef.current) return;
-      setTimeout(() => {
-        if (!isSessionEndedRef.current) {
-          startListeningRef.current();
-        }
-      }, 600);
     };
 
     window.speechSynthesis.speak(utterance);
   }, [voiceOutputEnabled]);
 
-  // Greeting: speak exactly once, unlocked by first user interaction (Chrome autoplay policy)
+  // Unlocked Greeting TTS
   useEffect(() => {
-    if (messages.length === 0 || !voiceOutputEnabled) return;
-
-    const speakGreeting = () => {
-      if (hasSpokenIntroRef.current) return;
-      hasSpokenIntroRef.current = true;
-      speakText(messages[0].content);
+    const handleFirstInteraction = () => {
+      if (!hasSpokenIntroRef.current && messages.length > 0 && messages[0].role === 'interviewer') {
+        hasSpokenIntroRef.current = true;
+        speakText(messages[0].content);
+      }
+      window.removeEventListener('pointerdown', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
     };
 
-    if ((navigator as any).userActivation?.hasBeenActive) {
-      speakGreeting();
-      return;
-    }
-    window.addEventListener('pointerdown', speakGreeting, { once: true });
-    window.addEventListener('keydown', speakGreeting, { once: true });
+    window.addEventListener('pointerdown', handleFirstInteraction);
+    window.addEventListener('keydown', handleFirstInteraction);
+
     return () => {
-      window.removeEventListener('pointerdown', speakGreeting);
-      window.removeEventListener('keydown', speakGreeting);
+      window.removeEventListener('pointerdown', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      window.speechSynthesis?.cancel();
     };
-  }, [messages, voiceOutputEnabled, speakText]);
+  }, [messages, speakText]);
 
-  // Full Duplex Continuous Speech Recognition with 9s Buffer & End Phrases
-  const startListening = useCallback(() => {
-    if (isSessionEndedRef.current || isAiSpeaking) return;
+  // --- Candidate Audio Streaming & Speech-To-Text ---
+  const stopListening = useCallback(() => {
+    setIsListening(false);
+    setIsSpeakingNow(false);
 
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      console.warn('Web Speech API not supported in this browser.');
-      return;
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // Ignore
+      }
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        // Ignore
+      }
+    }
+  }, []);
+
+  const startListening = useCallback(async () => {
+    if (isSessionEndedRef.current || isAiSpeaking || isListening) return;
+
+    if (window.speechSynthesis?.speaking) {
+      window.speechSynthesis.cancel();
+      setIsAiSpeaking(false);
     }
 
     try {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
 
-      const rec = new SpeechRec();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = 'en-US';
-
-      rec.onstart = () => {
-        setIsListening(true);
-        setIsSpeakingNow(false);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
-      rec.onresult = (event: any) => {
-        setIsSpeakingNow(true);
-        let interim = '';
-        let final = '';
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            final += event.results[i][0].transcript;
-          } else {
-            interim += event.results[i][0].transcript;
+        const groqApiKey = getStoredApiKey('groq');
+        if (groqApiKey && audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          try {
+            const result = await transcribeAudio(audioBlob, groqApiKey);
+            if (result && result.transcript && result.transcript.trim().length > 0) {
+              setChatInput(result.transcript.trim());
+              setTimeout(() => {
+                if (triggerCandidateTurnRef.current) {
+                  void triggerCandidateTurnRef.current(result.transcript.trim());
+                }
+              }, 200);
+              return;
+            }
+          } catch (error) {
+            console.warn('Groq Whisper transcription notice:', error);
           }
         }
 
-        const currentText = (final || interim).trim();
-        setChatInput(currentText);
-
-        const lower = currentText.toLowerCase();
-        const hasEndPhrase = END_PHRASES.some((phrase) => lower.includes(phrase));
-
-        if (hasEndPhrase) {
-          if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-          rec.stop();
-          void triggerCandidateTurnRef.current(currentText);
-          return;
+        if (chatInput.trim().length > 0) {
+          void triggerCandidateTurnRef.current();
         }
+      };
 
-        // 9.0-second thinking buffer for candidates thinking aloud
-        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-        silenceTimeoutRef.current = setTimeout(() => {
-          if (currentText.length > 3) {
-            rec.stop();
-            void triggerCandidateTurnRef.current(currentText);
+      mediaRecorder.start(250);
+
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        const resetSilenceTimeout = () => {
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
           }
-        }, 9000);
-      };
-
-      rec.onerror = (event: any) => {
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          console.warn('Speech recognition warning:', event.error);
-        }
-        setIsListening(false);
-        setIsSpeakingNow(false);
-      };
-
-      rec.onend = () => {
-        setIsListening(false);
-        setIsSpeakingNow(false);
-      };
-
-      recognitionRef.current = rec;
-      rec.start();
-
-      // Native MediaRecorder for high-accuracy Whisper fallback
-      navigator.mediaDevices?.getUserMedia({ audio: true }).then((stream) => {
-        audioChunksRef.current = [];
-        const mr = new MediaRecorder(stream);
-        mr.ondataavailable = (e) => {
-          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+          silenceTimeoutRef.current = setTimeout(() => {
+            stopListening();
+          }, 9000);
         };
-        mr.start();
-        mediaRecorderRef.current = mr;
-      }).catch(() => {});
 
-    } catch (e) {
-      console.warn('Could not start speech recognition:', e);
+        recognition.onstart = () => {
+          setIsListening(true);
+          resetSilenceTimeout();
+        };
+
+        recognition.onresult = (event: any) => {
+          let fullTranscript = '';
+          for (let i = 0; i < event.results.length; i++) {
+            fullTranscript += event.results[i][0].transcript;
+          }
+
+          setIsSpeakingNow(true);
+          setChatInput(fullTranscript);
+          resetSilenceTimeout();
+
+          const lower = fullTranscript.toLowerCase().trim();
+          const matchesWakePhrase = END_PHRASES.some((phrase) => lower.endsWith(phrase));
+          if (matchesWakePhrase) {
+            stopListening();
+          }
+        };
+
+        recognition.onerror = () => {
+          setIsSpeakingNow(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+          setIsSpeakingNow(false);
+        };
+
+        recognition.start();
+      } else {
+        setIsListening(true);
+      }
+    } catch (err) {
+      console.warn('Microphone access notice:', err);
       setIsListening(false);
     }
-  }, [isAiSpeaking]);
+  }, [isAiSpeaking, isListening, chatInput, stopListening]);
 
   useEffect(() => {
     startListeningRef.current = startListening;
   }, [startListening]);
 
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
-      recognitionRef.current = null;
-    }
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-    if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-    setIsListening(false);
-    setIsSpeakingNow(false);
-  }, []);
-
-  // Tab blur window telemetry tracking
+  // Window Focus Detection
   useEffect(() => {
-    const onBlur = () => setIsWindowBlurred(true);
-    const onFocus = () => setIsWindowBlurred(false);
-    window.addEventListener('blur', onBlur);
-    window.addEventListener('focus', onFocus);
+    const handleBlur = () => setIsWindowBlurred(true);
+    const handleFocus = () => setIsWindowBlurred(false);
+
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
     return () => {
-      window.removeEventListener('blur', onBlur);
-      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
-  // Countdown Timer with 60s Grace Re-Arm on Cancel
+  // Timer Countdown
   useEffect(() => {
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
+          clearInterval(timer);
           void handleEndInterviewRef.current(true);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
+
+    return () => clearInterval(timer);
   }, []);
 
-  // Format mm:ss
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Candidate Turn Submission
-  const triggerCandidateTurn = async (explicitText?: string) => {
-    let candidateText = explicitText !== undefined ? explicitText : chatInput;
-    setChatInput('');
-    stopListening();
+  // --- End Interview ---
+  const handleEndInterview = useCallback(async (isAuto = false) => {
+    if (isSessionEndedRef.current) return;
+    isSessionEndedRef.current = true;
 
-    if (audioChunksRef.current.length > 0 && (!candidateText || candidateText.length < 5)) {
-      try {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const whisperApiKey = getStoredApiKey('GROQ') || apiKey;
-        const whisperResult = await transcribeAudio(audioBlob, whisperApiKey);
-        if (whisperResult && whisperResult.transcript && whisperResult.transcript.trim().length > 3) {
-          candidateText = whisperResult.transcript.trim();
-        }
-      } catch (err) {
-        console.warn('Whisper fallback note:', err);
-      }
-      audioChunksRef.current = [];
+    stopListening();
+    window.speechSynthesis?.cancel();
+
+    try {
+      await addMessageToSession(sessionId, {
+        senderRole: 'AI',
+        messageType: 'SYSTEM_EVENT',
+        content: isAuto
+          ? 'Interview concluded automatically as time expired.'
+          : 'Candidate concluded technical assessment session.'
+      });
+
+      await completeSession(sessionId);
+    } catch {
+      // Ignore
     }
 
-    if (!candidateText && !code.trim()) return;
-    if (!candidateText) candidateText = 'Shared code updates in editor.';
+    onFinish();
+  }, [sessionId, stopListening, onFinish]);
 
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages((prev) => [...prev, { role: 'candidate', content: candidateText, timestamp: timeStr }]);
+  // --- Candidate Interaction Turn ---
+  const triggerCandidateTurn = async (forcedText?: string) => {
+    const candidateText = (forcedText || chatInput).trim();
+    if (!candidateText || isAiResponding) return;
 
-    await addMessageToSession(sessionId, {
-      senderRole: 'CANDIDATE',
-      messageType: 'EXPLANATION',
-      content: candidateText,
-      codeSnippet: code
-    });
+    stopListening();
+    setChatInput('');
 
-    // Stage progression heuristics based on turns
+    const candidateTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setMessages((prev) => [
+      ...prev,
+      { role: 'candidate', content: candidateText, timestamp: candidateTimestamp }
+    ]);
+
+    try {
+      await addMessageToSession(sessionId, {
+        senderRole: 'CANDIDATE',
+        messageType: 'EXPLANATION',
+        content: candidateText,
+        codeSnippet: code
+      });
+    } catch {
+      // Ignore
+    }
+
+    // Stage progression
     if (currentStage === 'INTRODUCTION') {
       setCurrentStage('CORE_TECH');
     } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
@@ -410,6 +514,7 @@ export const InterviewRoom: React.FC<Props> = ({
 
       const dialogue = await processDialogueTurn({
         questionContext: contextPayload,
+        problemSlug: question.problemSlug,
         candidateExplanation: candidateText,
         candidateCode: code,
         modelProvider: provider,
@@ -512,6 +617,7 @@ export const InterviewRoom: React.FC<Props> = ({
 
       if (result.status === 'ENGINE_UNAVAILABLE') {
         setTestStatus('failed');
+        setEngineReady(false);
         setExecutionOutput(
           `🛑 [Execution Engine Offline]\n${result.stderr || 'Judge0 execution engine is currently unreachable. Start the judge0 container to enable sandbox execution.'}\n\n⚠️ Status: ENGINE_UNAVAILABLE (0 / ${result.totalTests} Tests Passed)`
         );
@@ -552,31 +658,11 @@ export const InterviewRoom: React.FC<Props> = ({
         setExecutionOutput(output);
       }
     } catch (err: any) {
+      console.error('Execution failed:', err);
       setTestStatus('failed');
-      setExecutionOutput(`[Sandbox Error] Could not connect to execution engine: ${err.message || 'Unknown network error'}`);
+      setExecutionOutput(`[Execution Error] Could not connect to Judge0 sandbox: ${err.message || 'Unknown network error'}`);
     }
   };
-
-  const handleEndInterview = useCallback(async (isAutoExpiry = false) => {
-    const message = isAutoExpiry
-      ? 'Assessment time has expired. Conclude interview and generate your 360° Diagnostic Report?'
-      : 'Are you ready to conclude your interview session and generate your 360° Diagnostic Report?';
-
-    if (window.confirm(message)) {
-      isSessionEndedRef.current = true;
-      stopListening();
-      window.speechSynthesis?.cancel();
-      try {
-        await completeSession(sessionId);
-        onFinish();
-      } catch (err) {
-        console.error('Session complete error:', err);
-        onFinish();
-      }
-    } else if (isAutoExpiry) {
-      setTimeLeft(60);
-    }
-  }, [onFinish, sessionId, stopListening]);
 
   useEffect(() => {
     handleEndInterviewRef.current = handleEndInterview;
@@ -588,16 +674,52 @@ export const InterviewRoom: React.FC<Props> = ({
     setTimeout(() => setCopiedIndex(null), 1500);
   };
 
+  const currentCodeExt = language === 'python' ? 'py' : language === 'javascript' ? 'js' : 'java';
+
   return (
     <div className="flex flex-col h-screen bg-bg text-text overflow-hidden select-none">
 
-      {/* TOP BAR */}
+      {/* WORKSPACE COLLISION GUARD MODAL */}
+      {showWorkspaceConflict && (
+        <div className="fixed inset-0 z-50 bg-bg/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-lg max-w-md w-full p-6 space-y-4 shadow-xl select-text">
+            <div className="flex items-center gap-2.5 text-warning font-bold text-base">
+              <ShieldAlert className="w-5 h-5" />
+              <span>Workspace Session Active</span>
+            </div>
+            <p className="text-xs text-text-2 leading-relaxed">
+              A workspace is already active for this session in another browser tab. Would you like to take over this workspace session?
+            </p>
+            <div className="flex justify-end gap-2.5 pt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowWorkspaceConflict(false)}
+              >
+                Dismiss
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  sessionStorage.setItem(`ws.active.${sessionId}`, getSessionTabId());
+                  setShowWorkspaceConflict(false);
+                }}
+              >
+                Take Over Workspace
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOP FLAT HEADER BAR */}
       <header className="h-14 bg-surface border-b border-border flex items-center justify-between px-4 z-20 shrink-0">
         {/* Brand & Problem Title */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-primary to-primary-2 flex items-center justify-center shadow-md shadow-primary/30">
-              <Sparkles className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 rounded-md bg-elevated border border-border flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-2" />
             </div>
             <span className="font-extrabold text-sm tracking-tight text-white">
               AI Interview OS
@@ -709,7 +831,7 @@ export const InterviewRoom: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* Left Scrollable Content: LeetCode Layout with Problem + Inline Examples + Constraints */}
+            {/* Left Scrollable Content: Markdown Problem + Examples + Constraints */}
             <div className="flex-1 overflow-y-auto p-4 select-text">
               {leftPanelTab === 'description' && (
                 <div className="space-y-5">
@@ -727,12 +849,10 @@ export const InterviewRoom: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Problem Statement */}
-                  <div className="text-xs text-text-2 leading-relaxed whitespace-pre-wrap">
-                    {question.problemStatement}
-                  </div>
+                  {/* Rendered Markdown Problem Statement */}
+                  <MarkdownProblem statement={question.problemStatement} />
 
-                  {/* Inline Examples (LeetCode Style) */}
+                  {/* Inline Examples */}
                   {question.sampleTests && question.sampleTests.length > 0 && (
                     <div className="space-y-3">
                       <div className="text-xs font-bold text-text-3 uppercase tracking-wider">
@@ -858,7 +978,7 @@ export const InterviewRoom: React.FC<Props> = ({
           />
         )}
 
-        {/* 2. CENTER PANEL: ProjectWorkspace for Multi-File LLD OR Single-File Monaco Workspace */}
+        {/* 2. CENTER PANEL: Multi-File LLD OR Single-File Monaco Workspace */}
         {question.starterFiles && Object.keys(question.starterFiles).length > 0 ? (
           <div
             id="center-panel-container"
@@ -873,159 +993,203 @@ export const InterviewRoom: React.FC<Props> = ({
               onSubmitProject={(summary) => void triggerCandidateTurn(summary)}
               isMaximized={isEditorMaximized}
               onToggleMaximize={() => setIsEditorMaximized(!isEditorMaximized)}
+              engine="Maven"
+              engineReady={engineReady}
+              proctorClean={!(isWindowBlurred || tabSwitches > 0)}
             />
           </div>
         ) : (
-        <div
-          id="center-panel-container"
-          className="flex-1 flex flex-col bg-bg overflow-hidden relative"
-        >
-          {/* Workspace Header Toolbar */}
-          <div className="h-10 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
-            <div className="flex items-center gap-1">
-              <Button
-                variant={editorTab === 'solution' ? 'secondary' : 'ghost'}
-                size="sm"
-                icon={<Code2 className="w-3.5 h-3.5 text-primary-2" />}
-                onClick={() => setEditorTab('solution')}
-              >
-                Solution.{language === 'python' ? 'py' : language === 'javascript' ? 'js' : 'java'}
-              </Button>
+          <div
+            id="center-panel-container"
+            className="flex-1 flex bg-bg overflow-hidden relative"
+          >
+            {/* ActivityBar */}
+            <ActivityBar
+              active="explorer"
+              onRun={handleRunCode}
+              proctorClean={!(isWindowBlurred || tabSwitches > 0)}
+            />
 
-              <Button
-                variant={editorTab === 'tests' ? 'secondary' : 'ghost'}
-                size="sm"
-                icon={<FileText className="w-3.5 h-3.5 text-sky-400" />}
-                onClick={() => setEditorTab('tests')}
-              >
-                tests.{language === 'python' ? 'py' : 'java'}
-              </Button>
+            {/* Editor Column */}
+            <div className="flex-1 flex flex-col overflow-hidden">
 
-              <Button
-                variant={editorTab === 'whiteboard' ? 'secondary' : 'ghost'}
-                size="sm"
-                icon={<Layers className="w-3.5 h-3.5 text-purple-400" />}
-                onClick={() => setEditorTab('whiteboard')}
-              >
-                HLD Whiteboard
-              </Button>
-            </div>
+              {/* Workspace Header Toolbar */}
+              <div className="h-10 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant={editorTab === 'solution' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    icon={<Code2 className="w-3.5 h-3.5 text-primary-2" />}
+                    onClick={() => setEditorTab('solution')}
+                  >
+                    Solution.{currentCodeExt}
+                  </Button>
 
-            {/* Language Selector, Run Tests, Submit & Maximize */}
-            <div className="flex items-center gap-2">
-              <select
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value as any)}
-                className="bg-elevated text-text border border-border rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-              >
-                <option value="java">Java 21 LTS</option>
-                <option value="python">Python 3.12</option>
-                <option value="javascript">JavaScript (Node)</option>
-              </select>
+                  <Button
+                    variant={editorTab === 'tests' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    icon={<FileText className="w-3.5 h-3.5 text-sky-400" />}
+                    onClick={() => setEditorTab('tests')}
+                  >
+                    tests.{language === 'python' ? 'py' : 'java'}
+                  </Button>
 
-              <Button
-                variant="primary"
-                size="sm"
-                icon={<Play className="w-3 h-3 fill-white" />}
-                onClick={handleRunCode}
-                loading={testStatus === 'running'}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white"
-              >
-                {testStatus === 'running' ? 'Running...' : 'Run Tests'}
-              </Button>
+                  <Button
+                    variant={editorTab === 'whiteboard' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    icon={<Layers className="w-3.5 h-3.5 text-purple-400" />}
+                    onClick={() => setEditorTab('whiteboard')}
+                  >
+                    HLD Whiteboard
+                  </Button>
+                </div>
 
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void triggerCandidateTurn('I have updated and tested my code in the editor.')}
-              >
-                Submit Code
-              </Button>
+                {/* Language Selector, Run Tests, Submit & Maximize */}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={language}
+                    onChange={(e) => handleLanguageChange(e.target.value as any)}
+                    className="bg-elevated text-text border border-border rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                  >
+                    <option value="java">Java 21 LTS</option>
+                    <option value="python">Python 3.12</option>
+                    <option value="javascript">JavaScript (Node)</option>
+                  </select>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditorMaximized(!isEditorMaximized)}
-                title={isEditorMaximized ? 'Restore Panels' : 'Maximize Editor'}
-              >
-                {isEditorMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              </Button>
-            </div>
-          </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Play className="w-3 h-3 fill-white" />}
+                    onClick={handleRunCode}
+                    loading={testStatus === 'running'}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                  >
+                    {testStatus === 'running' ? 'Running...' : 'Run Tests'}
+                  </Button>
 
-          {/* Monaco Editor / Canvas */}
-          <div className="flex-1 relative overflow-hidden">
-            {editorTab === 'solution' && (
-              <Editor
-                height="100%"
-                language={language === 'python' ? 'python' : language === 'javascript' ? 'javascript' : 'java'}
-                theme="vs-dark"
-                value={code}
-                onChange={(val) => setCode(val || '')}
-                options={{
-                  fontSize: 14,
-                  minimap: { enabled: false },
-                  fontFamily: "var(--font-mono), 'Fira Code', monospace",
-                  automaticLayout: true,
-                  tabSize: 4,
-                  scrollBeyondLastLine: false,
-                  lineNumbersMinChars: 3
-                }}
-              />
-            )}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void triggerCandidateTurn('I have updated and tested my code in the editor.')}
+                  >
+                    Submit Code
+                  </Button>
 
-            {editorTab === 'tests' && (
-              <Editor
-                height="100%"
-                language={language === 'python' ? 'python' : 'java'}
-                theme="vs-dark"
-                value={generateSampleTestsCode()}
-                options={{
-                  fontSize: 14,
-                  readOnly: true,
-                  minimap: { enabled: false },
-                  fontFamily: "var(--font-mono), 'Fira Code', monospace",
-                  automaticLayout: true
-                }}
-              />
-            )}
-
-            {editorTab === 'whiteboard' && (
-              <div className="h-full p-2">
-                <HldWhiteboardCanvas
-                  sessionId={sessionId}
-                  provider={provider}
-                  apiKey={apiKey}
-                  onArchitectureUpdate={(sum) => setArchitectureSummary(sum)}
-                />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditorMaximized(!isEditorMaximized)}
+                    title={isEditorMaximized ? 'Restore Panels' : 'Maximize Editor'}
+                  >
+                    {isEditorMaximized ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
               </div>
-            )}
+
+              {/* BREADCRUMB BAR */}
+              <BreadcrumbBar
+                segments={
+                  editorTab === 'solution'
+                    ? ['Solution.' + currentCodeExt]
+                    : editorTab === 'tests'
+                    ? ['tests.' + (language === 'python' ? 'py' : 'java')]
+                    : ['HLD Whiteboard']
+                }
+              />
+
+              {/* Monaco Editor / Whiteboard */}
+              <div className="flex-1 relative overflow-hidden">
+                {editorTab === 'solution' && (
+                  <Editor
+                    height="100%"
+                    language={language === 'python' ? 'python' : language === 'javascript' ? 'javascript' : 'java'}
+                    theme="vs-dark"
+                    value={code}
+                    onChange={(val) => setCode(val || '')}
+                    onMount={(editor) => {
+                      editor.onDidChangeCursorPosition((e) => {
+                        setCursor({ ln: e.position.lineNumber, col: e.position.column });
+                      });
+                    }}
+                    options={{
+                      fontSize: 14,
+                      minimap: { enabled: false },
+                      fontFamily: "var(--font-mono), 'Fira Code', monospace",
+                      automaticLayout: true,
+                      tabSize: 4,
+                      scrollBeyondLastLine: false,
+                      lineNumbersMinChars: 3
+                    }}
+                  />
+                )}
+
+                {editorTab === 'tests' && (
+                  <Editor
+                    height="100%"
+                    language={language === 'python' ? 'python' : 'java'}
+                    theme="vs-dark"
+                    value={generateSampleTestsCode()}
+                    onMount={(editor) => {
+                      editor.onDidChangeCursorPosition((e) => {
+                        setCursor({ ln: e.position.lineNumber, col: e.position.column });
+                      });
+                    }}
+                    options={{
+                      fontSize: 14,
+                      readOnly: true,
+                      minimap: { enabled: false },
+                      fontFamily: "var(--font-mono), 'Fira Code', monospace",
+                      automaticLayout: true
+                    }}
+                  />
+                )}
+
+                {editorTab === 'whiteboard' && (
+                  <div className="h-full p-2">
+                    <HldWhiteboardCanvas
+                      sessionId={sessionId}
+                      provider={provider}
+                      apiKey={apiKey}
+                      onArchitectureUpdate={(sum) => setArchitectureSummary(sum)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* RESIZE HANDLE: Editor to Bottom Console */}
+              {isConsoleOpen && (
+                <ResizeHandle
+                  direction="vertical"
+                  onDelta={(delta) => {
+                    setConsoleHeight((prev) => Math.max(70, Math.min(500, prev - delta)));
+                  }}
+                  onDoubleClick={() => setConsoleHeight(DEFAULT_CONSOLE_HEIGHT)}
+                />
+              )}
+
+              {/* Resizable Bottom Execution Console */}
+              {isConsoleOpen && (
+                <TestConsole
+                  status={testStatus}
+                  output={executionOutput}
+                  height={consoleHeight}
+                  onClear={() => setExecutionOutput(null)}
+                  onClose={() => setIsConsoleOpen(false)}
+                  onToggleExpand={() => setConsoleHeight(consoleHeight > 250 ? 120 : 340)}
+                  isExpanded={consoleHeight > 250}
+                />
+              )}
+
+              {/* STATUS BAR */}
+              <StatusBar
+                ln={cursor.ln}
+                col={cursor.col}
+                language={language}
+                engine="Judge0"
+                engineReady={engineReady}
+              />
+            </div>
           </div>
-
-          {/* RESIZE HANDLE: Editor to Bottom Console */}
-          {isConsoleOpen && (
-            <ResizeHandle
-              direction="vertical"
-              onDelta={(delta) => {
-                setConsoleHeight((prev) => Math.max(70, Math.min(500, prev - delta)));
-              }}
-              onDoubleClick={() => setConsoleHeight(DEFAULT_CONSOLE_HEIGHT)}
-            />
-          )}
-
-          {/* Resizable Bottom Execution Console */}
-          {isConsoleOpen && (
-            <TestConsole
-              status={testStatus}
-              output={executionOutput}
-              height={consoleHeight}
-              onClear={() => setExecutionOutput(null)}
-              onClose={() => setIsConsoleOpen(false)}
-              onToggleExpand={() => setConsoleHeight(consoleHeight > 250 ? 120 : 340)}
-              isExpanded={consoleHeight > 250}
-            />
-          )}
-        </div>
         )}
 
         {/* RESIZE HANDLE: Center to Right */}
@@ -1112,7 +1276,7 @@ export const InterviewRoom: React.FC<Props> = ({
                   }}
                   className={`w-9 h-9 rounded-md border flex items-center justify-center cursor-pointer transition-colors ${
                     isListening
-                      ? 'bg-danger border-danger text-white shadow-md shadow-danger/40'
+                      ? 'bg-danger border-danger text-white'
                       : 'bg-elevated border-border text-text hover:bg-border/60'
                   }`}
                   title={isListening ? 'Stop Speaking' : 'Start Speaking'}
