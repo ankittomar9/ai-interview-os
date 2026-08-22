@@ -47,7 +47,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
     // 1. Fetch system & sandbox capabilities from backend
     const fetchCapabilities = async () => {
       try {
-        const resp = await fetch('http://localhost:8080/api/v1/system/capabilities');
+        const resp = await fetch(`http://${host}:8080/api/v1/system/capabilities`);
         if (resp.ok) {
           const data = await resp.json();
           setCapabilities(data);

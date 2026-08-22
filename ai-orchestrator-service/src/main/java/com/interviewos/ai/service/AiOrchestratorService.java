@@ -35,12 +35,13 @@ public class AiOrchestratorService {
         String trackStr = request.track() != null ? request.track().name() : "ALGORITHMS_DATA_STRUCTURES";
         String diffStr = request.difficulty() != null ? request.difficulty().name() : "JUNIOR";
         String providerStr = request.modelProvider() != null ? request.modelProvider().name() : "";
+        List<String> skills = request.resumeSkills() != null ? request.resumeSkills() : List.of();
 
         // 1. Fetch matched problem from centralized Question Bank
         Optional<ProblemCatalogClient.QuestionMatchResult> matchOpt = problemCatalogClient.matchQuestion(
                 trackStr,
                 diffStr,
-                List.of(),
+                skills,
                 request.jobDescription(),
                 providerStr,
                 request.apiKey()
@@ -131,7 +132,7 @@ public class AiOrchestratorService {
     }
 
     /**
-     * Handles live conversational dialogue, probing follow-up questions, and code review.
+     * Handles live conversational dialogue, probing follow-up questions grounded in Question Bank seeds, and code review.
      */
     public AiDialogueResponse processDialogue(AiDialogueRequest request) {
         AiClient client = clientFactory.getClient(request.modelProvider());
@@ -150,6 +151,25 @@ public class AiOrchestratorService {
                   "areasToImprove": ["Area 1"]
                 }
                 """);
+
+        // Grounding with Question Bank follow-up seeds
+        String resolvedSlug = resolveProblemSlug(request);
+        if (resolvedSlug != null && !resolvedSlug.isBlank()) {
+            try {
+                Optional<ProblemCatalogClient.QuestionFullDetail> detailOpt = problemCatalogClient.getFullQuestionDetail(resolvedSlug);
+                if (detailOpt.isPresent()) {
+                    var detail = detailOpt.get();
+                    if (detail.interviewerNotes() != null && detail.interviewerNotes().followUpSeeds() != null && !detail.interviewerNotes().followUpSeeds().isEmpty()) {
+                        systemInstructionBuilder.append("\nSuggested Follow-Up Topics for this challenge (probe candidate on these when appropriate):\n");
+                        for (String seed : detail.interviewerNotes().followUpSeeds()) {
+                            systemInstructionBuilder.append("- ").append(seed).append("\n");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Notice on fetching question followUpSeeds: {}", e.getMessage());
+            }
+        }
 
         if (request.latestExecution() != null) {
             systemInstructionBuilder.append(String.format("""
@@ -204,5 +224,25 @@ public class AiOrchestratorService {
                     List.of("Explicit Big-O complexity analysis", "Edge-case error handling")
             );
         }
+    }
+
+    private String resolveProblemSlug(AiDialogueRequest req) {
+        if (req.problemSlug() != null && !req.problemSlug().isBlank()) {
+            return req.problemSlug().trim();
+        }
+        String ctx = req.questionContext() != null ? req.questionContext().toLowerCase() : "";
+        if (ctx.contains("lld-order-service") || ctx.contains("order service") || ctx.contains("spring boot order")) {
+            return "lld-order-service";
+        }
+        if (ctx.contains("lru-cache") || ctx.contains("lru cache")) {
+            return "lru-cache";
+        }
+        if (ctx.contains("reverse-a-string") || ctx.contains("reverse a string")) {
+            return "reverse-a-string";
+        }
+        if (ctx.contains("two-sum") || ctx.contains("two sum")) {
+            return "two-sum";
+        }
+        return null;
     }
 }

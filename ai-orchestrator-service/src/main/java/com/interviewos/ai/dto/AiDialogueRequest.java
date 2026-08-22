@@ -16,6 +16,8 @@ public record AiDialogueRequest(
         @NotBlank(message = "Question context is required")
         String questionContext,
 
+        String problemSlug,
+
         String candidateExplanation,
 
         String candidateCode,
@@ -41,7 +43,7 @@ public record AiDialogueRequest(
             String apiKey,
             String modelName
     ) {
-        this(questionContext, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null);
+        this(questionContext, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null);
     }
 
     public record ChatMessageDto(

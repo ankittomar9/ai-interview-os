@@ -5,11 +5,14 @@ import com.interviewos.ai.model.InterviewTrack;
 import com.interviewos.ai.model.ModelProvider;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
+
 import java.util.List;
 
 /**
- * Request payload to synthesize a new interview question.
+ * Request payload to synthesize or match an interview question.
  */
+@Builder
 public record GenerateQuestionRequest(
         @NotBlank(message = "Role title is required (e.g. Senior Java Backend Engineer)")
         String roleTitle,
@@ -22,6 +25,8 @@ public record GenerateQuestionRequest(
 
         String jobDescription,
 
+        List<String> resumeSkills,
+
         List<String> previousQuestions,
 
         @NotNull(message = "Model provider is required")
@@ -30,4 +35,17 @@ public record GenerateQuestionRequest(
         String apiKey,
 
         String modelName
-) {}
+) {
+    public GenerateQuestionRequest(
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String jobDescription,
+            List<String> previousQuestions,
+            ModelProvider modelProvider,
+            String apiKey,
+            String modelName
+    ) {
+        this(roleTitle, track, difficulty, jobDescription, List.of(), previousQuestions, modelProvider, apiKey, modelName);
+    }
+}

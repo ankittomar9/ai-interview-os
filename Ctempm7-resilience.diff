@@ -1,0 +1,916 @@
+commit eff760f039dc0fb41b6dff16456583f546dac8d3
+Author: tomar <tomarankit78@gmail.com>
+Date:   Sat Aug 22 18:57:34 2026 +0530
+
+    feat(resilience): implement lazy Docker init, RestClient timeout audit, /api/v1/system/capabilities probe, compose engine profiles, and GridFS storage hygiene job
+
+diff --git a/ai-orchestrator-service/src/main/java/com/interviewos/ai/client/SessionAttachmentClient.java b/ai-orchestrator-service/src/main/java/com/interviewos/ai/client/SessionAttachmentClient.java
+index ac49250..d624d5e 100644
+--- a/ai-orchestrator-service/src/main/java/com/interviewos/ai/client/SessionAttachmentClient.java
++++ b/ai-orchestrator-service/src/main/java/com/interviewos/ai/client/SessionAttachmentClient.java
+@@ -2,10 +2,12 @@ package com.interviewos.ai.client;
+ 
+ import lombok.extern.slf4j.Slf4j;
+ import org.springframework.beans.factory.annotation.Value;
++import org.springframework.http.client.SimpleClientHttpRequestFactory;
+ import org.springframework.stereotype.Component;
+ import org.springframework.web.client.RestClient;
+ 
+ import java.nio.charset.StandardCharsets;
++import java.time.Duration;
+ 
+ @Slf4j
+ @Component
+@@ -16,7 +18,12 @@ public class SessionAttachmentClient {
+     public SessionAttachmentClient(
+             @Value("${session.service.url:http://interview-session-service:8081}") String sessionServiceUrl
+     ) {
++        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
++        factory.setConnectTimeout(Duration.ofSeconds(5));
++        factory.setReadTimeout(Duration.ofSeconds(10));
++
+         this.restClient = RestClient.builder()
++                .requestFactory(factory)
+                 .baseUrl(sessionServiceUrl)
+                 .build();
+     }
+diff --git a/cloud-config-server/src/main/resources/config-repo/interview-session-service.yaml b/cloud-config-server/src/main/resources/config-repo/interview-session-service.yaml
+index 26dabee..50cdef6 100644
+--- a/cloud-config-server/src/main/resources/config-repo/interview-session-service.yaml
++++ b/cloud-config-server/src/main/resources/config-repo/interview-session-service.yaml
+@@ -1,31 +1,47 @@
+-server:
+-  port: 8081
+-
+-spring:
+-  datasource:
+-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/interview_session_db}
+-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+-    driver-class-name: org.postgresql.Driver
+-  jpa:
+-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+-    hibernate:
+-      ddl-auto: validate
+-    show-sql: false
+-  flyway:
+-    enabled: true
+-    baseline-on-migrate: true
+-    locations: classpath:db/migration
+-  data:
+-    mongodb:
+-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongodb:27017/interviewos}
+-
+-judge0:
+-  url: ${JUDGE0_URL:http://judge0:2358}
+-  auth-token: ${JUDGE0_AUTH_TOKEN:}
+-  wait-timeout-seconds: 20
+-
+-runner:
+-  maven:
+-    image: ${RUNNER_MAVEN_IMAGE:ai-interview-os/lld-runner:latest}
+-    timeout-seconds: ${RUNNER_MAVEN_TIMEOUT_SECONDS:240}
+\ No newline at end of file
++server:
++  port: 8081
++
++spring:
++  datasource:
++    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/interview_session_db}
++    username: ${SPRING_DATASOURCE_USERNAME:postgres}
++    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
++    driver-class-name: org.postgresql.Driver
++  jpa:
++    database-platform: org.hibernate.dialect.PostgreSQLDialect
++    hibernate:
++      ddl-auto: validate
++    show-sql: false
++  flyway:
++    enabled: true
++    baseline-on-migrate: true
++    locations: classpath:db/migration
++  data:
++    mongodb:
++      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongodb:27017/interviewos}
++
++judge0:
++  url: ${JUDGE0_URL:http://judge0:2358}
++  auth-token: ${JUDGE0_AUTH_TOKEN:}
++  wait-timeout-seconds: 20
++
++runner:
++  maven:
++    image: ${RUNNER_MAVEN_IMAGE:ai-interview-os/lld-runner:latest}
++    timeout-seconds: ${RUNNER_MAVEN_TIMEOUT_SECONDS:240}
++
++storage:
++  retention-days: ${STORAGE_RETENTION_DAYS:14}
++  cleanup-cron: ${STORAGE_CLEANUP_CRON:0 0 3 * * ?}
++
++ai:
++  orchestrator:
++    url: ${AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}
++
++proctor:
++  sentinel:
++    url: ${PROCTOR_SENTINEL_URL:http://proctor-sentinel-service:8083}
++
++question:
++  bank:
++    url: ${QUESTION_BANK_URL:http://question-bank-service:8086}
+\ No newline at end of file
+diff --git a/docker-compose.yaml b/docker-compose.yaml
+index 3d350aa..693cc83 100644
+--- a/docker-compose.yaml
++++ b/docker-compose.yaml
+@@ -46,6 +46,8 @@ services:
+   judge0-db:
+     image: postgres:13-alpine
+     container_name: judge0-db
++    profiles:
++      - engines
+     environment:
+       - POSTGRES_USER=judge0
+       - POSTGRES_PASSWORD=judge0pass
+@@ -64,6 +66,8 @@ services:
+   judge0-redis:
+     image: redis:7-alpine
+     container_name: judge0-redis
++    profiles:
++      - engines
+     networks:
+       - ai-interview-net
+     healthcheck:
+@@ -76,6 +80,8 @@ services:
+   judge0:
+     image: judge0/judge0:1.13.1
+     container_name: judge0-server
++    profiles:
++      - engines
+     ports:
+       - "2358:2358"
+     privileged: true
+@@ -101,6 +107,8 @@ services:
+   judge0-workers:
+     image: judge0/judge0:1.13.1
+     container_name: judge0-workers
++    profiles:
++      - engines
+     command: ["./scripts/workers"]
+     privileged: true
+     environment:
+@@ -127,6 +135,8 @@ services:
+       context: ./docker/lld-runner
+       dockerfile: Dockerfile
+     image: ai-interview-os/lld-runner:latest
++    profiles:
++      - engines
+     entrypoint: ["true"]
+ 
+   # 1. Eureka Service Discovery
+@@ -269,6 +279,27 @@ services:
+       postgres:
+         condition: service_healthy
+ 
++  # 6.5 Question Bank Service (Connected to MongoDB & Eureka)
++  question-bank-service:
++    build:
++      context: .
++      dockerfile: ./question-bank-service/Dockerfile
++    container_name: question-bank-service
++    ports:
++      - "8086:8086"
++    networks:
++      - ai-interview-net
++    environment:
++      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
++      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
++      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
++      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/questionbank
++    depends_on:
++      cloud-config-server:
++        condition: service_healthy
++      mongodb:
++        condition: service_healthy
++
+   # 7. Spring Cloud API Gateway
+   api-gateway-service:
+     build:
+diff --git a/docker/observability/loki-config.yml b/docker/observability/loki-config.yml
+index d38aadc..8dae852 100644
+--- a/docker/observability/loki-config.yml
++++ b/docker/observability/loki-config.yml
+@@ -26,6 +26,13 @@ schema_config:
+         prefix: index_
+         period: 24h
+ 
++limits_config:
++  retention_period: 168h
++
++compactor:
++  retention_enabled: true
++  working_directory: /loki/compactor
++
+ ruler:
+   alertmanager_url: http://localhost:9093
+ 
+diff --git a/interview-session-service/src/main/java/com/interviewos/session/InterviewSessionServiceApplication.java b/interview-session-service/src/main/java/com/interviewos/session/InterviewSessionServiceApplication.java
+index e4df1a0..5ff430b 100644
+--- a/interview-session-service/src/main/java/com/interviewos/session/InterviewSessionServiceApplication.java
++++ b/interview-session-service/src/main/java/com/interviewos/session/InterviewSessionServiceApplication.java
+@@ -6,10 +6,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
+ import org.springframework.boot.context.event.ApplicationReadyEvent;
+ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+ import org.springframework.context.event.EventListener;
++import org.springframework.scheduling.annotation.EnableScheduling;
+ 
+ @Slf4j
+ @SpringBootApplication
+ @EnableDiscoveryClient
++@EnableScheduling
+ public class InterviewSessionServiceApplication {
+ 
+     public static void main(String[] args) {
+diff --git a/interview-session-service/src/main/java/com/interviewos/session/config/MongoGridFsConfig.java b/interview-session-service/src/main/java/com/interviewos/session/config/MongoGridFsConfig.java
+new file mode 100644
+index 0000000..3c5c7a3
+--- /dev/null
++++ b/interview-session-service/src/main/java/com/interviewos/session/config/MongoGridFsConfig.java
+@@ -0,0 +1,16 @@
++package com.interviewos.session.config;
++
++import com.mongodb.client.gridfs.GridFSBucket;
++import com.mongodb.client.gridfs.GridFSBuckets;
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.data.mongodb.MongoDatabaseFactory;
++
++@Configuration
++public class MongoGridFsConfig {
++
++    @Bean
++    public GridFSBucket gridFSBucket(MongoDatabaseFactory mongoDatabaseFactory) {
++        return GridFSBuckets.create(mongoDatabaseFactory.getMongoDatabase());
++    }
++}
+diff --git a/interview-session-service/src/main/java/com/interviewos/session/controller/SystemCapabilitiesController.java b/interview-session-service/src/main/java/com/interviewos/session/controller/SystemCapabilitiesController.java
+new file mode 100644
+index 0000000..6ebcb92
+--- /dev/null
++++ b/interview-session-service/src/main/java/com/interviewos/session/controller/SystemCapabilitiesController.java
+@@ -0,0 +1,25 @@
++package com.interviewos.session.controller;
++
++import com.interviewos.session.service.SystemCapabilitiesService;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.GetMapping;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++@Slf4j
++@RestController
++@RequestMapping("/api/v1/system")
++@RequiredArgsConstructor
++public class SystemCapabilitiesController {
++
++    private final SystemCapabilitiesService systemCapabilitiesService;
++
++    @GetMapping("/capabilities")
++    public ResponseEntity<SystemCapabilitiesService.SystemCapabilitiesResponse> getCapabilities() {
++        log.debug("GET /api/v1/system/capabilities requested");
++        SystemCapabilitiesService.SystemCapabilitiesResponse response = systemCapabilitiesService.getCapabilities();
++        return ResponseEntity.ok(response);
++    }
++}
+diff --git a/interview-session-service/src/main/java/com/interviewos/session/job/StorageHygieneScheduledJob.java b/interview-session-service/src/main/java/com/interviewos/session/job/StorageHygieneScheduledJob.java
+new file mode 100644
+index 0000000..021dc08
+--- /dev/null
++++ b/interview-session-service/src/main/java/com/interviewos/session/job/StorageHygieneScheduledJob.java
+@@ -0,0 +1,120 @@
++package com.interviewos.session.job;
++
++import com.interviewos.session.entity.InterviewSession;
++import com.interviewos.session.model.SessionStatus;
++import com.interviewos.session.repository.InterviewSessionRepository;
++import com.mongodb.client.gridfs.GridFSBucket;
++import com.mongodb.client.gridfs.GridFSFindIterable;
++import com.mongodb.client.gridfs.model.GridFSFile;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.bson.Document;
++import org.bson.types.ObjectId;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.data.mongodb.core.query.Criteria;
++import org.springframework.data.mongodb.core.query.Query;
++import org.springframework.data.mongodb.gridfs.GridFsTemplate;
++import org.springframework.scheduling.annotation.Scheduled;
++import org.springframework.stereotype.Component;
++
++import java.time.Duration;
++import java.time.Instant;
++import java.util.*;
++
++@Slf4j
++@Component
++@RequiredArgsConstructor
++public class StorageHygieneScheduledJob {
++
++    private final GridFsTemplate gridFsTemplate;
++    private final GridFSBucket gridFSBucket;
++    private final InterviewSessionRepository interviewSessionRepository;
++
++    @Value("${storage.retention-days:14}")
++    private int retentionDays;
++
++    @Scheduled(cron = "${storage.cleanup-cron:0 0 3 * * ?}")
++    public void scheduledCleanup() {
++        log.info("🧹 Starting scheduled GridFS storage hygiene and attachment cleanup job...");
++        int purged = runCleanupJob(Instant.now());
++        log.info("🧹 Storage hygiene job completed. Purged {} expired/orphan attachments.", purged);
++    }
++
++    public int runCleanupJob(Instant now) {
++        Instant cutoff = now.minus(Duration.ofDays(retentionDays));
++        log.info("Cleaning up GridFS attachments for completed sessions older than {} days (cutoff: {})...", retentionDays, cutoff);
++
++        int purgedCount = 0;
++        long reclaimedBytes = 0;
++
++        try {
++            GridFSFindIterable files = gridFSBucket.find();
++            Map<Long, Optional<InterviewSession>> sessionCache = new HashMap<>();
++
++            for (GridFSFile file : files) {
++                Document metadata = file.getMetadata();
++                ObjectId fileId = file.getObjectId();
++                long fileLength = file.getLength();
++                boolean shouldDelete = false;
++                String deleteReason = "";
++
++                if (metadata == null || !metadata.containsKey("sessionId")) {
++                    shouldDelete = true;
++                    deleteReason = "Missing sessionId metadata (orphan)";
++                } else {
++                    Object sessionVal = metadata.get("sessionId");
++                    Long sessionId = null;
++                    if (sessionVal instanceof Number num) {
++                        sessionId = num.longValue();
++                    } else if (sessionVal instanceof String str) {
++                        try {
++                            sessionId = Long.parseLong(str);
++                        } catch (NumberFormatException ignored) {}
++                    }
++
++                    if (sessionId == null) {
++                        shouldDelete = true;
++                        deleteReason = "Invalid sessionId format: " + sessionVal;
++                    } else {
++                        Optional<InterviewSession> optSession = sessionCache.computeIfAbsent(
++                                sessionId,
++                                interviewSessionRepository::findById
++                        );
++
++                        if (optSession.isEmpty()) {
++                            shouldDelete = true;
++                            deleteReason = "Session " + sessionId + " does not exist (orphan)";
++                        } else {
++                            InterviewSession session = optSession.get();
++                            if (session.getStatus() == SessionStatus.COMPLETED) {
++                                Instant sessionTime = session.getCompletedAt() != null
++                                        ? session.getCompletedAt()
++                                        : session.getCreatedAt();
++                                if (sessionTime != null && sessionTime.isBefore(cutoff)) {
++                                    shouldDelete = true;
++                                    deleteReason = String.format("Session %d COMPLETED at %s (> %d days ago)",
++                                            sessionId, sessionTime, retentionDays);
++                                }
++                            }
++                        }
++                    }
++                }
++
++                if (shouldDelete) {
++                    log.info("🗑️ Deleting attachment {} ({} bytes): {}", fileId, fileLength, deleteReason);
++                    gridFsTemplate.delete(new Query(Criteria.where("_id").is(fileId)));
++                    purgedCount++;
++                    reclaimedBytes += fileLength;
++                }
++            }
++
++            log.info("✅ Storage hygiene cycle complete: {} attachments deleted, {} KB reclaimed.",
++                    purgedCount, reclaimedBytes / 1024);
++
++        } catch (Exception e) {
++            log.error("Failed during storage hygiene execution: {}", e.getMessage(), e);
++        }
++
++        return purgedCount;
++    }
++}
+diff --git a/interview-session-service/src/main/java/com/interviewos/session/runner/LldMavenRunner.java b/interview-session-service/src/main/java/com/interviewos/session/runner/LldMavenRunner.java
+index a2da502..913468d 100644
+--- a/interview-session-service/src/main/java/com/interviewos/session/runner/LldMavenRunner.java
++++ b/interview-session-service/src/main/java/com/interviewos/session/runner/LldMavenRunner.java
+@@ -13,7 +13,6 @@ import com.github.dockerjava.core.DockerClientImpl;
+ import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+ import com.interviewos.session.sandbox.document.ProblemDocument;
+ import com.interviewos.session.sandbox.dto.ExecutionResultResponse;
+-import jakarta.annotation.PostConstruct;
+ import lombok.extern.slf4j.Slf4j;
+ import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.stereotype.Component;
+@@ -44,9 +43,32 @@ public class LldMavenRunner implements TrackRunner {
+ 
+     private DockerClient dockerClient;
+     private boolean isDockerAvailable = false;
++    private boolean isInitialized = false;
+ 
+-    @PostConstruct
+-    public void initDockerClient() {
++    // Constructor for testing / injection
++    public LldMavenRunner(DockerClient dockerClient) {
++        this.dockerClient = dockerClient;
++        this.isDockerAvailable = dockerClient != null;
++        this.isInitialized = true;
++    }
++
++    public LldMavenRunner() {}
++
++    public synchronized boolean isDockerReady() {
++        ensureDockerInitialized();
++        if (!isDockerAvailable || dockerClient == null) {
++            return false;
++        }
++        try {
++            dockerClient.pingCmd().exec();
++            return true;
++        } catch (Exception e) {
++            return false;
++        }
++    }
++
++    private synchronized void ensureDockerInitialized() {
++        if (isInitialized) return;
+         try {
+             DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
+             ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
+@@ -58,21 +80,15 @@ public class LldMavenRunner implements TrackRunner {
+             this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
+             this.dockerClient.pingCmd().exec();
+             this.isDockerAvailable = true;
+-            log.info("🐳 Docker Java client connected successfully for LLD Maven Sandbox. Image: {}", runnerImage);
++            log.info("🐳 Docker Java client initialized lazily for LLD Maven Sandbox. Image: {}", runnerImage);
+         } catch (Throwable t) {
+             this.isDockerAvailable = false;
+             log.warn("⚠️ Docker daemon unavailable for LLD Maven Runner: {}. Sandbox will return ENGINE_UNAVAILABLE.", t.getMessage());
++        } finally {
++            this.isInitialized = true;
+         }
+     }
+ 
+-    // Constructor for testing / injection
+-    public LldMavenRunner(DockerClient dockerClient) {
+-        this.dockerClient = dockerClient;
+-        this.isDockerAvailable = dockerClient != null;
+-    }
+-
+-    public LldMavenRunner() {}
+-
+     @Override
+     public boolean supports(ProblemDocument problem) {
+         return problem != null && "maven-spring".equalsIgnoreCase(problem.getBuildProfile());
+@@ -114,7 +130,10 @@ public class LldMavenRunner implements TrackRunner {
+                 }
+             }
+ 
+-            // 5. Execute via Docker container
++            // 5. Ensure lazy Docker client is initialized
++            ensureDockerInitialized();
++
++            // 6. Execute via Docker container
+             if (isDockerAvailable && dockerClient != null) {
+                 return executeInDocker(tempWorkspace.toFile());
+             } else {
+diff --git a/interview-session-service/src/main/java/com/interviewos/session/sandbox/client/Judge0Client.java b/interview-session-service/src/main/java/com/interviewos/session/sandbox/client/Judge0Client.java
+index 8e26674..2acabcd 100644
+--- a/interview-session-service/src/main/java/com/interviewos/session/sandbox/client/Judge0Client.java
++++ b/interview-session-service/src/main/java/com/interviewos/session/sandbox/client/Judge0Client.java
+@@ -22,7 +22,9 @@ import java.util.Optional;
+ public class Judge0Client {
+ 
+     private final RestClient restClient;
++    private final RestClient pingClient;
+     private final ObjectMapper objectMapper;
++    private final String judge0Url;
+ 
+     public Judge0Client(
+             @Value("${judge0.url:http://judge0:2358}") String judge0Url,
+@@ -30,7 +32,9 @@ public class Judge0Client {
+             @Value("${judge0.wait-timeout-seconds:20}") int waitTimeoutSeconds,
+             ObjectMapper objectMapper
+     ) {
++        this.judge0Url = judge0Url;
+         this.objectMapper = objectMapper;
++
+         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+         requestFactory.setConnectTimeout(Duration.ofSeconds(5));
+         requestFactory.setReadTimeout(Duration.ofSeconds(waitTimeoutSeconds));
+@@ -44,6 +48,36 @@ public class Judge0Client {
+         }
+ 
+         this.restClient = builder.build();
++
++        SimpleClientHttpRequestFactory pingFactory = new SimpleClientHttpRequestFactory();
++        pingFactory.setConnectTimeout(Duration.ofSeconds(2));
++        pingFactory.setReadTimeout(Duration.ofSeconds(2));
++
++        this.pingClient = RestClient.builder()
++                .requestFactory(pingFactory)
++                .baseUrl(judge0Url)
++                .build();
++    }
++
++    public boolean ping() {
++        try {
++            String resp = pingClient.get()
++                    .uri("/system_info")
++                    .retrieve()
++                    .body(String.class);
++            return resp != null && !resp.isBlank();
++        } catch (Exception e) {
++            try {
++                // Fallback probe to /about or /
++                String resp = pingClient.get()
++                        .uri("/about")
++                        .retrieve()
++                        .body(String.class);
++                return resp != null && !resp.isBlank();
++            } catch (Exception ex) {
++                return false;
++            }
++        }
+     }
+ 
+     public Optional<Judge0SubmissionResponse> submitAndAwait(Judge0SubmissionRequest request) {
+diff --git a/interview-session-service/src/main/java/com/interviewos/session/service/SystemCapabilitiesService.java b/interview-session-service/src/main/java/com/interviewos/session/service/SystemCapabilitiesService.java
+new file mode 100644
+index 0000000..027d6ad
+--- /dev/null
++++ b/interview-session-service/src/main/java/com/interviewos/session/service/SystemCapabilitiesService.java
+@@ -0,0 +1,176 @@
++package com.interviewos.session.service;
++
++import com.interviewos.session.runner.LldMavenRunner;
++import com.interviewos.session.sandbox.client.Judge0Client;
++import com.mongodb.client.gridfs.GridFSBucket;
++import com.mongodb.client.gridfs.GridFSFindIterable;
++import com.mongodb.client.gridfs.model.GridFSFile;
++import lombok.Builder;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.cloud.client.discovery.DiscoveryClient;
++import org.springframework.data.mongodb.core.MongoTemplate;
++import org.springframework.http.client.SimpleClientHttpRequestFactory;
++import org.springframework.stereotype.Service;
++import org.springframework.web.client.RestClient;
++
++import javax.sql.DataSource;
++import java.sql.Connection;
++import java.sql.Statement;
++import java.time.Duration;
++import java.time.Instant;
++import java.util.HashMap;
++import java.util.Map;
++import java.util.concurrent.atomic.AtomicReference;
++
++@Slf4j
++@Service
++@RequiredArgsConstructor
++public class SystemCapabilitiesService {
++
++    private final Judge0Client judge0Client;
++    private final LldMavenRunner lldMavenRunner;
++    private final DataSource dataSource;
++    private final MongoTemplate mongoTemplate;
++    private final GridFSBucket gridFSBucket;
++    private final DiscoveryClient discoveryClient;
++
++    @Value("${ai.orchestrator.url:http://ai-orchestrator-service:8082}")
++    private String orchestratorUrl;
++
++    @Value("${proctor.sentinel.url:http://proctor-sentinel-service:8083}")
++    private String proctorUrl;
++
++    @Value("${question.bank.url:http://question-bank-service:8086}")
++    private String questionBankUrl;
++
++    private final AtomicReference<CachedCapabilities> cache = new AtomicReference<>();
++    private static final Duration CACHE_TTL = Duration.ofSeconds(30);
++
++    public SystemCapabilitiesResponse getCapabilities() {
++        CachedCapabilities current = cache.get();
++        Instant now = Instant.now();
++
++        if (current != null && Duration.between(current.timestamp(), now).compareTo(CACHE_TTL) < 0) {
++            return current.response();
++        }
++
++        SystemCapabilitiesResponse fresh = probeCapabilities();
++        cache.set(new CachedCapabilities(now, fresh));
++        return fresh;
++    }
++
++    private SystemCapabilitiesResponse probeCapabilities() {
++        log.debug("Probing system capabilities across engines, microservices, and storage...");
++
++        // 1. Engines
++        boolean dsaReady = false;
++        String dsaDetail = "Judge0 sandbox is offline";
++        try {
++            dsaReady = judge0Client.ping();
++            dsaDetail = dsaReady ? "Judge0 CE execution engine is online and responsive"
++                    : "Judge0 is unreachable — start engines with 'docker compose --profile engines up -d'";
++        } catch (Exception ignored) {}
++
++        boolean lldReady = false;
++        String lldDetail = "Docker daemon socket is not accessible";
++        try {
++            lldReady = lldMavenRunner.isDockerReady();
++            lldDetail = lldReady ? "Docker daemon is accessible with pre-warmed Maven image"
++                    : "Docker socket unavailable — LLD sandbox requires Docker socket access";
++        } catch (Exception ignored) {}
++
++        Map<String, EngineStatus> engines = Map.of(
++                "dsa", new EngineStatus(dsaReady, dsaDetail),
++                "lld", new EngineStatus(lldReady, lldDetail),
++                "hld", new EngineStatus(true, "Client-side React Flow + multimodal vision evaluator"),
++                "behavioral", new EngineStatus(true, "Audio & transcript dialogue engine")
++        );
++
++        // 2. Microservices
++        Map<String, Boolean> services = new HashMap<>();
++        services.put("postgres", probePostgres());
++        services.put("mongo", probeMongo());
++        services.put("eureka", probeEureka());
++        services.put("orchestrator", probeHttp(orchestratorUrl + "/actuator/health"));
++        services.put("proctor", probeHttp(proctorUrl + "/actuator/health"));
++        services.put("questionBank", probeHttp(questionBankUrl + "/actuator/health"));
++
++        // 3. Storage metrics (GridFS)
++        StorageMetrics storage = probeStorage();
++
++        return SystemCapabilitiesResponse.builder()
++                .engines(engines)
++                .services(services)
++                .storage(storage)
++                .checkedAt(Instant.now().toString())
++                .build();
++    }
++
++    private boolean probePostgres() {
++        try (Connection conn = dataSource.getConnection();
++             Statement stmt = conn.createStatement()) {
++            stmt.setQueryTimeout(2);
++            return stmt.execute("SELECT 1");
++        } catch (Exception e) {
++            return false;
++        }
++    }
++
++    private boolean probeMongo() {
++        try {
++            return mongoTemplate.getDb().runCommand(new org.bson.Document("ping", 1)).getDouble("ok") == 1.0;
++        } catch (Exception e) {
++            return false;
++        }
++    }
++
++    private boolean probeEureka() {
++        try {
++            return discoveryClient != null && !discoveryClient.getServices().isEmpty();
++        } catch (Exception e) {
++            return false;
++        }
++    }
++
++    private boolean probeHttp(String url) {
++        try {
++            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
++            factory.setConnectTimeout(Duration.ofSeconds(2));
++            factory.setReadTimeout(Duration.ofSeconds(2));
++            RestClient client = RestClient.builder().requestFactory(factory).build();
++            String res = client.get().uri(url).retrieve().body(String.class);
++            return res != null && res.contains("UP");
++        } catch (Exception e) {
++            return false;
++        }
++    }
++
++    private StorageMetrics probeStorage() {
++        long count = 0;
++        long bytes = 0;
++        try {
++            GridFSFindIterable files = gridFSBucket.find();
++            for (GridFSFile file : files) {
++                count++;
++                bytes += file.getLength();
++            }
++        } catch (Exception e) {
++            log.debug("GridFS storage metrics probe skipped: {}", e.getMessage());
++        }
++        return new StorageMetrics(count, bytes);
++    }
++
++    @Builder
++    public record SystemCapabilitiesResponse(
++            Map<String, EngineStatus> engines,
++            Map<String, Boolean> services,
++            StorageMetrics storage,
++            String checkedAt
++    ) {}
++
++    public record EngineStatus(boolean ready, String detail) {}
++    public record StorageMetrics(long gridFsAttachmentCount, long gridFsBytes) {}
++    private record CachedCapabilities(Instant timestamp, SystemCapabilitiesResponse response) {}
++}
+diff --git a/interview-session-service/src/test/java/com/interviewos/session/controller/SystemCapabilitiesControllerTest.java b/interview-session-service/src/test/java/com/interviewos/session/controller/SystemCapabilitiesControllerTest.java
+new file mode 100644
+index 0000000..8551fbe
+--- /dev/null
++++ b/interview-session-service/src/test/java/com/interviewos/session/controller/SystemCapabilitiesControllerTest.java
+@@ -0,0 +1,58 @@
++package com.interviewos.session.controller;
++
++import com.interviewos.session.service.SystemCapabilitiesService;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.boot.test.mock.mockito.MockBean;
++import org.springframework.test.web.servlet.MockMvc;
++
++import java.time.Instant;
++import java.util.Map;
++
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++@WebMvcTest(SystemCapabilitiesController.class)
++class SystemCapabilitiesControllerTest {
++
++    @Autowired
++    private MockMvc mockMvc;
++
++    @MockBean
++    private SystemCapabilitiesService systemCapabilitiesService;
++
++    @Test
++    @DisplayName("GET /api/v1/system/capabilities should return 200 OK with all engines and fail-safe readiness")
++    void testGetCapabilitiesSuccess() throws Exception {
++        SystemCapabilitiesService.SystemCapabilitiesResponse mockResponse = SystemCapabilitiesService.SystemCapabilitiesResponse.builder()
++                .engines(Map.of(
++                        "dsa", new SystemCapabilitiesService.EngineStatus(true, "Judge0 CE online"),
++                        "lld", new SystemCapabilitiesService.EngineStatus(false, "Docker socket unavailable"),
++                        "hld", new SystemCapabilitiesService.EngineStatus(true, "React Flow Canvas ready"),
++                        "behavioral", new SystemCapabilitiesService.EngineStatus(true, "Voice dialogue ready")
++                ))
++                .services(Map.of(
++                        "postgres", true,
++                        "mongo", true,
++                        "eureka", true,
++                        "orchestrator", true
++                ))
++                .storage(new SystemCapabilitiesService.StorageMetrics(10, 2048000))
++                .checkedAt(Instant.now().toString())
++                .build();
++
++        when(systemCapabilitiesService.getCapabilities()).thenReturn(mockResponse);
++
++        mockMvc.perform(get("/api/v1/system/capabilities"))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.engines.dsa.ready").value(true))
++                .andExpect(jsonPath("$.engines.lld.ready").value(false))
++                .andExpect(jsonPath("$.engines.hld.ready").value(true))
++                .andExpect(jsonPath("$.engines.behavioral.ready").value(true))
++                .andExpect(jsonPath("$.storage.gridFsAttachmentCount").value(10))
++                .andExpect(jsonPath("$.checkedAt").exists());
++    }
++}
+diff --git a/interview-session-service/src/test/java/com/interviewos/session/job/StorageHygieneScheduledJobTest.java b/interview-session-service/src/test/java/com/interviewos/session/job/StorageHygieneScheduledJobTest.java
+new file mode 100644
+index 0000000..467e858
+--- /dev/null
++++ b/interview-session-service/src/test/java/com/interviewos/session/job/StorageHygieneScheduledJobTest.java
+@@ -0,0 +1,107 @@
++package com.interviewos.session.job;
++
++import com.interviewos.session.entity.InterviewSession;
++import com.interviewos.session.model.SessionStatus;
++import com.interviewos.session.repository.InterviewSessionRepository;
++import com.mongodb.client.MongoCursor;
++import com.mongodb.client.gridfs.GridFSBucket;
++import com.mongodb.client.gridfs.GridFSFindIterable;
++import com.mongodb.client.gridfs.model.GridFSFile;
++import org.bson.BsonObjectId;
++import org.bson.Document;
++import org.bson.types.ObjectId;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++import org.springframework.data.mongodb.core.query.Query;
++import org.springframework.data.mongodb.gridfs.GridFsTemplate;
++import org.springframework.test.util.ReflectionTestUtils;
++
++import java.time.Duration;
++import java.time.Instant;
++import java.util.Date;
++import java.util.Iterator;
++import java.util.List;
++import java.util.Optional;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.*;
++
++@ExtendWith(MockitoExtension.class)
++class StorageHygieneScheduledJobTest {
++
++    @Mock
++    private GridFsTemplate gridFsTemplate;
++
++    @Mock
++    private GridFSBucket gridFSBucket;
++
++    @Mock
++    private InterviewSessionRepository interviewSessionRepository;
++
++    @Mock
++    private GridFSFindIterable findIterable;
++
++    @Mock
++    private MongoCursor<GridFSFile> mongoCursor;
++
++    private StorageHygieneScheduledJob job;
++
++    @BeforeEach
++    void setUp() {
++        job = new StorageHygieneScheduledJob(gridFsTemplate, gridFSBucket, interviewSessionRepository);
++        ReflectionTestUtils.setField(job, "retentionDays", 14);
++    }
++
++    @Test
++    @DisplayName("runCleanupJob should delete attachments of sessions COMPLETED older than 14 days and orphans")
++    void testCleanupOldAndOrphanAttachments() {
++        Instant now = Instant.now();
++        Instant oldCompletedTime = now.minus(Duration.ofDays(20));
++        Instant recentCompletedTime = now.minus(Duration.ofDays(5));
++
++        // 1. File from old completed session (Eligible for deletion)
++        ObjectId idOld = new ObjectId();
++        Document metaOld = new Document("sessionId", 101L);
++        GridFSFile fileOld = new GridFSFile(new BsonObjectId(idOld), "old.png", 1024, 255, new Date(), metaOld);
++        InterviewSession oldSession = InterviewSession.builder()
++                .id(101L)
++                .status(SessionStatus.COMPLETED)
++                .completedAt(oldCompletedTime)
++                .build();
++
++        // 2. File from recent completed session (Should NOT be deleted)
++        ObjectId idRecent = new ObjectId();
++        Document metaRecent = new Document("sessionId", 102L);
++        GridFSFile fileRecent = new GridFSFile(new BsonObjectId(idRecent), "recent.png", 2048, 255, new Date(), metaRecent);
++        InterviewSession recentSession = InterviewSession.builder()
++                .id(102L)
++                .status(SessionStatus.COMPLETED)
++                .completedAt(recentCompletedTime)
++                .build();
++
++        // 3. Orphan file without sessionId (Eligible for deletion)
++        ObjectId idOrphan = new ObjectId();
++        GridFSFile fileOrphan = new GridFSFile(new BsonObjectId(idOrphan), "orphan.png", 512, 255, new Date(), new Document());
++
++        List<GridFSFile> mockFiles = List.of(fileOld, fileRecent, fileOrphan);
++        Iterator<GridFSFile> iterator = mockFiles.iterator();
++
++        when(gridFSBucket.find()).thenReturn(findIterable);
++        when(findIterable.iterator()).thenReturn(mongoCursor);
++        when(mongoCursor.hasNext()).thenAnswer(i -> iterator.hasNext());
++        when(mongoCursor.next()).thenAnswer(i -> iterator.next());
++
++        when(interviewSessionRepository.findById(101L)).thenReturn(Optional.of(oldSession));
++        when(interviewSessionRepository.findById(102L)).thenReturn(Optional.of(recentSession));
++
++        int purged = job.runCleanupJob(now);
++
++        assertEquals(2, purged);
++        verify(gridFsTemplate, times(2)).delete(any(Query.class));
++    }
++}

@@ -1,0 +1,1934 @@
+commit 7b8d96128a2a7dab2db04307dae0a190ff7fcfc4
+Author: tomar <tomarankit78@gmail.com>
+Date:   Sat Aug 22 18:46:48 2026 +0530
+
+    feat(questionbank): implement M7 question-bank-service, public/internal endpoints, Mongo questionbank storage, and seeder with coaching content
+
+diff --git a/cloud-config-server/src/main/resources/config-repo/api-gateway-service.yaml b/cloud-config-server/src/main/resources/config-repo/api-gateway-service.yaml
+index bf17ed1..9a0dc45 100644
+--- a/cloud-config-server/src/main/resources/config-repo/api-gateway-service.yaml
++++ b/cloud-config-server/src/main/resources/config-repo/api-gateway-service.yaml
+@@ -55,6 +55,13 @@ spring:
+           predicates:
+             - Path=/api/v1/reports/**
+ 
++        # Route 5: Question Bank Service (:8086) - Public Endpoints Only
++        - id: question-bank-route
++          uri: lb://question-bank-service
++          predicates:
++            - Path=/api/v1/questions/**
++
++
+ eureka:
+   instance:
+     prefer-ip-address: true
+diff --git a/cloud-config-server/src/main/resources/config-repo/question-bank-service.yaml b/cloud-config-server/src/main/resources/config-repo/question-bank-service.yaml
+new file mode 100644
+index 0000000..fedb056
+--- /dev/null
++++ b/cloud-config-server/src/main/resources/config-repo/question-bank-service.yaml
+@@ -0,0 +1,26 @@
++server:
++  port: 8086
++
++spring:
++  data:
++    mongodb:
++      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongodb:27017/questionbank}
++
++eureka:
++  client:
++    service-url:
++      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
++    register-with-eureka: true
++    fetch-registry: true
++  instance:
++    prefer-ip-address: true
++    instance-id: ${spring.application.name}:${server.port}
++
++management:
++  endpoints:
++    web:
++      exposure:
++        include: health,info,prometheus,metrics
++  endpoint:
++    health:
++      show-details: always
+diff --git a/pom.xml b/pom.xml
+index 980b095..f0b771d 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -29,6 +29,7 @@
+         <module>ai-orchestrator-service</module>
+         <module>proctor-sentinel-service</module>
+         <module>evaluation-report-service</module>
++        <module>question-bank-service</module>
+     </modules>
+ 
+     <properties>
+diff --git a/question-bank-service/Dockerfile b/question-bank-service/Dockerfile
+new file mode 100644
+index 0000000..adc0ffa
+--- /dev/null
++++ b/question-bank-service/Dockerfile
+@@ -0,0 +1,18 @@
++FROM maven:3.9-eclipse-temurin-21 AS build
++WORKDIR /build
++COPY pom.xml .
++COPY service-discovery-service/pom.xml ./service-discovery-service/
++COPY cloud-config-server/pom.xml ./cloud-config-server/
++COPY api-gateway-service/pom.xml ./api-gateway-service/
++COPY interview-session-service/pom.xml ./interview-session-service/
++COPY ai-orchestrator-service/pom.xml ./ai-orchestrator-service/
++COPY proctor-sentinel-service/pom.xml ./proctor-sentinel-service/
++COPY evaluation-report-service/pom.xml ./evaluation-report-service/
++COPY question-bank-service/pom.xml ./question-bank-service/
++COPY question-bank-service/src ./question-bank-service/src
++RUN mvn -B clean package -pl question-bank-service -am -DskipTests
++
++FROM eclipse-temurin:21-jre-alpine
++WORKDIR /app
++COPY --from=build /build/question-bank-service/target/*.jar app.jar
++ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
+diff --git a/question-bank-service/pom.xml b/question-bank-service/pom.xml
+new file mode 100644
+index 0000000..15901b1
+--- /dev/null
++++ b/question-bank-service/pom.xml
+@@ -0,0 +1,74 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
++    <modelVersion>4.0.0</modelVersion>
++    <parent>
++        <groupId>com.interviewos</groupId>
++        <artifactId>ai-interview-os</artifactId>
++        <version>1.0.0-SNAPSHOT</version>
++        <relativePath>../pom.xml</relativePath>
++    </parent>
++
++    <artifactId>question-bank-service</artifactId>
++    <version>1.0.0-SNAPSHOT</version>
++    <name>question-bank-service</name>
++    <description>Centralized Technical Assessment Problem &amp; Question Bank Microservice</description>
++
++    <dependencies>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-web</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-data-mongodb</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-validation</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.cloud</groupId>
++            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.cloud</groupId>
++            <artifactId>spring-cloud-starter-config</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-actuator</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>io.micrometer</groupId>
++            <artifactId>micrometer-registry-prometheus</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.projectlombok</groupId>
++            <artifactId>lombok</artifactId>
++            <optional>true</optional>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-test</artifactId>
++            <scope>test</scope>
++        </dependency>
++    </dependencies>
++
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.springframework.boot</groupId>
++                <artifactId>spring-boot-maven-plugin</artifactId>
++                <configuration>
++                    <excludes>
++                        <exclude>
++                            <groupId>org.projectlombok</groupId>
++                            <artifactId>lombok</artifactId>
++                        </exclude>
++                    </excludes>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++</project>
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/QuestionBankServiceApplication.java b/question-bank-service/src/main/java/com/interviewos/questionbank/QuestionBankServiceApplication.java
+new file mode 100644
+index 0000000..61694fd
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/QuestionBankServiceApplication.java
+@@ -0,0 +1,13 @@
++package com.interviewos.questionbank;
++
++import org.springframework.boot.SpringApplication;
++import org.springframework.boot.autoconfigure.SpringBootApplication;
++import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
++
++@SpringBootApplication
++@EnableDiscoveryClient
++public class QuestionBankServiceApplication {
++    public static void main(String[] args) {
++        SpringApplication.run(QuestionBankServiceApplication.class, args);
++    }
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/controller/QuestionInternalController.java b/question-bank-service/src/main/java/com/interviewos/questionbank/controller/QuestionInternalController.java
+new file mode 100644
+index 0000000..87149d4
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/controller/QuestionInternalController.java
+@@ -0,0 +1,49 @@
++package com.interviewos.questionbank.controller;
++
++import com.interviewos.questionbank.document.QuestionDocument;
++import com.interviewos.questionbank.dto.QuestionFullView;
++import com.interviewos.questionbank.repository.QuestionRepository;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.*;
++
++import java.util.List;
++import java.util.Map;
++
++@Slf4j
++@RestController
++@RequestMapping("/internal/v1/questions")
++@RequiredArgsConstructor
++public class QuestionInternalController {
++
++    private final QuestionRepository questionRepository;
++
++    @GetMapping("/{slug}/full")
++    public ResponseEntity<QuestionFullView> getQuestionFullView(@PathVariable String slug) {
++        log.info("Fetching internal full question view for slug: '{}'", slug);
++        return questionRepository.findBySlug(slug)
++                .map(QuestionFullView::fromDocument)
++                .map(ResponseEntity::ok)
++                .orElse(ResponseEntity.notFound().build());
++    }
++
++    @PostMapping("/import")
++    public ResponseEntity<Map<String, Object>> importQuestions(@RequestBody List<QuestionFullView> questions) {
++        log.info("Importing {} questions into Question Bank catalog...", questions.size());
++        int upserted = 0;
++        for (QuestionFullView q : questions) {
++            if (q.slug() == null || q.slug().isBlank()) continue;
++            QuestionDocument doc = q.toDocument();
++            questionRepository.findBySlug(q.slug())
++                    .ifPresent(existing -> doc.setId(existing.getId()));
++            questionRepository.save(doc);
++            upserted++;
++        }
++        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
++                "status", "SUCCESS",
++                "importedCount", upserted
++        ));
++    }
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/controller/QuestionPublicController.java b/question-bank-service/src/main/java/com/interviewos/questionbank/controller/QuestionPublicController.java
+new file mode 100644
+index 0000000..7403672
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/controller/QuestionPublicController.java
+@@ -0,0 +1,71 @@
++package com.interviewos.questionbank.controller;
++
++import com.interviewos.questionbank.document.QuestionDocument;
++import com.interviewos.questionbank.dto.QuestionMatchRequest;
++import com.interviewos.questionbank.dto.QuestionMatchResponse;
++import com.interviewos.questionbank.dto.QuestionPublicView;
++import com.interviewos.questionbank.repository.QuestionRepository;
++import com.interviewos.questionbank.service.QuestionMatchService;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.*;
++
++import java.util.List;
++
++@Slf4j
++@RestController
++@RequestMapping("/api/v1/questions")
++@RequiredArgsConstructor
++public class QuestionPublicController {
++
++    private final QuestionRepository questionRepository;
++    private final QuestionMatchService questionMatchService;
++
++    @GetMapping
++    public ResponseEntity<List<QuestionPublicView>> listQuestions(
++            @RequestParam(required = false) String track,
++            @RequestParam(required = false) String difficulty,
++            @RequestParam(required = false) List<String> tags
++    ) {
++        log.info("Listing public questions [track: {}, difficulty: {}, tags: {}]", track, difficulty, tags);
++
++        List<QuestionDocument> docs;
++        if (track != null && !track.isBlank() && difficulty != null && !difficulty.isBlank()) {
++            docs = questionRepository.findByTrackAndDifficultyAndStatus(track, difficulty, "PUBLISHED");
++        } else if (track != null && !track.isBlank()) {
++            docs = questionRepository.findByTrackAndStatus(track, "PUBLISHED");
++        } else {
++            docs = questionRepository.findByStatus("PUBLISHED");
++        }
++
++        if (tags != null && !tags.isEmpty()) {
++            docs = docs.stream()
++                    .filter(d -> d.getTags() != null && d.getTags().stream().anyMatch(tags::contains))
++                    .toList();
++        }
++
++        List<QuestionPublicView> publicViews = docs.stream()
++                .map(QuestionPublicView::fromDocument)
++                .toList();
++
++        return ResponseEntity.ok(publicViews);
++    }
++
++    @GetMapping("/{slug}")
++    public ResponseEntity<QuestionPublicView> getQuestionBySlug(@PathVariable String slug) {
++        log.info("Fetching public question for slug: '{}'", slug);
++        return questionRepository.findBySlug(slug)
++                .filter(q -> "PUBLISHED".equalsIgnoreCase(q.getStatus()))
++                .map(QuestionPublicView::fromDocument)
++                .map(ResponseEntity::ok)
++                .orElse(ResponseEntity.notFound().build());
++    }
++
++    @PostMapping("/match")
++    public ResponseEntity<QuestionMatchResponse> matchQuestion(@RequestBody QuestionMatchRequest request) {
++        log.info("Received question match request for track: '{}', difficulty: '{}'", request.track(), request.difficulty());
++        QuestionMatchResponse response = questionMatchService.matchQuestion(request);
++        return ResponseEntity.ok(response);
++    }
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/document/QuestionDocument.java b/question-bank-service/src/main/java/com/interviewos/questionbank/document/QuestionDocument.java
+new file mode 100644
+index 0000000..24e1c45
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/document/QuestionDocument.java
+@@ -0,0 +1,115 @@
++package com.interviewos.questionbank.document;
++
++import lombok.AllArgsConstructor;
++import lombok.Builder;
++import lombok.Data;
++import lombok.NoArgsConstructor;
++import org.springframework.data.annotation.CreatedDate;
++import org.springframework.data.annotation.Id;
++import org.springframework.data.annotation.LastModifiedDate;
++import org.springframework.data.mongodb.core.index.CompoundIndex;
++import org.springframework.data.mongodb.core.index.Indexed;
++import org.springframework.data.mongodb.core.mapping.Document;
++
++import java.time.LocalDateTime;
++import java.util.List;
++import java.util.Map;
++
++@Data
++@Builder
++@NoArgsConstructor
++@AllArgsConstructor
++@Document(collection = "questions")
++@CompoundIndex(name = "track_diff_status_idx", def = "{'track': 1, 'difficulty': 1, 'status': 1}")
++public class QuestionDocument {
++
++    @Id
++    private String id;
++
++    @Indexed(unique = true)
++    private String slug;
++
++    private String title;
++
++    private String track; // ALGORITHMS_DATA_STRUCTURES, SPRING_LLD, SYSTEM_DESIGN, BEHAVIORAL_STAR
++
++    private String difficulty; // JUNIOR, MID, SENIOR, STAFF
++
++    private List<String> tags;
++
++    private String problemStatement;
++
++    private String starterCode;
++
++    private Map<String, String> starterCodeMap;
++
++    private Map<String, String> starterFiles;
++
++    private List<String> editablePaths;
++
++    private List<TestCase> sampleTests;
++
++    private List<HiddenTestCase> hiddenTests;
++
++    private Map<String, String> hiddenTestFiles;
++
++    private String buildProfile; // judge0, maven-spring
++
++    private ExecutionLimits limits;
++
++    private List<String> evaluationCriteria;
++
++    private InterviewerNotes interviewerNotes;
++
++    private CoachingContent coaching;
++
++    @Builder.Default
++    private String version = "1.0.0";
++
++    @Builder.Default
++    private String status = "PUBLISHED"; // DRAFT, PUBLISHED, ARCHIVED
++
++    @Builder.Default
++    private String source = "CORE"; // CORE, COMMUNITY
++
++    @CreatedDate
++    private LocalDateTime createdAt;
++
++    @LastModifiedDate
++    private LocalDateTime updatedAt;
++
++    public record TestCase(
++            String name,
++            String input,
++            String expectedOutput,
++            String description
++    ) {
++        public TestCase(String name, String input, String expectedOutput) {
++            this(name, input, expectedOutput, null);
++        }
++    }
++
++    public record HiddenTestCase(
++            String name,
++            String input,
++            String expectedOutput,
++            int weight
++    ) {}
++
++    public record ExecutionLimits(
++            int memoryLimitMb,
++            int timeLimitMs
++    ) {}
++
++    public record InterviewerNotes(
++            List<String> expectedConcepts,
++            List<String> followUpSeeds,
++            List<String> rubricCheckpoints
++    ) {}
++
++    public record CoachingContent(
++            List<String> commonMistakes,
++            String modelAnswerOutline,
++            List<String> presentationTips
++    ) {}
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionFullView.java b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionFullView.java
+new file mode 100644
+index 0000000..f9194fb
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionFullView.java
+@@ -0,0 +1,88 @@
++package com.interviewos.questionbank.dto;
++
++import com.interviewos.questionbank.document.QuestionDocument;
++import lombok.Builder;
++
++import java.util.List;
++import java.util.Map;
++
++@Builder
++public record QuestionFullView(
++        String id,
++        String slug,
++        String title,
++        String track,
++        String difficulty,
++        List<String> tags,
++        String problemStatement,
++        String starterCode,
++        Map<String, String> starterCodeMap,
++        Map<String, String> starterFiles,
++        List<String> editablePaths,
++        List<QuestionDocument.TestCase> sampleTests,
++        List<QuestionDocument.HiddenTestCase> hiddenTests,
++        Map<String, String> hiddenTestFiles,
++        String buildProfile,
++        QuestionDocument.ExecutionLimits limits,
++        List<String> evaluationCriteria,
++        QuestionDocument.InterviewerNotes interviewerNotes,
++        QuestionDocument.CoachingContent coaching,
++        String version,
++        String status,
++        String source
++) {
++    public static QuestionFullView fromDocument(QuestionDocument doc) {
++        if (doc == null) return null;
++        return QuestionFullView.builder()
++                .id(doc.getId())
++                .slug(doc.getSlug())
++                .title(doc.getTitle())
++                .track(doc.getTrack())
++                .difficulty(doc.getDifficulty())
++                .tags(doc.getTags())
++                .problemStatement(doc.getProblemStatement())
++                .starterCode(doc.getStarterCode())
++                .starterCodeMap(doc.getStarterCodeMap())
++                .starterFiles(doc.getStarterFiles())
++                .editablePaths(doc.getEditablePaths())
++                .sampleTests(doc.getSampleTests())
++                .hiddenTests(doc.getHiddenTests())
++                .hiddenTestFiles(doc.getHiddenTestFiles())
++                .buildProfile(doc.getBuildProfile())
++                .limits(doc.getLimits())
++                .evaluationCriteria(doc.getEvaluationCriteria())
++                .interviewerNotes(doc.getInterviewerNotes())
++                .coaching(doc.getCoaching())
++                .version(doc.getVersion())
++                .status(doc.getStatus())
++                .source(doc.getSource())
++                .build();
++    }
++
++    public QuestionDocument toDocument() {
++        return QuestionDocument.builder()
++                .id(this.id)
++                .slug(this.slug)
++                .title(this.title)
++                .track(this.track)
++                .difficulty(this.difficulty)
++                .tags(this.tags)
++                .problemStatement(this.problemStatement)
++                .starterCode(this.starterCode)
++                .starterCodeMap(this.starterCodeMap)
++                .starterFiles(this.starterFiles)
++                .editablePaths(this.editablePaths)
++                .sampleTests(this.sampleTests)
++                .hiddenTests(this.hiddenTests)
++                .hiddenTestFiles(this.hiddenTestFiles)
++                .buildProfile(this.buildProfile)
++                .limits(this.limits)
++                .evaluationCriteria(this.evaluationCriteria)
++                .interviewerNotes(this.interviewerNotes)
++                .coaching(this.coaching)
++                .version(this.version != null ? this.version : "1.0.0")
++                .status(this.status != null ? this.status : "PUBLISHED")
++                .source(this.source != null ? this.source : "CORE")
++                .build();
++    }
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionMatchRequest.java b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionMatchRequest.java
+new file mode 100644
+index 0000000..d506ea9
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionMatchRequest.java
+@@ -0,0 +1,12 @@
++package com.interviewos.questionbank.dto;
++
++import java.util.List;
++
++public record QuestionMatchRequest(
++        String track,
++        String difficulty,
++        List<String> resumeSkills,
++        String jdText,
++        String provider,
++        String apiKey
++) {}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionMatchResponse.java b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionMatchResponse.java
+new file mode 100644
+index 0000000..ac57eff
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionMatchResponse.java
+@@ -0,0 +1,10 @@
++package com.interviewos.questionbank.dto;
++
++import lombok.Builder;
++
++@Builder
++public record QuestionMatchResponse(
++        QuestionPublicView question,
++        String rationale,
++        boolean llmAssisted
++) {}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionPublicView.java b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionPublicView.java
+new file mode 100644
+index 0000000..7e298c2
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/dto/QuestionPublicView.java
+@@ -0,0 +1,45 @@
++package com.interviewos.questionbank.dto;
++
++import com.interviewos.questionbank.document.QuestionDocument;
++import lombok.Builder;
++
++import java.util.List;
++import java.util.Map;
++
++@Builder
++public record QuestionPublicView(
++        String slug,
++        String title,
++        String track,
++        String difficulty,
++        List<String> tags,
++        String problemStatement,
++        String starterCode,
++        Map<String, String> starterCodeMap,
++        Map<String, String> starterFiles,
++        List<String> editablePaths,
++        List<QuestionDocument.TestCase> sampleTests,
++        List<String> evaluationCriteria,
++        QuestionDocument.ExecutionLimits limits,
++        String buildProfile
++) {
++    public static QuestionPublicView fromDocument(QuestionDocument doc) {
++        if (doc == null) return null;
++        return QuestionPublicView.builder()
++                .slug(doc.getSlug())
++                .title(doc.getTitle())
++                .track(doc.getTrack())
++                .difficulty(doc.getDifficulty())
++                .tags(doc.getTags())
++                .problemStatement(doc.getProblemStatement())
++                .starterCode(doc.getStarterCode())
++                .starterCodeMap(doc.getStarterCodeMap())
++                .starterFiles(doc.getStarterFiles())
++                .editablePaths(doc.getEditablePaths())
++                .sampleTests(doc.getSampleTests())
++                .evaluationCriteria(doc.getEvaluationCriteria())
++                .limits(doc.getLimits())
++                .buildProfile(doc.getBuildProfile())
++                .build();
++    }
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/initializer/QuestionDataInitializer.java b/question-bank-service/src/main/java/com/interviewos/questionbank/initializer/QuestionDataInitializer.java
+new file mode 100644
+index 0000000..bd794b3
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/initializer/QuestionDataInitializer.java
+@@ -0,0 +1,702 @@
++package com.interviewos.questionbank.initializer;
++
++import com.interviewos.questionbank.document.QuestionDocument;
++import com.interviewos.questionbank.repository.QuestionRepository;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.boot.CommandLineRunner;
++import org.springframework.stereotype.Component;
++
++import java.util.List;
++import java.util.Map;
++
++@Slf4j
++@Component
++@RequiredArgsConstructor
++public class QuestionDataInitializer implements CommandLineRunner {
++
++    private final QuestionRepository questionRepository;
++
++    @Override
++    public void run(String... args) {
++        try {
++            log.info("🌱 Seeding Question Bank Catalog with Core Interview Curricula...");
++
++            // 1. LRU Cache (DSA - SENIOR)
++            QuestionDocument lruCache = QuestionDocument.builder()
++                    .slug("lru-cache")
++                    .title("LRU Cache Implementation")
++                    .track("ALGORITHMS_DATA_STRUCTURES")
++                    .difficulty("SENIOR")
++                    .tags(List.of("data-structures", "hashmap", "doubly-linked-list", "caching", "java", "algorithms"))
++                    .buildProfile("judge0")
++                    .problemStatement("""
++                            ### LRU Cache (Least Recently Used)
++                            Design and implement a data structure for Least Recently Used (LRU) cache.
++                            It should support standard I/O operations:
++                            - `put <key> <value>`: Insert or update the value of the key. If the number of keys exceeds the capacity, evict the least recently used key.
++                            - `get <key>`: Return the value of the key if the key exists, otherwise return `-1`.
++
++                            ### Input Format:
++                            - Line 1: `capacity` (maximum items).
++                            - Following lines: operations (`put <key> <value>` or `get <key>`).
++
++                            ### Output Format:
++                            - For each `get` operation, print the integer value on a new line.
++                            """)
++                    .starterCode("""
++                            import java.util.*;
++
++                            public class Main {
++                                public static void main(String[] args) {
++                                    Scanner scanner = new Scanner(System.in);
++                                    if (!scanner.hasNextInt()) return;
++                                    int capacity = scanner.nextInt();
++                                    while (scanner.hasNext()) {
++                                        String op = scanner.next();
++                                        if ("put".equalsIgnoreCase(op)) {
++                                            int key = scanner.nextInt();
++                                            int val = scanner.nextInt();
++                                        } else if ("get".equalsIgnoreCase(op)) {
++                                            int key = scanner.nextInt();
++                                            System.out.println(-1);
++                                        }
++                                    }
++                                }
++                            }
++                            """)
++                    .starterCodeMap(Map.of(
++                            "java", """
++                                    import java.util.*;
++
++                                    public class Main {
++                                        public static void main(String[] args) {
++                                            Scanner scanner = new Scanner(System.in);
++                                            if (!scanner.hasNextInt()) return;
++                                            int capacity = scanner.nextInt();
++                                            while (scanner.hasNext()) {
++                                                String op = scanner.next();
++                                                if ("put".equalsIgnoreCase(op)) {
++                                                    int key = scanner.nextInt();
++                                                    int val = scanner.nextInt();
++                                                } else if ("get".equalsIgnoreCase(op)) {
++                                                    int key = scanner.nextInt();
++                                                    System.out.println(-1);
++                                                }
++                                            }
++                                        }
++                                    }
++                                    """,
++                            "python", """
++                                    import sys
++
++                                    def main():
++                                        lines = sys.stdin.read().split()
++                                        if not lines:
++                                            return
++                                        capacity = int(lines[0])
++                                        idx = 1
++                                        while idx < len(lines):
++                                            op = lines[idx]
++                                            if op == "put":
++                                                key, val = int(lines[idx+1]), int(lines[idx+2])
++                                                idx += 3
++                                            elif op == "get":
++                                                key = int(lines[idx+1])
++                                                print(-1)
++                                                idx += 2
++
++                                    if __name__ == '__main__':
++                                        main()
++                                    """
++                    ))
++                    .sampleTests(List.of(
++                            new QuestionDocument.TestCase("Sample 1", "2\nput 1 1\nput 2 2\nget 1\nput 3 3\nget 2\nput 4 4\nget 1\nget 3\nget 4", "1\n-1\n-1\n3\n4")
++                    ))
++                    .hiddenTests(List.of(
++                            new QuestionDocument.HiddenTestCase("Hidden 1", "1\nput 1 10\nget 1\nput 2 20\nget 1\nget 2", "10\n-1\n20", 1)
++                    ))
++                    .limits(new QuestionDocument.ExecutionLimits(512, 2000))
++                    .evaluationCriteria(List.of(
++                            "O(1) time complexity for both get and put operations",
++                            "Correct eviction of least recently used item on capacity overflow",
++                            "Robust pointer updates in Doubly Linked List without memory leaks"
++                    ))
++                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
++                            List.of("Doubly Linked List + HashMap", "O(1) Get and Put", "Eviction Policy (LRU)"),
++                            List.of(
++                                    "How would you make this LRU Cache thread-safe under concurrent read/write throughput?",
++                                    "What happens if item sizes vary (e.g. byte length) rather than uniform count-based capacity?"
++                            ),
++                            List.of(
++                                    "Candidate explains O(1) doubly linked list node removal and head insertion before writing code.",
++                                    "Candidate handles edge case when updating an existing key without incorrectly incrementing size."
++                            )
++                    ))
++                    .coaching(new QuestionDocument.CoachingContent(
++                            List.of(
++                                    "Relying solely on Java LinkedHashMap when interviewer specifically asked for data structure mechanics.",
++                                    "Forgetting to update the value of an existing key before moving node to head.",
++                                    "NullPointerExceptions when deleting the tail or head boundary node."
++                            ),
++                            """
++                            1. Define custom Node class (key, val, prev, next).
++                            2. Maintain dummy head and dummy tail nodes to simplify pointer manipulation.
++                            3. get(key): lookup node in map, moveToHead(node), return val.
++                            4. put(key, val): if exists update and moveToHead; if new create node, addToHead, if size > capacity removeTail and removeFromMap.
++                            """,
++                            List.of(
++                                    "Sketch the doubly linked list pointers on whiteboard or scratchpad before writing code.",
++                                    "State the time and space complexity explicitly for both get() and put() operations upfront."
++                            )
++                    ))
++                    .status("PUBLISHED")
++                    .source("CORE")
++                    .build();
++
++            // 2. Reverse a String (DSA - JUNIOR)
++            QuestionDocument reverseString = QuestionDocument.builder()
++                    .slug("reverse-a-string")
++                    .title("Reverse a String")
++                    .track("ALGORITHMS_DATA_STRUCTURES")
++                    .difficulty("JUNIOR")
++                    .tags(List.of("strings", "pointers", "arrays", "basics", "algorithms"))
++                    .buildProfile("judge0")
++                    .problemStatement("Given a single line string, output the reverse.")
++                    .starterCode("""
++                            import java.util.Scanner;
++
++                            public class Main {
++                                public static void main(String[] args) {
++                                    Scanner sc = new Scanner(System.in);
++                                    if (sc.hasNextLine()) {
++                                        String s = sc.nextLine();
++                                        System.out.println(new StringBuilder(s).reverse().toString());
++                                    }
++                                }
++                            }
++                            """)
++                    .sampleTests(List.of(
++                            new QuestionDocument.TestCase("Sample 1", "hello", "olleh")
++                    ))
++                    .hiddenTests(List.of(
++                            new QuestionDocument.HiddenTestCase("Hidden 1", "world", "dlrow", 1)
++                    ))
++                    .limits(new QuestionDocument.ExecutionLimits(256, 1500))
++                    .evaluationCriteria(List.of("Correct two-pointer or standard inversion", "O(N) time and O(1) auxiliary space"))
++                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
++                            List.of("Two pointers", "In-place reversal", "Edge case strings"),
++                            List.of("How does character encoding (like UTF-16 surrogate pairs) affect in-place string reversal?"),
++                            List.of("Candidate discusses space complexity between in-place char array swap vs new String construction.")
++                    ))
++                    .coaching(new QuestionDocument.CoachingContent(
++                            List.of("Forgetting empty string or single-character string edge cases."),
++                            "Convert string to char array, maintain left and right pointers, swap characters moving inward.",
++                            List.of("Clarify whether the input contains Unicode/emojis or standard ASCII characters.")
++                    ))
++                    .status("PUBLISHED")
++                    .source("CORE")
++                    .build();
++
++            // 3. Two Sum (DSA - JUNIOR / MID)
++            QuestionDocument twoSum = QuestionDocument.builder()
++                    .slug("two-sum")
++                    .title("Two Sum Target Pair")
++                    .track("ALGORITHMS_DATA_STRUCTURES")
++                    .difficulty("JUNIOR")
++                    .tags(List.of("arrays", "hashmap", "two-pointers", "search", "algorithms"))
++                    .buildProfile("judge0")
++                    .problemStatement("""
++                            ### Two Sum
++                            Given an array of integers `nums` and an integer `target`, find the 0-based indices of the two numbers such that they add up to `target`.
++                            Print the two indices separated by a space in ascending order.
++
++                            ### Input Format:
++                            - Line 1: `N target`
++                            - Line 2: `N` space-separated integers.
++
++                            ### Output Format:
++                            - Print `index1 index2`.
++                            """)
++                    .starterCode("""
++                            import java.util.*;
++
++                            public class Main {
++                                public static void main(String[] args) {
++                                    Scanner sc = new Scanner(System.in);
++                                    if (!sc.hasNextInt()) return;
++                                    int n = sc.nextInt();
++                                    int target = sc.nextInt();
++                                    int[] nums = new int[n];
++                                    for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
++
++                                    Map<Integer, Integer> map = new HashMap<>();
++                                    for (int i = 0; i < n; i++) {
++                                        int complement = target - nums[i];
++                                        if (map.containsKey(complement)) {
++                                            System.out.println(map.get(complement) + " " + i);
++                                            return;
++                                        }
++                                        map.put(nums[i], i);
++                                    }
++                                }
++                            }
++                            """)
++                    .sampleTests(List.of(
++                            new QuestionDocument.TestCase("Sample 1", "4 9\n2 7 11 15", "0 1")
++                    ))
++                    .hiddenTests(List.of(
++                            new QuestionDocument.HiddenTestCase("Hidden 1", "3 6\n3 2 4", "1 2", 1)
++                    ))
++                    .limits(new QuestionDocument.ExecutionLimits(256, 1500))
++                    .evaluationCriteria(List.of("O(N) time complexity using HashMap lookup", "Zero-based index output"))
++                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
++                            List.of("HashMap single-pass", "Complement arithmetic"),
++                            List.of("What if the array is already sorted? Can we solve it in O(1) auxiliary space?"),
++                            List.of("Candidate immediately proposes O(N) HashMap approach rather than brute force O(N^2).")
++                    ))
++                    .coaching(new QuestionDocument.CoachingContent(
++                            List.of("Reusing the same element twice (e.g. target 6 with element 3 at index 0)."),
++                            "Maintain HashMap of value -> index. For each element, calculate complement = target - num. If complement in map, return indices.",
++                            List.of("Mention that HashMap gives O(N) time, and two-pointer gives O(1) space if sorted.")
++                    ))
++                    .status("PUBLISHED")
++                    .source("CORE")
++                    .build();
++
++            // 4. Spring Boot Order Management Microservice (LLD - MID)
++            QuestionDocument lldOrderService = QuestionDocument.builder()
++                    .slug("lld-order-service")
++                    .title("Spring Boot Order Management Microservice")
++                    .track("SPRING_LLD")
++                    .difficulty("MID")
++                    .tags(List.of("spring-boot", "java", "jpa", "rest-api", "microservices", "lld", "backend"))
++                    .buildProfile("maven-spring")
++                    .problemStatement("""
++                            ### Spring Boot Order Management Microservice (LLD)
++
++                            Design and implement an Order Management service in Spring Boot 3.4.
++
++                            #### Requirements:
++                            1. **Order Model**: Managed entity with `UUID id`, `String customerId`, `Double totalAmount`, `OrderStatus status`, and `Instant createdAt`.
++                            2. **Order Lifecycle (`OrderService`)**:
++                               - `createOrder(OrderRequestDto request)`: Generates a unique `UUID`, initializes status to `OrderStatus.CREATED`, sets `Instant.now()`, and saves to repository.
++                               - `getOrderById(UUID id)`: Retrieves the order or returns `Optional.empty()`.
++                               - `deleteOrder(UUID id)`: Deletes the order; returns `true` if existed & deleted, `false` otherwise.
++                               - `listOrders()`: Returns all orders mapped to response DTOs.
++                            3. **REST Endpoints (`OrderController`)**:
++                               - `POST /api/v1/orders` -> 201 Created with `OrderResponseDto`
++                               - `GET /api/v1/orders/{id}` -> 200 OK or 404 Not Found
++                               - `DELETE /api/v1/orders/{id}` -> 204 No Content or 404 Not Found
++                               - `GET /api/v1/orders` -> 200 OK with `List<OrderResponseDto>`
++
++                            #### Candidate Editable Files:
++                            - `src/main/java/com/example/orderservice/service/OrderService.java`
++                            - `src/main/java/com/example/orderservice/controller/OrderController.java`
++                            """)
++                    .starterFiles(Map.of(
++                            "pom.xml", """
++                                    <?xml version="1.0" encoding="UTF-8"?>
++                                    <project xmlns="http://maven.apache.org/POM/4.0.0"
++                                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++                                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
++                                        <modelVersion>4.0.0</modelVersion>
++                                        <groupId>com.example</groupId>
++                                        <artifactId>order-service</artifactId>
++                                        <version>1.0.0</version>
++                                        <parent>
++                                            <groupId>org.springframework.boot</groupId>
++                                            <artifactId>spring-boot-starter-parent</artifactId>
++                                            <version>3.4.1</version>
++                                            <relativePath/>
++                                        </parent>
++                                        <properties>
++                                            <java.version>21</java.version>
++                                        </properties>
++                                        <dependencies>
++                                            <dependency>
++                                                <groupId>org.springframework.boot</groupId>
++                                                <artifactId>spring-boot-starter-web</artifactId>
++                                            </dependency>
++                                            <dependency>
++                                                <groupId>org.springframework.boot</groupId>
++                                                <artifactId>spring-boot-starter-data-jpa</artifactId>
++                                            </dependency>
++                                            <dependency>
++                                                <groupId>com.h2database</groupId>
++                                                <artifactId>h2</artifactId>
++                                                <scope>runtime</scope>
++                                            </dependency>
++                                            <dependency>
++                                                <groupId>org.springframework.boot</groupId>
++                                                <artifactId>spring-boot-starter-test</artifactId>
++                                                <scope>test</scope>
++                                            </dependency>
++                                        </dependencies>
++                                    </project>
++                                    """,
++                            "src/main/java/com/example/orderservice/OrderServiceApplication.java", """
++                                    package com.example.orderservice;
++
++                                    import org.springframework.boot.SpringApplication;
++                                    import org.springframework.boot.autoconfigure.SpringBootApplication;
++
++                                    @SpringBootApplication
++                                    public class OrderServiceApplication {
++                                        public static void main(String[] args) {
++                                            SpringApplication.run(OrderServiceApplication.class, args);
++                                        }
++                                    }
++                                    """,
++                            "src/main/java/com/example/orderservice/model/OrderStatus.java", """
++                                    package com.example.orderservice.model;
++
++                                    public enum OrderStatus {
++                                        CREATED,
++                                        PENDING,
++                                        COMPLETED,
++                                        CANCELLED
++                                    }
++                                    """,
++                            "src/main/java/com/example/orderservice/model/Order.java", """
++                                    package com.example.orderservice.model;
++
++                                    import jakarta.persistence.*;
++                                    import java.time.Instant;
++                                    import java.util.UUID;
++
++                                    @Entity
++                                    @Table(name = "orders")
++                                    public class Order {
++                                        @Id
++                                        private UUID id;
++
++                                        @Column(nullable = false)
++                                        private String customerId;
++
++                                        @Column(nullable = false)
++                                        private Double totalAmount;
++
++                                        @Enumerated(EnumType.STRING)
++                                        @Column(nullable = false)
++                                        private OrderStatus status;
++
++                                        @Column(nullable = false)
++                                        private Instant createdAt;
++
++                                        public Order() {}
++
++                                        public Order(UUID id, String customerId, Double totalAmount, OrderStatus status, Instant createdAt) {
++                                            this.id = id;
++                                            this.customerId = customerId;
++                                            this.totalAmount = totalAmount;
++                                            this.status = status;
++                                            this.createdAt = createdAt;
++                                        }
++
++                                        public UUID getId() { return id; }
++                                        public void setId(UUID id) { this.id = id; }
++                                        public String getCustomerId() { return customerId; }
++                                        public void setCustomerId(String customerId) { this.customerId = customerId; }
++                                        public Double getTotalAmount() { return totalAmount; }
++                                        public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
++                                        public OrderStatus getStatus() { return status; }
++                                        public void setStatus(OrderStatus status) { this.status = status; }
++                                        public Instant getCreatedAt() { return createdAt; }
++                                        public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
++                                    }
++                                    """,
++                            "src/main/java/com/example/orderservice/dto/OrderRequestDto.java", """
++                                    package com.example.orderservice.dto;
++
++                                    public record OrderRequestDto(
++                                        String customerId,
++                                        Double totalAmount
++                                    ) {}
++                                    """,
++                            "src/main/java/com/example/orderservice/dto/OrderResponseDto.java", """
++                                    package com.example.orderservice.dto;
++
++                                    import com.example.orderservice.model.OrderStatus;
++                                    import java.time.Instant;
++                                    import java.util.UUID;
++
++                                    public record OrderResponseDto(
++                                        UUID id,
++                                        String customerId,
++                                        Double totalAmount,
++                                        OrderStatus status,
++                                        Instant createdAt
++                                    ) {}
++                                    """,
++                            "src/main/java/com/example/orderservice/repository/OrderRepository.java", """
++                                    package com.example.orderservice.repository;
++
++                                    import com.example.orderservice.model.Order;
++                                    import org.springframework.data.jpa.repository.JpaRepository;
++                                    import org.springframework.stereotype.Repository;
++
++                                    import java.util.UUID;
++
++                                    @Repository
++                                    public interface OrderRepository extends JpaRepository<Order, UUID> {
++                                    }
++                                    """,
++                            "src/main/java/com/example/orderservice/service/IOrderService.java", """
++                                    package com.example.orderservice.service;
++
++                                    import com.example.orderservice.dto.OrderRequestDto;
++                                    import com.example.orderservice.dto.OrderResponseDto;
++
++                                    import java.util.List;
++                                    import java.util.Optional;
++                                    import java.util.UUID;
++
++                                    public interface IOrderService {
++                                        OrderResponseDto createOrder(OrderRequestDto request);
++                                        Optional<OrderResponseDto> getOrderById(UUID id);
++                                        boolean deleteOrder(UUID id);
++                                        List<OrderResponseDto> listOrders();
++                                    }
++                                    """,
++                            "src/main/java/com/example/orderservice/service/OrderService.java", """
++                                    package com.example.orderservice.service;
++
++                                    import com.example.orderservice.dto.OrderRequestDto;
++                                    import com.example.orderservice.dto.OrderResponseDto;
++                                    import com.example.orderservice.model.Order;
++                                    import com.example.orderservice.model.OrderStatus;
++                                    import com.example.orderservice.repository.OrderRepository;
++                                    import org.springframework.stereotype.Service;
++
++                                    import java.time.Instant;
++                                    import java.util.List;
++                                    import java.util.Optional;
++                                    import java.util.UUID;
++
++                                    @Service
++                                    public class OrderService implements IOrderService {
++
++                                        private final OrderRepository orderRepository;
++
++                                        public OrderService(OrderRepository orderRepository) {
++                                            this.orderRepository = orderRepository;
++                                        }
++
++                                        @Override
++                                        public OrderResponseDto createOrder(OrderRequestDto request) {
++                                            // TODO: Implement createOrder (generate UUID, status CREATED, Instant.now())
++                                            throw new UnsupportedOperationException("TODO: Implement createOrder");
++                                        }
++
++                                        @Override
++                                        public Optional<OrderResponseDto> getOrderById(UUID id) {
++                                            // TODO: Implement getOrderById
++                                            throw new UnsupportedOperationException("TODO: Implement getOrderById");
++                                        }
++
++                                        @Override
++                                        public boolean deleteOrder(UUID id) {
++                                            // TODO: Implement deleteOrder
++                                            throw new UnsupportedOperationException("TODO: Implement deleteOrder");
++                                        }
++
++                                        @Override
++                                        public List<OrderResponseDto> listOrders() {
++                                            // TODO: Implement listOrders
++                                            throw new UnsupportedOperationException("TODO: Implement listOrders");
++                                        }
++                                    }
++                                    """,
++                            "src/main/java/com/example/orderservice/controller/OrderController.java", """
++                                    package com.example.orderservice.controller;
++
++                                    import com.example.orderservice.dto.OrderRequestDto;
++                                    import com.example.orderservice.dto.OrderResponseDto;
++                                    import com.example.orderservice.service.IOrderService;
++                                    import org.springframework.http.HttpStatus;
++                                    import org.springframework.http.ResponseEntity;
++                                    import org.springframework.web.bind.annotation.*;
++
++                                    import java.util.List;
++                                    import java.util.UUID;
++
++                                    @RestController
++                                    @RequestMapping("/api/v1/orders")
++                                    public class OrderController {
++
++                                        private final IOrderService orderService;
++
++                                        public OrderController(IOrderService orderService) {
++                                            this.orderService = orderService;
++                                        }
++
++                                        @PostMapping
++                                        public ResponseEntity<OrderResponseDto> createOrder(@RequestBody OrderRequestDto request) {
++                                            OrderResponseDto response = orderService.createOrder(request);
++                                            return ResponseEntity.status(HttpStatus.CREATED).body(response);
++                                        }
++
++                                        @GetMapping("/{id}")
++                                        public ResponseEntity<OrderResponseDto> getOrder(@PathVariable UUID id) {
++                                            return orderService.getOrderById(id)
++                                                    .map(ResponseEntity::ok)
++                                                    .orElse(ResponseEntity.notFound().build());
++                                        }
++
++                                        @DeleteMapping("/{id}")
++                                        public ResponseEntity<Void> deleteOrder(@PathVariable UUID id) {
++                                            boolean deleted = orderService.deleteOrder(id);
++                                            return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
++                                        }
++
++                                        @GetMapping
++                                        public ResponseEntity<List<OrderResponseDto>> listOrders() {
++                                            return ResponseEntity.ok(orderService.listOrders());
++                                        }
++                                    }
++                                    """
++                    ))
++                    .editablePaths(List.of(
++                            "src/main/java/com/example/orderservice/service/OrderService.java",
++                            "src/main/java/com/example/orderservice/controller/OrderController.java"
++                    ))
++                    .hiddenTestFiles(Map.of(
++                            "src/test/java/com/example/orderservice/OrderServiceIntegrationTest.java", """
++                                    package com.example.orderservice;
++
++                                    import com.example.orderservice.dto.OrderRequestDto;
++                                    import com.example.orderservice.dto.OrderResponseDto;
++                                    import com.example.orderservice.model.OrderStatus;
++                                    import com.example.orderservice.service.IOrderService;
++                                    import org.junit.jupiter.api.DisplayName;
++                                    import org.junit.jupiter.api.Test;
++                                    import org.springframework.beans.factory.annotation.Autowired;
++                                    import org.springframework.boot.test.context.SpringBootTest;
++
++                                    import java.util.UUID;
++
++                                    import static org.junit.jupiter.api.Assertions.*;
++
++                                    @SpringBootTest
++                                    class OrderServiceIntegrationTest {
++
++                                        @Autowired
++                                        private IOrderService orderService;
++
++                                        @Test
++                                        @DisplayName("CreateOrderPersistsWithCreatedStatus")
++                                        void testCreateOrderPersistsWithCreatedStatus() {
++                                            OrderRequestDto request = new OrderRequestDto("cust-101", 149.99);
++                                            OrderResponseDto response = orderService.createOrder(request);
++
++                                            assertNotNull(response);
++                                            assertNotNull(response.id());
++                                            assertEquals("cust-101", response.customerId());
++                                            assertEquals(149.99, response.totalAmount());
++                                            assertEquals(OrderStatus.CREATED, response.status());
++                                        }
++
++                                        @Test
++                                        @DisplayName("DeleteExistingOrderTrue")
++                                        void testDeleteExistingOrderTrue() {
++                                            OrderRequestDto request = new OrderRequestDto("cust-102", 49.50);
++                                            OrderResponseDto created = orderService.createOrder(request);
++
++                                            boolean deleted = orderService.deleteOrder(created.id());
++                                            assertTrue(deleted);
++                                            assertTrue(orderService.getOrderById(created.id()).isEmpty());
++                                        }
++
++                                        @Test
++                                        @DisplayName("DeleteMissingOrderFalse")
++                                        void testDeleteMissingOrderFalse() {
++                                            UUID randomId = UUID.randomUUID();
++                                            boolean deleted = orderService.deleteOrder(randomId);
++                                            assertFalse(deleted);
++                                        }
++
++                                        @Test
++                                        @DisplayName("IdsAreUniqueUUIDs")
++                                        void testIdsAreUniqueUUIDs() {
++                                            OrderResponseDto o1 = orderService.createOrder(new OrderRequestDto("c1", 10.0));
++                                            OrderResponseDto o2 = orderService.createOrder(new OrderRequestDto("c2", 20.0));
++
++                                            assertNotNull(o1.id());
++                                            assertNotNull(o2.id());
++                                            assertNotEquals(o1.id(), o2.id());
++                                        }
++
++                                        @Test
++                                        @DisplayName("TimestampsPopulated")
++                                        void testTimestampsPopulated() {
++                                            OrderResponseDto o = orderService.createOrder(new OrderRequestDto("c3", 99.0));
++                                            assertNotNull(o.createdAt());
++                                        }
++                                    }
++                                    """
++                    ))
++                    .sampleTests(List.of(
++                            new QuestionDocument.TestCase("CreateOrderPersistsWithCreatedStatus", "", "", "POST /api/v1/orders with customerId and amount returns 201 Created and CREATED status"),
++                            new QuestionDocument.TestCase("DeleteExistingOrderTrue", "", "", "DELETE /api/v1/orders/{id} on existing order returns 204 No Content"),
++                            new QuestionDocument.TestCase("DeleteMissingOrderFalse", "", "", "DELETE /api/v1/orders/{random-id} returns 404 Not Found"),
++                            new QuestionDocument.TestCase("IdsAreUniqueUUIDs", "", "", "Consecutive order creations generate unique UUIDs"),
++                            new QuestionDocument.TestCase("TimestampsPopulated", "", "", "Created order has non-null Instant timestamp")
++                    ))
++                    .limits(new QuestionDocument.ExecutionLimits(768, 60000))
++                    .evaluationCriteria(List.of(
++                            "Spring Boot 3 REST controller mapping and status codes",
++                            "Encapsulation of Order entity behind request/response DTOs",
++                            "Transactional JPA data persistence and clean separation of concerns"
++                    ))
++                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
++                            List.of("Spring Boot 3 REST controller mapping", "JPA Repository lifecycle", "UUID identifier generation", "DTO request/response encapsulation", "Layered Architecture"),
++                            List.of(
++                                    "Why return an OrderResponseDto rather than exposing the JPA Order entity directly in controller responses?",
++                                    "Where should input validation and business invariant checks live as this microservice scales?",
++                                    "How would you handle idempotent order placement to prevent double billing on network retry?"
++                            ),
++                            List.of(
++                                    "Candidate checks for non-null fields and throws or handles empty Optional appropriately.",
++                                    "Candidate leverages dependency injection via constructor rather than field @Autowired.",
++                                    "Candidate returns 201 Created on POST and 204/404 on DELETE."
++                            )
++                    ))
++                    .coaching(new QuestionDocument.CoachingContent(
++                            List.of(
++                                    "Exposing JPA entity models directly in REST controller method signatures.",
++                                    "Using field injection (@Autowired) instead of constructor injection.",
++                                    "Forgetting to return 404 when deleting a non-existent order."
++                            ),
++                            """
++                            1. OrderService implements IOrderService.
++                            2. In createOrder: validate request, instantiate Order with UUID.randomUUID(), CREATED status, and Instant.now(), save to orderRepository, map to OrderResponseDto.
++                            3. In getOrderById: return orderRepository.findById(id).map(this::toDto).
++                            4. In deleteOrder: check existsById(id), if true deleteById(id) and return true, else false.
++                            """,
++                            List.of(
++                                    "Discuss transaction boundaries (@Transactional) and database isolation levels.",
++                                    "Mention idempotency keys for payment and order creation APIs."
++                            )
++                    ))
++                    .status("PUBLISHED")
++                    .source("CORE")
++                    .build();
++
++            // Idempotent Seeding
++            for (QuestionDocument q : List.of(lruCache, reverseString, twoSum, lldOrderService)) {
++                questionRepository.findBySlug(q.getSlug())
++                        .ifPresentOrElse(
++                                existing -> {
++                                    q.setId(existing.getId());
++                                    questionRepository.save(q);
++                                },
++                                () -> questionRepository.save(q)
++                        );
++            }
++            log.info("✅ Question Bank initialized with {} core problems (DSA + LLD) with coaching & interviewer notes.", 4);
++        } catch (Exception e) {
++            log.warn("⚠️ Question Bank initialization notice: {}", e.getMessage());
++        }
++    }
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/repository/QuestionRepository.java b/question-bank-service/src/main/java/com/interviewos/questionbank/repository/QuestionRepository.java
+new file mode 100644
+index 0000000..a21e8d9
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/repository/QuestionRepository.java
+@@ -0,0 +1,20 @@
++package com.interviewos.questionbank.repository;
++
++import com.interviewos.questionbank.document.QuestionDocument;
++import org.springframework.data.mongodb.repository.MongoRepository;
++import org.springframework.stereotype.Repository;
++
++import java.util.List;
++import java.util.Optional;
++
++@Repository
++public interface QuestionRepository extends MongoRepository<QuestionDocument, String> {
++
++    Optional<QuestionDocument> findBySlug(String slug);
++
++    List<QuestionDocument> findByTrackAndDifficultyAndStatus(String track, String difficulty, String status);
++
++    List<QuestionDocument> findByTrackAndStatus(String track, String status);
++
++    List<QuestionDocument> findByStatus(String status);
++}
+diff --git a/question-bank-service/src/main/java/com/interviewos/questionbank/service/QuestionMatchService.java b/question-bank-service/src/main/java/com/interviewos/questionbank/service/QuestionMatchService.java
+new file mode 100644
+index 0000000..aeaef07
+--- /dev/null
++++ b/question-bank-service/src/main/java/com/interviewos/questionbank/service/QuestionMatchService.java
+@@ -0,0 +1,209 @@
++package com.interviewos.questionbank.service;
++
++import com.fasterxml.jackson.databind.JsonNode;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.interviewos.questionbank.document.QuestionDocument;
++import com.interviewos.questionbank.dto.QuestionMatchRequest;
++import com.interviewos.questionbank.dto.QuestionMatchResponse;
++import com.interviewos.questionbank.dto.QuestionPublicView;
++import com.interviewos.questionbank.repository.QuestionRepository;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.http.MediaType;
++import org.springframework.stereotype.Service;
++import org.springframework.web.client.RestClient;
++
++import java.time.Duration;
++import java.util.*;
++import java.util.stream.Collectors;
++
++@Slf4j
++@Service
++@RequiredArgsConstructor
++public class QuestionMatchService {
++
++    private final QuestionRepository questionRepository;
++    private final ObjectMapper objectMapper;
++
++    public QuestionMatchResponse matchQuestion(QuestionMatchRequest request) {
++        String track = request.track() != null ? request.track().trim() : "ALGORITHMS_DATA_STRUCTURES";
++        String difficulty = request.difficulty() != null ? request.difficulty().trim() : "JUNIOR";
++
++        log.info("Matching question for track: '{}', difficulty: '{}', skills: {}",
++                track, difficulty, request.resumeSkills());
++
++        // 1. Retrieve candidates from MongoDB
++        List<QuestionDocument> candidates = questionRepository.findByTrackAndDifficultyAndStatus(track, difficulty, "PUBLISHED");
++        if (candidates.isEmpty()) {
++            candidates = questionRepository.findByTrackAndStatus(track, "PUBLISHED");
++        }
++        if (candidates.isEmpty()) {
++            candidates = questionRepository.findByStatus("PUBLISHED");
++        }
++
++        if (candidates.isEmpty()) {
++            throw new IllegalStateException("Question bank is empty. Ensure questions are seeded and published.");
++        }
++
++        // 2. Deterministic Scoring
++        List<ScoredCandidate> scored = scoreCandidates(candidates, request);
++        scored.sort(Comparator.comparingDouble(ScoredCandidate::score).reversed());
++
++        ScoredCandidate topPick = scored.get(0);
++
++        // 3. Optional LLM Re-Ranking among top 5 candidates
++        if (request.provider() != null && request.apiKey() != null && !request.apiKey().isBlank() && scored.size() > 1) {
++            List<ScoredCandidate> top5 = scored.stream().limit(5).toList();
++            Optional<LlmDecision> decision = invokeLlmReranker(top5, request);
++            if (decision.isPresent()) {
++                LlmDecision d = decision.get();
++                QuestionDocument selectedDoc = top5.stream()
++                        .map(ScoredCandidate::doc)
++                        .filter(doc -> doc.getSlug().equalsIgnoreCase(d.chosenSlug))
++                        .findFirst()
++                        .orElse(topPick.doc());
++
++                return QuestionMatchResponse.builder()
++                        .question(QuestionPublicView.fromDocument(selectedDoc))
++                        .rationale(d.rationale)
++                        .llmAssisted(true)
++                        .build();
++            }
++        }
++
++        // Deterministic Fallback Output
++        String rationale = String.format("Selected '%s' based on track '%s', difficulty '%s', and resume skill alignment.",
++                topPick.doc().getTitle(), track, difficulty);
++
++        return QuestionMatchResponse.builder()
++                .question(QuestionPublicView.fromDocument(topPick.doc()))
++                .rationale(rationale)
++                .llmAssisted(false)
++                .build();
++    }
++
++    private List<ScoredCandidate> scoreCandidates(List<QuestionDocument> candidates, QuestionMatchRequest request) {
++        Set<String> skills = (request.resumeSkills() != null ? request.resumeSkills() : List.<String>of())
++                .stream()
++                .map(String::toLowerCase)
++                .collect(Collectors.toSet());
++
++        String jd = request.jdText() != null ? request.jdText().toLowerCase() : "";
++
++        List<ScoredCandidate> results = new ArrayList<>();
++        for (QuestionDocument doc : candidates) {
++            double score = 10.0;
++
++            // Tag overlap with resume skills
++            if (doc.getTags() != null) {
++                for (String tag : doc.getTags()) {
++                    if (skills.contains(tag.toLowerCase())) {
++                        score += 5.0;
++                    }
++                }
++            }
++
++            // Keyword overlap with JD
++            if (!jd.isBlank() && doc.getTitle() != null && jd.contains(doc.getTitle().toLowerCase())) {
++                score += 4.0;
++            }
++
++            // Difficulty match bonus
++            if (request.difficulty() != null && request.difficulty().equalsIgnoreCase(doc.getDifficulty())) {
++                score += 3.0;
++            }
++
++            results.add(new ScoredCandidate(doc, score));
++        }
++        return results;
++    }
++
++    private Optional<LlmDecision> invokeLlmReranker(List<ScoredCandidate> topCandidates, QuestionMatchRequest req) {
++        try {
++            String provider = req.provider().toUpperCase();
++            String apiKey = req.apiKey().trim();
++
++            StringBuilder prompt = new StringBuilder();
++            prompt.append("Select the single best technical interview problem for this candidate from the list below.\n\n");
++            prompt.append("Candidate Skills: ").append(req.resumeSkills()).append("\n");
++            prompt.append("Target Track: ").append(req.track()).append(", Target Difficulty: ").append(req.difficulty()).append("\n\n");
++            prompt.append("Candidate Options:\n");
++            for (ScoredCandidate sc : topCandidates) {
++                prompt.append(String.format("- Slug: %s | Title: %s | Tags: %s\n",
++                        sc.doc().getSlug(), sc.doc().getTitle(), sc.doc().getTags()));
++            }
++            prompt.append("\nReturn strictly JSON: {\"chosenSlug\": \"slug-here\", \"rationale\": \"One concise sentence why this problem matches candidate background.\"}\n");
++
++            RestClient client = RestClient.builder()
++                    .defaultHeader("Accept", "application/json")
++                    .build();
++
++            if ("GEMINI".equalsIgnoreCase(provider)) {
++                String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
++                Map<String, Object> body = Map.of(
++                        "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt.toString())))),
++                        "generationConfig", Map.of("temperature", 0.1, "responseMimeType", "application/json")
++                );
++
++                String rawJson = client.post()
++                        .uri(url)
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .body(body)
++                        .retrieve()
++                        .body(String.class);
++
++                JsonNode root = objectMapper.readTree(rawJson);
++                String text = root.path("candidates").get(0).path("content").path("parts").get(0).path("text").asText();
++                JsonNode parsed = objectMapper.readTree(cleanJson(text));
++                return Optional.of(new LlmDecision(parsed.path("chosenSlug").asText(), parsed.path("rationale").asText()));
++            } else if ("GROQ".equalsIgnoreCase(provider) || "OPENAI".equalsIgnoreCase(provider)) {
++                String url = "GROQ".equalsIgnoreCase(provider)
++                        ? "https://api.groq.com/openai/v1/chat/completions"
++                        : "https://api.openai.com/v1/chat/completions";
++                String model = "GROQ".equalsIgnoreCase(provider) ? "llama-3.3-70b-versatile" : "gpt-4o-mini";
++
++                Map<String, Object> body = Map.of(
++                        "model", model,
++                        "messages", List.of(
++                                Map.of("role", "system", "content", "You are an expert technical interviewer assistant. Return valid JSON."),
++                                Map.of("role", "user", "content", prompt.toString())
++                        ),
++                        "temperature", 0.1
++                );
++
++                String rawJson = client.post()
++                        .uri(url)
++                        .header("Authorization", "Bearer " + apiKey)
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .body(body)
++                        .retrieve()
++                        .body(String.class);
++
++                JsonNode root = objectMapper.readTree(rawJson);
++                String text = root.path("choices").get(0).path("message").path("content").asText();
++                JsonNode parsed = objectMapper.readTree(cleanJson(text));
++                return Optional.of(new LlmDecision(parsed.path("chosenSlug").asText(), parsed.path("rationale").asText()));
++            }
++
++        } catch (Exception e) {
++            log.warn("⚠️ LLM question re-ranking skipped/failed: {}. Falling back to deterministic scoring.", e.getMessage());
++        }
++        return Optional.empty();
++    }
++
++    private String cleanJson(String text) {
++        String trimmed = text.trim();
++        if (trimmed.startsWith("```json")) {
++            trimmed = trimmed.substring(7);
++        } else if (trimmed.startsWith("```")) {
++            trimmed = trimmed.substring(3);
++        }
++        if (trimmed.endsWith("```")) {
++            trimmed = trimmed.substring(0, trimmed.length() - 3);
++        }
++        return trimmed.trim();
++    }
++
++    private record ScoredCandidate(QuestionDocument doc, double score) {}
++    private record LlmDecision(String chosenSlug, String rationale) {}
++}
+diff --git a/question-bank-service/src/main/resources/application.yaml b/question-bank-service/src/main/resources/application.yaml
+new file mode 100644
+index 0000000..d9200fc
+--- /dev/null
++++ b/question-bank-service/src/main/resources/application.yaml
+@@ -0,0 +1,5 @@
++spring:
++  application:
++    name: question-bank-service
++  config:
++    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+diff --git a/question-bank-service/src/test/java/com/interviewos/questionbank/controller/QuestionInternalControllerTest.java b/question-bank-service/src/test/java/com/interviewos/questionbank/controller/QuestionInternalControllerTest.java
+new file mode 100644
+index 0000000..b623930
+--- /dev/null
++++ b/question-bank-service/src/test/java/com/interviewos/questionbank/controller/QuestionInternalControllerTest.java
+@@ -0,0 +1,90 @@
++package com.interviewos.questionbank.controller;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.interviewos.questionbank.document.QuestionDocument;
++import com.interviewos.questionbank.dto.QuestionFullView;
++import com.interviewos.questionbank.repository.QuestionRepository;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.boot.test.mock.mockito.MockBean;
++import org.springframework.http.MediaType;
++import org.springframework.test.web.servlet.MockMvc;
++
++import java.util.List;
++import java.util.Map;
++import java.util.Optional;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++@WebMvcTest(QuestionInternalController.class)
++class QuestionInternalControllerTest {
++
++    @Autowired
++    private MockMvc mockMvc;
++
++    @Autowired
++    private ObjectMapper objectMapper;
++
++    @MockBean
++    private QuestionRepository questionRepository;
++
++    @Test
++    @DisplayName("GET /internal/v1/questions/{slug}/full should return 200 OK with hidden tests and notes")
++    void testGetFullQuestionView() throws Exception {
++        QuestionDocument doc = QuestionDocument.builder()
++                .slug("lld-order-service")
++                .title("Spring Boot Order Management Microservice")
++                .track("SPRING_LLD")
++                .difficulty("MID")
++                .buildProfile("maven-spring")
++                .hiddenTestFiles(Map.of("src/test/java/OrderServiceTest.java", "public class OrderServiceTest {}"))
++                .interviewerNotes(new QuestionDocument.InterviewerNotes(
++                        List.of("JPA"),
++                        List.of("Why return DTO?"),
++                        List.of("Check validation")
++                ))
++                .coaching(new QuestionDocument.CoachingContent(
++                        List.of("Exposing entities"),
++                        "Outline",
++                        List.of("Discuss transactions")
++                ))
++                .build();
++
++        when(questionRepository.findBySlug(eq("lld-order-service"))).thenReturn(Optional.of(doc));
++
++        mockMvc.perform(get("/internal/v1/questions/lld-order-service/full"))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.slug").value("lld-order-service"))
++                .andExpect(jsonPath("$.hiddenTestFiles['src/test/java/OrderServiceTest.java']").exists())
++                .andExpect(jsonPath("$.interviewerNotes.followUpSeeds[0]").value("Why return DTO?"))
++                .andExpect(jsonPath("$.coaching.presentationTips[0]").value("Discuss transactions"));
++    }
++
++    @Test
++    @DisplayName("POST /internal/v1/questions/import should import questions idempotently")
++    void testImportQuestions() throws Exception {
++        QuestionFullView view = QuestionFullView.builder()
++                .slug("custom-problem")
++                .title("Custom Problem")
++                .track("ALGORITHMS_DATA_STRUCTURES")
++                .difficulty("JUNIOR")
++                .build();
++
++        when(questionRepository.findBySlug(eq("custom-problem"))).thenReturn(Optional.empty());
++        when(questionRepository.save(any(QuestionDocument.class))).thenAnswer(i -> i.getArgument(0));
++
++        mockMvc.perform(post("/internal/v1/questions/import")
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content(objectMapper.writeValueAsString(List.of(view))))
++                .andExpect(status().isCreated())
++                .andExpect(jsonPath("$.status").value("SUCCESS"))
++                .andExpect(jsonPath("$.importedCount").value(1));
++    }
++}
+diff --git a/question-bank-service/src/test/java/com/interviewos/questionbank/controller/QuestionPublicControllerTest.java b/question-bank-service/src/test/java/com/interviewos/questionbank/controller/QuestionPublicControllerTest.java
+new file mode 100644
+index 0000000..e433849
+--- /dev/null
++++ b/question-bank-service/src/test/java/com/interviewos/questionbank/controller/QuestionPublicControllerTest.java
+@@ -0,0 +1,105 @@
++package com.interviewos.questionbank.controller;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.interviewos.questionbank.document.QuestionDocument;
++import com.interviewos.questionbank.dto.QuestionMatchRequest;
++import com.interviewos.questionbank.dto.QuestionMatchResponse;
++import com.interviewos.questionbank.dto.QuestionPublicView;
++import com.interviewos.questionbank.repository.QuestionRepository;
++import com.interviewos.questionbank.service.QuestionMatchService;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
++import org.springframework.boot.test.mock.mockito.MockBean;
++import org.springframework.http.MediaType;
++import org.springframework.test.web.servlet.MockMvc;
++
++import java.util.List;
++import java.util.Optional;
++
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.when;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++@WebMvcTest(QuestionPublicController.class)
++class QuestionPublicControllerTest {
++
++    @Autowired
++    private MockMvc mockMvc;
++
++    @Autowired
++    private ObjectMapper objectMapper;
++
++    @MockBean
++    private QuestionRepository questionRepository;
++
++    @MockBean
++    private QuestionMatchService questionMatchService;
++
++    @Test
++    @DisplayName("GET /api/v1/questions/{slug} should return 200 OK and STRIP all hidden tests and notes")
++    void testGetPublicQuestionStripsHiddenContent() throws Exception {
++        QuestionDocument doc = QuestionDocument.builder()
++                .slug("lru-cache")
++                .title("LRU Cache Implementation")
++                .track("ALGORITHMS_DATA_STRUCTURES")
++                .difficulty("SENIOR")
++                .status("PUBLISHED")
++                .problemStatement("Implement LRU Cache")
++                .hiddenTests(List.of(new QuestionDocument.HiddenTestCase("Hidden 1", "in", "out", 1)))
++                .interviewerNotes(new QuestionDocument.InterviewerNotes(List.of("Concept"), List.of("Seed"), List.of("Checkpoint")))
++                .coaching(new QuestionDocument.CoachingContent(List.of("Mistake"), "Outline", List.of("Tip")))
++                .build();
++
++        when(questionRepository.findBySlug(eq("lru-cache"))).thenReturn(Optional.of(doc));
++
++        mockMvc.perform(get("/api/v1/questions/lru-cache"))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.slug").value("lru-cache"))
++                .andExpect(jsonPath("$.title").value("LRU Cache Implementation"))
++                .andExpect(jsonPath("$.hiddenTests").doesNotExist())
++                .andExpect(jsonPath("$.hiddenTestFiles").doesNotExist())
++                .andExpect(jsonPath("$.interviewerNotes").doesNotExist())
++                .andExpect(jsonPath("$.coaching").doesNotExist());
++    }
++
++    @Test
++    @DisplayName("POST /api/v1/questions/match should return matched question with rationale")
++    void testMatchQuestion() throws Exception {
++        QuestionMatchRequest req = new QuestionMatchRequest(
++                "ALGORITHMS_DATA_STRUCTURES",
++                "SENIOR",
++                List.of("java", "hashmap"),
++                "Looking for a Senior Backend Engineer",
++                null,
++                null
++        );
++
++        QuestionPublicView publicView = QuestionPublicView.builder()
++                .slug("lru-cache")
++                .title("LRU Cache Implementation")
++                .track("ALGORITHMS_DATA_STRUCTURES")
++                .difficulty("SENIOR")
++                .build();
++
++        QuestionMatchResponse resp = QuestionMatchResponse.builder()
++                .question(publicView)
++                .rationale("Matched based on HashMap and Doubly Linked List skills")
++                .llmAssisted(false)
++                .build();
++
++        when(questionMatchService.matchQuestion(any(QuestionMatchRequest.class))).thenReturn(resp);
++
++        mockMvc.perform(post("/api/v1/questions/match")
++                        .contentType(MediaType.APPLICATION_JSON)
++                        .content(objectMapper.writeValueAsString(req)))
++                .andExpect(status().isOk())
++                .andExpect(jsonPath("$.question.slug").value("lru-cache"))
++                .andExpect(jsonPath("$.llmAssisted").value(false))
++                .andExpect(jsonPath("$.rationale").exists());
++    }
++}
+diff --git a/question-bank-service/src/test/java/com/interviewos/questionbank/service/QuestionMatchServiceTest.java b/question-bank-service/src/test/java/com/interviewos/questionbank/service/QuestionMatchServiceTest.java
+new file mode 100644
+index 0000000..18df1fa
+--- /dev/null
++++ b/question-bank-service/src/test/java/com/interviewos/questionbank/service/QuestionMatchServiceTest.java
+@@ -0,0 +1,138 @@
++package com.interviewos.questionbank.service;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import com.interviewos.questionbank.document.QuestionDocument;
++import com.interviewos.questionbank.dto.QuestionMatchRequest;
++import com.interviewos.questionbank.dto.QuestionMatchResponse;
++import com.interviewos.questionbank.repository.QuestionRepository;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.extension.ExtendWith;
++import org.mockito.Mock;
++import org.mockito.junit.jupiter.MockitoExtension;
++
++import java.util.List;
++
++import static org.junit.jupiter.api.Assertions.*;
++import static org.mockito.ArgumentMatchers.anyString;
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.when;
++
++@ExtendWith(MockitoExtension.class)
++class QuestionMatchServiceTest {
++
++    @Mock
++    private QuestionRepository questionRepository;
++
++    private QuestionMatchService matchService;
++
++    @BeforeEach
++    void setUp() {
++        matchService = new QuestionMatchService(questionRepository, new ObjectMapper());
++    }
++
++    @Test
++    @DisplayName("matchQuestion should deterministically match best question by resume tags and difficulty")
++    void testDeterministicMatch() {
++        QuestionDocument lru = QuestionDocument.builder()
++                .slug("lru-cache")
++                .title("LRU Cache Implementation")
++                .track("ALGORITHMS_DATA_STRUCTURES")
++                .difficulty("SENIOR")
++                .tags(List.of("java", "hashmap", "doubly-linked-list", "caching"))
++                .status("PUBLISHED")
++                .build();
++
++        QuestionDocument reverse = QuestionDocument.builder()
++                .slug("reverse-a-string")
++                .title("Reverse a String")
++                .track("ALGORITHMS_DATA_STRUCTURES")
++                .difficulty("JUNIOR")
++                .tags(List.of("strings", "arrays"))
++                .status("PUBLISHED")
++                .build();
++
++        when(questionRepository.findByTrackAndDifficultyAndStatus(eq("ALGORITHMS_DATA_STRUCTURES"), eq("SENIOR"), eq("PUBLISHED")))
++                .thenReturn(List.of(lru, reverse));
++
++        QuestionMatchRequest req = new QuestionMatchRequest(
++                "ALGORITHMS_DATA_STRUCTURES",
++                "SENIOR",
++                List.of("java", "hashmap", "caching"),
++                "Staff Software Engineer at Fintech",
++                null,
++                null
++        );
++
++        QuestionMatchResponse response = matchService.matchQuestion(req);
++
++        assertNotNull(response);
++        assertNotNull(response.question());
++        assertEquals("lru-cache", response.question().slug());
++        assertFalse(response.llmAssisted());
++        assertTrue(response.rationale().contains("LRU Cache Implementation"));
++    }
++
++    @Test
++    @DisplayName("matchQuestion should safely fallback to deterministic scoring on invalid LLM provider without throwing")
++    void testLlmFailureSafeFallback() {
++        QuestionDocument lru = QuestionDocument.builder()
++                .slug("lru-cache")
++                .title("LRU Cache Implementation")
++                .track("ALGORITHMS_DATA_STRUCTURES")
++                .difficulty("SENIOR")
++                .tags(List.of("java", "hashmap"))
++                .status("PUBLISHED")
++                .build();
++
++        QuestionDocument reverse = QuestionDocument.builder()
++                .slug("reverse-a-string")
++                .title("Reverse a String")
++                .track("ALGORITHMS_DATA_STRUCTURES")
++                .difficulty("SENIOR")
++                .tags(List.of("strings"))
++                .status("PUBLISHED")
++                .build();
++
++        when(questionRepository.findByTrackAndDifficultyAndStatus(anyString(), anyString(), anyString()))
++                .thenReturn(List.of(lru, reverse));
++
++        QuestionMatchRequest req = new QuestionMatchRequest(
++                "ALGORITHMS_DATA_STRUCTURES",
++                "SENIOR",
++                List.of("java"),
++                "Backend Engineer",
++                "INVALID_PROVIDER",
++                "fake-key"
++        );
++
++        QuestionMatchResponse response = matchService.matchQuestion(req);
++
++        assertNotNull(response);
++        assertEquals("lru-cache", response.question().slug());
++        assertFalse(response.llmAssisted());
++    }
++
++    @Test
++    @DisplayName("matchQuestion should throw IllegalStateException when no published questions exist")
++    void testNoQuestionsFoundThrows() {
++        when(questionRepository.findByTrackAndDifficultyAndStatus(anyString(), anyString(), anyString()))
++                .thenReturn(List.of());
++        when(questionRepository.findByTrackAndStatus(anyString(), anyString()))
++                .thenReturn(List.of());
++        when(questionRepository.findByStatus(anyString()))
++                .thenReturn(List.of());
++
++        QuestionMatchRequest req = new QuestionMatchRequest(
++                "ALGORITHMS_DATA_STRUCTURES",
++                "SENIOR",
++                List.of(),
++                "",
++                null,
++                null
++        );
++
++        assertThrows(IllegalStateException.class, () -> matchService.matchQuestion(req));
++    }
++}
