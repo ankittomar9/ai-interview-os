@@ -86,15 +86,16 @@ class LldMavenRunnerTest {
     }
 
     @Test
-    @DisplayName("run() in fallback mode should evaluate placeholder implementation without errors")
+    @DisplayName("run() in fallback mode should return honest ENGINE_UNAVAILABLE status when Docker is missing")
     void testFallbackExecution() {
-        LldMavenRunner runner = new LldMavenRunner(); // Docker not passed -> fallback mode
+        LldMavenRunner runner = new LldMavenRunner(); // Docker client not passed -> fallback mode
 
         ProblemDocument problem = ProblemDocument.builder()
                 .problemSlug("lld-order-service")
                 .buildProfile("maven-spring")
                 .starterFiles(Map.of("pom.xml", "<project></project>"))
                 .editablePaths(List.of("src/main/java/com/example/orderservice/service/OrderService.java"))
+                .sampleTests(List.of(new ProblemDocument.TestCase("Sample 1", "", "")))
                 .build();
 
         Map<String, String> candidateFiles = Map.of(
@@ -102,11 +103,12 @@ class LldMavenRunnerTest {
                 "package com.example.orderservice.service;\npublic class OrderService {\n// TODO: implement\n}"
         );
 
-        ExecutionResultResponse response = runner.run(1L, problem, candidateFiles);
+        ExecutionResultResponse response = runner.run(1L, problem, candidateFiles, "java");
 
         assertNotNull(response);
-        assertEquals("FAILED", response.status());
-        assertEquals(5, response.totalTests());
+        assertEquals("ENGINE_UNAVAILABLE", response.status());
+        assertEquals(1, response.totalTests());
         assertEquals(0, response.passedTests());
+        assertTrue(response.stderr().contains("Docker daemon unavailable"));
     }
 }

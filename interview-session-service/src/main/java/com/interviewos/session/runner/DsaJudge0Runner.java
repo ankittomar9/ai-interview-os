@@ -21,18 +21,24 @@ public class DsaJudge0Runner implements TrackRunner {
 
     @Override
     public boolean supports(ProblemDocument problem) {
-        return problem != null && ("judge0".equalsIgnoreCase(problem.getBuildProfile())
-                || problem.getBuildProfile() == null
-                || problem.getStarterFiles() == null
-                || problem.getStarterFiles().isEmpty());
+        if (problem == null) return false;
+        if ("judge0".equalsIgnoreCase(problem.getBuildProfile())) {
+            return true;
+        }
+        if (problem.getBuildProfile() != null && !"judge0".equalsIgnoreCase(problem.getBuildProfile())) {
+            return false;
+        }
+        return problem.getStarterFiles() == null || problem.getStarterFiles().isEmpty();
     }
 
     @Override
-    public ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles) {
+    public ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles, String language) {
         String codeSnippet = candidateFiles != null ? candidateFiles.values().stream().findFirst().orElse("") : "";
-        String language = "java"; // default
+        int languageId = resolveLanguageId(language);
 
-        int languageId = 62; // Java 13/17/21
+        log.info("Running DSA Judge0 sandbox for session {} [Language: {} (ID: {}), Problem: {}]",
+                sessionId, language, languageId, problem.getProblemSlug());
+
         double timeLimitSec = Math.min(5.0, (double) problem.getLimits().timeLimitMs() / 1000.0);
         int memoryLimitKb = Math.min(256000, problem.getLimits().memoryLimitMb() * 1000);
 
@@ -159,6 +165,18 @@ public class DsaJudge0Runner implements TrackRunner {
                 .compilerOutput("")
                 .testResults(testResults)
                 .build();
+    }
+
+    public int resolveLanguageId(String language) {
+        if (language == null) return 62; // Java 13/17/21 default
+        String lang = language.trim().toLowerCase();
+        return switch (lang) {
+            case "python", "python3", "py" -> 71; // Python (3.8.1)
+            case "javascript", "js", "node" -> 63; // JavaScript (Node.js 12.14.0)
+            case "cpp", "c++" -> 54; // C++ (GCC 9.2.0)
+            case "c" -> 50; // C (GCC 9.2.0)
+            default -> 62; // Java (OpenJDK 13.0.1)
+        };
     }
 
     private record TestDescriptor(String name, String input, String expectedOutput, boolean isHidden) {}

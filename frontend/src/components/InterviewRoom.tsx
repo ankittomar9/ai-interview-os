@@ -865,6 +865,7 @@ export const InterviewRoom: React.FC<Props> = ({
             className="flex-1 flex flex-col bg-bg overflow-hidden relative"
           >
             <ProjectWorkspace
+              key={question.problemSlug || 'lld-order-service'}
               sessionId={sessionId}
               problemSlug={question.problemSlug || 'lld-order-service'}
               starterFiles={question.starterFiles}

@@ -121,6 +121,14 @@ services:
     networks:
       - ai-interview-net
 
+  # 0.6 Pre-warmed LLD Maven Runner Image Builder
+  lld-runner-build:
+    build:
+      context: ./docker/lld-runner
+      dockerfile: Dockerfile
+    image: ai-interview-os/lld-runner:latest
+    entrypoint: ["true"]
+
   # 1. Eureka Service Discovery
   service-discovery-service:
     build:
@@ -161,7 +169,7 @@ services:
       retries: 6
       start_period: 20s
 
-  # 3. Interview Session Service (Connected to PostgreSQL & MongoDB & Judge0)
+  # 3. Interview Session Service (Connected to PostgreSQL & MongoDB & Judge0 & Docker Socket)
   interview-session-service:
     build:
       context: .
@@ -171,6 +179,8 @@ services:
       - "8081:8081"
     networks:
       - ai-interview-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
@@ -180,6 +190,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/interviewos
       - JUDGE0_URL=http://judge0:2358
+      - RUNNER_MAVEN_IMAGE=ai-interview-os/lld-runner:latest
     depends_on:
       cloud-config-server:
         condition: service_healthy

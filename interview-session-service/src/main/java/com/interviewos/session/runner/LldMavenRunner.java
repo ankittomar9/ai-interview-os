@@ -18,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -62,7 +61,7 @@ public class LldMavenRunner implements TrackRunner {
             log.info("🐳 Docker Java client connected successfully for LLD Maven Sandbox. Image: {}", runnerImage);
         } catch (Throwable t) {
             this.isDockerAvailable = false;
-            log.warn("⚠️ Docker daemon unavailable for LLD Maven Runner: {}. Sandbox will operate in simulated evaluation mode.", t.getMessage());
+            log.warn("⚠️ Docker daemon unavailable for LLD Maven Runner: {}. Sandbox will return ENGINE_UNAVAILABLE.", t.getMessage());
         }
     }
 
@@ -80,7 +79,7 @@ public class LldMavenRunner implements TrackRunner {
     }
 
     @Override
-    public ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles) {
+    public ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles, String language) {
         log.info("🚀 Initiating LLD Spring Boot Maven execution for session {} [problem: {}]", sessionId, problem.getProblemSlug());
 
         Path tempWorkspace = null;
@@ -192,6 +191,10 @@ public class LldMavenRunner implements TrackRunner {
                     dockerClient.killContainerCmd(containerId).exec();
                 } catch (Exception ignored) {}
 
+                try {
+                    logCallback.close();
+                } catch (Exception ignored) {}
+
                 return ExecutionResultResponse.builder()
                         .status("TIMEOUT")
                         .totalTests(0)
@@ -204,6 +207,12 @@ public class LldMavenRunner implements TrackRunner {
                         .testResults(List.of())
                         .build();
             }
+
+            // Ensure log stream has completed flushing before parsing
+            try {
+                logCallback.awaitCompletion(5, TimeUnit.SECONDS);
+                logCallback.close();
+            } catch (Exception ignored) {}
 
             return parseExecutionOutput(logOutput.toString());
 
@@ -301,56 +310,17 @@ public class LldMavenRunner implements TrackRunner {
     }
 
     private ExecutionResultResponse executeFallbackSimulation(ProblemDocument problem, Map<String, String> candidateFiles) {
-        log.info("Executing simulated test analysis for Spring Boot problem: {}", problem.getProblemSlug());
-
-        // Check if candidate code contains obvious placeholder TODOs
-        boolean hasTodo = false;
-        if (candidateFiles != null) {
-            for (String content : candidateFiles.values()) {
-                if (content != null && (content.contains("throw new UnsupportedOperationException") || content.contains("// TODO"))) {
-                    hasTodo = true;
-                    break;
-                }
-            }
-        }
-
-        List<ExecutionResultResponse.TestCaseResult> results = new ArrayList<>();
-        List<String> tests = List.of(
-                "testCreateOrderPersistsWithCreatedStatus()",
-                "testDeleteExistingOrderTrue()",
-                "testDeleteMissingOrderFalse()",
-                "testIdsAreUniqueUUIDs()",
-                "testTimestampsPopulated()"
-        );
-
-        int passed = 0;
-        for (int i = 0; i < tests.size(); i++) {
-            String testName = tests.get(i);
-            boolean isPass = !hasTodo;
-            if (isPass) passed++;
-
-            results.add(ExecutionResultResponse.TestCaseResult.builder()
-                    .name(testName)
-                    .status(isPass ? "PASS" : "FAIL")
-                    .durationMs(120.0 + (i * 35))
-                    .input("[Spring Boot Integration Test]")
-                    .expectedOutput("[Assertion Verified]")
-                    .actualOutput(isPass ? "[200 OK - Order Persisted]" : "AssertionFailedError: expected <200> but was <500>")
-                    .error(isPass ? null : "AssertionFailedError: Method not implemented")
-                    .isHidden(true)
-                    .build());
-        }
-
+        log.warn("⚠️ Docker daemon unavailable for LLD Maven Runner. Sandbox cannot execute containerized Maven test suite.");
         return ExecutionResultResponse.builder()
-                .status(passed == tests.size() ? "PASSED" : (passed > 0 ? "PARTIAL" : "FAILED"))
-                .totalTests(tests.size())
-                .passedTests(passed)
-                .executionTimeMs(850.0)
-                .memoryUsedMb(320.0)
-                .stdout("Spring Boot 3.4 test runner simulated execution completed.")
-                .stderr("")
+                .status("ENGINE_UNAVAILABLE")
+                .totalTests(problem.getSampleTests() != null ? problem.getSampleTests().size() : 0)
+                .passedTests(0)
+                .executionTimeMs(0.0)
+                .memoryUsedMb(0.0)
+                .stdout("")
+                .stderr("Docker daemon unavailable — LLD sandbox requires Docker socket access to execute Maven test runner.")
                 .compilerOutput("")
-                .testResults(results)
+                .testResults(List.of())
                 .build();
     }
 

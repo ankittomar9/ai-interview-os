@@ -13,7 +13,14 @@ public interface TrackRunner {
     boolean supports(ProblemDocument problem);
 
     /**
-     * Executes the problem candidate submission and returns test results.
+     * Executes the problem candidate submission with explicit programming language.
      */
-    ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles);
+    ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles, String language);
+
+    /**
+     * Default execution overload assuming Java.
+     */
+    default ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles) {
+        return run(sessionId, problem, candidateFiles, "java");
+    }
 }

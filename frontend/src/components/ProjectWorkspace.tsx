@@ -115,7 +115,12 @@ export const ProjectWorkspace: React.FC<Props> = ({
         files
       });
 
-      if (resp.status === 'COMPILE_ERROR') {
+      if (resp.status === 'ENGINE_UNAVAILABLE') {
+        setTestStatus('failed');
+        setConsoleOutput(
+          `🛑 [Execution Engine Offline]\n${resp.stderr || 'Docker execution engine is currently offline or unreachable. Verify Docker daemon is running with socket access to enable LLD sandbox.'}\n\n⚠️ Status: ENGINE_UNAVAILABLE (0 / ${resp.totalTests} Tests Passed)`
+        );
+      } else if (resp.status === 'COMPILE_ERROR') {
         setTestStatus('failed');
         setConsoleOutput(
           `[Maven Compiler Output] Compilation Failed:\n${resp.compilerOutput || resp.stderr || 'Syntax error during build.'}\n\n❌ Status: COMPILE_ERROR (0 / ${resp.totalTests} Tests Passed)`

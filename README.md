@@ -263,6 +263,20 @@ Key properties configured in `cloud-config-server` or passed via Docker `.env`:
 
 ---
 
+## 🔒 Security & Sandbox Architecture
+
+### 1. Judge0 CE Algorithmic Sandbox (DSA Track)
+Single-file standard I/O problems run in isolated, zero-trust ptrace cgroup containers on dedicated worker nodes with strict CPU/memory timeouts.
+
+### 2. Isolated Docker Maven Sandbox (Spring Boot LLD Track)
+Multi-file Spring Boot projects are evaluated inside ephemeral containers using image `ai-interview-os/lld-runner:latest`:
+- **Network Isolation**: `--network none` (zero outbound internet access; all dependencies resolved from pre-warmed local `~/.m2` cache).
+- **Resource Limits**: 768MB RAM, 2 CPU cores (`nanoCpus: 2e9`).
+- **Filesystem Sandbox**: Candidate modifications are strictly bounded to the candidate workspace mount. Read-only framework entities and hidden JUnit integration test suites are injected server-side.
+- **Docker Socket Mount**: `/var/run/docker.sock` is mounted exclusively into `interview-session-service` to manage ephemeral runner containers. In production deployments, access can be proxied through a hardened daemon or socket-proxy (e.g. `tecnativa/docker-socket-proxy`) allowing only `POST /containers/create`, `POST /containers/{id}/start`, `POST /containers/{id}/wait`, and `DELETE /containers/{id}`.
+
+---
+
 ## 📄 License
 
 This project is licensed under the Apache License 2.0. Built for enterprise autonomous technical interviewing and developer talent evaluation.

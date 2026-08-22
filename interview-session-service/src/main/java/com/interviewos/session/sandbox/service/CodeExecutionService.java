@@ -43,7 +43,7 @@ public class CodeExecutionService {
         TrackRunner runner = findRunner(problem);
         Map<String, String> candidateFiles = Map.of("Solution", request.codeSnippet());
 
-        ExecutionResultResponse result = runner.run(sessionId, problem, candidateFiles);
+        ExecutionResultResponse result = runner.run(sessionId, problem, candidateFiles, request.language());
         recordExecutionTurn(sessionId, request.problemSlug(), result, request.codeSnippet());
         return result;
     }
