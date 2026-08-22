@@ -59,15 +59,22 @@ public class AttachmentController {
         }
 
         try {
+            String contentType = file.getContentType() != null && !file.getContentType().isBlank()
+                    ? file.getContentType()
+                    : "image/png";
+            String filename = file.getOriginalFilename() != null && !file.getOriginalFilename().isBlank()
+                    ? file.getOriginalFilename()
+                    : "attachment-" + normalizedKind.toLowerCase() + ".png";
+
             Document metadata = new Document();
             metadata.put("sessionId", sessionId);
             metadata.put("kind", normalizedKind);
-            metadata.put("contentType", file.getContentType() != null ? file.getContentType() : "application/octet-stream");
+            metadata.put("contentType", contentType);
 
             ObjectId objectId = gridFsTemplate.store(
                     file.getInputStream(),
-                    file.getOriginalFilename() != null ? file.getOriginalFilename() : "attachment-" + normalizedKind.toLowerCase(),
-                    file.getContentType(),
+                    filename,
+                    contentType,
                     metadata
             );
 
@@ -75,7 +82,7 @@ public class AttachmentController {
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new AttachmentResponse(objectId.toHexString(), normalizedKind, file.getSize()));
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Failed to store multipart attachment for session {}: {}", sessionId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to store attachment: " + e.getMessage());
         }

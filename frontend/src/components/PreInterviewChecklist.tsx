@@ -128,8 +128,8 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const allChecksPassed = envMode === 'dev' ? true : (cameraOk && micOk && isScreenCheckSatisfied && networkOk);
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 select-text">
-      <Card padding="lg" variant="elevated" className="space-y-6">
+    <div className="min-h-screen bg-bg text-text py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center select-text">
+      <Card padding="lg" variant="elevated" className="w-full max-w-5xl space-y-6 shadow-2xl border border-border">
 
         {/* Header & Mode Switcher */}
         <div className="border-b border-border pb-5 flex items-center justify-between flex-wrap gap-4">
