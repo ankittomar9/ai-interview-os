@@ -72,14 +72,14 @@ const TRACKS: Array<{
 ];
 
 export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
-  const [candidateName, setCandidateName] = useState('Ankit Singh Tomar');
+  const [candidateName, setCandidateName] = useState('');
   const [candidateId, setCandidateId] = useState('candidate-01');
   const [isIdManuallyEdited, setIsIdManuallyEdited] = useState(false);
-  const [roleTitle, setRoleTitle] = useState('Java Backend Engineer');
+  const [roleTitle, setRoleTitle] = useState('');
   const [track, setTrack] = useState<InterviewTrack>('JAVA_SPRING_BOOT');
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('JUNIOR');
-  const [targetCompany, setTargetCompany] = useState('Amazon');
-  const [jobDescription, setJobDescription] = useState('Core Java 21, Spring Boot 3.4 microservices, JPA caching, and concurrency.');
+  const [targetCompany, setTargetCompany] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
   const [provider, setProvider] = useState<ModelProvider>('GEMINI');
   const [apiKey, setApiKey] = useState(getStoredApiKey('GEMINI'));
   const [showKeyModal, setShowKeyModal] = useState(false);

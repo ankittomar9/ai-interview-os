@@ -6,5 +6,6 @@ public enum MessageType {
     CODE_SUBMISSION,
     HINT,
     FEEDBACK,
-    SYSTEM_EVENT
+    SYSTEM_EVENT,
+    SYSTEM_DESIGN
 }
