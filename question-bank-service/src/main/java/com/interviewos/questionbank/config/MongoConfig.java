@@ -1,7 +1,5 @@
-package com.interviewos.session.config;
+package com.interviewos.questionbank.config;
 
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSBuckets;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
@@ -11,10 +9,9 @@ import org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
-import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 
 @Configuration
-public class MongoGridFsConfig {
+public class MongoConfig {
 
     @Bean
     public MappingMongoConverter mappingMongoConverter(
@@ -28,15 +25,5 @@ public class MongoGridFsConfig {
         converter.setTypeMapper(new DefaultMongoTypeMapper(null));
         converter.setMapKeyDotReplacement("#DOT#");
         return converter;
-    }
-
-    @Bean
-    public GridFSBucket gridFSBucket(MongoDatabaseFactory mongoDatabaseFactory) {
-        return GridFSBuckets.create(mongoDatabaseFactory.getMongoDatabase());
-    }
-
-    @Bean
-    public GridFsTemplate gridFsTemplate(MongoDatabaseFactory mongoDatabaseFactory, MappingMongoConverter mappingMongoConverter) {
-        return new GridFsTemplate(mongoDatabaseFactory, mappingMongoConverter);
     }
 }
