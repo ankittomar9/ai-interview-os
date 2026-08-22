@@ -6,7 +6,8 @@ public record DesignEvaluationResponse(
         List<String> feedback,
         Integer score,
         String evidence,
-        boolean llmGenerated
+        boolean llmGenerated,
+        String modality
 ) {
     public static DesignEvaluationResponse fallback(String reason) {
         return new DesignEvaluationResponse(
@@ -17,7 +18,8 @@ public record DesignEvaluationResponse(
                 ),
                 70,
                 reason != null ? reason : "Deterministic baseline architectural evaluation",
-                false
+                false,
+                "TEXT"
         );
     }
 }

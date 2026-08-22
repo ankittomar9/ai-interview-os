@@ -123,4 +123,5 @@ export interface DesignEvaluateResponse {
     score: number;
     evidence: string;
     llmGenerated: boolean;
+    modality?: 'VISION' | 'TEXT';
 }

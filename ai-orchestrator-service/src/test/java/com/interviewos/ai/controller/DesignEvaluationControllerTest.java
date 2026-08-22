@@ -48,7 +48,8 @@ class DesignEvaluationControllerTest {
                 List.of("Redis cache effectively shields SQL Store from read throughput.", "Single point of failure at API Gateway."),
                 88,
                 "Observed nodes: Gateway -> App Service -> Redis -> SQL Store",
-                true
+                true,
+                "VISION"
         );
 
         when(designEvaluationService.evaluateDesign(any(DesignEvaluationRequest.class))).thenReturn(response);

@@ -26,3 +26,10 @@
 - mvn clean package -DskipTests (root) green
 - cd frontend && npm run build green
 - docker compose build succeeds from a CLEAN clone (no local target/) — backend Dockerfiles must stay multi-stage
+
+## Shell rules (hard constraints)
+- Run ONE shell command per invocation. Never concatenate commands on a single line.
+- NEVER use Remove-Item / rm with wildcards inside the repository.
+  If cleanup is needed, delete exact named paths only.
+- Git workflow: `git add -u`, then `git commit -m "..."`, then `git push origin <branch>` — three separate invocations.
+- If a command prompts for confirmation, treat that as a FAILED command and stop.

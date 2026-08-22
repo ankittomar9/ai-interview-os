@@ -138,10 +138,7 @@ public class AttachmentController {
         );
 
         if (gridFSFile == null) {
-            gridFSFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(objectId)));
-            if (gridFSFile == null) {
-                return ResponseEntity.notFound().build();
-            }
+            return ResponseEntity.notFound().build();
         }
 
         GridFsResource resource = gridFsTemplate.getResource(gridFSFile);

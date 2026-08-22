@@ -328,11 +328,21 @@ export const HldWhiteboardCanvas: React.FC<Props> = ({
     };
   }, [dau, requestsPerDay, peakFactor, avgObjectKb, readRatio, writeRatio]);
 
+  const exportFilter = (node: HTMLElement) => {
+    if (node.classList && (node.classList.contains('exclude-export') || node.classList.contains('react-flow__controls'))) {
+      return false;
+    }
+    return true;
+  };
+
   // --- Export PNG to User Machine ---
   const handleExportPng = async () => {
     if (!reactFlowWrapper.current) return;
     try {
-      const dataUrl = await toPng(reactFlowWrapper.current, { backgroundColor: '#090D16' });
+      const dataUrl = await toPng(reactFlowWrapper.current, {
+        backgroundColor: '#090D16',
+        filter: exportFilter
+      });
       const a = document.createElement('a');
       a.href = dataUrl;
       a.download = `system-design-architecture-${Date.now()}.png`;
@@ -348,7 +358,10 @@ export const HldWhiteboardCanvas: React.FC<Props> = ({
     if (!reactFlowWrapper.current) return;
     setIsSaving(true);
     try {
-      const blob = await toBlob(reactFlowWrapper.current, { backgroundColor: '#090D16' });
+      const blob = await toBlob(reactFlowWrapper.current, {
+        backgroundColor: '#090D16',
+        filter: exportFilter
+      });
       if (!blob) throw new Error('Canvas render blob failed');
 
       const canvasJson = JSON.stringify({ nodes, edges }, null, 2);
@@ -521,7 +534,7 @@ export const HldWhiteboardCanvas: React.FC<Props> = ({
 
         {/* CAPACITY MATH DRAWER (Top Right Overlay) */}
         {isCapacityOpen && (
-          <div className="absolute top-3 right-3 w-80 bg-surface/95 backdrop-blur-md border border-border rounded-lg shadow-2xl p-4 z-20 space-y-3 max-h-[85%] overflow-y-auto">
+          <div className="exclude-export absolute top-3 right-3 w-80 bg-surface/95 backdrop-blur-md border border-border rounded-lg shadow-2xl p-4 z-20 space-y-3 max-h-[85%] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <div className="flex items-center gap-1.5 font-bold text-xs text-white">
                 <Calculator className="w-4 h-4 text-amber-400" />
@@ -641,7 +654,7 @@ export const HldWhiteboardCanvas: React.FC<Props> = ({
 
         {/* SELECTED NODE INSPECTOR (Bottom Left Overlay) */}
         {selectedNode && selectedNodeData && (
-          <div className="absolute bottom-3 left-3 bg-surface/95 backdrop-blur-md border border-border rounded-lg shadow-2xl p-3 z-20 w-72 space-y-2.5">
+          <div className="exclude-export absolute bottom-3 left-3 bg-surface/95 backdrop-blur-md border border-border rounded-lg shadow-2xl p-3 z-20 w-72 space-y-2.5">
             <div className="flex items-center justify-between pb-1.5 border-b border-border">
               <div className="flex items-center gap-1.5">
                 <span className={getNodeStyle(selectedNodeData.type).text}>{getNodeIcon(selectedNodeData.type)}</span>
@@ -669,7 +682,7 @@ export const HldWhiteboardCanvas: React.FC<Props> = ({
 
         {/* AI ARCHITECTURE EVALUATION RESULT CARD (Bottom Center Overlay) */}
         {evaluationResult && (
-          <div className="absolute bottom-3 right-3 left-3 md:left-80 max-h-60 overflow-y-auto bg-surface/95 backdrop-blur-md border border-primary/40 rounded-lg shadow-2xl p-4 z-20 space-y-2.5">
+          <div className="exclude-export absolute bottom-3 right-3 left-3 md:left-80 max-h-60 overflow-y-auto bg-surface/95 backdrop-blur-md border border-primary/40 rounded-lg shadow-2xl p-4 z-20 space-y-2.5">
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary-2" />
@@ -678,7 +691,7 @@ export const HldWhiteboardCanvas: React.FC<Props> = ({
                   {evaluationResult.score} / 100
                 </Chip>
                 <Chip variant="neutral" size="sm">
-                  {evaluationResult.evidence?.includes('visual') ? 'Vision Eval' : 'Text Eval'}
+                  {evaluationResult.modality === 'VISION' ? 'Vision Eval' : 'Text Eval'}
                 </Chip>
               </div>
               <button onClick={() => setEvaluationResult(null)} className="text-text-3 hover:text-white">

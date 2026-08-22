@@ -165,7 +165,8 @@ public class DesignEvaluationService {
                     feedback,
                     score,
                     evidence,
-                    true
+                    true,
+                    hasVisionSupport ? "VISION" : "TEXT"
             );
 
         } catch (Exception e) {
