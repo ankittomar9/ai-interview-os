@@ -1,307 +1,166 @@
- 🎙️ AI Interview OS — Enterprise Autonomous Technical Interview Simulator
+# 🎯 AI Interview OS — Honest Technical Assessment Engine
 
-[![Java 21](https://img.shields.io/badge/Java-21%20LTS-orange.svg)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot 3.4.2](https://img.shields.io/badge/Spring%20Boot-3.4.2-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![Spring Cloud 2024.0.0](https://img.shields.io/badge/Spring%20Cloud-2024.0.0-blue.svg)](https://spring.io/projects/spring-cloud)
-[![React 18](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-blueviolet.svg)](https://reactjs.org/)
-[![Database](https://img.shields.io/badge/Database-PostgreSQL%2016%20%2B%20MongoDB%207.0-blue.svg)](https://www.postgresql.org/)
-[![Flyway](https://img.shields.io/badge/Migrations-Flyway%20Enabled-red.svg)](https://flywaydb.org/)
-[![Observability](https://img.shields.io/badge/Observability-LGTM%20(Loki%2C%20Grafana%2C%20Tempo%2C%20Prometheus)-orange.svg)](https://grafana.com/)
-[![License](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)](LICENSE)
+An enterprise-grade, autonomous technical interview platform. It pairs a **voice-driven AI bar-raiser** with **real sandboxed code execution** (Judge0 for DSA, an isolated Docker Maven runner for Spring Boot LLD), an **interactive HLD whiteboard** with multimodal vision evaluation, and a **structured 5-dimension rubric** backed by verbatim transcript evidence — with zero canned metrics.
 
-**AI Interview OS** is a distributed, enterprise-grade autonomous technical interview platform. It combines real-time conversational AI interviewers, a Monaco-based code IDE, an Apache PDFBox resume ingestion pipeline, Groq Whisper neural speech-to-text, real-time proctoring telemetry, and an independent LGTM observability stack.
+> **Honesty by design:** every score is grounded in real sandbox test results and quoted candidate dialogue. If the execution engine is offline, the platform reports `ENGINE_UNAVAILABLE` — it never fabricates a pass.
 
 ---
 
-## 🏛️ System Architecture
+## 🏗️ Architecture
 
-```
-                                  ┌──────────────────────────┐
-                                  │   React 18 Cockpit UI    │
-                                  │   (Port 5173 / Port 80)  │
-                                  └─────────────┬────────────┘
-                                                │
-                                                ▼ HTTP / REST
-                                  ┌──────────────────────────┐
-                                  │   Spring Cloud Gateway   │
-                                  │       (Port 8080)        │
-                                  └─────────────┬────────────┘
-                                                │
-       ┌────────────────────────┬───────────────┼───────────────┬────────────────────────┐
-       │                        │               │               │                        │
-       ▼                        ▼               ▼               ▼                        ▼
-┌──────────────┐        ┌──────────────┐ ┌──────────────┐ ┌──────────────┐        ┌──────────────┐
-│  Discovery   │        │    Cloud     │ │   Session    │ │AI Orchestratr│        │   Proctor    │
-│    Eureka    │        │Config Server │ │   Service    │ │   Service    │        │   Sentinel   │
-│ (Port 8761)  │        │ (Port 8888)  │ │ (Port 8081)  │ │ (Port 8082)  │        │ (Port 8083)  │
-└──────────────┘        └──────────────┘ └──────┬───────┘ └──────┬───────┘        └──────┬───────┘
-                                                │                │                       │
-                                                ▼                ▼                       ▼
-                                       ┌────────────────┐ ┌──────────────┐        ┌──────────────┐
-                                       │   MongoDB 7.0  │ │ Host Ollama  │        │  Evaluation  │
-                                       │  (Port 27017)  │ │/ Groq Whisper│        │Report Service│
-                                       └────────────────┘ └──────────────┘        │ (Port 8084)  │
-                                                                                  └──────────────┘
+Spring Cloud microservices (Eureka + Config Server + Gateway) with a React 19 + Vite 8 + Tailwind v4 frontend.
 
-─────────────────────────────────────── INDEPENDENT OBSERVABILITY STACK ───────────────────────────────────────
-   ┌────────────────┐      ┌────────────────┐      ┌────────────────┐      ┌────────────────┐
-   │   Prometheus   │      │   Grafana Loki │      │  Grafana Tempo │      │    Grafana     │
-   │  (Port 9090)   │      │  (Port 3100)   │      │  (Port 3200)   │      │  (Port 3000)   │
-   └────────────────┘      └────────────────┘      └────────────────┘      └────────────────┘
-```
+| Service | Port | Responsibility |
+|---|---|---|
+| `api-gateway-service` | 8080 | Single entry point, routes all `/api/v1/**` |
+| `interview-session-service` | 8081 | Sessions, resume ingestion (MongoDB), GridFS attachments, DSA + LLD runners, `/system/capabilities` preflight, storage hygiene |
+| `ai-orchestrator-service` | 8082 | Question matching, live dialogue, Whisper STT, rubric + design evaluation |
+| `proctor-sentinel-service` | 8083 | Telemetry (tab blur, paste dumps, focus), proctor audit summary |
+| `evaluation-report-service` | 8084 | 360° diagnostic scorecard, hiring verdict, 7-day plan |
+| `question-bank-service` | 8086 | Centralized problem catalog, resume-aware matching, coaching content |
+| `service-discovery-service` | 8761 | Eureka |
+| `cloud-config-server` | 8888 | Centralized config (`config-repo/`) |
+
+**Data stores:** PostgreSQL (sessions, reports) · MongoDB (`interviewos` + `questionbank` DBs, GridFS attachments).
+
+**Frontend:** React 19, Vite 8, Tailwind CSS v4 (design tokens in `frontend/src/styles/tokens.css`), Monaco editor, React Flow whiteboard, recharts. Reusable primitives live in `frontend/src/components/ui/`.
 
 ---
 
-## 📦 Microservices & Port Matrix
-
-| Service | Technology | Port | Primary Responsibilities |
-|---|---|---|---|
-| **`service-discovery-service`** | Spring Cloud Netflix Eureka | `8761` | Dynamic service registration, heartbeat health registry, and internal load balancing (`lb://`). |
-| **`cloud-config-server`** | Spring Cloud Config | `8888` | Centralized external configuration repository with active native profile fallback. |
-| **`api-gateway-service`** | Spring Cloud Gateway (Netty) | `8080` | High-throughput reverse proxy, CORS de-duplication, routing, and client gateway security. |
-| **`interview-session-service`** | Spring Boot, PostgreSQL, MongoDB, Flyway, PDFBox | `8081` | Session lifecycle state machine, Apache PDFBox resume parser, transcript audit log persistence. |
-| **`ai-orchestrator-service`** | Spring Boot, RestClient, Groq, Ollama | `8082` | AI prompt synthesis, conversational turn review, Groq Whisper neural speech-to-text (180ms ASR). |
-| **`proctor-sentinel-service`** | Spring Boot, PostgreSQL, Flyway, WebRTC Telemetry | `8083` | Real-time candidate proctoring, tab switch tracking, window blur anomaly detection, paste dump audits. |
-| **`evaluation-report-service`** | Spring Boot, PostgreSQL, Flyway, Multi-Dimensional Scorer | `8084` | 360° candidate scorecard, STAR behavioral analysis, skill radar matrices, hiring verdicts (`STRONG_HIRE` to `NO_HIRE`). |
-| **`frontend`** | React 18, TypeScript, Vite, Monaco | `5173` / `80` | Cockpit UI, Monaco IDE, live dual-pass voice transcription, webcam HUD, transcript audit replay. |
-| **`postgres`** | PostgreSQL 16 Alpine | `5432` | Relational database engine hosting `interview_session_db`, `proctor_sentinel_db`, and `evaluation_report_db`. |
-| **`mongodb`** | MongoDB 7.0 Document Store | `27017` | Persistent document storage for full candidate resumes (`resumes`) and complete session audit transcripts (`interview_sessions`). |
-| **Observability (LGTM)** | Prometheus, Loki, Tempo, Grafana | `3000`, `9090`, `3100`, `3200` | Decoupled monitoring stack for metrics, distributed tracing, live microservice logs, and error alerting. |
-
----
-
-## 🌟 Key Features
-
-### 1. 📄 Resume Ingestion & Parsing Pipeline (MongoDB + Apache PDFBox)
-- Ingests candidate resumes in **PDF** or **plain text** format.
-- Extracts candidate name, years of experience, technical skills dictionary (`Java 21`, `Spring Boot`, `Kafka`, `Microservices`, `PostgreSQL`, `Docker`, `GCP`, etc.), and project highlights.
-- Persists raw text and structured fields in MongoDB **`interviewos.resumes`** collection with disk volume persistence (`mongodb_data`).
-- Grounded AI prompt tailoring: The AI interviewer reads the candidate's actual resume to formulate deep, relevant technical questions.
-
-### 2. 🎙️ High-Speed Voice & Groq Whisper Neural ASR
-- **Dual-Pass Transcription**: Real-time client speech streaming for immediate visual typing feedback + **Groq Whisper LPU acceleration** (`whisper-large-v3-turbo`) for 180ms word-for-word accuracy.
-- **Accurate Indian & Global Accents**: Recognizes complex names (*"Ankit Singh Tomar"*) and technical terminology (*"Virtual Threads"*, *"LRU Cache"*, *"Kafka Concurrency"*) without mishearing words.
-- **Natural Conversational Pauses**: Generous 9.0-second silence thinking buffer with natural wake-phrase termination (*"That's my answer"*, *"Over to you"*, *"I am done"*).
-- **Single-Play Greeting Guard**: AI welcome message plays strictly once on launch and never loops or repeats.
-
-### 3. 🛡️ Proctor Sentinel Anti-Cheating HUD
-- **Real-Time Webcam Feed**: Frontal camera preview HUD embedded in the interview cockpit.
-- **Display Integrity**: Detects external HDMI/multi-monitor setups.
-- **Anomalies Tracked**:
-  - Window blur and tab switching counter.
-  - Large clipboard paste dumps (> 50 characters).
-  - Out-of-frame head movement tracking.
-- **Companion Dual-Camera QR Link**: Scannable QR code to stream candidate desk feed from a mobile phone on the local network.
-
-### 4. 💻 Monaco Editor & Sandbox Test Runner
-- Integrated VS Code Monaco Editor supporting Java, Python, and JavaScript.
-- Built-in live compilation test runner evaluating edge cases, capacity eviction, and thread safety.
-- **Architecture Thought Scratchpad**: Candidate scratchpad notes read dynamically by the AI to ask deeper architectural trade-off questions.
-
-### 5. 🛠️ Development Mode vs. Strict Production Mode
-- **Dev Mode**: Instant bypass option (**`⚡ Instant Launch Interview`**) to skip camera/mic hardware checks during local testing.
-- **Production Mode**: Strictly enforces all hardware permissions, single-display verification, and proctoring locks.
-
-### 6. 📊 360° Candidate Diagnostic Scorecard & TXT Export
-- Multi-dimensional skill radar scoring across:
-  - Technical Correctness & Problem Solving (0–100)
-  - Architectural & Concurrency Depth (0–100)
-  - Code Cleanliness & Best Practices (0–100)
-  - Communication & Behavioral STAR Alignment (0–100)
-- Hiring Verdicts: `STRONG_HIRE`, `HIRE`, `LEAN_HIRE`, `NO_HIRE`.
-- **1-Click Transcript Export**: Download complete chronological dialogue logs with code snapshots in `.TXT` format for hiring managers.
-
----
-
-## 🚀 Quick Start Guide
+## 🚀 Quick Start
 
 ### Prerequisites
-- **Java 21 LTS** (`java -version`)
-- **Maven 3.9+** (`mvn -v`)
-- **Docker Desktop** (with Compose v2)
-- **Node.js 20+** (optional, for local frontend dev)
-- **Ollama** (optional, for offline local LLMs: `ollama run qwen2.5-coder:7b`)
+- Docker + Docker Compose
+- JDK 21 (only if building services locally)
+- Node 20+ (frontend dev)
+- Optional: an LLM API key (Gemini / Groq / OpenAI) or local Ollama for 100% offline
 
----
-
-### Step 1: Clean Compile All Microservices
-From the project root directory (`D:\ai-interview-os`):
-
-```powershell
-# Clean compile all 7 microservices
-mvn clean package "-DskipTests"
-```
-
----
-
-### Step 2: Launch Independent Observability Stack (LGTM)
-Observability runs in a standalone compose file so restarting application services never kills Grafana:
-
-```powershell
-docker compose -f docker-compose.observability.yaml up -d
-```
-- **Grafana Dashboard**: [http://localhost:3000](http://localhost:3000) (User: `admin` / Password: `admin`)
-- **Prometheus Targets**: [http://localhost:9090/targets](http://localhost:9090/targets)
-- **Loki Log Explorer**: [http://localhost:3000/explore](http://localhost:3000/explore)
-
----
-
-### Step 3: Launch Application Microservices (Compose Profiles)
-
-AI Interview OS supports modular **Docker Compose Profiles** to keep local developer machines fast and lightweight:
-
-| Compose Command | What Boots | Memory | Best For |
-|---|---|---|---|
-| `docker compose up -d` | **Core Stack** (Gateway, Eureka, Config, Session, AI Orchestrator, Proctor, Reports, Question Bank, Mongo, Postgres) | ~2.5 GB | Behavioral Interviews, System Design (HLD), Resume Ingestion, AI Dialogue |
-| `docker compose --profile engines up -d` | **Core Stack + Execution Engines** (+ Judge0 CE Sandbox, Judge0 Workers/DB/Redis, Docker Maven Runner) | ~4.5 GB | DSA Coding Track & Spring Boot Multi-File LLD execution |
-
-```powershell
-# Launch Core Application Stack:
+### 1. Boot infrastructure + core stack
+```bash
 docker compose up -d
+```
 
-# Or Launch with Live DSA / LLD Execution Sandboxes:
+### 2. Add execution sandboxes (DSA + LLD)
+```bash
 docker compose --profile engines up -d
 ```
 
-Check running containers:
-```powershell
-docker compose ps
+| Compose command | What boots | ~Memory | Best for |
+|---|---|---|---|
+| `docker compose up -d` | Core stack (gateway, services, Mongo, Postgres, QuestionBank) | ~2.5 GB | Behavioral, HLD, resume ingestion, AI dialogue |
+| `docker compose --profile engines up -d` | Core + Judge0 CE (server/workers/db/redis) + Docker Maven runner | ~4.5 GB | DSA coding + Spring Boot LLD execution |
+
+### 3. Observability (optional)
+```bash
+docker compose -f docker-compose.observability.yaml up -d
 ```
+Prometheus + Grafana + Loki + Promtail + Tempo. Grafana dashboards show service health, request latency, 5xx rate, and live logs.
 
-
----
-
-## 🌐 Application URL Directory
-
-| Application / Dashboard | URL | Credentials / Notes |
-|---|---|---|
-| **AI Interview OS Cockpit** | **[http://localhost:5173](http://localhost:5173)** | React Frontend (Setup, Interview Room, Reports) |
-| **Spring Cloud API Gateway** | **[http://localhost:8080](http://localhost:8080)** | Central Reverse Proxy & API Router |
-| **Netflix Eureka Registry** | **[http://localhost:8761](http://localhost:8761)** | Live Microservice Discovery Cockpit |
-| **Spring Cloud Config Server** | **[http://localhost:8888/actuator/health](http://localhost:8888/actuator/health)** | Configuration Server Health |
-| **Grafana 360° Live Dashboard** | **[http://localhost:3000](http://localhost:3000)** | `admin` / `admin` (Live Logs, 5xx Rates, Health) |
-| **Prometheus Metrics Engine** | **[http://localhost:9090](http://localhost:9090)** | Application Metrics Scraper |
-| **MongoDB Document Store** | **`mongodb://localhost:27017`** | Connect via **MongoDB Compass** (Database: `interviewos`) |
-
----
-
-## 🔌 API Endpoint Reference
-
-### 1. Interview Session Service (`/api/v1/sessions`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/v1/sessions` | Create a new candidate interview session. |
-| `POST` | `/api/v1/sessions/{id}/start` | Transition session to `IN_PROGRESS`. |
-| `POST` | `/api/v1/sessions/{id}/messages` | Add a message or code snapshot turn. |
-| `POST` | `/api/v1/sessions/{id}/complete` | Complete session and calculate duration. |
-| `POST` | `/api/v1/sessions/resume/upload` | Ingest and parse candidate PDF/TXT resume. |
-| `POST` | `/api/v1/sessions/resume/text` | Ingest pasted candidate resume text. |
-| `GET` | `/api/v1/sessions/resume/transcript/{id}` | Export full session audit transcript JSON. |
-
-### 2. AI Orchestrator Service (`/api/v1/ai`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/v1/ai/generate-question` | Generate a track-tailored technical interview question. |
-| `POST` | `/api/v1/ai/dialogue` | Evaluate candidate explanation and generate follow-up. |
-| `POST` | `/api/v1/ai/transcribe` | High-speed neural speech-to-text via Groq Whisper LPU. |
-
-### 3. Proctor Sentinel Service (`/api/v1/proctor`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/v1/proctor/events` | Record telemetry anomalies (Tab Switch, Blur, Paste Dump). |
-| `GET` | `/api/v1/proctor/sessions/{id}/summary` | Retrieve full proctor audit telemetry summary. |
-
-### 4. Question Bank Service (`/api/v1/questions`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/v1/questions` | Query verified problem catalog (filter by track, difficulty, tags). |
-| `GET` | `/api/v1/questions/{slug}` | Retrieve public problem statement, starter code, and sample tests. |
-| `POST` | `/api/v1/questions/match` | Match and optionally LLM re-rank optimal problem based on resume skills and JD. |
-
-### 5. Evaluation Report Service (`/api/v1/reports`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/v1/reports/generate/{id}` | Generate multi-dimensional hiring scorecard and verdict. |
-| `GET` | `/api/v1/reports/sessions/{id}` | Fetch previously generated diagnostic report. |
-
-### 6. System Platform Readiness (`/api/v1/system`)
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/v1/system/capabilities` | Preflight capability probe across execution engines, microservices, and storage. |
-
-
----
-
-## 🍃 Inspecting MongoDB with MongoDB Compass
-
-1. Open **MongoDB Compass**.
-2. Connect to: `mongodb://localhost:27017`
-3. Select database: **`interviewos`**
-4. Collections available:
-   - **`resumes`**: Stored candidate resumes with raw text, word count, detected skills array, and experience metrics.
-   - **`interview_sessions`**: Full session records containing chronological dialogue turns, code submissions, and final verdicts.
-
-### Useful PowerShell Queries:
-```powershell
-# View all resumes
-docker exec -it mongodb mongosh interviewos --eval "db.resumes.find().pretty()"
-
-# View all interview transcripts
-docker exec -it mongodb mongosh interviewos --eval "db.interview_sessions.find().pretty()"
-
-# Purge test data
-docker exec -it mongodb mongosh interviewos --eval "db.interview_sessions.deleteMany({}); db.resumes.deleteMany({});"
+### 4. Frontend
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:5173
 ```
 
 ---
 
-## ⚙️ Configuration & Environment Variables
+## 🔑 Bring Your Own Key (BYOK)
 
-Key properties configured in `cloud-config-server` or passed via Docker `.env`:
+Keys are stored **only in your browser localStorage** — never on any server. Choose a provider on the Setup screen:
 
-| Variable | Default Value | Description |
+- **Gemini** (Gemini Flash — free tier)
+- **Groq** (Llama 3.3 70B — fast & free)
+- **OpenAI** (GPT-4o mini)
+- **Ollama** (local, zero keys, 100% offline)
+
+Groq is also used for high-accuracy Whisper speech-to-text when available.
+
+---
+
+## 🎓 Interview Tracks
+
+| Track | Execution engine | Format |
 |---|---|---|
-| `SPRING_DATA_MONGODB_URI` | `mongodb://mongodb:27017/interviewos` | MongoDB connection string. |
-| `OLLAMA_ENDPOINT` | `http://host.docker.internal:11434/api/generate` | Host Ollama local LLM endpoint. |
-| `OLLAMA_MODEL` | `qwen2.5-coder:7b` | Default local LLM model name. |
-| `GROQ_API_KEY` | *(Optional)* | Groq Cloud API Key for Whisper Speech & Llama models. |
-| `GEMINI_API_KEY` | *(Optional)* | Google Gemini API Key. |
-| `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE` | `http://service-discovery-service:8761/eureka/` | Eureka Discovery server URL. |
+| Algorithms & Data Structures | Judge0 CE (stdin/stdout, hidden fixtures) | Single-file Monaco (Java / Python / JS) |
+| Spring Boot LLD | Isolated Docker Maven runner (JUnit 5, hidden tests) | Multi-file workspace (explorer + tabs + locks) |
+| High-Level System Design | React Flow canvas + multimodal vision eval | Drag/drop architecture nodes, PNG export |
+| Behavioral & Leadership | Dialogue engine | STAR-method voice conversation |
+| Java & Spring Boot | QuestionBank-matched deep dive | Dialogue + code |
 
 ---
 
-## 🛠️ Testing Workflow
+## 🔒 Sandbox & Security Model
 
-```
-[1. Upload Resume PDF] ➔ [2. Skills Extracted] ➔ [3. Pre-Assessment Checklist (Dev/Prod)]
-                                                                  │
-                                                                  ▼
-[6. Export TXT Transcript] ◄── [5. 360° Diagnostic Report] ◄── [4. Monaco IDE + Voice Dialogue]
-```
-
-1. Open **[http://localhost:5173](http://localhost:5173)** in Chrome or Edge.
-2. Enter Candidate Name and drop your **PDF resume** into the dropzone.
-3. Review the extracted skills badges.
-4. Click **Launch Technical Assessment** ➔ Select **Dev Mode** (or Production Mode) ➔ Click **Start Interview**.
-5. Speak your solution or write code in the Monaco IDE. Run unit tests using **Run Test Suite**.
-6. Conclude the assessment with **End & Report** to generate your hiring scorecard and export the transcript audit log!
+- **Judge0 (DSA):** zero-trust ptrace/cgroup containers, strict CPU/memory/time limits, per-test stdin/expected-output.
+- **Maven runner (LLD):** ephemeral `--network none` containers (768 MB / 2 CPU), pre-warmed `~/.m2`, candidate edits confined to an `editablePaths` whitelist, hidden JUnit suites injected server-side.
+- **Docker socket** is mounted only into `interview-session-service`. For production, proxy it (e.g. `tecnativa/docker-socket-proxy`) allowing only create/start/wait/delete.
+- **Proctoring:** frontal webcam, tab-blur + paste-dump telemetry, single-monitor check, optional dual-camera phone link (QR), focus-loss lockout.
 
 ---
 
-## 🔒 Security & Sandbox Architecture
+## 🧼 Storage Hygiene
 
-### 1. Judge0 CE Algorithmic Sandbox (DSA Track)
-Single-file standard I/O problems run in isolated, zero-trust ptrace cgroup containers on dedicated worker nodes with strict CPU/memory timeouts.
+- **GridFS attachments** (canvas PNG/JSON, etc.) are purged nightly for sessions `COMPLETED` > `storage.retention-days` (default 14) plus orphans — `StorageHygieneScheduledJob`.
+- **Loki** logs retain 168 h with compaction enabled.
 
-### 2. Isolated Docker Maven Sandbox (Spring Boot LLD Track)
-Multi-file Spring Boot projects are evaluated inside ephemeral containers using image `ai-interview-os/lld-runner:latest`:
-- **Network Isolation**: `--network none` (zero outbound internet access; all dependencies resolved from pre-warmed local `~/.m2` cache).
-- **Resource Limits**: 768MB RAM, 2 CPU cores (`nanoCpus: 2e9`).
-- **Filesystem Sandbox**: Candidate modifications are strictly bounded to the candidate workspace mount. Read-only framework entities and hidden JUnit integration test suites are injected server-side.
-- **Docker Socket Mount**: `/var/run/docker.sock` is mounted exclusively into `interview-session-service` to manage ephemeral runner containers. In production deployments, access can be proxied through a hardened daemon or socket-proxy (e.g. `tecnativa/docker-socket-proxy`) allowing only `POST /containers/create`, `POST /containers/{id}/start`, `POST /containers/{id}/wait`, and `DELETE /containers/{id}`.
+---
+
+## 🧪 Honest Evaluation Pipeline
+
+1. **Preflight** — `GET /api/v1/system/capabilities` probes engines, services, and storage; the checklist UI shows per-track readiness and the exact `docker compose --profile engines up -d` hint when a sandbox is offline.
+2. **Execution** — real test runs produce `CODE_EXECUTION` transcript turns (`X/Y tests passed (STATUS)`).
+3. **Rubric** — the LLM scores 5 dimensions and must attach **verbatim transcript evidence** to each; `rubricCheckpoints` from the QuestionBank ground the evaluation.
+4. **Verdict gating** — `HIRE` / `STRONG_HIRE` require ≥ 1 verified passing execution; otherwise the score is capped and the report says so.
+
+---
+
+## 🗺️ API Directory (via gateway :8080)
+
+| Area | Endpoints |
+|---|---|
+| Sessions | `POST /api/v1/sessions`, `GET /api/v1/sessions/{id}`, `POST /api/v1/sessions/{id}/messages`, `GET /api/v1/sessions/{id}/transcript` |
+| Resume | `POST /api/v1/resume/upload`, `POST /api/v1/resume/text` |
+| Attachments | `POST /api/v1/sessions/{id}/attachments` (multipart or JSON), `GET .../attachments/{attId}` |
+| Execution | `POST /api/v1/sessions/{id}/execute` (DSA), `POST /api/v1/sessions/{id}/execute-project` (LLD) |
+| Questions | `GET /api/v1/questions`, `GET /api/v1/questions/{slug}`, `POST /api/v1/questions/match` |
+| AI | `POST /api/v1/ai/generate-question`, `/dialogue`, `/transcribe`, `/design-evaluate`, `/rubric-evaluate` |
+| Proctor | `POST /api/v1/proctor/events`, `GET /api/v1/proctor/sessions/{id}/summary` |
+| Reports | `POST /api/v1/reports/generate/{id}`, `GET /api/v1/reports/sessions/{id}` |
+| System | `GET /api/v1/system/capabilities` |
+
+Internal-only (not routed): `GET /internal/v1/questions/{slug}/full`, `POST /internal/v1/questions/import`.
+
+---
+
+## 🧱 Repository Layout
+
+```
+ai-interview-os/
+├── docker-compose.yaml              # core + `engines` profile
+├── docker-compose.observability.yaml
+├── docker/lld-runner/               # pre-warmed Maven runner image
+├── cloud-config-server/config-repo/ # per-service YAML config
+├── api-gateway-service/
+├── service-discovery-service/
+├── interview-session-service/
+├── ai-orchestrator-service/
+├── proctor-sentinel-service/
+├── evaluation-report-service/
+├── question-bank-service/
+└── frontend/                        # React + Tailwind v4 + ui/ library
+```
+
+---
+
+## 🗺️ Roadmap
+
+**Shipped:** Judge0 DSA sandbox · catalog-driven loop · HLD whiteboard + vision eval · structured rubric · Tailwind v4 design system + `ui/` library · LLD multi-file Maven workspace · QuestionBank + preflight + storage hygiene.
+
+**Planned:** minimal VS Code-style IDE chrome · unified onsite loop (all stages in one session) · session recording & replay (M3) · SQL & DevOps tracks · practice/coaching playground.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0. Built for enterprise autonomous technical interviewing and developer talent evaluation.
+Apache License 2.0.
