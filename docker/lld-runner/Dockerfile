@@ -8,7 +8,8 @@ WORKDIR /tmp/warm
 COPY skeleton-pom.xml /tmp/warm/pom.xml
 
 # Pre-fetch all dependencies and plugins to populate local ~/.m2 offline repository cache
-RUN mvn -B -q dependency:go-offline || true
+RUN mvn -B -q dependency:go-offline dependency:resolve-plugins || true && \
+    mvn -B test-compile || true
 
 WORKDIR /workspace
 

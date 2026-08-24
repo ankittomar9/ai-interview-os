@@ -1317,22 +1317,20 @@ export const InterviewRoom: React.FC<Props> = ({
 
       </div>
 
-      {/* PINNED CORNER WEBCAM TILE (Strictly Non-Movable) */}
-      <div className="fixed bottom-4 right-4 z-40 pointer-events-auto">
-        <WebcamTile
-          isTabBlurred={isWindowBlurred}
-          tabSwitchCount={tabSwitches}
-          pasteCount={pasteDumps}
-        />
-      </div>
+      {/* FLOATING DRAGGABLE WEBCAM PROCTOR TILE */}
+      <WebcamTile
+        isTabBlurred={isWindowBlurred}
+        tabSwitchCount={tabSwitches}
+        pasteCount={pasteDumps}
+      />
 
-      {/* FLOATING AI ORB & ASSISTANT PANEL (WRAP) */}
+      {/* FLOATING AI ORB & ASSISTANT PANEL */}
       <FloatingAiOrb
         isOpen={isAiPanelOpen}
         onToggle={toggleAiPanel}
         isAiSpeaking={isAiSpeaking}
         hasUnread={hasUnread}
-        stackAbove="webcam"
+        stackAbove="none"
       />
 
       <AiAssistantPanel

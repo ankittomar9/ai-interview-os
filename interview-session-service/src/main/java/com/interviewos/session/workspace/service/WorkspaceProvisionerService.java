@@ -40,7 +40,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import com.github.dockerjava.api.async.ResultCallback;
 
 @Slf4j
 @Service
@@ -218,6 +220,18 @@ public class WorkspaceProvisionerService {
 
             // 7. Start code-server container
             dockerClient.startContainerCmd(containerId).exec();
+
+            // Fix permissions so user coder (UID 1000) owns /home/coder/project and can edit freely
+            try {
+                var execCreate = dockerClient.execCreateCmd(containerId)
+                        .withUser("0:0")
+                        .withCmd("sh", "-c", "chown -R 1000:1000 /home/coder/project && chmod -R 777 /home/coder/project")
+                        .exec();
+                dockerClient.execStartCmd(execCreate.getId()).exec(new ResultCallback.Adapter<>()).awaitCompletion(5, TimeUnit.SECONDS);
+                log.info("🔒 Verified file permissions for user coder in container {}", containerId);
+            } catch (Exception e) {
+                log.warn("Permission adjustment notice for {}: {}", containerId, e.getMessage());
+            }
 
             // 8. Dual-probe readiness: internal Docker container name first, host fallback second
             String workspaceUrl = buildWorkspaceUrl(hostPort);
