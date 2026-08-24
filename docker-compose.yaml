@@ -128,14 +128,16 @@ services:
       dockerfile: Dockerfile
     image: ai-interview-os/lld-runner:latest
     entrypoint: ["true"]
+    profiles: ["engines"]
 
   # 0.7 Embedded VS Code (code-server) Image Builder for M9 Workspace
-  workspace-image-build:
+  workspace-build:
     build:
       context: ./docker/workspace
       dockerfile: Dockerfile
     image: ai-interview-os/workspace:latest
     entrypoint: ["true"]
+    profiles: ["engines"]
 
   # 1. Eureka Service Discovery
   service-discovery-service:
@@ -199,6 +201,8 @@ services:
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/interviewos
       - JUDGE0_URL=http://judge0:2358
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - WORKSPACE_NETWORK=ai-interview-net
+      - WORKSPACE_HOST=localhost
       - RUNNER_MAVEN_IMAGE=ai-interview-os/lld-runner:latest
     depends_on:
       cloud-config-server:
@@ -333,3 +337,8 @@ volumes:
   mongodb_data:
   postgres_data:
   judge0_db_data:
+
+networks:
+  ai-interview-net:
+    name: ai-interview-net
+    driver: bridge

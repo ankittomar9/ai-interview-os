@@ -130,7 +130,7 @@ public class LldMavenRunner implements TrackRunner {
                     if (allowedPaths.contains(relativePath)) {
                         writeFile(tempWorkspace, relativePath, entry.getValue());
                     } else {
-                        log.warn("🔒 Candidate attempted to overwrite non-editable file: '{}'. Ignored.", relativePath);
+                        log.debug("🔒 Candidate attempted to overwrite non-editable file: '{}'. Ignored.", relativePath);
                     }
                 }
             }

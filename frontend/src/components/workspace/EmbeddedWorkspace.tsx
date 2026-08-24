@@ -72,7 +72,12 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
         const stepTimer1 = setTimeout(() => !isCancelled && setProvisionStep(2), 600);
         const stepTimer2 = setTimeout(() => !isCancelled && setProvisionStep(3), 1400);
 
-        const response = await provisionWorkspace(sessionId, problemSlug);
+        const response = await Promise.race([
+          provisionWorkspace(sessionId, problemSlug),
+          new Promise<never>((_, rej) =>
+            setTimeout(() => rej(new Error('Workspace provisioning timed out (20s)')), 20000)
+          )
+        ]);
 
         clearTimeout(stepTimer1);
         clearTimeout(stepTimer2);

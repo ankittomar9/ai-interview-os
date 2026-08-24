@@ -147,6 +147,15 @@ public class WorkspaceProvisionerService {
                     .build();
         }
 
+        if (!imageExists(workspaceImage)) {
+            log.warn("⚠️ Workspace image '{}' not found in Docker daemon. Run: docker compose --profile engines up -d --build", workspaceImage);
+            return WorkspaceProvisionResponse.builder()
+                    .workspaceId("fallback")
+                    .status(WorkspaceStatus.FALLBACK)
+                    .message("Workspace image not built. Run: docker compose --profile engines up -d --build")
+                    .build();
+        }
+
         String volumeName = "ws_" + sessionId;
         String containerName = "ws-" + sessionId;
 
@@ -405,6 +414,16 @@ public class WorkspaceProvisionerService {
             }
         } catch (Exception e) {
             log.debug("Cleanup container notice for {}: {}", name, e.getMessage());
+        }
+    }
+
+    private boolean imageExists(String img) {
+        if (img == null || !isDockerAvailable || dockerClient == null) return false;
+        try {
+            dockerClient.inspectImageCmd(img).exec();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
