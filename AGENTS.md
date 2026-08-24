@@ -33,3 +33,7 @@
   If cleanup is needed, delete exact named paths only.
 - Git workflow: `git add -u`, then `git commit -m "..."`, then `git push origin <branch>` — three separate invocations.
 - If a command prompts for confirmation, treat that as a FAILED command and stop.
+
+## Docker hygiene
+- After `docker compose build`, run `docker image prune -f`.
+- Build only changed services: `docker compose build <service>`, never `--no-cache` unless necessary.
