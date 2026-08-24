@@ -338,7 +338,3 @@ volumes:
   postgres_data:
   judge0_db_data:
 
-networks:
-  ai-interview-net:
-    name: ai-interview-net
-    driver: bridge
