@@ -1,0 +1,46 @@
+Ran command: `git status`
+Viewed docker-compose.yaml:1-60
+Viewed docker-compose.yaml:330-341
+
+Here are the exact Docker commands to **clear the build cache (while keeping all downloaded base images like PostgreSQL, MongoDB, Judge0, etc. intact)** and rebuild your containers cleanly:
+
+---
+
+### 1. Step-by-Step Clean & Rebuild
+
+```powershell
+# Step 1: Remove old build cache (does NOT delete downloaded base images)
+docker builder prune -f
+
+# Step 2: Stop and remove stale/orphan containers and networks
+docker compose --profile engines down --remove-orphans
+
+# Step 3: Rebuild your application images fresh (without cache)
+docker compose --profile engines build --no-cache
+
+# Step 4: Start all services and engines in the background
+docker compose --profile engines up -d
+```
+
+---
+
+### 2. Or Run Everything in One Shot (Copy & Paste)
+
+```powershell
+docker builder prune -f; docker compose --profile engines down --remove-orphans; docker compose --profile engines up -d --build --force-recreate
+```
+
+---
+
+### 🔍 To Verify Services are Healthy:
+
+```powershell
+# Check container status
+docker compose ps
+
+# Follow logs of the interview session service & runner
+docker compose logs -f interview-session-service
+```
+
+> [!TIP]
+> **Data Safety**: Your database volumes (`postgres_data`, `mongodb_data`, `judge0_db_data`) and downloaded base images (`postgres:16-alpine`, `mongo:7.0`, `codercom/code-server`, etc.) are completely preserved and won't need to be redownloaded.
