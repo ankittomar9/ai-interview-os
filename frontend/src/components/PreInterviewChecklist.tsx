@@ -4,6 +4,8 @@ import { Camera, Mic, Monitor, Wifi, ArrowRight, ShieldCheck, AlertTriangle, Cpu
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Chip } from './ui/Chip';
+import { FloatingAiOrb } from './ai/FloatingAiOrb';
+import { AiAssistantPanel } from './ai/AiAssistantPanel';
 
 interface Props {
   sessionId: number;
@@ -37,7 +39,16 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const [networkOk] = useState(true);
   const [envMode, setEnvMode] = useState<'dev' | 'prod'>('dev');
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.checklist') === 'true');
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
+
+  const toggleAiPanel = () => {
+    setIsAiPanelOpen((prev) => {
+      const next = !prev;
+      sessionStorage.setItem('ai.panel.checklist', String(next));
+      return next;
+    });
+  };
 
   // Dynamic host URL for the QR code
   const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
@@ -370,6 +381,28 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         </Button>
 
       </Card>
+
+      {/* FLOATING AI ORB & ASSISTANT PANEL */}
+      <FloatingAiOrb
+        isOpen={isAiPanelOpen}
+        onToggle={toggleAiPanel}
+        isAiSpeaking={false}
+        hasUnread={false}
+        stackAbove="none"
+      />
+
+      <AiAssistantPanel
+        open={isAiPanelOpen}
+        onClose={() => {
+          setIsAiPanelOpen(false);
+          sessionStorage.setItem('ai.panel.checklist', 'false');
+        }}
+        mode="intro"
+        personaName="Dr. Anya Chen"
+        personaTitle="AI Principal Bar Raiser"
+        currentStage="System Verification"
+        stackAbove="none"
+      />
     </div>
   );
 };

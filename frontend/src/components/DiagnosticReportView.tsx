@@ -23,6 +23,8 @@ import { Chip } from './ui/Chip';
 import { ScoreRing } from './ui/ScoreRing';
 import { RadarChart } from './ui/RadarChart';
 import { RubricCard } from './ui/RubricCard';
+import { FloatingAiOrb } from './ai/FloatingAiOrb';
+import { AiAssistantPanel } from './ai/AiAssistantPanel';
 
 interface Props {
   report: DiagnosticReportResponse;
@@ -32,6 +34,15 @@ interface Props {
 export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => {
   const [activeTab, setActiveTab] = useState<'report' | 'transcript'>('report');
   const [transcriptData, setTranscriptData] = useState<any | null>(null);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.report') === 'true');
+
+  const toggleAiPanel = () => {
+    setIsAiPanelOpen((prev) => {
+      const next = !prev;
+      sessionStorage.setItem('ai.panel.report', String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (report.sessionId) {
@@ -394,6 +405,28 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
         </Card>
       )}
 
+      {/* FLOATING AI ORB & ASSISTANT PANEL */}
+      <FloatingAiOrb
+        isOpen={isAiPanelOpen}
+        onToggle={toggleAiPanel}
+        isAiSpeaking={false}
+        hasUnread={false}
+        stackAbove="none"
+      />
+
+      <AiAssistantPanel
+        open={isAiPanelOpen}
+        onClose={() => {
+          setIsAiPanelOpen(false);
+          sessionStorage.setItem('ai.panel.report', 'false');
+        }}
+        mode="review"
+        personaName="Dr. Anya Chen"
+        personaTitle="AI Principal Bar Raiser"
+        currentStage="Audited Transcript"
+        transcript={transcriptData?.transcript || []}
+        stackAbove="none"
+      />
     </div>
   );
 };

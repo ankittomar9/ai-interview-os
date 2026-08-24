@@ -4,7 +4,6 @@ import type { GenerateQuestionResponse, ModelProvider } from '../types';
 import { addMessageToSession, completeSession, processDialogueTurn, transcribeAudio, getStoredApiKey, executeCode } from '../services/api';
 import { useProctorSentinel } from '../hooks/useProctorSentinel';
 import { StageStepper, type InterviewStage } from './StageStepper';
-import { AiAvatarWaveform } from './AiAvatarWaveform';
 import { WebcamTile } from './WebcamTile';
 import { HldWhiteboardCanvas } from './HldWhiteboardCanvas';
 import { ProjectWorkspace } from './ProjectWorkspace';
@@ -12,11 +11,12 @@ import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { ResizeHandle } from './ui/ResizeHandle';
 import { TestConsole } from './ui/TestConsole';
-import { AutoGrowingChatInput } from './ui/AutoGrowingChatInput';
 import { ActivityBar } from './ide/ActivityBar';
 import { BreadcrumbBar } from './ide/BreadcrumbBar';
 import { StatusBar } from './ide/StatusBar';
 import { MarkdownProblem } from './ide/MarkdownProblem';
+import { FloatingAiOrb } from './ai/FloatingAiOrb';
+import { AiAssistantPanel } from './ai/AiAssistantPanel';
 import {
   Timer,
   Play,
@@ -32,9 +32,7 @@ import {
   Maximize2,
   Minimize2,
   PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen
+  PanelLeftOpen
 } from 'lucide-react';
 
 interface Props {
@@ -67,7 +65,6 @@ const END_PHRASES = [
 ];
 
 const DEFAULT_LEFT_WIDTH = 380;
-const DEFAULT_RIGHT_WIDTH = 370;
 const DEFAULT_CONSOLE_HEIGHT = 180;
 
 export const InterviewRoom: React.FC<Props> = ({
@@ -99,14 +96,32 @@ export const InterviewRoom: React.FC<Props> = ({
   const [latestExecution, setLatestExecution] = useState<{ status: string; passedTests: number; totalTests: number; executionTimeMs: number; memoryUsedMb: number } | null>(null);
   const [architectureSummary, setArchitectureSummary] = useState<string>('');
 
-  // --- State: Resizable Panels (Persisted in localStorage) ---
+  // --- State: Resizable Left Panel (Persisted in localStorage) ---
   const [leftWidth, setLeftWidth] = useState<number>(() => Number(localStorage.getItem('ui.leftWidth')) || DEFAULT_LEFT_WIDTH);
-  const [rightWidth, setRightWidth] = useState<number>(() => Number(localStorage.getItem('ui.rightWidth')) || DEFAULT_RIGHT_WIDTH);
   const [consoleHeight, setConsoleHeight] = useState<number>(() => Number(localStorage.getItem('ui.consoleHeight')) || DEFAULT_CONSOLE_HEIGHT);
   const [isLeftCollapsed, setIsLeftCollapsed] = useState<boolean>(false);
-  const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(false);
   const [isEditorMaximized, setIsEditorMaximized] = useState<boolean>(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState<boolean>(false);
+
+  // --- State: Floating AI Assistant Panel (Default OPEN on first entry) ---
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState<boolean>(() => {
+    const saved = sessionStorage.getItem('ai.panel.room');
+    return saved === null ? true : saved === 'true';
+  });
+  const [hasUnread, setHasUnread] = useState<boolean>(false);
+  const isAiPanelOpenRef = useRef<boolean>(isAiPanelOpen);
+  useEffect(() => {
+    isAiPanelOpenRef.current = isAiPanelOpen;
+  }, [isAiPanelOpen]);
+
+  const toggleAiPanel = () => {
+    setIsAiPanelOpen((prev) => {
+      const next = !prev;
+      sessionStorage.setItem('ai.panel.room', String(next));
+      if (next) setHasUnread(false);
+      return next;
+    });
+  };
 
   // --- State: IDE Caret & Engine Capabilities ---
   const [cursor, setCursor] = useState<{ ln: number; col: number }>({ ln: 1, col: 1 });
@@ -129,7 +144,6 @@ export const InterviewRoom: React.FC<Props> = ({
 
   // Synchronize layout dimensions to localStorage
   useEffect(() => { localStorage.setItem('ui.leftWidth', String(leftWidth)); }, [leftWidth]);
-  useEffect(() => { localStorage.setItem('ui.rightWidth', String(rightWidth)); }, [rightWidth]);
   useEffect(() => { localStorage.setItem('ui.consoleHeight', String(consoleHeight)); }, [consoleHeight]);
 
 
@@ -555,6 +569,10 @@ export const InterviewRoom: React.FC<Props> = ({
         }
       ]);
 
+      if (!isAiPanelOpenRef.current) {
+        setHasUnread(true);
+      }
+
       speakText(`${dialogue.interviewerReply}. ${dialogue.followUpQuestion}`);
 
       await addMessageToSession(sessionId, {
@@ -569,6 +587,9 @@ export const InterviewRoom: React.FC<Props> = ({
         ...prev,
         { role: 'interviewer', content: fallback, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
       ]);
+      if (!isAiPanelOpenRef.current) {
+        setHasUnread(true);
+      }
       speakText(fallback);
     } finally {
       setIsAiResponding(false);
@@ -1225,132 +1246,51 @@ export const InterviewRoom: React.FC<Props> = ({
           </div>
         )}
 
-        {/* RESIZE HANDLE: Center to Right */}
-        {!isEditorMaximized && !isRightCollapsed && (
-          <ResizeHandle
-            direction="horizontal"
-            onDelta={(delta) => {
-              setRightWidth((prev) => Math.max(260, Math.min(window.innerWidth * 0.55, prev - delta)));
-            }}
-            onDoubleClick={() => setRightWidth(DEFAULT_RIGHT_WIDTH)}
-          />
-        )}
-
-        {/* 3. RIGHT PANEL: AI Persona Card, Dialogue Transcript & Proctor */}
-        {!isEditorMaximized && !isRightCollapsed && (
-          <div
-            className="bg-surface flex flex-col overflow-hidden relative shrink-0"
-            style={{ width: `${rightWidth}px`, minWidth: '260px' }}
-          >
-            {/* Header with Collapse Toggle */}
-            <div className="h-10 flex items-center justify-between border-b border-border bg-elevated/40 px-3 shrink-0">
-              <span className="text-xs font-bold text-white">
-                AI Principal Interviewer
-              </span>
-              <button
-                onClick={() => setIsRightCollapsed(true)}
-                title="Collapse AI Chat"
-                className="p-1 text-text-3 hover:text-text hover:bg-surface rounded transition-colors cursor-pointer"
-              >
-                <PanelRightClose className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* AI Avatar & Animated Audio Waveform */}
-            <div className="p-3 pb-1">
-              <AiAvatarWaveform
-                personaName="Dr. Anya Chen"
-                personaTitle="AI Principal Bar Raiser"
-                isAiSpeaking={isAiSpeaking}
-                voiceEnabled={voiceOutputEnabled}
-                onToggleVoice={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
-                currentStage={currentStage}
-              />
-            </div>
-
-            {/* Dialogue Transcript */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 select-text">
-              {messages.map((m, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3 rounded-lg border text-xs leading-relaxed ${
-                    m.role === 'candidate'
-                      ? 'bg-primary/10 border-primary/40'
-                      : 'bg-elevated border-border'
-                  }`}
-                >
-                  <div className="text-[11px] font-bold text-primary-2 mb-1 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span>{m.role === 'candidate' ? 'You (Candidate)' : 'AI Principal Interviewer'}</span>
-                      {m.metadata?.recommendedAction === 'OFFER_HINT' && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-1">
-                          💡 Hint Offered
-                        </span>
-                      )}
-                    </div>
-                    {m.timestamp && <span className="text-text-3 font-normal">{m.timestamp}</span>}
-                  </div>
-                  <div className="text-text whitespace-pre-wrap">
-                    {m.content}
-                  </div>
-                </div>
-              ))}
-
-              {isAiResponding && (
-                <div className="p-2.5 rounded-md bg-elevated border border-border text-primary-2 text-xs flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 animate-spin" />
-                  AI Interviewer is evaluating technical response...
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Candidate Auto-Growing Prompt Input & Voice Controller */}
-            <div className="p-3 border-t border-border bg-surface shrink-0">
-              <AutoGrowingChatInput
-                value={chatInput}
-                onChange={setChatInput}
-                onSend={() => void triggerCandidateTurn()}
-                isListening={isListening}
-                onToggleListening={() => {
-                  if (isListening) stopListening();
-                  else startListening();
-                }}
-                isAiResponding={isAiResponding}
-                placeholder="Speak or type your explanation (e.g. data structure approach, Big-O, edge cases)..."
-              />
-            </div>
-
-            {/* Pinned Corner Webcam Tile (Strictly Non-Movable) */}
-            <div className="absolute bottom-16 right-3 z-30 pointer-events-auto">
-              <WebcamTile
-                isTabBlurred={isWindowBlurred}
-                tabSwitchCount={tabSwitches}
-                pasteCount={pasteDumps}
-              />
-            </div>
-
-          </div>
-        )}
-
-        {/* Right Panel Expand Trigger when Collapsed */}
-        {!isEditorMaximized && isRightCollapsed && (
-          <div className="w-8 bg-surface border-l border-border flex flex-col items-center py-2 shrink-0">
-            <button
-              onClick={() => setIsRightCollapsed(false)}
-              title="Expand AI Chat Panel"
-              className="p-1 text-text-3 hover:text-text rounded transition-colors cursor-pointer"
-            >
-              <PanelRightOpen className="w-4 h-4" />
-            </button>
-            <div className="[writing-mode:vertical-rl] text-[11px] text-text-3 font-bold mt-4 tracking-widest">
-              AI DIALOGUE
-            </div>
-          </div>
-        )}
-
       </div>
 
+      {/* PINNED CORNER WEBCAM TILE (Strictly Non-Movable) */}
+      <div className="fixed bottom-4 right-4 z-40 pointer-events-auto">
+        <WebcamTile
+          isTabBlurred={isWindowBlurred}
+          tabSwitchCount={tabSwitches}
+          pasteCount={pasteDumps}
+        />
+      </div>
+
+      {/* FLOATING AI ORB & ASSISTANT PANEL (WRAP) */}
+      <FloatingAiOrb
+        isOpen={isAiPanelOpen}
+        onToggle={toggleAiPanel}
+        isAiSpeaking={isAiSpeaking}
+        hasUnread={hasUnread}
+        stackAbove="webcam"
+      />
+
+      <AiAssistantPanel
+        open={isAiPanelOpen}
+        onClose={() => {
+          setIsAiPanelOpen(false);
+          sessionStorage.setItem('ai.panel.room', 'false');
+        }}
+        mode="live"
+        personaName="Dr. Anya Chen"
+        personaTitle="AI Principal Bar Raiser"
+        currentStage={currentStage}
+        isAiSpeaking={isAiSpeaking}
+        voiceEnabled={voiceOutputEnabled}
+        onToggleVoice={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
+        messages={messages}
+        isAiResponding={isAiResponding}
+        chatInput={chatInput}
+        setChatInput={setChatInput}
+        onSend={triggerCandidateTurn}
+        onMicToggle={() => {
+          if (isListening) stopListening();
+          else startListening();
+        }}
+        isListening={isListening}
+        stackAbove="webcam"
+      />
     </div>
   );
 };

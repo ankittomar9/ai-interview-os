@@ -7,6 +7,8 @@ interface Props {
   sessionId: number;
 }
 
+// NOTE (M5.6): FloatingAiOrb is intentionally EXCLUDED from PhoneProctorView
+// because this is a dedicated mobile companion camera stream viewport.
 export const PhoneProctorView: React.FC<Props> = ({ sessionId }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [cameraOk, setCameraOk] = useState(false);

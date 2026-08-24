@@ -24,6 +24,8 @@ import { Textarea } from './ui/Textarea';
 import { SegmentedControl } from './ui/SegmentedControl';
 import { TrackCard } from './ui/TrackCard';
 import { Chip } from './ui/Chip';
+import { FloatingAiOrb } from './ai/FloatingAiOrb';
+import { AiAssistantPanel } from './ai/AiAssistantPanel';
 
 interface Props {
   onStart: (config: {
@@ -89,6 +91,15 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
   const [provider, setProvider] = useState<ModelProvider>('GEMINI');
   const [apiKey, setApiKey] = useState(getStoredApiKey('GEMINI'));
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.setup') === 'true');
+
+  const toggleAiPanel = () => {
+    setIsAiPanelOpen((prev) => {
+      const next = !prev;
+      sessionStorage.setItem('ai.panel.setup', String(next));
+      return next;
+    });
+  };
 
   const handleCandidateNameChange = (name: string) => {
     setCandidateName(name);
@@ -492,6 +503,28 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
           </Card>
         </div>
       )}
+
+      {/* FLOATING AI ORB & ASSISTANT PANEL */}
+      <FloatingAiOrb
+        isOpen={isAiPanelOpen}
+        onToggle={toggleAiPanel}
+        isAiSpeaking={false}
+        hasUnread={false}
+        stackAbove="none"
+      />
+
+      <AiAssistantPanel
+        open={isAiPanelOpen}
+        onClose={() => {
+          setIsAiPanelOpen(false);
+          sessionStorage.setItem('ai.panel.setup', 'false');
+        }}
+        mode="intro"
+        personaName="Dr. Anya Chen"
+        personaTitle="AI Principal Bar Raiser"
+        currentStage="Setup & Role Fit"
+        stackAbove="none"
+      />
     </div>
   );
 };
