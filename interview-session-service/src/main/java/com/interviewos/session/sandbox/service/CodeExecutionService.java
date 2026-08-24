@@ -52,7 +52,8 @@ public class CodeExecutionService {
      * Executes multi-file project workspace submissions (Spring Boot / LLD).
      */
     public ExecutionResultResponse executeProject(Long sessionId, ExecuteProjectRequest request) {
-        log.info("Executing multi-file project for session {} [Problem: {}, Files: {}]", sessionId, request.problemSlug(), request.files().keySet());
+        log.info("Executing multi-file project for session {} [Problem: {}, Source: {}]",
+                sessionId, request.problemSlug(), request.source());
 
         Optional<ProblemDocument> problemOpt = resolveProblem(request.problemSlug());
         if (problemOpt.isEmpty()) {
@@ -63,8 +64,19 @@ public class CodeExecutionService {
         ProblemDocument problem = problemOpt.get();
         TrackRunner runner = findRunner(problem);
 
-        ExecutionResultResponse result = runner.run(sessionId, problem, request.files());
-        recordExecutionTurn(sessionId, request.problemSlug(), result, "[Multi-file Project Submission]");
+        ExecutionResultResponse result;
+        if (request.isWorkspaceSource()) {
+            String volumeName = request.workspaceVolume() != null && !request.workspaceVolume().isBlank()
+                    ? request.workspaceVolume()
+                    : "ws_" + sessionId;
+            result = runner.runWithVolume(sessionId, problem, volumeName);
+            recordExecutionTurn(sessionId, request.problemSlug(), result, "[Workspace Volume Execution: " + volumeName + "]");
+        } else {
+            Map<String, String> candidateFiles = request.files() != null ? request.files() : Map.of();
+            result = runner.run(sessionId, problem, candidateFiles);
+            recordExecutionTurn(sessionId, request.problemSlug(), result, "[Multi-file Project Submission]");
+        }
+
         return result;
     }
 

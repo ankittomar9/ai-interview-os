@@ -23,4 +23,11 @@ public interface TrackRunner {
     default ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles) {
         return run(sessionId, problem, candidateFiles, "java");
     }
+
+    /**
+     * Executes the problem tests by mounting a Docker named volume directly (M9 Workspace).
+     */
+    default ExecutionResultResponse runWithVolume(Long sessionId, ProblemDocument problem, String volumeName) {
+        return run(sessionId, problem, Map.of(), "java");
+    }
 }

@@ -310,7 +310,9 @@ export const executeProject = async (
     sessionId: number,
     payload: {
         problemSlug: string;
-        files: Record<string, string>;
+        files?: Record<string, string>;
+        source?: 'inline' | 'workspace';
+        workspaceVolume?: string;
     }
 ): Promise<ExecutionResultResponse> => {
     const res = await fetch(`${SESSION_API}/${sessionId}/execute-project`, {
@@ -320,4 +322,53 @@ export const executeProject = async (
     });
     if (!res.ok) throw new Error('Failed to execute project tests');
     return res.json();
+};
+
+// --- M9 Embedded VS Code Workspace (:8081) ---
+export interface WorkspaceProvisionResponse {
+    workspaceId: string;
+    url: string;
+    status: 'PROVISIONING' | 'READY' | 'FALLBACK' | 'TERMINATED' | 'ERROR';
+    volumeName?: string;
+    message?: string;
+}
+
+export interface WorkspaceStatusResponse {
+    workspaceId: string;
+    url: string;
+    status: 'PROVISIONING' | 'READY' | 'FALLBACK' | 'TERMINATED' | 'ERROR';
+    volumeName?: string;
+}
+
+export const provisionWorkspace = async (
+    sessionId: number,
+    problemSlug: string
+): Promise<WorkspaceProvisionResponse> => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/workspace/provision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problemSlug })
+    });
+    if (!res.ok) throw new Error('Failed to provision workspace');
+    return res.json();
+};
+
+export const getWorkspaceStatus = async (
+    sessionId: number
+): Promise<WorkspaceStatusResponse> => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/workspace/status`);
+    if (!res.ok) throw new Error('Failed to check workspace status');
+    return res.json();
+};
+
+export const destroyWorkspace = async (
+    sessionId: number
+): Promise<void> => {
+    try {
+        await fetch(`${SESSION_API}/${sessionId}/workspace/destroy`, {
+            method: 'POST'
+        });
+    } catch (e) {
+        console.warn('Workspace destruction notice:', e);
+    }
 };

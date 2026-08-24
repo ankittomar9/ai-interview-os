@@ -6,7 +6,7 @@ import { useProctorSentinel } from '../hooks/useProctorSentinel';
 import { StageStepper, type InterviewStage } from './StageStepper';
 import { WebcamTile } from './WebcamTile';
 import { HldWhiteboardCanvas } from './HldWhiteboardCanvas';
-import { ProjectWorkspace } from './ProjectWorkspace';
+import { EmbeddedWorkspace } from './workspace/EmbeddedWorkspace';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { ResizeHandle } from './ui/ResizeHandle';
@@ -200,6 +200,12 @@ export const InterviewRoom: React.FC<Props> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isSessionEndedRef = useRef(false);
   const hasSpokenIntroRef = useRef(false);
+  const latestTranscriptRef = useRef<string>('');
+  const chatInputRef = useRef<string>('');
+
+  useEffect(() => {
+    chatInputRef.current = chatInput;
+  }, [chatInput]);
 
   const startListeningRef = useRef<() => void>(() => {});
   const triggerCandidateTurnRef = useRef<(text?: string) => Promise<void>>(async () => {});
@@ -349,10 +355,13 @@ export const InterviewRoom: React.FC<Props> = ({
           try {
             const result = await transcribeAudio(audioBlob, groqApiKey);
             if (result && result.transcript && result.transcript.trim().length > 0) {
-              setChatInput(result.transcript.trim());
+              const text = result.transcript.trim();
+              setChatInput(text);
+              latestTranscriptRef.current = text;
               setTimeout(() => {
                 if (triggerCandidateTurnRef.current) {
-                  void triggerCandidateTurnRef.current(result.transcript.trim());
+                  void triggerCandidateTurnRef.current(text);
+                  latestTranscriptRef.current = '';
                 }
               }, 200);
               return;
@@ -362,8 +371,10 @@ export const InterviewRoom: React.FC<Props> = ({
           }
         }
 
-        if (chatInput.trim().length > 0) {
-          void triggerCandidateTurnRef.current();
+        const textToSubmit = (latestTranscriptRef.current || chatInputRef.current || '').trim();
+        if (textToSubmit.length > 0 && triggerCandidateTurnRef.current) {
+          void triggerCandidateTurnRef.current(textToSubmit);
+          latestTranscriptRef.current = '';
         }
       };
 
@@ -383,9 +394,15 @@ export const InterviewRoom: React.FC<Props> = ({
           if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current);
           }
+          // Auto-submit if candidate pauses for 20 seconds
           silenceTimeoutRef.current = setTimeout(() => {
             stopListening();
-          }, 9000);
+            const textToSubmit = (latestTranscriptRef.current || chatInputRef.current || '').trim();
+            if (textToSubmit.length > 0 && triggerCandidateTurnRef.current) {
+              void triggerCandidateTurnRef.current(textToSubmit);
+              latestTranscriptRef.current = '';
+            }
+          }, 20000);
         };
 
         recognition.onstart = () => {
@@ -400,6 +417,8 @@ export const InterviewRoom: React.FC<Props> = ({
           }
 
           setIsSpeakingNow(true);
+          latestTranscriptRef.current = fullTranscript;
+          chatInputRef.current = fullTranscript;
           setChatInput(fullTranscript);
           resetSilenceTimeout();
 
@@ -407,6 +426,11 @@ export const InterviewRoom: React.FC<Props> = ({
           const matchesWakePhrase = END_PHRASES.some((phrase) => lower.endsWith(phrase));
           if (matchesWakePhrase) {
             stopListening();
+            const textToSubmit = (fullTranscript || latestTranscriptRef.current || chatInputRef.current || '').trim();
+            if (textToSubmit.length > 0 && triggerCandidateTurnRef.current) {
+              void triggerCandidateTurnRef.current(textToSubmit);
+              latestTranscriptRef.current = '';
+            }
           }
         };
 
@@ -427,7 +451,7 @@ export const InterviewRoom: React.FC<Props> = ({
       console.warn('Microphone access notice:', err);
       setIsListening(false);
     }
-  }, [isAiSpeaking, isListening, chatInput, stopListening]);
+  }, [isAiSpeaking, isListening, stopListening]);
 
   useEffect(() => {
     startListeningRef.current = startListening;
@@ -1032,24 +1056,22 @@ export const InterviewRoom: React.FC<Props> = ({
           />
         )}
 
-        {/* 2. CENTER PANEL: Multi-File LLD OR Single-File Monaco Workspace */}
+        {/* 2. CENTER PANEL: Multi-File LLD Embedded VS Code Workspace OR Single-File Monaco Workspace */}
         {question.starterFiles && Object.keys(question.starterFiles).length > 0 ? (
           <div
             id="center-panel-container"
             className="flex-1 flex flex-col bg-bg overflow-hidden relative"
           >
-            <ProjectWorkspace
+            <EmbeddedWorkspace
               key={question.problemSlug || 'lld-order-service'}
               sessionId={sessionId}
               problemSlug={question.problemSlug || 'lld-order-service'}
+              problemTitle={question.title || 'Spring Boot Microservice'}
               starterFiles={question.starterFiles}
               editablePaths={question.editablePaths || []}
               onSubmitProject={(summary) => void triggerCandidateTurn(summary)}
               isMaximized={isEditorMaximized}
               onToggleMaximize={() => setIsEditorMaximized(!isEditorMaximized)}
-              engine="Maven"
-              engineReady={engineReady}
-              proctorClean={!(isWindowBlurred || tabSwitches > 0)}
             />
           </div>
         ) : (

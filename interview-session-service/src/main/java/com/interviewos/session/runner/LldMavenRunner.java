@@ -70,7 +70,19 @@ public class LldMavenRunner implements TrackRunner {
     private synchronized void ensureDockerInitialized() {
         if (isInitialized) return;
         try {
-            DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
+            String dockerHost = System.getenv("DOCKER_HOST");
+            if (dockerHost == null || dockerHost.isBlank()) {
+                if (new File("/var/run/docker.sock").exists()) {
+                    dockerHost = "unix:///var/run/docker.sock";
+                }
+            }
+
+            DefaultDockerClientConfig.Builder configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder();
+            if (dockerHost != null && !dockerHost.isBlank()) {
+                configBuilder.withDockerHost(dockerHost);
+            }
+            DefaultDockerClientConfig config = configBuilder.build();
+
             ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
                     .dockerHost(config.getDockerHost())
                     .sslConfig(config.getSSLConfig())
@@ -80,7 +92,7 @@ public class LldMavenRunner implements TrackRunner {
             this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
             this.dockerClient.pingCmd().exec();
             this.isDockerAvailable = true;
-            log.info("🐳 Docker Java client initialized lazily for LLD Maven Sandbox. Image: {}", runnerImage);
+            log.info("🐳 Docker Java client initialized lazily for LLD Maven Sandbox. Image: {}, Host: {}", runnerImage, config.getDockerHost());
         } catch (Throwable t) {
             this.isDockerAvailable = false;
             log.warn("⚠️ Docker daemon unavailable for LLD Maven Runner: {}. Sandbox will return ENGINE_UNAVAILABLE.", t.getMessage());
@@ -158,17 +170,29 @@ public class LldMavenRunner implements TrackRunner {
         }
     }
 
-    private ExecutionResultResponse executeInDocker(File workspaceDir) {
-        String containerId = null;
-        try {
-            String workspacePath = workspaceDir.getAbsolutePath().replace('\\', '/');
+    @Override
+    public ExecutionResultResponse runWithVolume(Long sessionId, ProblemDocument problem, String volumeName) {
+        log.info("🚀 Initiating LLD Spring Boot Maven execution directly from Docker volume '{}' for session {} [problem: {}]",
+                volumeName, sessionId, problem.getProblemSlug());
+        ensureDockerInitialized();
 
+        if (isDockerAvailable && dockerClient != null) {
+            return executeInDockerVolume(volumeName, problem);
+        } else {
+            return executeFallbackSimulation(problem, Map.of());
+        }
+    }
+
+    private ExecutionResultResponse executeInDockerVolume(String volumeName, ProblemDocument problem) {
+        String containerId = null;
+        Path tempHiddenTestsDir = null;
+        try {
             HostConfig hostConfig = HostConfig.newHostConfig()
                     .withNetworkMode("none")
                     .withMemory(768L * 1024 * 1024) // 768MB RAM
                     .withNanoCPUs(2_000_000_000L)   // 2 CPU cores
                     .withAutoRemove(false)
-                    .withBinds(new Bind(workspacePath, new Volume("/workspace")));
+                    .withBinds(new Bind(volumeName, new Volume("/workspace")));
 
             String cmdScript = "cd /workspace && mvn -o -B test; echo MVN_EXIT:$?; " +
                     "echo ===SUREFIRE_START; for f in target/surefire-reports/TEST-*.xml; do [ -f \"$f\" ] && echo ===FILE:$f && cat \"$f\"; done; echo ===SUREFIRE_END";
@@ -179,6 +203,125 @@ public class LldMavenRunner implements TrackRunner {
                     .exec();
 
             containerId = container.getId();
+
+            // Inject hidden tests if present
+            if (problem.getHiddenTestFiles() != null && !problem.getHiddenTestFiles().isEmpty()) {
+                tempHiddenTestsDir = Files.createTempDirectory("lld-hidden-tests-");
+                for (Map.Entry<String, String> entry : problem.getHiddenTestFiles().entrySet()) {
+                    writeFile(tempHiddenTestsDir, entry.getKey(), entry.getValue());
+                }
+                dockerClient.copyArchiveToContainerCmd(containerId)
+                        .withHostResource(tempHiddenTestsDir.toAbsolutePath().toString())
+                        .withRemotePath("/workspace")
+                        .withDirChildrenOnly(true)
+                        .exec();
+            }
+
+            dockerClient.startContainerCmd(containerId).exec();
+
+            // Collect logs
+            StringBuilder logOutput = new StringBuilder();
+            ResultCallback.Adapter<Frame> logCallback = new ResultCallback.Adapter<>() {
+                @Override
+                public void onNext(Frame frame) {
+                    if (frame != null && frame.getPayload() != null) {
+                        logOutput.append(new String(frame.getPayload(), StandardCharsets.UTF_8));
+                    }
+                }
+            };
+
+            dockerClient.logContainerCmd(containerId)
+                    .withStdOut(true)
+                    .withStdErr(true)
+                    .withFollowStream(true)
+                    .exec(logCallback);
+
+            WaitContainerResultCallback waitCallback = new WaitContainerResultCallback();
+            dockerClient.waitContainerCmd(containerId).exec(waitCallback);
+
+            boolean completed = waitCallback.awaitCompletion(timeoutSeconds, TimeUnit.SECONDS);
+
+            if (!completed) {
+                log.warn("⏱️ Maven test execution timed out after {} seconds. Killing container {}.", timeoutSeconds, containerId);
+                try {
+                    dockerClient.killContainerCmd(containerId).exec();
+                } catch (Exception ignored) {}
+
+                try {
+                    logCallback.close();
+                } catch (Exception ignored) {}
+
+                return ExecutionResultResponse.builder()
+                        .status("TIMEOUT")
+                        .totalTests(0)
+                        .passedTests(0)
+                        .executionTimeMs(timeoutSeconds * 1000.0)
+                        .memoryUsedMb(512.0)
+                        .stdout("")
+                        .stderr("Execution timed out after " + timeoutSeconds + " seconds.")
+                        .compilerOutput("")
+                        .testResults(List.of())
+                        .build();
+            }
+
+            try {
+                logCallback.awaitCompletion(5, TimeUnit.SECONDS);
+                logCallback.close();
+            } catch (Exception ignored) {}
+
+            return parseExecutionOutput(logOutput.toString());
+
+        } catch (Exception e) {
+            log.error("Docker container volume execution failed: {}", e.getMessage(), e);
+            return ExecutionResultResponse.builder()
+                    .status("ENGINE_UNAVAILABLE")
+                    .totalTests(0)
+                    .passedTests(0)
+                    .executionTimeMs(0.0)
+                    .memoryUsedMb(0.0)
+                    .stdout("")
+                    .stderr("Execution engine error: " + e.getMessage())
+                    .compilerOutput("")
+                    .testResults(List.of())
+                    .build();
+        } finally {
+            if (containerId != null) {
+                try {
+                    dockerClient.removeContainerCmd(containerId).withForce(true).exec();
+                } catch (Exception ignored) {}
+            }
+            if (tempHiddenTestsDir != null) {
+                cleanupDirectory(tempHiddenTestsDir);
+            }
+        }
+    }
+
+    private ExecutionResultResponse executeInDocker(File workspaceDir) {
+        String containerId = null;
+        try {
+            HostConfig hostConfig = HostConfig.newHostConfig()
+                    .withNetworkMode("none")
+                    .withMemory(768L * 1024 * 1024) // 768MB RAM
+                    .withNanoCPUs(2_000_000_000L)   // 2 CPU cores
+                    .withAutoRemove(false);
+
+            String cmdScript = "cd /workspace && mvn -o -B test; echo MVN_EXIT:$?; " +
+                    "echo ===SUREFIRE_START; for f in target/surefire-reports/TEST-*.xml; do [ -f \"$f\" ] && echo ===FILE:$f && cat \"$f\"; done; echo ===SUREFIRE_END";
+
+            CreateContainerResponse container = dockerClient.createContainerCmd(runnerImage)
+                    .withHostConfig(hostConfig)
+                    .withCmd("sh", "-c", cmdScript)
+                    .exec();
+
+            containerId = container.getId();
+
+            // Stream candidate workspace files directly into container /workspace
+            dockerClient.copyArchiveToContainerCmd(containerId)
+                    .withHostResource(workspaceDir.getAbsolutePath())
+                    .withRemotePath("/workspace")
+                    .withDirChildrenOnly(true)
+                    .exec();
+
             dockerClient.startContainerCmd(containerId).exec();
 
             // Collect logs
