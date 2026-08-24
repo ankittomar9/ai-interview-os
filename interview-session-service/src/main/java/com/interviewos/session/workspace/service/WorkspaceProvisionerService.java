@@ -6,7 +6,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 import com.interviewos.session.entity.InterviewSession;
 import com.interviewos.session.model.SessionStatus;
 import com.interviewos.session.repository.InterviewSessionRepository;
@@ -103,21 +103,24 @@ public class WorkspaceProvisionerService {
     private synchronized void ensureDockerInitialized() {
         if (isInitialized) return;
         try {
-            String dockerHost = System.getenv("DOCKER_HOST");
-            if (dockerHost == null || dockerHost.isBlank()) {
-                if (new File("/var/run/docker.sock").exists()) {
-                    dockerHost = "unix:///var/run/docker.sock";
-                }
+            URI dockerHostUri;
+            String dockerHostEnv = System.getenv("DOCKER_HOST");
+            if (dockerHostEnv != null && !dockerHostEnv.isBlank()) {
+                dockerHostUri = URI.create(dockerHostEnv);
+            } else if (new File("/var/run/docker.sock").exists()) {
+                dockerHostUri = URI.create("unix:///var/run/docker.sock");
+            } else if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+                dockerHostUri = URI.create("npipe:////./pipe/docker_engine");
+            } else {
+                dockerHostUri = URI.create("unix:///var/run/docker.sock");
             }
 
-            DefaultDockerClientConfig.Builder configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder();
-            if (dockerHost != null && !dockerHost.isBlank()) {
-                configBuilder.withDockerHost(dockerHost);
-            }
-            DefaultDockerClientConfig config = configBuilder.build();
+            DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder()
+                    .withDockerHost(dockerHostUri.toString())
+                    .build();
 
-            ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
-                    .dockerHost(config.getDockerHost())
+            ZerodepDockerHttpClient httpClient = new ZerodepDockerHttpClient.Builder()
+                    .dockerHost(dockerHostUri)
                     .sslConfig(config.getSSLConfig())
                     .maxConnections(50)
                     .build();
@@ -125,7 +128,7 @@ public class WorkspaceProvisionerService {
             this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
             this.dockerClient.pingCmd().exec();
             this.isDockerAvailable = true;
-            log.info("🐳 Workspace Provisioner: Docker client ready. Image: {}, Network: {}", workspaceImage, workspaceNetwork);
+            log.info("🐳 Workspace Provisioner: Docker client ready. Image: {}, Network: {}, Host: {}", workspaceImage, workspaceNetwork, dockerHostUri);
         } catch (Throwable t) {
             this.isDockerAvailable = false;
             log.warn("⚠️ Docker daemon unavailable for Workspace Provisioner: {}. LLD will fall back to Monaco.", t.getMessage());
@@ -189,8 +192,8 @@ public class WorkspaceProvisionerService {
             // 5. Create and configure code-server container
             ExposedPort exposedPort = ExposedPort.tcp(8080);
             Ports portBindings = new Ports();
-            // Bind to 127.0.0.1 for local isolation
-            portBindings.bind(exposedPort, Ports.Binding.bindIpAndPort("127.0.0.1", hostPort));
+            // Bind port for host access
+            portBindings.bind(exposedPort, Ports.Binding.bindPort(hostPort));
 
             HostConfig hostConfig = HostConfig.newHostConfig()
                     .withPortBindings(portBindings)
@@ -543,10 +546,16 @@ public class WorkspaceProvisionerService {
                         try {
                             String idPart = cleanName.substring(3);
                             Long sId = Long.parseLong(idPart);
+                            if (activeWorkspaces.containsKey(sId)) {
+                                continue;
+                            }
                             Optional<InterviewSession> sessionOpt = sessionRepository.findById(sId);
-                            if (sessionOpt.isEmpty() || sessionOpt.get().getStatus() == SessionStatus.COMPLETED || sessionOpt.get().getStatus() == SessionStatus.EVALUATED) {
-                                log.info("🧹 Sweeping orphaned container '{}' and volume 'ws_{}'", cleanName, sId);
-                                destroyWorkspace(sId);
+                            if (sessionOpt.isPresent()) {
+                                SessionStatus status = sessionOpt.get().getStatus();
+                                if (status == SessionStatus.COMPLETED || status == SessionStatus.EVALUATED) {
+                                    log.info("🧹 Sweeping finished container '{}' and volume 'ws_{}'", cleanName, sId);
+                                    destroyWorkspace(sId);
+                                }
                             }
                         } catch (NumberFormatException ignored) {}
                     }

@@ -10,7 +10,7 @@ import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.Volume;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 import com.interviewos.session.sandbox.document.ProblemDocument;
 import com.interviewos.session.sandbox.dto.ExecutionResultResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -70,21 +71,24 @@ public class LldMavenRunner implements TrackRunner {
     private synchronized void ensureDockerInitialized() {
         if (isInitialized) return;
         try {
-            String dockerHost = System.getenv("DOCKER_HOST");
-            if (dockerHost == null || dockerHost.isBlank()) {
-                if (new File("/var/run/docker.sock").exists()) {
-                    dockerHost = "unix:///var/run/docker.sock";
-                }
+            URI dockerHostUri;
+            String dockerHostEnv = System.getenv("DOCKER_HOST");
+            if (dockerHostEnv != null && !dockerHostEnv.isBlank()) {
+                dockerHostUri = URI.create(dockerHostEnv);
+            } else if (new File("/var/run/docker.sock").exists()) {
+                dockerHostUri = URI.create("unix:///var/run/docker.sock");
+            } else if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+                dockerHostUri = URI.create("npipe:////./pipe/docker_engine");
+            } else {
+                dockerHostUri = URI.create("unix:///var/run/docker.sock");
             }
 
-            DefaultDockerClientConfig.Builder configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder();
-            if (dockerHost != null && !dockerHost.isBlank()) {
-                configBuilder.withDockerHost(dockerHost);
-            }
-            DefaultDockerClientConfig config = configBuilder.build();
+            DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder()
+                    .withDockerHost(dockerHostUri.toString())
+                    .build();
 
-            ApacheDockerHttpClient httpClient = new ApacheDockerHttpClient.Builder()
-                    .dockerHost(config.getDockerHost())
+            ZerodepDockerHttpClient httpClient = new ZerodepDockerHttpClient.Builder()
+                    .dockerHost(dockerHostUri)
                     .sslConfig(config.getSSLConfig())
                     .maxConnections(50)
                     .build();
@@ -92,7 +96,7 @@ public class LldMavenRunner implements TrackRunner {
             this.dockerClient = DockerClientImpl.getInstance(config, httpClient);
             this.dockerClient.pingCmd().exec();
             this.isDockerAvailable = true;
-            log.info("🐳 Docker Java client initialized lazily for LLD Maven Sandbox. Image: {}, Host: {}", runnerImage, config.getDockerHost());
+            log.info("🐳 Docker Java client initialized lazily for LLD Maven Sandbox. Image: {}, Host: {}", runnerImage, dockerHostUri);
         } catch (Throwable t) {
             this.isDockerAvailable = false;
             log.warn("⚠️ Docker daemon unavailable for LLD Maven Runner: {}. Sandbox will return ENGINE_UNAVAILABLE.", t.getMessage());
