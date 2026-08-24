@@ -821,13 +821,14 @@ export const InterviewRoom: React.FC<Props> = ({
 
         {/* Center / Right Telemetry & Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Voice State Chip */}
+          {/* Voice Input Chip */}
           <Chip
-            variant={isSpeakingNow ? 'primary' : isListening ? 'success' : 'default'}
+            variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'}
             size="sm"
             icon={<Mic className="w-3.5 h-3.5" />}
+            title="Hands-free: auto-submits after 20s of silence or saying 'That is my answer'"
           >
-            {isSpeakingNow ? 'Voice Active' : isListening ? 'Listening...' : 'Mic Ready'}
+            {isSpeakingNow ? 'Speaking...' : isListening ? 'Listening (20s Auto)' : 'Mic Ready'}
           </Chip>
 
           {/* Proctor Chip */}

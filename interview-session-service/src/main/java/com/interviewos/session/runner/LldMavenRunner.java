@@ -204,18 +204,32 @@ public class LldMavenRunner implements TrackRunner {
 
             containerId = container.getId();
 
-            // Inject hidden tests if present
+            // 1. Prepare canonical overlay directory: non-editable starter files (pom.xml, models, configs) + hidden tests
+            tempHiddenTestsDir = Files.createTempDirectory("lld-canonical-overlay-");
+
+            Set<String> editablePaths = new HashSet<>(problem.getEditablePaths() != null ? problem.getEditablePaths() : List.of());
+            if (problem.getStarterFiles() != null) {
+                for (Map.Entry<String, String> entry : problem.getStarterFiles().entrySet()) {
+                    String relativePath = entry.getKey().replace('\\', '/').trim();
+                    if (!editablePaths.contains(relativePath)) {
+                        writeFile(tempHiddenTestsDir, relativePath, entry.getValue());
+                    }
+                }
+            }
+
+            // 2. Inject hidden tests
             if (problem.getHiddenTestFiles() != null && !problem.getHiddenTestFiles().isEmpty()) {
-                tempHiddenTestsDir = Files.createTempDirectory("lld-hidden-tests-");
                 for (Map.Entry<String, String> entry : problem.getHiddenTestFiles().entrySet()) {
                     writeFile(tempHiddenTestsDir, entry.getKey(), entry.getValue());
                 }
-                dockerClient.copyArchiveToContainerCmd(containerId)
-                        .withHostResource(tempHiddenTestsDir.toAbsolutePath().toString())
-                        .withRemotePath("/workspace")
-                        .withDirChildrenOnly(true)
-                        .exec();
             }
+
+            // 3. Copy canonical overlay directly over /workspace in the container
+            dockerClient.copyArchiveToContainerCmd(containerId)
+                    .withHostResource(tempHiddenTestsDir.toAbsolutePath().toString())
+                    .withRemotePath("/workspace")
+                    .withDirChildrenOnly(true)
+                    .exec();
 
             dockerClient.startContainerCmd(containerId).exec();
 
