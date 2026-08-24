@@ -9,12 +9,14 @@ import {
   Upload,
   FileText,
   CheckCircle2,
+  AlertTriangle,
   Code2,
   Binary,
   Layers,
   Users2,
   Building2,
   Briefcase,
+  Database,
   X
 } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -48,34 +50,40 @@ const TRACKS: Array<{
   icon: React.ReactNode;
 }> = [
   {
-    track: 'JAVA_SPRING_BOOT',
-    title: 'Java & Spring Boot',
-    description: 'Java 21, Virtual Threads, Spring Boot 3.x, JPA & Concurrency patterns',
-    icon: <Code2 className="w-5 h-5" />
+    track: 'ALGORITHMS_DATA_STRUCTURES',
+    title: 'Algorithms & Data Structures (DSA)',
+    description: 'LeetCode-style algorithms, time/space complexity, stdin/stdout sandbox.',
+    icon: <Binary className="w-5 h-5 text-primary-2" />
+  },
+  {
+    track: 'SQL',
+    title: 'SQL & Database Engineering',
+    description: 'Queries, joins, indexing & optimization scenarios. Dialogue-based; live SQL sandbox ships in a later milestone.',
+    icon: <Database className="w-5 h-5 text-sky-400" />
   },
   {
     track: 'SPRING_LLD',
     title: 'Spring Boot LLD Projects',
-    description: 'Multi-file Spring Boot microservices, JPA repositories, REST controllers & Maven test suites',
+    description: 'Multi-file Spring Boot projects in a real VS Code workspace + Maven tests.',
     icon: <Code2 className="w-5 h-5 text-emerald-400" />
   },
   {
-    track: 'ALGORITHMS_DATA_STRUCTURES',
-    title: 'Algorithms & Data Structures',
-    description: 'LeetCode-style algorithmic problem solving, time/space complexity & standard I/O',
-    icon: <Binary className="w-5 h-5" />
-  },
-  {
     track: 'SYSTEM_DESIGN',
-    title: 'High-Level System Design',
-    description: 'Distributed architectures, event-driven pipelines, caching & database sharding',
-    icon: <Layers className="w-5 h-5" />
+    title: 'High-Level System Design (HLD)',
+    description: 'Architecture whiteboard with capacity math + vision evaluation.',
+    icon: <Layers className="w-5 h-5 text-amber-400" />
   },
   {
     track: 'BEHAVIORAL_STAR',
     title: 'Behavioral & Leadership',
-    description: 'STAR method scenarios, engineering tradeoffs, bar raiser conflict resolution',
-    icon: <Users2 className="w-5 h-5" />
+    description: 'STAR scenarios, tradeoffs, conflict resolution.',
+    icon: <Users2 className="w-5 h-5 text-pink-400" />
+  },
+  {
+    track: 'RESUME_BASED',
+    title: 'Others (Resume-Based)',
+    description: 'Non-tech/managerial. AI generates questions grounded in YOUR resume using a frontier model.',
+    icon: <Sparkles className="w-5 h-5 text-purple-400" />
   }
 ];
 
@@ -84,7 +92,7 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
   const [candidateId, setCandidateId] = useState('candidate-01');
   const [isIdManuallyEdited, setIsIdManuallyEdited] = useState(false);
   const [roleTitle, setRoleTitle] = useState('');
-  const [track, setTrack] = useState<InterviewTrack>('JAVA_SPRING_BOOT');
+  const [track, setTrack] = useState<InterviewTrack>('ALGORITHMS_DATA_STRUCTURES');
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('JUNIOR');
   const [targetCompany, setTargetCompany] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -208,7 +216,7 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
   };
 
   return (
-    <div className="min-h-screen bg-bg text-text py-10 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+    <div className="min-h-screen bg-bg text-text py-10 pb-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
         {/* LEFT COLUMN: Branding & System Value Props */}
@@ -243,6 +251,29 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
               <div className="flex items-start gap-2.5 text-xs text-text-2">
                 <Layers className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                 <span><strong>Interactive Whiteboard:</strong> High-Level System Design canvas evaluated in real-time.</span>
+              </div>
+            </div>
+
+            {/* Interview Flow Stepper */}
+            <div className="space-y-2 pt-3 border-t border-border">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-3">Interview Flow</span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-1.5 p-2 rounded bg-surface border border-border text-text-2">
+                  <span className="w-5 h-5 rounded-full bg-elevated border border-border flex items-center justify-center font-bold text-[10px] text-primary">1</span>
+                  <span>Setup & Track</span>
+                </div>
+                <div className="flex items-center gap-1.5 p-2 rounded bg-surface border border-border text-text-2">
+                  <span className="w-5 h-5 rounded-full bg-elevated border border-border flex items-center justify-center font-bold text-[10px] text-primary">2</span>
+                  <span>System Verify</span>
+                </div>
+                <div className="flex items-center gap-1.5 p-2 rounded bg-surface border border-border text-text-2">
+                  <span className="w-5 h-5 rounded-full bg-elevated border border-border flex items-center justify-center font-bold text-[10px] text-primary">3</span>
+                  <span>AI Interview</span>
+                </div>
+                <div className="flex items-center gap-1.5 p-2 rounded bg-surface border border-border text-text-2">
+                  <span className="w-5 h-5 rounded-full bg-elevated border border-border flex items-center justify-center font-bold text-[10px] text-primary">4</span>
+                  <span>360° Report</span>
+                </div>
               </div>
             </div>
 
@@ -315,7 +346,7 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                 />
               </div>
 
-              {/* Track Selection (4 Track Cards) */}
+              {/* Track Selection (6 Track Cards in 2x3 Grid) */}
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-text-2 tracking-wide">
                   Interview Assessment Track *
@@ -333,6 +364,31 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                     />
                   ))}
                 </div>
+
+                {/* Track-Specific Honest Badges */}
+                {track === 'RESUME_BASED' && (
+                  <div className="flex flex-col gap-1.5 p-3 rounded-md bg-elevated border border-border mt-1">
+                    <div className="flex items-center gap-2">
+                      <Chip variant="primary" size="sm" icon={<Sparkles className="w-3.5 h-3.5" />}>
+                        Frontier-model question generation
+                      </Chip>
+                    </div>
+                    {provider === 'OLLAMA' && (
+                      <p className="text-xs text-amber-400 flex items-center gap-1.5 mt-0.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>Recommend a frontier key (Gemini/OpenAI) for best resume-grounded questions</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {track === 'SQL' && (
+                  <div className="p-3 rounded-md bg-elevated border border-border flex items-center gap-2 mt-1">
+                    <Chip variant="neutral" size="sm" icon={<Database className="w-3.5 h-3.5" />}>
+                      Sandbox: coming soon — dialogue assessment
+                    </Chip>
+                  </div>
+                )}
               </div>
 
               {/* Seniority Level (Segmented Control) */}

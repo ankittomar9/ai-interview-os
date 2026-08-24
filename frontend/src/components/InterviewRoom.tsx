@@ -64,6 +64,9 @@ const END_PHRASES = [
   "back to you"
 ];
 
+// Candidate thinking buffer; AI replies ~25s after last word
+const SILENCE_WINDOW_MS = 25_000;
+
 const DEFAULT_LEFT_WIDTH = 380;
 const DEFAULT_CONSOLE_HEIGHT = 180;
 
@@ -78,15 +81,24 @@ export const InterviewRoom: React.FC<Props> = ({
   const [timeLeft, setTimeLeft] = useState(45 * 60);
   const [currentStage, setCurrentStage] = useState<InterviewStage>('INTRODUCTION');
 
+  const isSqlTrack = question.track === 'SQL';
+  const isResumeTrack = question.track === 'RESUME_BASED';
+
   const getStarterForLang = (lang: string) => {
     if (question.starterCodeMap && question.starterCodeMap[lang]) {
       return question.starterCodeMap[lang];
+    }
+    if (question.track === 'SQL') {
+      return question.starterCode || '-- Write your SQL queries, schema designs, or joins below:\nSELECT \n  c.id AS customer_id,\n  c.name,\n  COUNT(o.id) AS total_orders,\n  COALESCE(SUM(o.total_amount), 0) AS total_spent\nFROM customers c\nLEFT JOIN orders o ON c.id = o.customer_id\nGROUP BY c.id, c.name\nORDER BY total_spent DESC;\n';
+    }
+    if (question.track === 'RESUME_BASED') {
+      return question.starterCode || '// Resume-based assessment thought scratchpad & solution notes\n// Ground your answers in specific engineering projects, leadership scenarios, and architectural choices from your resume.\n';
     }
     return question.starterCode || '// Write your standard I/O solution here\n';
   };
 
   // --- State: Code & Tabs ---
-  const [code, setCode] = useState(getStarterForLang('java'));
+  const [code, setCode] = useState(getStarterForLang(isSqlTrack ? 'sql' : 'java'));
   const [language, setLanguage] = useState<'java' | 'python' | 'javascript'>('java');
   const [editorTab, setEditorTab] = useState<'solution' | 'tests' | 'whiteboard'>('solution');
   const [leftPanelTab, setLeftPanelTab] = useState<'description' | 'scratchpad'>('description');
@@ -394,7 +406,7 @@ export const InterviewRoom: React.FC<Props> = ({
           if (silenceTimeoutRef.current) {
             clearTimeout(silenceTimeoutRef.current);
           }
-          // Auto-submit if candidate pauses for 20 seconds
+          // Auto-submit if candidate pauses for SILENCE_WINDOW_MS (25s)
           silenceTimeoutRef.current = setTimeout(() => {
             stopListening();
             const textToSubmit = (latestTranscriptRef.current || chatInputRef.current || '').trim();
@@ -402,7 +414,7 @@ export const InterviewRoom: React.FC<Props> = ({
               void triggerCandidateTurnRef.current(textToSubmit);
               latestTranscriptRef.current = '';
             }
-          }, 20000);
+          }, SILENCE_WINDOW_MS);
         };
 
         recognition.onstart = () => {
@@ -826,9 +838,9 @@ export const InterviewRoom: React.FC<Props> = ({
             variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'}
             size="sm"
             icon={<Mic className="w-3.5 h-3.5" />}
-            title="Hands-free: auto-submits after 20s of silence or saying 'That is my answer'"
+            title="Auto-submits ~25s after you stop speaking, or say 'that is my answer'"
           >
-            {isSpeakingNow ? 'Speaking...' : isListening ? 'Listening (20s Auto)' : 'Mic Ready'}
+            {isSpeakingNow ? 'Speaking...' : isListening ? 'Listening (25s Auto)' : 'Mic Ready'}
           </Chip>
 
           {/* Proctor Chip */}
@@ -1083,7 +1095,7 @@ export const InterviewRoom: React.FC<Props> = ({
             {/* ActivityBar */}
             <ActivityBar
               active="explorer"
-              onRun={handleRunCode}
+              onRun={isSqlTrack || isResumeTrack ? undefined : handleRunCode}
               proctorClean={!(isWindowBlurred || tabSwitches > 0)}
             />
 
@@ -1099,17 +1111,19 @@ export const InterviewRoom: React.FC<Props> = ({
                     icon={<Code2 className="w-3.5 h-3.5 text-primary-2" />}
                     onClick={() => setEditorTab('solution')}
                   >
-                    Solution.{currentCodeExt}
+                    {isSqlTrack ? 'Solution.sql' : isResumeTrack ? 'Response_Notes.md' : `Solution.${currentCodeExt}`}
                   </Button>
 
-                  <Button
-                    variant={editorTab === 'tests' ? 'secondary' : 'ghost'}
-                    size="sm"
-                    icon={<FileText className="w-3.5 h-3.5 text-sky-400" />}
-                    onClick={() => setEditorTab('tests')}
-                  >
-                    tests.{language === 'python' ? 'py' : 'java'}
-                  </Button>
+                  {!isResumeTrack && !isSqlTrack && (
+                    <Button
+                      variant={editorTab === 'tests' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      icon={<FileText className="w-3.5 h-3.5 text-sky-400" />}
+                      onClick={() => setEditorTab('tests')}
+                    >
+                      tests.{language === 'python' ? 'py' : 'java'}
+                    </Button>
+                  )}
 
                   <Button
                     variant={editorTab === 'whiteboard' ? 'secondary' : 'ghost'}
@@ -1121,35 +1135,57 @@ export const InterviewRoom: React.FC<Props> = ({
                   </Button>
                 </div>
 
-                {/* Language Selector, Run Tests, Submit & Maximize */}
+                {/* Language Selector / Badge, Run Tests / Sandbox Chip, Submit & Maximize */}
                 <div className="flex items-center gap-2">
-                  <select
-                    value={language}
-                    onChange={(e) => handleLanguageChange(e.target.value as any)}
-                    className="bg-elevated text-text border border-border rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                  >
-                    <option value="java">Java 21 LTS</option>
-                    <option value="python">Python 3.12</option>
-                    <option value="javascript">JavaScript (Node)</option>
-                  </select>
+                  {isSqlTrack ? (
+                    <span className="px-2.5 py-1 bg-elevated border border-border rounded-md text-xs font-semibold text-text">
+                      SQL (ANSI / PostgreSQL)
+                    </span>
+                  ) : isResumeTrack ? (
+                    <span className="px-2.5 py-1 bg-elevated border border-border rounded-md text-xs font-semibold text-text">
+                      Resume Assessment
+                    </span>
+                  ) : (
+                    <select
+                      value={language}
+                      onChange={(e) => handleLanguageChange(e.target.value as any)}
+                      className="bg-elevated text-text border border-border rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                    >
+                      <option value="java">Java 21 LTS</option>
+                      <option value="python">Python 3.12</option>
+                      <option value="javascript">JavaScript (Node)</option>
+                    </select>
+                  )}
+
+                  {isSqlTrack ? (
+                    <Chip variant="neutral" size="sm" title="Live SQL sandbox execution ships in a later milestone">
+                      SQL sandbox: coming soon
+                    </Chip>
+                  ) : isResumeTrack ? null : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<Play className="w-3 h-3 fill-white" />}
+                      onClick={handleRunCode}
+                      loading={testStatus === 'running'}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    >
+                      {testStatus === 'running' ? 'Running...' : 'Run Tests'}
+                    </Button>
+                  )}
 
                   <Button
                     variant="primary"
                     size="sm"
-                    icon={<Play className="w-3 h-3 fill-white" />}
-                    onClick={handleRunCode}
-                    loading={testStatus === 'running'}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    onClick={() => void triggerCandidateTurn(
+                      isSqlTrack
+                        ? 'I have finalized my SQL queries and schema approach.'
+                        : isResumeTrack
+                        ? 'I have completed my explanation for this resume-grounded question.'
+                        : 'I have updated and tested my code in the editor.'
+                    )}
                   >
-                    {testStatus === 'running' ? 'Running...' : 'Run Tests'}
-                  </Button>
-
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => void triggerCandidateTurn('I have updated and tested my code in the editor.')}
-                  >
-                    Submit Code
+                    {isResumeTrack ? 'Submit Answer' : 'Submit Code'}
                   </Button>
 
                   <Button
@@ -1167,7 +1203,7 @@ export const InterviewRoom: React.FC<Props> = ({
               <BreadcrumbBar
                 segments={
                   editorTab === 'solution'
-                    ? ['Solution.' + currentCodeExt]
+                    ? [isSqlTrack ? 'Solution.sql' : isResumeTrack ? 'Response_Notes.md' : 'Solution.' + currentCodeExt]
                     : editorTab === 'tests'
                     ? ['tests.' + (language === 'python' ? 'py' : 'java')]
                     : ['HLD Whiteboard']
@@ -1179,7 +1215,17 @@ export const InterviewRoom: React.FC<Props> = ({
                 {editorTab === 'solution' && (
                   <Editor
                     height="100%"
-                    language={language === 'python' ? 'python' : language === 'javascript' ? 'javascript' : 'java'}
+                    language={
+                      isSqlTrack
+                        ? 'sql'
+                        : isResumeTrack
+                        ? 'markdown'
+                        : language === 'python'
+                        ? 'python'
+                        : language === 'javascript'
+                        ? 'javascript'
+                        : 'java'
+                    }
                     theme="vs-dark"
                     value={code}
                     onChange={(val) => setCode(val || '')}

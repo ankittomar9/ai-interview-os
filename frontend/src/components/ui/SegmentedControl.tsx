@@ -24,7 +24,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
   disabled = false
 }) => {
   const sizeStyles = {
-    sm: 'p-0.5 text-xs',
+    sm: 'p-1 text-xs',
     md: 'p-1 text-xs sm:text-sm'
   };
 
@@ -35,7 +35,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
 
   return (
     <div
-      className={`inline-flex items-center self-start w-fit flex-wrap gap-1 bg-elevated border border-border rounded-md ${sizeStyles[size]} ${className}`}
+      className={`inline-flex self-start w-fit items-center gap-1 bg-elevated border border-border rounded-md ${sizeStyles[size]} ${className}`}
       role="radiogroup"
     >
       {options.map((opt) => {
@@ -48,7 +48,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
             aria-checked={isSelected}
             disabled={disabled}
             onClick={() => onChange(opt.value)}
-            className={`flex items-center justify-center font-semibold rounded transition-all duration-150 select-none shrink-0 cursor-pointer ${
+            className={`flex items-center justify-center font-semibold rounded shrink-0 transition-all duration-150 select-none cursor-pointer ${
               itemSizeStyles[size]
             } ${
               isSelected
