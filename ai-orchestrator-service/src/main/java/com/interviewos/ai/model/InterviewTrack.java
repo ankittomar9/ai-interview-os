@@ -8,5 +8,7 @@ public enum InterviewTrack {
     ALGORITHMS_DATA_STRUCTURES,
     SYSTEM_DESIGN,
     BEHAVIORAL_STAR,
-    SPRING_LLD
+    SPRING_LLD,
+    SQL,
+    RESUME_BASED
 }
