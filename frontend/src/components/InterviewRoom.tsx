@@ -30,6 +30,7 @@ import { SelfTimer } from './ide/SelfTimer';
 import { usePlaygroundProgress } from '../hooks/usePlaygroundProgress';
 import { useTheme } from './theme-provider';
 import { defineMonacoThemes } from '../lib/syntax-themes';
+import { TrackNavMenu } from './ui/TrackNavMenu';
 import {
   Timer,
   Play,
@@ -115,6 +116,20 @@ export const InterviewRoom: React.FC<Props> = ({
   const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, boolean>>({});
   const [hintsRevealedMap, setHintsRevealedMap] = useState<Record<string, number>>({});
 
+  const [allCatalogQuestions, setAllCatalogQuestions] = useState<GenerateQuestionResponse[]>([]);
+
+  useEffect(() => {
+    listQuestions({})
+      .then((qs) => {
+        if (qs && qs.length > 0) {
+          setAllCatalogQuestions(qs);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load multi-question catalog:', err);
+      });
+  }, []);
+
   useEffect(() => {
     if (initialQuestionsList && initialQuestionsList.length > 1) return;
     listQuestions({ track: initialQuestion.track })
@@ -126,13 +141,69 @@ export const InterviewRoom: React.FC<Props> = ({
         }
       })
       .catch((err) => {
-        console.warn('Could not load multi-question catalog:', err);
+        console.warn('Could not load track questions:', err);
       });
   }, [initialQuestion, initialQuestionsList]);
 
+  const handleSwitchTrack = async (trackKey: string) => {
+    if (!isPlayground) return;
+    try {
+      let filtered = trackKey === 'ALL'
+        ? allCatalogQuestions
+        : allCatalogQuestions.filter((q) => q.track === trackKey);
+
+      if (!filtered || filtered.length === 0) {
+        filtered = await listQuestions(trackKey === 'ALL' ? {} : { track: trackKey });
+      }
+
+      if (filtered && filtered.length > 0) {
+        setQuestionsList(filtered);
+        setActiveQuestionIdx(0);
+        const nextQ = filtered[0];
+        const savedCode = localStorage.getItem(`code.${sessionId}.${nextQ.slug || 'q1'}`);
+        setCode(savedCode || getStarterForLang(nextQ, nextQ.track === 'SQL' ? 'sql' : language));
+      }
+    } catch (err) {
+      console.error('Failed to switch track:', err);
+    }
+  };
+
+  // --- Natural Stage Mapping ---
+  const getStageForQuestion = (q: GenerateQuestionResponse): InterviewStage => {
+    const track = q.track;
+    if (track === 'SYSTEM_DESIGN') return 'SYSTEM_DESIGN';
+    if (track === 'BEHAVIORAL_STAR' || track === 'RESUME_BASED') return 'CORE_TECH';
+    return 'CODING_DSA';
+  };
+
   // --- State: Timer & Stages ---
   const [timeLeft, setTimeLeft] = useState(45 * 60);
-  const [currentStage, setCurrentStage] = useState<InterviewStage>('INTRODUCTION');
+  const [stageOverride, setStageOverride] = useState<InterviewStage | null>(null);
+
+  const currentStage: InterviewStage = stageOverride || getStageForQuestion(currentQuestion);
+
+  const handleStageClick = (targetStage: InterviewStage) => {
+    if (!isPlayground) return;
+    setStageOverride(targetStage);
+
+    if (targetStage === 'INTRODUCTION') {
+      setActiveQuestionIdx(0);
+      return;
+    }
+
+    // Find first matching question in current list
+    const matchIdx = questionsList.findIndex((q) => getStageForQuestion(q) === targetStage);
+    if (matchIdx !== -1) {
+      handleSelectQuestion(matchIdx);
+    } else {
+      // If not in current list, search allCatalogQuestions
+      const catIdx = allCatalogQuestions.findIndex((q) => getStageForQuestion(q) === targetStage);
+      if (catIdx !== -1) {
+        const matchTrack = allCatalogQuestions[catIdx].track;
+        void handleSwitchTrack(matchTrack);
+      }
+    }
+  };
 
   const isSqlTrack = currentQuestion.track === 'SQL';
   const isResumeTrack = currentQuestion.track === 'RESUME_BASED';
@@ -168,6 +239,7 @@ export const InterviewRoom: React.FC<Props> = ({
     localStorage.setItem(`code.${sessionId}.${currentQuestion.slug || 'q1'}`, code);
 
     const nextQ = questionsList[idx];
+    setStageOverride(null);
     setActiveQuestionIdx(idx);
 
     const saved = localStorage.getItem(`code.${sessionId}.${nextQ.slug || 'q1'}`);
@@ -198,10 +270,11 @@ export const InterviewRoom: React.FC<Props> = ({
 
   const allTestCases = [...sampleTestItems, ...customCases];
 
-  // --- State: Floating AI Assistant Panel ---
+  // --- State: Floating AI Assistant Panel (Open-on-entry with 10s auto-collapse) ---
+  const coachCollapseKey = `ai.coach.collapsed.${sessionId}`;
   const [isAiPanelOpen, setIsAiPanelOpen] = useState<boolean>(() => {
-    const saved = sessionStorage.getItem('ai.panel.room');
-    return saved === null ? false : saved === 'true';
+    const saved = sessionStorage.getItem(coachCollapseKey);
+    return saved !== 'true'; // Open by default on first entry in both modes
   });
   const [hasUnread, setHasUnread] = useState<boolean>(false);
   const isAiPanelOpenRef = useRef<boolean>(isAiPanelOpen);
@@ -209,9 +282,23 @@ export const InterviewRoom: React.FC<Props> = ({
     isAiPanelOpenRef.current = isAiPanelOpen;
   }, [isAiPanelOpen]);
 
+  useEffect(() => {
+    if (sessionStorage.getItem(coachCollapseKey) === 'true') {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsAiPanelOpen(false);
+      sessionStorage.setItem(coachCollapseKey, 'true');
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [sessionId, coachCollapseKey]);
+
   const toggleAiPanel = () => {
     setIsAiPanelOpen((prev) => {
       const next = !prev;
+      sessionStorage.setItem(coachCollapseKey, 'true');
       sessionStorage.setItem('ai.panel.room', String(next));
       if (next) setHasUnread(false);
       return next;
@@ -642,18 +729,18 @@ export const InterviewRoom: React.FC<Props> = ({
       // Adaptive Stage Progression
       if (dialogue.recommendedAction === 'ADVANCE_STAGE') {
         if (currentStage === 'INTRODUCTION') {
-          setCurrentStage('CORE_TECH');
+          setStageOverride('CORE_TECH');
         } else if (currentStage === 'CORE_TECH') {
-          setCurrentStage('CODING_DSA');
+          setStageOverride('CODING_DSA');
         } else if (currentStage === 'CODING_DSA') {
-          setCurrentStage('SYSTEM_DESIGN');
+          setStageOverride('SYSTEM_DESIGN');
         }
       } else {
         // Fallback heuristic
         if (currentStage === 'INTRODUCTION') {
-          setCurrentStage('CORE_TECH');
+          setStageOverride('CORE_TECH');
         } else if (currentStage === 'CORE_TECH' && messages.length >= 4) {
-          setCurrentStage('CODING_DSA');
+          setStageOverride('CODING_DSA');
         }
       }
 
@@ -846,9 +933,29 @@ export const InterviewRoom: React.FC<Props> = ({
 
       <header className="h-12 bg-surface border-b border-border flex items-center justify-between px-3 sm:px-4 z-20 shrink-0 gap-3 min-w-0">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+          <TrackNavMenu
+            isPlayground={isPlayground}
+            activeTrack={currentQuestion.track}
+            onSelectTrack={handleSwitchTrack}
+            catalogQuestions={allCatalogQuestions.length > 0 ? allCatalogQuestions : questionsList}
+          />
           <button type="button" onClick={() => void handleEndInterview()} className="p-1 rounded-md text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer shrink-0">
             <ArrowLeft className="w-4 h-4" />
           </button>
+
+          {/* Mode Badge */}
+          {isPlayground ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span>Playground Mode</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+              <span>Interview Mode</span>
+            </div>
+          )}
+
           <div className="w-6 h-6 rounded-md bg-elevated border border-border flex items-center justify-center text-primary shrink-0">
             <Code2 className="w-3.5 h-3.5" />
           </div>
@@ -909,7 +1016,7 @@ export const InterviewRoom: React.FC<Props> = ({
       <StageStepper
         currentStage={currentStage}
         isPlayground={isPlayground}
-        onStageClick={isPlayground ? setCurrentStage : undefined}
+        onStageClick={handleStageClick}
       />
 
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
@@ -1075,10 +1182,19 @@ export const InterviewRoom: React.FC<Props> = ({
       {!isPlayground && (
         <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />
       )}
-      <FloatingAiOrb isOpen={isAiPanelOpen} onToggle={toggleAiPanel} isAiSpeaking={isAiSpeaking} hasUnread={hasUnread} />
+      <FloatingAiOrb
+        isOpen={isAiPanelOpen}
+        onToggle={toggleAiPanel}
+        isAiSpeaking={isAiSpeaking}
+        isListening={isListening}
+        hasUnread={hasUnread}
+      />
       <AiAssistantPanel
         open={isAiPanelOpen}
-        onClose={() => setIsAiPanelOpen(false)}
+        onClose={() => {
+          setIsAiPanelOpen(false);
+          sessionStorage.setItem(coachCollapseKey, 'true');
+        }}
         mode="live"
         personaName={isPlayground ? 'Coach Alex' : 'Dr. Anya Chen'}
         personaTitle={isPlayground ? 'AI Socratic Coach' : 'AI Principal Bar Raiser'}
@@ -1088,11 +1204,15 @@ export const InterviewRoom: React.FC<Props> = ({
         isAiResponding={isAiResponding}
         chatInput={chatInput}
         setChatInput={setChatInput}
-        onSend={triggerCandidateTurn}
+        onSend={(text) => {
+          sessionStorage.setItem(coachCollapseKey, 'true');
+          void triggerCandidateTurn(text);
+        }}
         isListening={isListening}
         voiceEnabled={voiceOutputEnabled}
         onToggleVoice={() => setVoiceOutputEnabled(!voiceOutputEnabled)}
         onMicToggle={() => {
+          sessionStorage.setItem(coachCollapseKey, 'true');
           if (isListening) stopListening();
           else startListening();
         }}
