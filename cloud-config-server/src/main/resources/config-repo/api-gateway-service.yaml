@@ -15,7 +15,7 @@ spring:
         cors-configurations:
           '[/**]':
             allowed-origins:
-              - "*"
+              - "${FRONTEND_ORIGIN:http://localhost:5173}"
             allowed-methods:
               - GET
               - POST
@@ -24,6 +24,7 @@ spring:
               - OPTIONS
             allowed-headers:
               - "*"
+            allow-credentials: true
       routes:
         # Route 1: Session Service (:8081)
         - id: session-service-route

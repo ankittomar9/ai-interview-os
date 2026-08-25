@@ -1,0 +1,36 @@
+# ==============================================================================
+# Development Override: Direct Microservice Ports
+# Usage: docker compose -f docker-compose.yaml -f docker-compose.dev-ports.yaml up
+# ==============================================================================
+services:
+  service-discovery-service:
+    ports:
+      - "8761:8761"
+
+  cloud-config-server:
+    ports:
+      - "8888:8888"
+
+  interview-session-service:
+    ports:
+      - "8081:8081"
+
+  ai-orchestrator-service:
+    ports:
+      - "8082:8082"
+
+  proctor-sentinel-service:
+    ports:
+      - "8083:8083"
+
+  evaluation-report-service:
+    ports:
+      - "8084:8084"
+
+  question-bank-service:
+    ports:
+      - "8086:8086"
+
+  judge0:
+    ports:
+      - "2358:2358"

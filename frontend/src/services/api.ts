@@ -129,9 +129,13 @@ export const generateQuestion = async (payload: {
     apiKey?: string;
     resumeSkills?: string[];
 }): Promise<GenerateQuestionResponse> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (payload.apiKey) {
+        headers['X-InterviewOS-Key'] = payload.apiKey;
+    }
     const res = await fetch(`${AI_API}/generate-question`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('Failed to generate interview question');
@@ -154,9 +158,13 @@ export const processDialogueTurn = async (payload: {
         memoryUsedMb: number;
     };
 }): Promise<AiDialogueResponse> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (payload.apiKey) {
+        headers['X-InterviewOS-Key'] = payload.apiKey;
+    }
     const res = await fetch(`${AI_API}/dialogue`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('Failed to process dialogue turn');
@@ -166,9 +174,13 @@ export const processDialogueTurn = async (payload: {
 export const evaluateArchitectureDesign = async (
     payload: DesignEvaluateRequest
 ): Promise<DesignEvaluateResponse> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (payload.apiKey) {
+        headers['X-InterviewOS-Key'] = payload.apiKey;
+    }
     const res = await fetch(`${AI_API}/design-evaluate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('Failed to evaluate system design architecture');
@@ -187,8 +199,14 @@ export const transcribeAudio = async (
     if (apiKey) formData.append('apiKey', apiKey);
     if (promptContext) formData.append('promptContext', promptContext);
 
+    const headers: Record<string, string> = {};
+    if (apiKey) {
+        headers['X-InterviewOS-Key'] = apiKey;
+    }
+
     const res = await fetch(`${AI_API}/transcribe`, {
         method: 'POST',
+        headers,
         body: formData
     });
     if (!res.ok) throw new Error('Speech transcription request failed');

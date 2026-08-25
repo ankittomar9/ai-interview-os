@@ -15,7 +15,7 @@ spring:
         cors-configurations:
           '[/**]':
             allowed-origins:
-              - "*"
+              - "${FRONTEND_ORIGIN:http://localhost:5173}"
             allowed-methods:
               - GET
               - POST
@@ -24,12 +24,19 @@ spring:
               - OPTIONS
             allowed-headers:
               - "*"
+            allow-credentials: true
       routes:
         # Route 1: Session Service (:8081)
         - id: session-service-route
           uri: lb://interview-session-service
           predicates:
             - Path=/api/v1/sessions/**
+
+        # Route 1.1: Problem Catalog (:8081)
+        - id: problem-catalog-route
+          uri: lb://interview-session-service
+          predicates:
+            - Path=/api/v1/problems/**
 
         # Route 2: AI Orchestrator Service (:8082)
         - id: ai-orchestrator-route
