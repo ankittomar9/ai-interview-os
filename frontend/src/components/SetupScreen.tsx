@@ -5,7 +5,6 @@ import {
   Sparkles,
   Key,
   ArrowRight,
-  ShieldCheck,
   Upload,
   FileText,
   CheckCircle2,
@@ -16,14 +15,9 @@ import {
   Users2,
   Building2,
   Briefcase,
-  Database
+  Database,
+  Loader2
 } from 'lucide-react';
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
-import { Input } from './ui/Input';
-import { Textarea } from './ui/Textarea';
-import { SegmentedControl } from './ui/SegmentedControl';
-import { TrackCard } from './ui/TrackCard';
 import { Chip } from './ui/Chip';
 import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
@@ -50,40 +44,47 @@ const TRACKS: Array<{
 }> = [
   {
     track: 'ALGORITHMS_DATA_STRUCTURES',
-    title: 'Algorithms & Data Structures (DSA)',
-    description: 'LeetCode-style algorithms, time/space complexity, stdin/stdout sandbox.',
-    icon: <Binary className="w-5 h-5 text-text-3" />
+    title: 'Algorithms & Data Structures',
+    description: 'LeetCode-style algorithms, complexity math & Standard I/O sandbox.',
+    icon: <Binary className="w-4 h-4" />
   },
   {
     track: 'SQL',
-    title: 'SQL & Database Engineering',
-    description: 'Queries, joins, indexing & optimization scenarios. Dialogue-based; live SQL sandbox ships in a later milestone.',
-    icon: <Database className="w-5 h-5 text-text-3" />
+    title: 'SQL & Database Eng',
+    description: 'Window functions, sessionization, joins & live PostgreSQL sandbox.',
+    icon: <Database className="w-4 h-4" />
   },
   {
     track: 'SPRING_LLD',
     title: 'Spring Boot LLD Projects',
-    description: 'Multi-file Spring Boot projects in a real VS Code workspace + Maven tests.',
-    icon: <Code2 className="w-5 h-5 text-text-3" />
+    description: 'Multi-file Spring Boot services in an isolated workspace + Maven tests.',
+    icon: <Code2 className="w-4 h-4" />
   },
   {
     track: 'SYSTEM_DESIGN',
-    title: 'High-Level System Design (HLD)',
-    description: 'Architecture whiteboard with capacity math + vision evaluation.',
-    icon: <Layers className="w-5 h-5 text-text-3" />
+    title: 'High-Level System Design',
+    description: 'Interactive architecture whiteboard canvas with multimodal AI evaluation.',
+    icon: <Layers className="w-4 h-4" />
   },
   {
     track: 'BEHAVIORAL_STAR',
     title: 'Behavioral & Leadership',
-    description: 'STAR scenarios, tradeoffs, conflict resolution.',
-    icon: <Users2 className="w-5 h-5 text-text-3" />
+    description: 'STAR structured scenarios, leadership dilemmas & tradeoff dialogue.',
+    icon: <Users2 className="w-4 h-4" />
   },
   {
     track: 'RESUME_BASED',
     title: 'Others (Resume-Based)',
-    description: 'Non-tech/managerial. AI generates questions grounded in YOUR resume using a frontier model.',
-    icon: <Sparkles className="w-5 h-5 text-text-3" />
+    description: 'Frontier AI generates personalized questions grounded in your resume.',
+    icon: <Sparkles className="w-4 h-4" />
   }
+];
+
+const SENIORITY_OPTIONS: Array<{ value: DifficultyLevel; label: string }> = [
+  { value: 'JUNIOR', label: 'Junior (0-2 YOE)' },
+  { value: 'MID', label: 'Mid-Level (3-5 YOE)' },
+  { value: 'SENIOR', label: 'Senior (5-8 YOE)' },
+  { value: 'STAFF', label: 'Staff / Lead (8+ YOE)' }
 ];
 
 export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
@@ -194,7 +195,7 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    if (!isFormValid || isLoading) return;
 
     onStart({
       candidateId: candidateId || 'candidate-01',
@@ -209,106 +210,205 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
   };
 
   return (
-    <div className="min-h-screen bg-bg text-text py-10 pb-16 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-        {/* LEFT COLUMN: Branding & Core Value Props */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <Card padding="lg" variant="default" className="flex flex-col gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-elevated border border-border flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-text" />
+    <div className="min-h-screen bg-[var(--color-page-bg)] grid place-items-center p-4 sm:p-8 select-text font-sans">
+      <div className="max-w-6xl w-full flex flex-col lg:flex-row min-h-[850px] bg-white dark:bg-[#18181b] rounded-2xl border border-slate-200 dark:border-[#27272a] shadow-2xl overflow-hidden">
+        
+        {/* =========================================================================
+            LEFT COLUMN: Dark Studio Sidebar (w-full lg:w-1/3)
+           ========================================================================= */}
+        <aside className="w-full lg:w-1/3 bg-[var(--color-sidebar-bg)] p-8 lg:p-10 flex flex-col justify-between text-slate-300">
+          <div>
+            {/* Logo + Product Name */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-9 h-9 bg-[var(--color-accent)] rounded-xl flex items-center justify-center shadow-md shadow-indigo-900/40">
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-text">AI Interview OS</h1>
-                <p className="text-xs text-text-3 font-medium">Production Technical Assessment</p>
+                <h1 className="text-xl font-bold tracking-tight text-white leading-none">AI Interview OS</h1>
+                <span className="text-[11px] font-medium text-slate-400">Honest Evaluation Studio</span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <p className="text-sm text-text-2 leading-relaxed">
-                Autonomous technical interview platform with live execution sandboxes, multi-file codebases, architecture canvases, and verbatim rubric scoring.
+            {/* Product description */}
+            <p className="text-[var(--color-sidebar-text)] text-sm leading-relaxed mb-8">
+              Autonomous technical interview platform with live execution sandboxes, multi-file codebases, and verbatim rubric scoring.
+            </p>
+
+            {/* Feature bullets */}
+            <div className="space-y-4 mb-8">
+              {[
+                { title: 'No Canned Metrics', desc: '5-dimension rubric backed by verbatim dialogue quotes.' },
+                { title: 'Real Sandbox Execution', desc: 'Isolated container test runner with Standard I/O.' },
+                { title: 'Interactive Architecture', desc: 'Multi-file workspaces and real-time whiteboard canvas.' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-[var(--color-active)] shrink-0 mt-0.5" />
+                  <div className="text-xs text-[var(--color-sidebar-text-2)] leading-relaxed">
+                    <strong className="text-white">{item.title}:</strong> {item.desc}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Lifecycle Timeline & Engine Status */}
+          <div className="pt-6 border-t border-[var(--color-sidebar-accent)]">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-sidebar-text-3)] mb-4">
+              Interview Lifecycle
+            </h3>
+            <div className="relative pl-5 space-y-4">
+              <div className="absolute left-2.5 top-1 bottom-1 w-px bg-[var(--color-sidebar-accent)]" />
+              {[
+                { label: 'Setup & Track Selection', state: 'completed' },
+                { label: 'System & Proctor Check', state: 'current' },
+                { label: 'AI Technical Assessment', state: 'upcoming' },
+                { label: '360° Diagnostic Report', state: 'upcoming' }
+              ].map((step, idx) => (
+                <div key={idx} className="relative flex items-center gap-3">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full ring-4 ring-[var(--color-sidebar-bg)] shrink-0 transition-all ${
+                      step.state === 'completed'
+                        ? 'bg-[var(--color-active)]'
+                        : step.state === 'current'
+                        ? 'bg-[var(--color-accent)] ring-indigo-950'
+                        : 'bg-[var(--color-sidebar-accent)]'
+                    }`}
+                  />
+                  <span
+                    className={`text-xs font-medium ${
+                      step.state === 'upcoming'
+                        ? 'text-[var(--color-sidebar-text-3)]'
+                        : step.state === 'current'
+                        ? 'text-white font-semibold'
+                        : 'text-[var(--color-sidebar-text-2)]'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Engine Status Card */}
+            <div className="mt-6 p-3.5 bg-[var(--color-sidebar-accent)]/60 rounded-xl border border-[var(--color-sidebar-accent)]">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-sidebar-text-3)]">
+                  AI Engine Status
+                </span>
+                <span className="text-[10px] font-medium text-emerald-400">Ready</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--color-active)] animate-pulse" />
+                <span className="text-xs font-semibold text-white">
+                  {provider === 'GEMINI' ? 'Gemini 2.5 Flash' : provider === 'GROQ' ? 'Groq Whisper + Llama' : provider}
+                </span>
+              </div>
+              <div className="text-[10px] text-[var(--color-sidebar-text-3)] mt-0.5">
+                Ultra-Low Latency Dialogue Engine
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* =========================================================================
+            RIGHT COLUMN: Light Candidate Setup Form (flex-1)
+           ========================================================================= */}
+        <div className="flex-1 p-6 sm:p-10 overflow-y-auto bg-white dark:bg-[#18181b]">
+          <div className="max-w-2xl mx-auto">
+            {/* Header */}
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Candidate Setup</h2>
+              <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1">
+                Enter candidate details and customize the evaluation track.
               </p>
             </div>
 
-            {/* Feature Bullets */}
-            <div className="space-y-3 pt-3 border-t border-border">
-              <div className="flex items-start gap-2.5 text-xs text-text-2">
-                <ShieldCheck className="w-4 h-4 text-text-3 shrink-0 mt-0.5" />
-                <span><strong>No Canned Metrics:</strong> 5-dimension rubric backed by verbatim dialogue quotes.</span>
-              </div>
-              <div className="flex items-start gap-2.5 text-xs text-text-2">
-                <Code2 className="w-4 h-4 text-text-3 shrink-0 mt-0.5" />
-                <span><strong>Real Sandbox Execution:</strong> Isolated container test runner with Standard I/O.</span>
-              </div>
-              <div className="flex items-start gap-2.5 text-xs text-text-2">
-                <Layers className="w-4 h-4 text-text-3 shrink-0 mt-0.5" />
-                <span><strong>Interactive Architecture:</strong> Multi-file workspaces and real-time whiteboard canvas.</span>
-              </div>
-            </div>
-          </Card>
-        </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* RIGHT COLUMN: Candidate Configuration Form */}
-        <div className="lg:col-span-7">
-          <Card padding="lg" variant="default">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-
-              <div>
-                <h2 className="text-lg font-bold text-text tracking-tight">Candidate Profile & Target Role</h2>
-                <p className="text-xs text-text-3 mt-0.5">Enter candidate details and customize the evaluation track.</p>
-              </div>
-
-              {/* Candidate Name & Candidate ID */}
+              {/* 1. Identity Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Candidate Full Name *"
-                  placeholder="e.g. Ankit Singh Tomar"
-                  value={candidateName}
-                  onChange={(e) => handleCandidateNameChange(e.target.value)}
-                  required
-                />
-                <Input
-                  label="Candidate ID (System Slug)"
-                  placeholder="e.g. candidate-01"
-                  value={candidateId}
-                  onChange={(e) => {
-                    setIsIdManuallyEdited(true);
-                    setCandidateId(e.target.value);
-                  }}
-                  hint="Used to identify transcripts & reports"
-                />
-              </div>
+                {/* Candidate Full Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                    Candidate Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ankit Singh Tomar"
+                    value={candidateName}
+                    onChange={(e) => handleCandidateNameChange(e.target.value)}
+                    className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg px-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all"
+                  />
+                </div>
 
-              {/* Target Role & Target Company */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Target Role Title *"
-                  placeholder="e.g. Senior Java Backend Engineer"
-                  value={roleTitle}
-                  onChange={(e) => setRoleTitle(e.target.value)}
-                  icon={<Briefcase className="w-4 h-4 text-text-3" />}
-                  required
-                />
-                <Input
-                  label="Target Company (Optional)"
-                  placeholder="e.g. Amazon, Google, Stripe"
-                  value={targetCompany}
-                  onChange={(e) => setTargetCompany(e.target.value)}
-                  icon={<Building2 className="w-4 h-4 text-text-3" />}
-                />
+                {/* Candidate ID Slug with 'id-' affix */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                    Candidate ID
+                  </label>
+                  <div className="flex items-center h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg px-3 focus-within:ring-2 focus-within:ring-[var(--color-accent)]/20 focus-within:border-[var(--color-accent)] transition-all">
+                    <span className="text-slate-400 dark:text-zinc-500 text-xs font-mono select-none mr-1">id-</span>
+                    <input
+                      type="text"
+                      value={candidateId.replace(/^id-/, '')}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/^id-/, '');
+                        setCandidateId(raw);
+                        setIsIdManuallyEdited(true);
+                      }}
+                      placeholder="candidate-01"
+                      className="flex-1 bg-transparent border-0 text-sm text-[var(--color-field-text)] font-mono focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Target Role Title */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                    Target Role Title *
+                  </label>
+                  <div className="relative">
+                    <Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Senior Java Backend Engineer"
+                      value={roleTitle}
+                      onChange={(e) => setRoleTitle(e.target.value)}
+                      className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg pl-9 pr-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Target Company */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                    Target Company (Optional)
+                  </label>
+                  <div className="relative">
+                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="e.g. Google, Stripe, Netflix"
+                      value={targetCompany}
+                      onChange={(e) => setTargetCompany(e.target.value)}
+                      className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg pl-9 pr-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* AI Model Provider & Key */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-text-2 tracking-wide">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
                     AI Model Provider
                   </label>
                   <select
                     value={provider}
                     onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
-                    className="w-full h-9 bg-surface border border-border rounded-md px-3 text-xs text-text focus:outline-none focus:border-primary transition-colors cursor-pointer"
+                    className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg px-3 text-xs text-[var(--color-field-text)] font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all cursor-pointer"
                   >
                     <option value="GEMINI">Google Gemini (Default)</option>
                     <option value="GROQ">Groq (Ultra-Low Latency)</option>
@@ -316,103 +416,153 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                     <option value="OLLAMA">Ollama (Local Offline)</option>
                   </select>
                 </div>
-                <Input
-                  label={`${provider} API Key (Optional)`}
-                  type="password"
-                  placeholder={provider === 'OLLAMA' ? 'http://localhost:11434' : `Enter ${provider} API key...`}
-                  value={apiKey}
-                  onChange={(e) => {
-                    setApiKey(e.target.value);
-                    setStoredApiKey(provider, e.target.value);
-                  }}
-                  icon={<Key className="w-4 h-4 text-text-3" />}
-                />
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                    {provider} API Key (Optional)
+                  </label>
+                  <div className="relative">
+                    <Key className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                    <input
+                      type="password"
+                      placeholder={provider === 'OLLAMA' ? 'http://localhost:11434' : `Enter ${provider} API key...`}
+                      value={apiKey}
+                      onChange={(e) => {
+                        setApiKey(e.target.value);
+                        setStoredApiKey(provider, e.target.value);
+                      }}
+                      className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg pl-9 pr-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all font-mono"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Track Selection (6 Track Cards in 2x3 Grid) */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-text-2 tracking-wide">
-                  Interview Assessment Track *
+              {/* 2. Assessment Track Grid */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-3">
+                  Assessment Track *
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {TRACKS.map((t) => (
-                    <TrackCard
-                      key={t.track}
-                      track={t.track}
-                      title={t.title}
-                      description={t.description}
-                      icon={t.icon}
-                      selected={track === t.track}
-                      onClick={() => setTrack(t.track)}
-                    />
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {TRACKS.map((t) => {
+                    const isSelected = track === t.track;
+                    return (
+                      <button
+                        key={t.track}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => setTrack(t.track)}
+                        className={`p-3.5 text-left rounded-xl h-full transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'border-2 border-[var(--color-accent)] bg-indigo-50/50 dark:bg-indigo-950/20 shadow-xs'
+                            : 'border border-[var(--color-field-border)] hover:border-slate-300 dark:hover:border-zinc-700 bg-[var(--color-field-bg)]'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className={isSelected ? 'text-[var(--color-accent)]' : 'text-slate-500 dark:text-zinc-400'}>
+                              {t.icon}
+                            </span>
+                            <span className={`text-xs font-bold ${
+                              isSelected ? 'text-[var(--color-accent)]' : 'text-slate-900 dark:text-white'
+                            }`}>
+                              {t.title}
+                            </span>
+                          </div>
+                          <p className={`text-[11px] leading-relaxed line-clamp-2 ${
+                            isSelected ? 'text-indigo-900/80 dark:text-indigo-200' : 'text-slate-500 dark:text-zinc-400'
+                          }`}>
+                            {t.description}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {/* Track-Specific Honest Badges */}
+                {/* Track Badges / Honesty Disclaimers */}
                 {track === 'RESUME_BASED' && (
-                  <div className="flex flex-col gap-1.5 p-3 rounded-md bg-elevated border border-border mt-1">
+                  <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 mt-2.5">
                     <div className="flex items-center gap-2">
-                      <Chip variant="neutral" size="sm" icon={<Sparkles className="w-3.5 h-3.5" />}>
+                      <Chip variant="neutral" size="sm" icon={<Sparkles className="w-3.5 h-3.5 text-indigo-600" />}>
                         Frontier-model question generation
                       </Chip>
                     </div>
                     {provider === 'OLLAMA' && (
-                      <p className="text-xs text-warning flex items-center gap-1.5 mt-0.5">
+                      <p className="text-xs text-amber-600 flex items-center gap-1.5 mt-0.5">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        <span>Recommend a frontier key (Gemini/OpenAI) for best resume-grounded questions</span>
+                        <span>Recommend a frontier key (Gemini/OpenAI) for optimal resume-grounded questions</span>
                       </p>
                     )}
                   </div>
                 )}
-
-                {track === 'SQL' && (
-                  <div className="p-3 rounded-md bg-elevated border border-border flex items-center gap-2 mt-1">
-                    <Chip variant="neutral" size="sm" icon={<Database className="w-3.5 h-3.5" />}>
-                      Sandbox: coming soon — dialogue assessment
-                    </Chip>
-                  </div>
-                )}
               </div>
 
-              {/* Seniority Level (Segmented Control) */}
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-text-2 tracking-wide">
+              {/* 3. Seniority Level */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-3">
                   Seniority Level
                 </label>
-                <SegmentedControl
-                  options={[
-                    { value: 'JUNIOR', label: 'Junior (0-2 YOE)' },
-                    { value: 'MID', label: 'Mid-Level (3-5 YOE)' },
-                    { value: 'SENIOR', label: 'Senior (5-8 YOE)' },
-                    { value: 'STAFF', label: 'Staff / Lead (8+ YOE)' }
-                  ]}
-                  value={difficulty}
-                  onChange={(val) => setDifficulty(val as DifficultyLevel)}
-                />
+                <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-lg w-max max-w-full overflow-x-auto">
+                  {SENIORITY_OPTIONS.map((opt) => {
+                    const isSelected = difficulty === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        onClick={() => setDifficulty(opt.value)}
+                        className={`px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer shrink-0 ${
+                          isSelected
+                            ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                            : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Resume Ingestion Pipeline */}
-              <div className="p-4 bg-surface rounded-lg border border-border flex flex-col gap-3">
+              {/* 4. Resume Ingestion Pipeline */}
+              <div className="p-4 bg-[var(--color-field-bg)] rounded-xl border border-[var(--color-field-border)] space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-text-3" />
-                    <span className="text-xs font-bold text-text">Resume Ingestion (Optional)</span>
+                    <FileText className="w-4 h-4 text-slate-400" />
+                    <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Resume Ingestion (Optional)</span>
                   </div>
-                  <SegmentedControl
-                    size="sm"
-                    options={[
-                      { value: 'upload', label: 'Upload File' },
-                      { value: 'paste', label: 'Paste Text' }
-                    ]}
-                    value={resumeMode}
-                    onChange={(val) => setResumeMode(val as 'upload' | 'paste')}
-                  />
+                  <div className="flex p-0.5 bg-slate-200/70 dark:bg-zinc-800 rounded-md text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setResumeMode('upload')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                        resumeMode === 'upload'
+                          ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-2xs font-bold'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResumeMode('paste')}
+                      className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                        resumeMode === 'paste'
+                          ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-2xs font-bold'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      Paste Text
+                    </button>
+                  </div>
                 </div>
 
                 {resumeMode === 'upload' ? (
-                  <label className="border-2 border-dashed border-border hover:border-zinc-500 bg-elevated/40 rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-center">
-                    <Upload className="w-6 h-6 text-text-3" />
-                    <span className="text-xs text-text-2 font-medium">
+                  <label className="border-2 border-dashed border-[var(--color-field-border)] hover:border-slate-400 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900 rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-center">
+                    <Upload className="w-5 h-5 text-slate-400" />
+                    <span className="text-xs text-slate-600 dark:text-zinc-300 font-medium">
                       {isParsingResume ? 'Extracting candidate skills & experience...' : 'Drop your resume (PDF, TXT, DOCX) or click to browse'}
                     </span>
                     <input
@@ -424,30 +574,29 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                     />
                   </label>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    <Textarea
+                  <div className="space-y-2">
+                    <textarea
                       placeholder="Paste resume content, work history, tech stack, and key project bullets..."
                       rows={3}
                       value={pastedResumeText}
                       onChange={(e) => setPastedResumeText(e.target.value)}
+                      className="w-full bg-white dark:bg-zinc-900 border border-[var(--color-field-border)] rounded-lg p-2.5 text-xs text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all resize-y"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="secondary"
-                      size="sm"
                       onClick={handleTextIngest}
-                      loading={isParsingResume}
-                      disabled={!pastedResumeText.trim()}
+                      disabled={!pastedResumeText.trim() || isParsingResume}
+                      className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 text-xs font-semibold hover:bg-slate-300 dark:hover:bg-zinc-700 disabled:opacity-50 cursor-pointer transition-colors"
                     >
-                      Extract Resume Signals
-                    </Button>
+                      {isParsingResume ? 'Extracting...' : 'Extract Resume Signals'}
+                    </button>
                   </div>
                 )}
 
                 {/* Extracted Skills Chips Row */}
                 {parsedResumeData && parsedResumeData.skills.length > 0 && (
-                  <div className="pt-2 border-t border-border flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-success">
+                  <div className="pt-2 border-t border-slate-200 dark:border-zinc-800 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>{parsedResumeData.fileName} parsed ({parsedResumeData.yearsOfExperience} YOE detected):</span>
                     </div>
@@ -462,30 +611,41 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                 )}
               </div>
 
-              {/* Job Description & Custom Focus */}
-              <Textarea
-                label="Job Description & Focus Areas (Optional)"
-                placeholder="Paste key responsibilities, specific topics, or architectures to emphasize..."
-                rows={3}
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-              />
+              {/* 5. Job Description & Custom Focus */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                  Job Description & Focus Areas (Optional)
+                </label>
+                <textarea
+                  placeholder="Paste key responsibilities, specific topics, or architectures to emphasize..."
+                  rows={3}
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                  className="w-full bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg p-3 text-xs text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all resize-y"
+                />
+              </div>
 
-              {/* Launch Action Button */}
-              <Button
+              {/* 6. Submit CTA */}
+              <button
                 type="submit"
-                variant="primary"
-                size="lg"
-                loading={isLoading}
-                disabled={!isFormValid}
-                icon={<ArrowRight className="w-5 h-5" />}
-                className="w-full mt-2"
+                disabled={!isFormValid || isLoading}
+                className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.99] group cursor-pointer flex items-center justify-center gap-2 mt-2"
               >
-                {isLoading ? 'Synthesizing Problem & Initializing Sandbox...' : 'Launch Technical Assessment'}
-              </Button>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Synthesizing Problem & Initializing Sandbox...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Launch Technical Assessment</span>
+                    <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
+              </button>
 
             </form>
-          </Card>
+          </div>
         </div>
 
       </div>
