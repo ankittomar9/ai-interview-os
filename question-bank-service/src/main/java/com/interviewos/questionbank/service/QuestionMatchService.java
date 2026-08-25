@@ -49,6 +49,13 @@ public class QuestionMatchService {
         List<ScoredCandidate> scored = scoreCandidates(candidates, request);
         scored.sort(Comparator.comparingDouble(ScoredCandidate::score).reversed());
 
+        int count = (request.count() != null && request.count() > 0) ? request.count() : 1;
+        List<QuestionPublicView> topNViews = scored.stream()
+                .limit(count)
+                .map(ScoredCandidate::doc)
+                .map(QuestionPublicView::fromDocument)
+                .toList();
+
         ScoredCandidate topPick = scored.get(0);
 
         // 3. Optional LLM Re-Ranking among top 5 candidates
@@ -65,6 +72,7 @@ public class QuestionMatchService {
 
                 return QuestionMatchResponse.builder()
                         .question(QuestionPublicView.fromDocument(selectedDoc))
+                        .questions(topNViews)
                         .rationale(d.rationale)
                         .llmAssisted(true)
                         .build();
@@ -77,6 +85,7 @@ public class QuestionMatchService {
 
         return QuestionMatchResponse.builder()
                 .question(QuestionPublicView.fromDocument(topPick.doc()))
+                .questions(topNViews)
                 .rationale(rationale)
                 .llmAssisted(false)
                 .build();

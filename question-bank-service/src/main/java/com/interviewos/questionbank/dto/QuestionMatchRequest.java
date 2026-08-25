@@ -8,5 +8,17 @@ public record QuestionMatchRequest(
         List<String> resumeSkills,
         String jdText,
         String provider,
-        String apiKey
-) {}
+        String apiKey,
+        Integer count
+) {
+    public QuestionMatchRequest(
+            String track,
+            String difficulty,
+            List<String> resumeSkills,
+            String jdText,
+            String provider,
+            String apiKey
+    ) {
+        this(track, difficulty, resumeSkills, jdText, provider, apiKey, 1);
+    }
+}

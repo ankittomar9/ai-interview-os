@@ -46,6 +46,12 @@ public class InterviewSessionDocument {
     private String status;
 
     @Builder.Default
+    private List<String> questionSlugs = new ArrayList<>();
+
+    @Builder.Default
+    private Integer activeQuestionIndex = 0;
+
+    @Builder.Default
     private List<TranscriptTurn> transcript = new ArrayList<>();
 
     @Builder.Default

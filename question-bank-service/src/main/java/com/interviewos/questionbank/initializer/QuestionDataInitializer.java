@@ -683,8 +683,554 @@ public class QuestionDataInitializer implements CommandLineRunner {
                     .source("CORE")
                     .build();
 
-            // Idempotent Seeding
-            for (QuestionDocument q : List.of(lruCache, reverseString, twoSum, lldOrderService)) {
+            // 5. Merge K Sorted Lists (DSA - SENIOR)
+            QuestionDocument mergeKSortedLists = QuestionDocument.builder()
+                    .slug("merge-k-sorted-lists")
+                    .title("Merge K Sorted Lists")
+                    .track("ALGORITHMS_DATA_STRUCTURES")
+                    .difficulty("SENIOR")
+                    .tags(List.of("heap", "priority-queue", "divide-and-conquer", "linked-list", "java"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Merge k Sorted Lists
+                            You are given an array of `k` linked-lists `lists`, each linked-list is sorted in ascending order.
+                            Merge all the linked-lists into one sorted linked-list and return it.
+
+                            ### Input Format:
+                            - Line 1: `k` (number of lists).
+                            - Next `k` lines: space-separated integers for each list.
+
+                            ### Output Format:
+                            - Single line of space-separated integers in sorted order.
+                            """)
+                    .starterCode("""
+                            import java.util.*;
+
+                            public class Main {
+                                public static void main(String[] args) {
+                                    Scanner scanner = new Scanner(System.in);
+                                    if (!scanner.hasNextInt()) return;
+                                    int k = scanner.nextInt();
+                                    PriorityQueue<Integer> pq = new PriorityQueue<>();
+                                    for (int i = 0; i < k; i++) {
+                                        int n = scanner.nextInt();
+                                        for (int j = 0; j < n; j++) {
+                                            pq.offer(scanner.nextInt());
+                                        }
+                                    }
+                                    StringBuilder sb = new StringBuilder();
+                                    while (!pq.isEmpty()) {
+                                        sb.append(pq.poll()).append(" ");
+                                    }
+                                    System.out.println(sb.toString().trim());
+                                }
+                            }
+                            """)
+                    .starterCodeMap(Map.of(
+                            "java", """
+                                    import java.util.*;
+
+                                    public class Main {
+                                        public static void main(String[] args) {
+                                            Scanner scanner = new Scanner(System.in);
+                                            if (!scanner.hasNextInt()) return;
+                                            int k = scanner.nextInt();
+                                            PriorityQueue<Integer> pq = new PriorityQueue<>();
+                                            for (int i = 0; i < k; i++) {
+                                                int n = scanner.nextInt();
+                                                for (int j = 0; j < n; j++) {
+                                                    pq.offer(scanner.nextInt());
+                                                }
+                                            }
+                                            StringBuilder sb = new StringBuilder();
+                                            while (!pq.isEmpty()) {
+                                                sb.append(pq.poll()).append(" ");
+                                            }
+                                            System.out.println(sb.toString().trim());
+                                        }
+                                    }
+                                    """,
+                            "python", """
+                                    import heapq
+                                    import sys
+
+                                    def main():
+                                        input_data = sys.stdin.read().split()
+                                        if not input_data:
+                                            return
+                                        k = int(input_data[0])
+                                        pq = []
+                                        idx = 1
+                                        for _ in range(k):
+                                            n = int(input_data[idx])
+                                            idx += 1
+                                            for _ in range(n):
+                                                heapq.heappush(pq, int(input_data[idx]))
+                                                idx += 1
+                                        res = []
+                                        while pq:
+                                            res.append(str(heapq.heappop(pq)))
+                                        print(" ".join(res))
+
+                                    if __name__ == '__main__':
+                                        main()
+                                    """
+                    ))
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("Example1", "3\n3 1 4 5\n3 1 3 4\n2 2 6", "1 1 2 3 4 5 6"),
+                            new QuestionDocument.TestCase("EmptyLists", "0", "")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
+                    .evaluationCriteria(List.of("Min-Heap / PriorityQueue O(N log k) complexity", "Handling empty lists gracefully"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Min-Heap", "Divide and Conquer", "Time Complexity Analysis"),
+                            List.of("What is the time complexity difference between pairing lists vs using a Min-Heap of size k?"),
+                            List.of("Candidate identifies O(N log k) time complexity and O(k) auxiliary space.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Inserting all N elements into heap at once resulting in O(N log N) instead of O(N log k)."),
+                            "Maintain a Min-Heap of size k holding the current head node of each of the k lists.",
+                            List.of("Clarify if total node count N fits in memory.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 6. Valid Parentheses (DSA - JUNIOR)
+            QuestionDocument validParentheses = QuestionDocument.builder()
+                    .slug("valid-parentheses")
+                    .title("Valid Parentheses")
+                    .track("ALGORITHMS_DATA_STRUCTURES")
+                    .difficulty("JUNIOR")
+                    .tags(List.of("stack", "strings", "algorithms", "java"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Valid Parentheses
+                            Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, determine if the input string is valid.
+
+                            An input string is valid if:
+                            1. Open brackets must be closed by the same type of brackets.
+                            2. Open brackets must be closed in the correct order.
+                            3. Every close bracket has a corresponding open bracket of the same type.
+
+                            ### Input Format:
+                            - Line 1: String `s`.
+
+                            ### Output Format:
+                            - Print `true` if valid, otherwise `false`.
+                            """)
+                    .starterCode("""
+                            import java.util.*;
+
+                            public class Main {
+                                public static void main(String[] args) {
+                                    Scanner scanner = new Scanner(System.in);
+                                    if (!scanner.hasNext()) {
+                                        System.out.println(true);
+                                        return;
+                                    }
+                                    String s = scanner.next();
+                                    Stack<Character> stack = new Stack<>();
+                                    boolean valid = true;
+                                    for (char c : s.toCharArray()) {
+                                        if (c == '(') stack.push(')');
+                                        else if (c == '{') stack.push('}');
+                                        else if (c == '[') stack.push(']');
+                                        else if (stack.isEmpty() || stack.pop() != c) {
+                                            valid = false;
+                                            break;
+                                        }
+                                    }
+                                    System.out.println(valid && stack.isEmpty());
+                                }
+                            }
+                            """)
+                    .starterCodeMap(Map.of(
+                            "java", """
+                                    import java.util.*;
+
+                                    public class Main {
+                                        public static void main(String[] args) {
+                                            Scanner scanner = new Scanner(System.in);
+                                            if (!scanner.hasNext()) {
+                                                System.out.println(true);
+                                                return;
+                                            }
+                                            String s = scanner.next();
+                                            Stack<Character> stack = new Stack<>();
+                                            boolean valid = true;
+                                            for (char c : s.toCharArray()) {
+                                                if (c == '(') stack.push(')');
+                                                else if (c == '{') stack.push('}');
+                                                else if (c == '[') stack.push(']');
+                                                else if (stack.isEmpty() || stack.pop() != c) {
+                                                    valid = false;
+                                                    break;
+                                                }
+                                            }
+                                            System.out.println(valid && stack.isEmpty());
+                                        }
+                                    }
+                                    """,
+                            "python", """
+                                    import sys
+
+                                    def main():
+                                        line = sys.stdin.read().strip()
+                                        if not line:
+                                            print("true")
+                                            return
+                                        stack = []
+                                        mapping = {')': '(', '}': '{', ']': '['}
+                                        valid = True
+                                        for char in line:
+                                            if char in mapping.values():
+                                                stack.append(char)
+                                            elif char in mapping:
+                                                if not stack or stack.pop() != mapping[char]:
+                                                    valid = False
+                                                    break
+                                        print("true" if valid and not stack else "false")
+
+                                    if __name__ == '__main__':
+                                        main()
+                                    """
+                    ))
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("Example1", "()[]{}", "true"),
+                            new QuestionDocument.TestCase("Example2", "(]", "false"),
+                            new QuestionDocument.TestCase("Example3", "([)]", "false")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(128, 2000))
+                    .evaluationCriteria(List.of("Stack LIFO correctness", "Handling empty string and unmatched brackets"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Stack", "LIFO", "String Parsing"),
+                            List.of("How do you handle early exit on odd length string?"),
+                            List.of("Checks if stack is empty after iteration.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Forgetting to check if stack is empty at the end."),
+                            "Push expected matching closing characters onto stack and match on pop.",
+                            List.of("Mention space complexity O(N) in worst case.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 7. Longest Substring Without Repeating Characters (DSA - MID)
+            QuestionDocument longestSubstring = QuestionDocument.builder()
+                    .slug("longest-substring-without-repeating-characters")
+                    .title("Longest Substring Without Repeating Characters")
+                    .track("ALGORITHMS_DATA_STRUCTURES")
+                    .difficulty("MID")
+                    .tags(List.of("sliding-window", "hashmap", "two-pointers", "strings", "java"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Longest Substring Without Repeating Characters
+                            Given a string `s`, find the length of the longest substring without repeating characters.
+
+                            ### Input Format:
+                            - Line 1: String `s`.
+
+                            ### Output Format:
+                            - Print single integer representing the maximum length.
+                            """)
+                    .starterCode("""
+                            import java.util.*;
+
+                            public class Main {
+                                public static void main(String[] args) {
+                                    Scanner scanner = new Scanner(System.in);
+                                    if (!scanner.hasNextLine()) {
+                                        System.out.println(0);
+                                        return;
+                                    }
+                                    String s = scanner.nextLine();
+                                    Map<Character, Integer> lastSeen = new HashMap<>();
+                                    int maxLen = 0;
+                                    int left = 0;
+                                    for (int right = 0; right < s.length(); right++) {
+                                        char c = s.charAt(right);
+                                        if (lastSeen.containsKey(c)) {
+                                            left = Math.max(left, lastSeen.get(c) + 1);
+                                        }
+                                        lastSeen.put(c, right);
+                                        maxLen = Math.max(maxLen, right - left + 1);
+                                    }
+                                    System.out.println(maxLen);
+                                }
+                            }
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("Example1", "abcabcbb", "3"),
+                            new QuestionDocument.TestCase("Example2", "bbbbb", "1"),
+                            new QuestionDocument.TestCase("Example3", "pwwkew", "3")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(128, 2000))
+                    .evaluationCriteria(List.of("Sliding Window O(N) time complexity", "Auxiliary map for last seen index"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Sliding Window", "Two Pointers", "HashMap Index Tracking"),
+                            List.of("Why is Math.max(left, lastSeen.get(c) + 1) necessary when a character was seen before the current window?"),
+                            List.of("Candidate explains why the window left bound cannot move backwards.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Moving left pointer without Math.max check causing window left bound to shift backwards."),
+                            "Use HashMap to store char -> last index. Update left pointer = max(left, lastSeen + 1).",
+                            List.of("Explain difference between substring and subsequence.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 8. SQL Customer Analytics (SQL - MID)
+            QuestionDocument sqlCustomerAnalytics = QuestionDocument.builder()
+                    .slug("sql-customer-analytics")
+                    .title("Customer Order & Revenue Analytics")
+                    .track("SQL")
+                    .difficulty("MID")
+                    .tags(List.of("sql", "aggregation", "joins", "group-by", "analytics"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Customer Order & Revenue Analytics
+                            Write a SQL query that reports the `customer_id`, `customer_name`, `total_orders`, and `total_spent` for all customers.
+                            Include customers who have placed zero orders (with `total_orders = 0` and `total_spent = 0.00`).
+                            Sort the results by `total_spent` descending, then by `customer_name` ascending.
+
+                            ### Schema:
+                            - `customers (id INT PRIMARY KEY, name VARCHAR(100), signup_date DATE)`
+                            - `orders (id INT PRIMARY KEY, customer_id INT, order_date DATE, total_amount DECIMAL(10,2))`
+                            """)
+                    .starterCode("""
+                            -- Write your SQL query below:
+                            SELECT
+                                c.id AS customer_id,
+                                c.name AS customer_name,
+                                COUNT(o.id) AS total_orders,
+                                COALESCE(SUM(o.total_amount), 0.00) AS total_spent
+                            FROM customers c
+                            LEFT JOIN orders o ON c.id = o.customer_id
+                            GROUP BY c.id, c.name
+                            ORDER BY total_spent DESC, customer_name ASC;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("SampleAggregate", "", "", "Returns aggregated total_spent with LEFT JOIN on customers")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
+                    .evaluationCriteria(List.of("Correct LEFT JOIN preserving zero-order customers", "COALESCE/IFNULL for zero spending", "Correct GROUP BY and ORDER BY"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("LEFT JOIN vs INNER JOIN", "COALESCE function", "GROUP BY aggregation rules"),
+                            List.of("Why would an INNER JOIN produce incorrect results for newly registered customers?"),
+                            List.of("Candidate explains handling NULLs in SUM and COUNT(o.id) vs COUNT(*).")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Using COUNT(*) which would count 1 for customers with 0 orders due to the null joined row."),
+                            "Use LEFT JOIN with COUNT(o.id) and COALESCE(SUM(o.total_amount), 0).",
+                            List.of("Always test edge cases like customers with no orders.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 9. SQL Monthly Recurring Revenue (SQL - SENIOR)
+            QuestionDocument sqlMrr = QuestionDocument.builder()
+                    .slug("sql-monthly-recurring-revenue")
+                    .title("Monthly Recurring Revenue (MRR) Cohort Growth")
+                    .track("SQL")
+                    .difficulty("SENIOR")
+                    .tags(List.of("sql", "window-functions", "cte", "lag", "financial-analytics"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Monthly Recurring Revenue (MRR) Growth
+                            Calculate the monthly revenue and Month-over-Month (MoM) revenue growth percentage for a SaaS platform.
+                            Output: `revenue_month` (YYYY-MM), `total_mrr`, `prev_month_mrr`, and `mom_growth_pct` rounded to 2 decimal places.
+
+                            ### Schema:
+                            - `subscriptions (id INT, customer_id INT, amount DECIMAL(10,2), start_date DATE, end_date DATE, status VARCHAR(20))`
+                            """)
+                    .starterCode("""
+                            -- Write your SQL query using CTE and LAG() window function:
+                            WITH monthly_rev AS (
+                                SELECT
+                                    TO_CHAR(start_date, 'YYYY-MM') AS revenue_month,
+                                    SUM(amount) AS total_mrr
+                                FROM subscriptions
+                                WHERE status = 'ACTIVE'
+                                GROUP BY TO_CHAR(start_date, 'YYYY-MM')
+                            )
+                            SELECT
+                                revenue_month,
+                                total_mrr,
+                                LAG(total_mrr, 1) OVER (ORDER BY revenue_month) AS prev_month_mrr,
+                                ROUND(((total_mrr - LAG(total_mrr, 1) OVER (ORDER BY revenue_month)) / NULLIF(LAG(total_mrr, 1) OVER (ORDER BY revenue_month), 0)) * 100, 2) AS mom_growth_pct
+                            FROM monthly_rev
+                            ORDER BY revenue_month;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("CohortCalculation", "", "", "Computes MoM percentage growth across active subscription cohorts")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
+                    .evaluationCriteria(List.of("Common Table Expressions (CTE)", "LAG() window function", "NULLIF division-by-zero protection"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Window Functions", "LAG/LEAD", "NULLIF", "Time-series aggregation"),
+                            List.of("How do you handle months where no revenue was generated (sparse data)?"),
+                            List.of("Candidate discusses generate_series / date calendar tables.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Dividing by zero when previous month MRR is 0 or null."),
+                            "Use LAG(total_mrr) with NULLIF to safely calculate percentage growth.",
+                            List.of("Mention indexing on (status, start_date) for high performance.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 10. Distributed Rate Limiter (SYSTEM_DESIGN - SENIOR)
+            QuestionDocument distributedRateLimiter = QuestionDocument.builder()
+                    .slug("distributed-rate-limiter")
+                    .title("Design a Distributed Rate Limiter")
+                    .track("SYSTEM_DESIGN")
+                    .difficulty("SENIOR")
+                    .tags(List.of("system-design", "distributed-systems", "redis", "token-bucket", "sliding-window"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Design a Distributed Rate Limiter
+                            Design a high-throughput, low-latency distributed rate limiter service that enforces API tier limits (e.g. 10,000 requests/sec per client IP or API key) across multiple global regions.
+
+                            ### Key Requirements:
+                            1. Low latency: Sub-millisecond latency overhead per API request.
+                            2. Distributed accuracy: Accurate sliding-window or token-bucket accounting across independent gateway pods without race conditions.
+                            3. High availability: Graceful degradation if the distributed cache is unreachable.
+                            """)
+                    .starterCode("""
+                            // Architectural Notes & Design Document:
+                            // 1. Algorithm: Token Bucket vs Sliding Window Counter in Redis (Lua script)
+                            // 2. Data Store: Redis Cluster with local in-memory L1 cache (Caffeine)
+                            // 3. Concurrency: Atomic Lua scripts or Redis cell modules
+                            // 4. Fallback: Fail-open strategy on Redis connectivity loss
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("SystemDesignScenario", "", "", "Evaluated by AI Principal Bar Raiser on architectural depth")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
+                    .evaluationCriteria(List.of("Token Bucket vs Sliding Window trade-offs", "Redis Lua script atomicity", "L1 Local + L2 Distributed Caching", "Fail-open vs Fail-closed policies"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Rate Limiting Algorithms", "Redis Lua Scripts", "Multi-region synchronization", "Race Conditions"),
+                            List.of("How do you prevent Redis hotkey contention for a client sending 100k req/sec?"),
+                            List.of("Candidate proposes local batching / token pre-fetching or consistent hashing.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Using non-atomic GET then SET causing race conditions under concurrent requests."),
+                            "Leverage Redis with atomic Lua scripting or sliding window log with ZADD/ZREMRANGEBYSCORE.",
+                            List.of("Draw client -> API Gateway -> Rate Limiter -> Backend flow clearly.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 11. URL Shortener (SYSTEM_DESIGN - MID)
+            QuestionDocument urlShortener = QuestionDocument.builder()
+                    .slug("url-shortener-system-design")
+                    .title("Design a Global URL Shortener (TinyURL)")
+                    .track("SYSTEM_DESIGN")
+                    .difficulty("MID")
+                    .tags(List.of("system-design", "base62", "hashing", "nosql", "caching"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Design a Global URL Shortener (e.g., TinyURL / Bitly)
+                            Design a scalable, highly available URL shortening service that generates 7-character aliases for long URLs.
+
+                            ### Key Requirements:
+                            1. Read-heavy traffic (100:1 read to write ratio).
+                            2. 100 million new URLs generated per month; 10 billion reads per month.
+                            3. Short URLs must be unique, non-guessable, and redirect with HTTP 301/302.
+                            """)
+                    .starterCode("""
+                            // Architectural Notes & Design Document:
+                            // 1. ID Generation: Base62 encoding on 64-bit unique ID (Snowflake or Zookeeper Range Allocation)
+                            // 2. Storage: NoSQL Key-Value Store (Cassandra or DynamoDB)
+                            // 3. Caching: Redis cluster caching top 20% hot URLs (80-20 Pareto Rule)
+                            // 4. Redirect: 301 Permanent Redirect (client caching) vs 302 Temporary Redirect (analytics tracking)
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("SystemDesignScenario", "", "", "Evaluated by AI Principal Bar Raiser on capacity estimation & schema")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
+                    .evaluationCriteria(List.of("Capacity estimation (QPS, Storage, Bandwidth)", "Base62 Encoding vs MD5/SHA-256 Hashing", "Database indexing & replication", "Cache eviction policies (LRU)"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Base62 Encoding", "Distributed ID Generators", "HTTP 301 vs 302", "Cache-aside pattern"),
+                            List.of("How would you scale writes if the centralized ID generator becomes a bottleneck?"),
+                            List.of("Candidate allocates ranges of IDs to each application server in advance.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Hashing long URL with MD5 and truncating without handling hash collisions."),
+                            "Use auto-incrementing 64-bit ID mapped to Base62 string (62^7 = 3.5 trillion URLs).",
+                            List.of("Highlight the difference between 301 (caching) and 302 (telemetry).")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 12. Behavioral STAR: Technical Conflict Resolution (BEHAVIORAL_STAR / RESUME_BASED - SENIOR)
+            QuestionDocument behavioralConflict = QuestionDocument.builder()
+                    .slug("behavioral-technical-conflict")
+                    .title("Resolving a Critical Architectural Disagreement")
+                    .track("BEHAVIORAL_STAR")
+                    .difficulty("SENIOR")
+                    .tags(List.of("behavioral", "star-method", "leadership", "conflict-resolution", "architecture"))
+                    .buildProfile("judge0")
+                    .problemStatement("""
+                            ### Behavioral STAR: Resolving a Critical Architectural Disagreement
+                            Describe a situation where you had a significant technical disagreement with a teammate, tech lead, or product manager regarding system architecture or engineering priorities.
+
+                            ### Structure Your Response using the STAR Method:
+                            - **Situation**: What was the project, the stakes, and the technical decision?
+                            - **Task**: What was your responsibility, and why was the disagreement critical to the project outcome?
+                            - **Action**: How did you bridge the technical gap (e.g. data-driven POCs, RFC design reviews, customer impact analysis)?
+                            - **Result**: What was the outcome, what metrics improved, and what did you learn about engineering leadership?
+                            """)
+                    .starterCode("""
+                            // Thought Notes & STAR Response Scratchpad:
+                            // Situation:
+                            // Task:
+                            // Action:
+                            // Result:
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("STARStructuredDialogue", "", "", "Evaluated by AI Principal Bar Raiser on ownership, data-driven alignment, and empathy")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
+                    .evaluationCriteria(List.of("Clear STAR narrative structure", "Data-driven objective decision making", "Empathy and constructive collaboration", "Long-term impact and self-reflection"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("STAR Framework", "Data-Driven Consensus", "Disagree and Commit", "Ownership"),
+                            List.of("What would you have done differently if the technical data had proven your hypothesis wrong?"),
+                            List.of("Candidate demonstrates humility, objective benchmarking, and team cohesion.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Focusing on personal conflict rather than technical merits and customer impact."),
+                            "Frame the disagreement around shared goals, measurable prototypes, and collaborative RFCs.",
+                            List.of("Always articulate concrete business and engineering metrics in the Result.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // Idempotent Seeding for all 12 questions
+            List<QuestionDocument> all12Questions = List.of(
+                    lruCache,
+                    reverseString,
+                    twoSum,
+                    lldOrderService,
+                    mergeKSortedLists,
+                    validParentheses,
+                    longestSubstring,
+                    sqlCustomerAnalytics,
+                    sqlMrr,
+                    distributedRateLimiter,
+                    urlShortener,
+                    behavioralConflict
+            );
+
+            for (QuestionDocument q : all12Questions) {
                 questionRepository.findBySlug(q.getSlug())
                         .ifPresentOrElse(
                                 existing -> {
@@ -694,7 +1240,7 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                 () -> questionRepository.save(q)
                         );
             }
-            log.info("✅ Question Bank initialized with {} core problems (DSA + LLD) with coaching & interviewer notes.", 4);
+            log.info("✅ Question Bank initialized with {} core problems across DSA, SQL, LLD, System Design, and STAR tracks.", all12Questions.size());
         } catch (Exception e) {
             log.warn("⚠️ Question Bank initialization notice: {}", e.getMessage());
         }

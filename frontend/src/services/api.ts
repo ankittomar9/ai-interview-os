@@ -372,3 +372,26 @@ export const destroyWorkspace = async (
         console.warn('Workspace destruction notice:', e);
     }
 };
+
+// --- Question Bank Service (Routed via Gateway -> :8086) ---
+export const listQuestions = async (params?: {
+    track?: string;
+    difficulty?: string;
+    tags?: string[];
+}): Promise<GenerateQuestionResponse[]> => {
+    const query = new URLSearchParams();
+    if (params?.track) query.append('track', params.track);
+    if (params?.difficulty) query.append('difficulty', params.difficulty);
+    if (params?.tags && params.tags.length > 0) {
+        params.tags.forEach(t => query.append('tags', t));
+    }
+    const res = await fetch(`${GATEWAY_BASE}/questions?${query.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch question catalog');
+    return res.json();
+};
+
+export const getQuestionBySlug = async (slug: string): Promise<GenerateQuestionResponse> => {
+    const res = await fetch(`${GATEWAY_BASE}/questions/${slug}`);
+    if (!res.ok) throw new Error(`Failed to fetch question '${slug}'`);
+    return res.json();
+};

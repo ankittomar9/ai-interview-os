@@ -49,6 +49,12 @@ spring:
           predicates:
             - Path=/api/v1/reports/**
 
+        # Route 5: Question Bank Service (:8085)
+        - id: question-bank-route
+          uri: lb://question-bank-service
+          predicates:
+            - Path=/api/v1/questions/**
+
 eureka:
   instance:
     prefer-ip-address: true

@@ -37,6 +37,7 @@ export interface SessionResponse {
 }
 
 export interface GenerateQuestionResponse {
+    slug?: string;
     problemSlug?: string;
     title: string;
     track: InterviewTrack;
@@ -47,8 +48,10 @@ export interface GenerateQuestionResponse {
     starterFiles?: Record<string, string>;
     editablePaths?: string[];
     buildProfile?: string;
-    sampleTests?: Array<{ name: string; input?: string; expectedOutput?: string; description?: string }>;
+    sampleTests?: Array<{ name: string; input?: string; expectedOutput?: string; description?: string; explanation?: string }>;
     hints: string[];
+    coaching?: { presentationTips?: string[] };
+    constraints?: string[];
     evaluationCriteria: string[];
 }
 
