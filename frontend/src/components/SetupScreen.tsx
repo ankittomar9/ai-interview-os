@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { DifficultyLevel, InterviewTrack, ModelProvider } from '../types';
 import { getStoredApiKey, setStoredApiKey, uploadResumeFile, uploadResumeText } from '../services/api';
 import {
   Sparkles,
-  Key,
   ArrowRight,
   Upload,
   FileText,
@@ -13,10 +12,9 @@ import {
   Binary,
   Layers,
   Users2,
-  Building2,
-  Briefcase,
   Database,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
 import { Chip } from './ui/Chip';
 import { FloatingAiOrb } from './ai/FloatingAiOrb';
@@ -36,12 +34,14 @@ interface Props {
   isLoading: boolean;
 }
 
-const TRACKS: Array<{
+interface TrackOption {
   track: InterviewTrack;
   title: string;
   description: string;
   icon: React.ReactNode;
-}> = [
+}
+
+const TRACKS: TrackOption[] = [
   {
     track: 'ALGORITHMS_DATA_STRUCTURES',
     title: 'Algorithms & Data Structures',
@@ -93,11 +93,30 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
   const [isIdManuallyEdited, setIsIdManuallyEdited] = useState(false);
   const [roleTitle, setRoleTitle] = useState('');
   const [track, setTrack] = useState<InterviewTrack>('ALGORITHMS_DATA_STRUCTURES');
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('JUNIOR');
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('MID');
   const [targetCompany, setTargetCompany] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [provider, setProvider] = useState<ModelProvider>('GEMINI');
   const [apiKey, setApiKey] = useState(getStoredApiKey('GEMINI'));
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const roleInputRef = useRef<HTMLInputElement>(null);
+
+  // Resume Ingestion State
+  const [resumeMode, setResumeMode] = useState<'upload' | 'paste'>('upload');
+  const [pastedResumeText, setPastedResumeText] = useState('');
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [parsedResumeData, setParsedResumeData] = useState<{
+    id: string;
+    fileName: string;
+    skills: string[];
+    yearsOfExperience: number;
+    summary: string;
+  } | null>(null);
+
+  // AI Assistant Drawer
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.setup') === 'true');
 
   const toggleAiPanel = () => {
@@ -110,6 +129,9 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
 
   const handleCandidateNameChange = (name: string) => {
     setCandidateName(name);
+    if (fieldErrors.candidateName && name.trim()) {
+      setFieldErrors((prev) => ({ ...prev, candidateName: '' }));
+    }
     if (!isIdManuallyEdited) {
       const slug = name
         .toLowerCase()
@@ -119,24 +141,19 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
     }
   };
 
-  // --- Resume Ingestion State ---
-  const [resumeMode, setResumeMode] = useState<'upload' | 'paste'>('upload');
-  const [pastedResumeText, setPastedResumeText] = useState('');
-  const [isParsingResume, setIsParsingResume] = useState(false);
-  const [parsedResumeData, setParsedResumeData] = useState<{
-    id: string;
-    fileName: string;
-    skills: string[];
-    yearsOfExperience: number;
-    summary: string;
-  } | null>(null);
+  const handleRoleTitleChange = (role: string) => {
+    setRoleTitle(role);
+    if (fieldErrors.roleTitle && role.trim()) {
+      setFieldErrors((prev) => ({ ...prev, roleTitle: '' }));
+    }
+  };
 
   const handleProviderChange = (newProvider: ModelProvider) => {
     setProvider(newProvider);
     setApiKey(getStoredApiKey(newProvider));
   };
 
-  // --- Resume File Upload Handler ---
+  // Resume File Upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -162,7 +179,7 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
     }
   };
 
-  // --- Resume Text Paste Ingest Handler ---
+  // Resume Text Paste Ingest
   const handleTextIngest = async () => {
     if (!pastedResumeText.trim()) return;
 
@@ -191,11 +208,31 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
     }
   };
 
-  const isFormValid = candidateName.trim().length > 0 && roleTitle.trim().length > 0 && !!track;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid || isLoading) return;
+    setErrorMessage(null);
+
+    const errors: { [key: string]: string } = {};
+    if (!candidateName.trim()) {
+      errors.candidateName = 'Candidate name is required';
+    }
+    if (!roleTitle.trim()) {
+      errors.roleTitle = 'Target role title is required';
+    }
+    if (!track) {
+      errors.track = 'Assessment track is required';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      if (errors.candidateName) {
+        nameInputRef.current?.focus();
+      } else if (errors.roleTitle) {
+        roleInputRef.current?.focus();
+      }
+      setErrorMessage('Please fill in all required fields before launching.');
+      return;
+    }
 
     onStart({
       candidateId: candidateId || 'candidate-01',
@@ -209,28 +246,56 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
     });
   };
 
+  // Keyboard navigation for Track radio group
+  const handleTrackKeyDown = (e: React.KeyboardEvent, currentIdx: number) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIdx = (currentIdx + 1) % TRACKS.length;
+      setTrack(TRACKS[nextIdx].track);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIdx = (currentIdx - 1 + TRACKS.length) % TRACKS.length;
+      setTrack(TRACKS[prevIdx].track);
+    }
+  };
+
+  // Keyboard navigation for Seniority radio group
+  const handleSeniorityKeyDown = (e: React.KeyboardEvent, currentIdx: number) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIdx = (currentIdx + 1) % SENIORITY_OPTIONS.length;
+      setDifficulty(SENIORITY_OPTIONS[nextIdx].value);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIdx = (currentIdx - 1 + SENIORITY_OPTIONS.length) % SENIORITY_OPTIONS.length;
+      setDifficulty(SENIORITY_OPTIONS[prevIdx].value);
+    }
+  };
+
+  const isFormValid = candidateName.trim().length > 0 && roleTitle.trim().length > 0 && !!track;
+
   return (
-    <div className="min-h-screen bg-[var(--color-page-bg)] grid place-items-center p-4 sm:p-8 select-text font-sans">
-      <div className="max-w-6xl w-full flex flex-col lg:flex-row min-h-[850px] bg-white dark:bg-[#18181b] rounded-2xl border border-slate-200 dark:border-[#27272a] shadow-2xl overflow-hidden">
+    <div className="min-h-screen bg-slate-50 grid place-items-center p-4 sm:p-8 select-text font-sans">
+      <div className="max-w-6xl w-full flex flex-col lg:flex-row lg:min-h-[850px] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
         
         {/* =========================================================================
-            LEFT COLUMN: Dark Studio Sidebar (w-full lg:w-1/3)
+            LEFT COLUMN: Dark Studio Sidebar (w-full lg:w-1/3 bg-slate-900)
            ========================================================================= */}
-        <aside className="w-full lg:w-1/3 bg-[var(--color-sidebar-bg)] p-8 lg:p-10 flex flex-col justify-between text-slate-300">
+        <aside className="w-full lg:w-1/3 bg-slate-900 p-8 lg:p-10 flex flex-col justify-between text-slate-300">
           <div>
-            {/* Logo + Product Name */}
+            {/* Logo row */}
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-9 h-9 bg-[var(--color-accent)] rounded-xl flex items-center justify-center shadow-md shadow-indigo-900/40">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shrink-0">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-white leading-none">AI Interview OS</h1>
-                <span className="text-[11px] font-medium text-slate-400">Honest Evaluation Studio</span>
+                <h1 className="text-xl font-bold tracking-tight text-white leading-tight">AI Interview OS</h1>
+                <p className="text-xs text-slate-400 font-medium">Honest Evaluation Studio</p>
               </div>
             </div>
 
-            {/* Product description */}
-            <p className="text-[var(--color-sidebar-text)] text-sm leading-relaxed mb-8">
+            {/* Paragraph */}
+            <p className="text-sm text-slate-400 leading-relaxed mb-8">
               Autonomous technical interview platform with live execution sandboxes, multi-file codebases, and verbatim rubric scoring.
             </p>
 
@@ -242,8 +307,8 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                 { title: 'Interactive Architecture', desc: 'Multi-file workspaces and real-time whiteboard canvas.' }
               ].map((item, idx) => (
                 <div key={idx} className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-[var(--color-active)] shrink-0 mt-0.5" />
-                  <div className="text-xs text-[var(--color-sidebar-text-2)] leading-relaxed">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className="text-sm text-slate-300 leading-relaxed">
                     <strong className="text-white">{item.title}:</strong> {item.desc}
                   </div>
                 </div>
@@ -251,13 +316,13 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
             </div>
           </div>
 
-          {/* Lifecycle Timeline & Engine Status */}
-          <div className="pt-6 border-t border-[var(--color-sidebar-accent)]">
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-sidebar-text-3)] mb-4">
+          {/* mt-auto block: Lifecycle timeline + Engine card */}
+          <div className="mt-auto pt-8 border-t border-slate-800">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
               Interview Lifecycle
             </h3>
-            <div className="relative pl-5 space-y-4">
-              <div className="absolute left-2.5 top-1 bottom-1 w-px bg-[var(--color-sidebar-accent)]" />
+            <div className="relative pl-6 space-y-5">
+              <div className="absolute left-2.5 top-1 bottom-1 w-px bg-slate-800" />
               {[
                 { label: 'Setup & Track Selection', state: 'completed' },
                 { label: 'System & Proctor Check', state: 'current' },
@@ -266,21 +331,21 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
               ].map((step, idx) => (
                 <div key={idx} className="relative flex items-center gap-3">
                   <div
-                    className={`w-3.5 h-3.5 rounded-full ring-4 ring-[var(--color-sidebar-bg)] shrink-0 transition-all ${
+                    className={`w-5 h-5 rounded-full ring-4 ring-slate-900 flex items-center justify-center shrink-0 transition-all ${
                       step.state === 'completed'
-                        ? 'bg-[var(--color-active)]'
+                        ? 'bg-emerald-500 text-white'
                         : step.state === 'current'
-                        ? 'bg-[var(--color-accent)] ring-indigo-950'
-                        : 'bg-[var(--color-sidebar-accent)]'
+                        ? 'bg-indigo-600 ring-indigo-950 text-white'
+                        : 'bg-slate-800'
                     }`}
                   />
                   <span
-                    className={`text-xs font-medium ${
+                    className={`text-sm font-medium ${
                       step.state === 'upcoming'
-                        ? 'text-[var(--color-sidebar-text-3)]'
+                        ? 'text-slate-500'
                         : step.state === 'current'
                         ? 'text-white font-semibold'
-                        : 'text-[var(--color-sidebar-text-2)]'
+                        : 'text-slate-300'
                     }`}
                   >
                     {step.label}
@@ -289,21 +354,21 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
               ))}
             </div>
 
-            {/* Engine Status Card */}
-            <div className="mt-6 p-3.5 bg-[var(--color-sidebar-accent)]/60 rounded-xl border border-[var(--color-sidebar-accent)]">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-sidebar-text-3)]">
+            {/* Engine status card */}
+            <div className="mt-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
                   AI Engine Status
                 </span>
-                <span className="text-[10px] font-medium text-emerald-400">Ready</span>
+                <span className="text-xs font-medium text-emerald-400">Ready</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--color-active)] animate-pulse" />
-                <span className="text-xs font-semibold text-white">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-semibold text-slate-200">
                   {provider === 'GEMINI' ? 'Gemini 2.5 Flash' : provider === 'GROQ' ? 'Groq Whisper + Llama' : provider}
                 </span>
               </div>
-              <div className="text-[10px] text-[var(--color-sidebar-text-3)] mt-0.5">
+              <div className="text-[10px] uppercase text-slate-500 mt-1 font-mono tracking-wider">
                 Ultra-Low Latency Dialogue Engine
               </div>
             </div>
@@ -311,44 +376,50 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
         </aside>
 
         {/* =========================================================================
-            RIGHT COLUMN: Light Candidate Setup Form (flex-1)
+            RIGHT COLUMN: Light Candidate Setup Form (flex-1 bg-white p-8 lg:p-10)
            ========================================================================= */}
-        <div className="flex-1 p-6 sm:p-10 overflow-y-auto bg-white dark:bg-[#18181b]">
+        <div className="flex-1 p-8 lg:p-10 overflow-y-auto bg-white">
           <div className="max-w-2xl mx-auto">
             {/* Header */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Candidate Setup</h2>
-              <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Candidate Setup</h2>
+              <p className="text-sm text-slate-500 mt-1">
                 Enter candidate details and customize the evaluation track.
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit}>
 
-              {/* 1. Identity Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 1. Identity Grid (2 cols) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
                 {/* Candidate Full Name */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                     Candidate Name *
                   </label>
                   <input
+                    ref={nameInputRef}
                     type="text"
                     required
                     placeholder="e.g. Ankit Singh Tomar"
                     value={candidateName}
                     onChange={(e) => handleCandidateNameChange(e.target.value)}
-                    className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg px-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all"
+                    className={`w-full h-10 bg-slate-50 border rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all ${
+                      fieldErrors.candidateName ? 'border-red-500' : 'border-slate-200'
+                    }`}
                   />
+                  {fieldErrors.candidateName && (
+                    <p className="text-xs text-red-600 mt-1">{fieldErrors.candidateName}</p>
+                  )}
                 </div>
 
                 {/* Candidate ID Slug with 'id-' affix */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                     Candidate ID
                   </label>
-                  <div className="flex items-center h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg px-3 focus-within:ring-2 focus-within:ring-[var(--color-accent)]/20 focus-within:border-[var(--color-accent)] transition-all">
-                    <span className="text-slate-400 dark:text-zinc-500 text-xs font-mono select-none mr-1">id-</span>
+                  <div className="flex items-center h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
+                    <span className="text-slate-400 text-sm font-mono select-none mr-1.5">id-</span>
                     <input
                       type="text"
                       value={candidateId.replace(/^id-/, '')}
@@ -358,92 +429,95 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                         setIsIdManuallyEdited(true);
                       }}
                       placeholder="candidate-01"
-                      className="flex-1 bg-transparent border-0 text-sm text-[var(--color-field-text)] font-mono focus:outline-none"
+                      className="flex-1 bg-transparent border-0 text-sm text-slate-900 font-mono focus:outline-none placeholder:text-slate-400"
                     />
                   </div>
                 </div>
 
                 {/* Target Role Title */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                     Target Role Title *
                   </label>
-                  <div className="relative">
-                    <Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Senior Java Backend Engineer"
-                      value={roleTitle}
-                      onChange={(e) => setRoleTitle(e.target.value)}
-                      className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg pl-9 pr-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all"
-                    />
-                  </div>
+                  <input
+                    ref={roleInputRef}
+                    type="text"
+                    required
+                    placeholder="e.g. Senior Java Backend Engineer"
+                    value={roleTitle}
+                    onChange={(e) => handleRoleTitleChange(e.target.value)}
+                    className={`w-full h-10 bg-slate-50 border rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all ${
+                      fieldErrors.roleTitle ? 'border-red-500' : 'border-slate-200'
+                    }`}
+                  />
+                  {fieldErrors.roleTitle && (
+                    <p className="text-xs text-red-600 mt-1">{fieldErrors.roleTitle}</p>
+                  )}
                 </div>
 
                 {/* Target Company */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                     Target Company (Optional)
                   </label>
-                  <div className="relative">
-                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="e.g. Google, Stripe, Netflix"
-                      value={targetCompany}
-                      onChange={(e) => setTargetCompany(e.target.value)}
-                      className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg pl-9 pr-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Google, Stripe, Netflix"
+                    value={targetCompany}
+                    onChange={(e) => setTargetCompany(e.target.value)}
+                    className="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
                 </div>
-              </div>
 
-              {/* AI Model Provider & Key */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                {/* AI Model Provider */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                     AI Model Provider
                   </label>
-                  <select
-                    value={provider}
-                    onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
-                    className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg px-3 text-xs text-[var(--color-field-text)] font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all cursor-pointer"
-                  >
-                    <option value="GEMINI">Google Gemini (Default)</option>
-                    <option value="GROQ">Groq (Ultra-Low Latency)</option>
-                    <option value="OPENAI">OpenAI (GPT-4o)</option>
-                    <option value="OLLAMA">Ollama (Local Offline)</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={provider}
+                      onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
+                      className="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 pr-8 text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="GEMINI">Google Gemini (Default)</option>
+                      <option value="GROQ">Groq (Ultra-Low Latency)</option>
+                      <option value="OPENAI">OpenAI (GPT-4o)</option>
+                      <option value="OLLAMA">Ollama (Local Offline)</option>
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />
+                  </div>
                 </div>
 
+                {/* API Key */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                     {provider} API Key (Optional)
                   </label>
-                  <div className="relative">
-                    <Key className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-                    <input
-                      type="password"
-                      placeholder={provider === 'OLLAMA' ? 'http://localhost:11434' : `Enter ${provider} API key...`}
-                      value={apiKey}
-                      onChange={(e) => {
-                        setApiKey(e.target.value);
-                        setStoredApiKey(provider, e.target.value);
-                      }}
-                      className="w-full h-9 bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg pl-9 pr-3 text-sm text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all font-mono"
-                    />
-                  </div>
+                  <input
+                    type="password"
+                    placeholder={provider === 'OLLAMA' ? 'http://localhost:11434' : 'Enter API key or leave blank...'}
+                    value={apiKey}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      setStoredApiKey(provider, e.target.value);
+                    }}
+                    className="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm text-slate-900 font-mono placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
                 </div>
               </div>
 
-              {/* 2. Assessment Track Grid */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-3">
+              {/* 2. Assessment Track (3-col Grid) */}
+              <div className="mb-8">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-4">
                   Assessment Track *
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {TRACKS.map((t) => {
+                <div
+                  role="radiogroup"
+                  aria-label="Assessment Track"
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch"
+                >
+                  {TRACKS.map((t, idx) => {
                     const isSelected = track === t.track;
                     return (
                       <button
@@ -451,26 +525,31 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                         type="button"
                         role="radio"
                         aria-checked={isSelected}
-                        onClick={() => setTrack(t.track)}
-                        className={`p-3.5 text-left rounded-xl h-full transition-all cursor-pointer flex flex-col justify-between ${
+                        tabIndex={isSelected ? 0 : -1}
+                        onKeyDown={(e) => handleTrackKeyDown(e, idx)}
+                        onClick={() => {
+                          setTrack(t.track);
+                          if (fieldErrors.track) setFieldErrors((prev) => ({ ...prev, track: '' }));
+                        }}
+                        className={`p-4 text-left rounded-xl h-full flex flex-col justify-between transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                           isSelected
-                            ? 'border-2 border-[var(--color-accent)] bg-indigo-50/50 dark:bg-indigo-950/20 shadow-xs'
-                            : 'border border-[var(--color-field-border)] hover:border-slate-300 dark:hover:border-zinc-700 bg-[var(--color-field-bg)]'
+                            ? 'border-2 border-indigo-600 bg-indigo-50/50 shadow-xs'
+                            : 'border border-slate-200 hover:border-slate-300 bg-slate-50'
                         }`}
                       >
                         <div>
                           <div className="flex items-center gap-2 mb-1.5">
-                            <span className={isSelected ? 'text-[var(--color-accent)]' : 'text-slate-500 dark:text-zinc-400'}>
+                            <span className={isSelected ? 'text-indigo-600' : 'text-slate-500'}>
                               {t.icon}
                             </span>
-                            <span className={`text-xs font-bold ${
-                              isSelected ? 'text-[var(--color-accent)]' : 'text-slate-900 dark:text-white'
+                            <span className={`text-sm font-bold ${
+                              isSelected ? 'text-indigo-600' : 'text-slate-900'
                             }`}>
                               {t.title}
                             </span>
                           </div>
-                          <p className={`text-[11px] leading-relaxed line-clamp-2 ${
-                            isSelected ? 'text-indigo-900/80 dark:text-indigo-200' : 'text-slate-500 dark:text-zinc-400'
+                          <p className={`text-[10px] leading-snug line-clamp-2 mt-1 ${
+                            isSelected ? 'text-indigo-900/80 font-medium' : 'text-slate-500'
                           }`}>
                             {t.description}
                           </p>
@@ -480,16 +559,16 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                   })}
                 </div>
 
-                {/* Track Badges / Honesty Disclaimers */}
+                {/* Track Honesty / Coaching Badges */}
                 {track === 'RESUME_BASED' && (
-                  <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 mt-2.5">
+                  <div className="flex flex-col gap-1.5 p-3 rounded-lg bg-slate-50 border border-slate-200 mt-3">
                     <div className="flex items-center gap-2">
                       <Chip variant="neutral" size="sm" icon={<Sparkles className="w-3.5 h-3.5 text-indigo-600" />}>
                         Frontier-model question generation
                       </Chip>
                     </div>
                     {provider === 'OLLAMA' && (
-                      <p className="text-xs text-amber-600 flex items-center gap-1.5 mt-0.5">
+                      <p className="text-xs text-amber-700 flex items-center gap-1.5 mt-0.5">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                         <span>Recommend a frontier key (Gemini/OpenAI) for optimal resume-grounded questions</span>
                       </p>
@@ -498,13 +577,17 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                 )}
               </div>
 
-              {/* 3. Seniority Level */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-3">
+              {/* 3. Seniority Level Segmented Control */}
+              <div className="mb-8">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-4">
                   Seniority Level
                 </label>
-                <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-lg w-max max-w-full overflow-x-auto">
-                  {SENIORITY_OPTIONS.map((opt) => {
+                <div
+                  role="radiogroup"
+                  aria-label="Seniority Level"
+                  className="flex p-1 bg-slate-100 rounded-lg w-max max-w-full overflow-x-auto"
+                >
+                  {SENIORITY_OPTIONS.map((opt, idx) => {
                     const isSelected = difficulty === opt.value;
                     return (
                       <button
@@ -512,11 +595,13 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                         type="button"
                         role="radio"
                         aria-checked={isSelected}
+                        tabIndex={isSelected ? 0 : -1}
+                        onKeyDown={(e) => handleSeniorityKeyDown(e, idx)}
                         onClick={() => setDifficulty(opt.value)}
-                        className={`px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer shrink-0 ${
+                        className={`px-4 py-2 text-sm font-semibold rounded-md transition-all cursor-pointer shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                           isSelected
-                            ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                            : 'text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                            ? 'bg-white text-slate-900 shadow-sm font-bold'
+                            : 'text-slate-500 hover:text-slate-900'
                         }`}
                       >
                         {opt.label}
@@ -527,43 +612,56 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
               </div>
 
               {/* 4. Resume Ingestion Pipeline */}
-              <div className="p-4 bg-[var(--color-field-bg)] rounded-xl border border-[var(--color-field-border)] space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="mb-8 p-6 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-400" />
-                    <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Resume Ingestion (Optional)</span>
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Resume Ingestion (Optional)
+                    </span>
                   </div>
-                  <div className="flex p-0.5 bg-slate-200/70 dark:bg-zinc-800 rounded-md text-xs">
+
+                  {/* Pill Toggle UPLOAD / PASTE */}
+                  <div className="flex bg-slate-200/80 rounded-md p-0.5" role="tablist">
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={resumeMode === 'upload'}
                       onClick={() => setResumeMode('upload')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                      className={`px-3 py-1 rounded text-[10px] font-bold tracking-wider uppercase transition-all cursor-pointer ${
                         resumeMode === 'upload'
-                          ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-2xs font-bold'
-                          : 'text-slate-500 hover:text-slate-900'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
-                      Upload File
+                      Upload
                     </button>
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={resumeMode === 'paste'}
                       onClick={() => setResumeMode('paste')}
-                      className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                      className={`px-3 py-1 rounded text-[10px] font-bold tracking-wider uppercase transition-all cursor-pointer ${
                         resumeMode === 'paste'
-                          ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-2xs font-bold'
-                          : 'text-slate-500 hover:text-slate-900'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
-                      Paste Text
+                      Paste
                     </button>
                   </div>
                 </div>
 
                 {resumeMode === 'upload' ? (
-                  <label className="border-2 border-dashed border-[var(--color-field-border)] hover:border-slate-400 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900 rounded-lg p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-center">
-                    <Upload className="w-5 h-5 text-slate-400" />
-                    <span className="text-xs text-slate-600 dark:text-zinc-300 font-medium">
-                      {isParsingResume ? 'Extracting candidate skills & experience...' : 'Drop your resume (PDF, TXT, DOCX) or click to browse'}
+                  <label className="border-2 border-dashed border-slate-200 hover:border-slate-400 bg-white rounded-xl p-8 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors block">
+                    <Upload className="w-8 h-8 text-slate-400 mb-1" />
+                    <span className="text-sm font-medium text-slate-700">
+                      {isParsingResume
+                        ? 'Extracting candidate skills & experience...'
+                        : 'Drop your resume here or click to browse'}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      PDF, DOCX, TXT up to 10MB
                     </span>
                     <input
                       type="file"
@@ -574,19 +672,19 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                     />
                   </label>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <textarea
                       placeholder="Paste resume content, work history, tech stack, and key project bullets..."
-                      rows={3}
+                      rows={4}
                       value={pastedResumeText}
                       onChange={(e) => setPastedResumeText(e.target.value)}
-                      className="w-full bg-white dark:bg-zinc-900 border border-[var(--color-field-border)] rounded-lg p-2.5 text-xs text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all resize-y"
+                      className="w-full bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-y"
                     />
                     <button
                       type="button"
                       onClick={handleTextIngest}
                       disabled={!pastedResumeText.trim() || isParsingResume}
-                      className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 text-xs font-semibold hover:bg-slate-300 dark:hover:bg-zinc-700 disabled:opacity-50 cursor-pointer transition-colors"
+                      className="px-4 py-2 rounded-lg bg-slate-200 text-slate-800 text-xs font-semibold hover:bg-slate-300 disabled:opacity-50 cursor-pointer transition-colors"
                     >
                       {isParsingResume ? 'Extracting...' : 'Extract Resume Signals'}
                     </button>
@@ -595,9 +693,9 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
 
                 {/* Extracted Skills Chips Row */}
                 {parsedResumeData && parsedResumeData.skills.length > 0 && (
-                  <div className="pt-2 border-t border-slate-200 dark:border-zinc-800 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                  <div className="pt-4 mt-4 border-t border-slate-200 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+                      <CheckCircle2 className="w-4 h-4" />
                       <span>{parsedResumeData.fileName} parsed ({parsedResumeData.yearsOfExperience} YOE detected):</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -611,9 +709,9 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                 )}
               </div>
 
-              {/* 5. Job Description & Custom Focus */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-zinc-300 uppercase tracking-wider mb-2">
+              {/* 5. Job Description & Focus Areas */}
+              <div className="mb-8">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
                   Job Description & Focus Areas (Optional)
                 </label>
                 <textarea
@@ -621,20 +719,27 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                   rows={3}
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
-                  className="w-full bg-[var(--color-field-bg)] border border-[var(--color-field-border)] rounded-lg p-3 text-xs text-[var(--color-field-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/20 focus:border-[var(--color-accent)] transition-all resize-y"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-y"
                 />
               </div>
 
-              {/* 6. Submit CTA */}
+              {/* Error summary */}
+              {errorMessage && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 font-medium">
+                  {errorMessage}
+                </div>
+              )}
+
+              {/* 6. Submit Button */}
               <button
                 type="submit"
                 disabled={!isFormValid || isLoading}
-                className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.99] group cursor-pointer flex items-center justify-center gap-2 mt-2"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] group cursor-pointer flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Synthesizing Problem & Initializing Sandbox...</span>
+                    <span>Launching Technical Assessment...</span>
                   </>
                 ) : (
                   <>

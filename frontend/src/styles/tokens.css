@@ -89,18 +89,4 @@
   --editor-active-line: #27272a;
   --editor-status: #1f1f23;
   --editor-text: #d4d4d4;
-
-  /* Studio Setup Tokens */
-  --color-page-bg: #09090b;
-  --color-sidebar-bg: #0f172a;
-  --color-sidebar-text: #cbd5e1;
-  --color-sidebar-text-2: #e2e8f0;
-  --color-sidebar-text-3: #64748b;
-  --color-sidebar-accent: #1e293b;
-  --color-field-bg: #18181b;
-  --color-field-border: #27272a;
-  --color-field-text: #fafafa;
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
-  --color-active: #10b981;
 }
