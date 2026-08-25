@@ -854,8 +854,8 @@ export const InterviewRoom: React.FC<Props> = ({
         <QuestionRail items={railItems} selectedIndex={activeQuestionIdx} onSelect={handleSelectQuestion} />
 
         <div className="flex-1 flex overflow-hidden">
-          <Group orientation="horizontal" id="main-interview-group">
-            <Panel defaultSize={42} minSize={25} maxSize={70} id="problem-panel">
+          <Group orientation="horizontal" id="main-interview-group" className="h-full w-full flex-1">
+            <Panel defaultSize="42%" minSize="25%" maxSize="70%" id="problem-panel">
               <ProblemPanel
                 question={currentQuestion}
                 isSolved={statusMap[currentQuestion.slug || `q${activeQuestionIdx + 1}`] === 'PASSED'}
@@ -874,7 +874,7 @@ export const InterviewRoom: React.FC<Props> = ({
 
             <Separator className="w-1 bg-border hover:bg-primary transition-colors cursor-col-resize relative flex items-center justify-center z-10 select-none" />
 
-            <Panel defaultSize={58} id="workspace-panel">
+            <Panel defaultSize="58%" minSize="30%" id="workspace-panel">
               {currentQuestion.starterFiles && Object.keys(currentQuestion.starterFiles).length > 0 ? (
                 <EmbeddedWorkspace
                   key={currentQuestion.problemSlug || currentQuestion.slug || 'lld-service'}
@@ -886,8 +886,8 @@ export const InterviewRoom: React.FC<Props> = ({
                   onSubmitProject={(summary) => void triggerCandidateTurn(summary)}
                 />
               ) : (
-                <Group orientation="vertical" id="editor-testcase-group">
-                  <Panel defaultSize={70} minSize={30} id="editor-panel">
+                <Group orientation="vertical" id="editor-testcase-group" className="h-full w-full flex-1">
+                  <Panel defaultSize="62%" minSize="25%" id="editor-panel">
                     <div className="flex flex-col h-full bg-bg overflow-hidden relative">
                       {/* Editor Toolbar Tabs */}
                       <div className="h-9 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
@@ -982,7 +982,7 @@ export const InterviewRoom: React.FC<Props> = ({
                   <Separator className="h-1 bg-border hover:bg-primary transition-colors cursor-row-resize relative flex items-center justify-center z-10 select-none">
                     <div className="h-0.5 w-6 bg-text-3/40 rounded-full" />
                   </Separator>
-                  <Panel defaultSize={30} minSize={10} maxSize={70} id="testcase-panel">
+                  <Panel defaultSize="38%" minSize="15%" maxSize="75%" id="testcase-panel">
                     <TestcasePanel
                       testCases={allTestCases}
                       executionResult={executionResult}
