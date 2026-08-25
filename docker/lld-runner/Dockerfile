@@ -6,10 +6,10 @@ LABEL description="Pre-warmed isolated container runner for Spring Boot 3.4 / JU
 WORKDIR /tmp/warm
 
 COPY skeleton-pom.xml /tmp/warm/pom.xml
+COPY src /tmp/warm/src
 
-# Pre-fetch all dependencies and plugins to populate local ~/.m2 offline repository cache
-RUN mvn -B -q dependency:go-offline dependency:resolve-plugins || true && \
-    mvn -B test-compile || true
+# Pre-fetch all dependencies, plugins, and execute test phase to fully warm ~/.m2
+RUN mvn -B dependency:go-offline dependency:resolve-plugins &&     mvn -B test &&     rm -rf /tmp/warm
 
 WORKDIR /workspace
 
