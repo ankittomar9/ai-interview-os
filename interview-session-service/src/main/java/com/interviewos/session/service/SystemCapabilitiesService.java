@@ -1,6 +1,7 @@
 package com.interviewos.session.service;
 
 import com.interviewos.session.runner.LldMavenRunner;
+import com.interviewos.session.runner.SqlPostgresRunner;
 import com.interviewos.session.sandbox.client.Judge0Client;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSFindIterable;
@@ -31,6 +32,7 @@ public class SystemCapabilitiesService {
 
     private final Judge0Client judge0Client;
     private final LldMavenRunner lldMavenRunner;
+    private final SqlPostgresRunner sqlPostgresRunner;
     private final DataSource dataSource;
     private final MongoTemplate mongoTemplate;
     private final GridFSBucket gridFSBucket;
@@ -81,9 +83,18 @@ public class SystemCapabilitiesService {
                     : "Docker socket unavailable — LLD sandbox requires Docker socket access";
         } catch (Exception ignored) {}
 
+        boolean sqlReady = false;
+        String sqlDetail = "Docker daemon socket is not accessible";
+        try {
+            sqlReady = sqlPostgresRunner.isDockerReady();
+            sqlDetail = sqlReady ? "PostgreSQL 13 isolated container sandbox runner is online"
+                    : "Docker socket unavailable — SQL sandbox requires Docker socket access";
+        } catch (Exception ignored) {}
+
         Map<String, EngineStatus> engines = Map.of(
                 "dsa", new EngineStatus(dsaReady, dsaDetail),
                 "lld", new EngineStatus(lldReady, lldDetail),
+                "sql", new EngineStatus(sqlReady, sqlDetail),
                 "hld", new EngineStatus(true, "Client-side React Flow + multimodal vision evaluator"),
                 "behavioral", new EngineStatus(true, "Audio & transcript dialogue engine")
         );

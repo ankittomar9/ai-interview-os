@@ -54,6 +54,11 @@ public class SqlPostgresRunner implements TrackRunner {
 
     public SqlPostgresRunner() {}
 
+    public boolean isDockerReady() {
+        ensureDockerInitialized();
+        return isDockerAvailable && dockerClient != null;
+    }
+
     @Override
     public boolean supports(ProblemDocument problem) {
         return problem != null && "sql-postgres".equalsIgnoreCase(problem.getBuildProfile());
@@ -110,7 +115,7 @@ public class SqlPostgresRunner implements TrackRunner {
 
             ExposedPort dbPort = ExposedPort.tcp(5432);
             Ports portBindings = new Ports();
-            portBindings.bind(dbPort, Ports.Binding.empty());
+            portBindings.bind(dbPort, Ports.Binding.bindIp("127.0.0.1"));
 
             HostConfig hostConfig = HostConfig.newHostConfig()
                     .withNetworkMode(networkName)

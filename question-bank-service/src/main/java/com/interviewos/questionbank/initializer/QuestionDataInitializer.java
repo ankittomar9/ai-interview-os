@@ -1024,14 +1024,15 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             (6, 103, '2024-01-04', 75.00);
                             """)
                     .starterCode("""
-                            -- Write your SQL query below using SUM() OVER (PARTITION BY ... ORDER BY ...):
+                            -- Write your SQL query below:
+                            -- Calculate running total (cumulative spend) for each customer chronologically
+                            -- Output: customer_id, order_date, order_amount, running_total
+                            -- TODO: Compute running_total using SUM() OVER (...)
                             SELECT
                                 customer_id,
                                 order_date,
-                                amount AS order_amount,
-                                SUM(amount) OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS running_total
-                            FROM customer_orders
-                            ORDER BY customer_id, order_date, order_id;
+                                amount AS order_amount
+                            FROM customer_orders;
                             """)
                     .expectedCsv("""
                             customer_id,order_date,order_amount,running_total
@@ -1116,20 +1117,16 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             (8, 2, 'Heidi', 80000);
                             """)
                     .starterCode("""
-                            -- Write your query using DENSE_RANK() OVER (PARTITION BY ... ORDER BY ...):
-                            WITH ranked_employees AS (
-                                SELECT
-                                    department_id,
-                                    employee_id,
-                                    name,
-                                    salary,
-                                    DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) as rank
-                                FROM employees
-                            )
-                            SELECT department_id, employee_id, name, salary, rank
-                            FROM ranked_employees
-                            WHERE rank <= 2
-                            ORDER BY department_id ASC, salary DESC, employee_id ASC;
+                            -- Write your SQL query below:
+                            -- Find top-2 unique salaries per department with ties (DENSE_RANK)
+                            -- Output: department_id, employee_id, name, salary, rank
+                            -- TODO: Implement your query using DENSE_RANK() OVER (...)
+                            SELECT
+                                department_id,
+                                employee_id,
+                                name,
+                                salary
+                            FROM employees;
                             """)
                     .expectedCsv("""
                             department_id,employee_id,name,salary,rank
@@ -1219,26 +1216,15 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             (6, 102, '2024-01-01 10:30:00', 'login');
                             """)
                     .starterCode("""
-                            -- Write your query using LAG() and cumulative SUM() to identify session boundaries:
-                            WITH lag_events AS (
-                                SELECT
-                                    user_id,
-                                    event_time,
-                                    event_name,
-                                    CASE
-                                        WHEN LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) IS NULL THEN 1
-                                        WHEN EXTRACT(EPOCH FROM (event_time - LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time))) > 1800 THEN 1
-                                        ELSE 0
-                                    END AS is_new_session
-                                FROM user_events
-                            )
+                            -- Write your SQL query below:
+                            -- Identify session boundaries (30-min inactivity gap) and assign sequential session_id
+                            -- Output: user_id, event_time, event_name, session_id
+                            -- TODO: Implement session identification using LAG() and SUM() OVER (...)
                             SELECT
                                 user_id,
-                                TO_CHAR(event_time, 'YYYY-MM-DD HH24:MI:SS') AS event_time,
-                                event_name,
-                                SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
-                            FROM lag_events
-                            ORDER BY user_id ASC, event_time ASC;
+                                event_time,
+                                event_name
+                            FROM user_events;
                             """)
                     .expectedCsv("""
                             user_id,event_time,event_name,session_id
@@ -1331,16 +1317,14 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             ('2024-01-08', 450.00);
                             """)
                     .starterCode("""
-                            -- Write your query using AVG() OVER (ORDER BY ... RANGE BETWEEN INTERVAL ...):
+                            -- Write your SQL query below:
+                            -- Calculate 7-day trailing moving average daily sales (RANGE BETWEEN INTERVAL)
+                            -- Output: order_date, daily_amount, moving_avg_7d
+                            -- TODO: Implement moving average with AVG() OVER (RANGE BETWEEN INTERVAL ...)
                             SELECT
                                 order_date,
-                                amount AS daily_amount,
-                                ROUND(AVG(amount) OVER (
-                                    ORDER BY order_date
-                                    RANGE BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW
-                                ), 2) AS moving_avg_7d
-                            FROM daily_sales
-                            ORDER BY order_date ASC;
+                                amount AS daily_amount
+                            FROM daily_sales;
                             """)
                     .expectedCsv("""
                             order_date,daily_amount,moving_avg_7d
@@ -1425,20 +1409,15 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             (5, 'First Transaction', 600);
                             """)
                     .starterCode("""
-                            -- Write your query using LAG() and division protection:
+                            -- Write your SQL query below:
+                            -- Calculate step-by-step conversion rate pct relative to previous step
+                            -- Output: step_number, step_name, user_count, conversion_rate_pct
+                            -- TODO: Implement funnel conversion using LAG() OVER (...)
                             SELECT
                                 step_number,
                                 step_name,
-                                user_count,
-                                ROUND(
-                                    COALESCE(
-                                        (user_count::numeric / NULLIF(LAG(user_count) OVER (ORDER BY step_number), 0)) * 100.0,
-                                        100.00
-                                    ),
-                                    2
-                                ) AS conversion_rate_pct
-                            FROM funnel_steps
-                            ORDER BY step_number ASC;
+                                user_count
+                            FROM funnel_steps;
                             """)
                     .expectedCsv("""
                             step_number,step_name,user_count,conversion_rate_pct
@@ -1527,20 +1506,16 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             (5, 103, 'carol@test.com', 'ACTIVE', '2024-01-01 05:00:00');
                             """)
                     .starterCode("""
-                            -- Write your query using ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...):
-                            WITH ranked_logs AS (
-                                SELECT
-                                    user_id,
-                                    email,
-                                    status,
-                                    TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI:SS') AS updated_at,
-                                    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC, log_id DESC) AS rn
-                                FROM user_profile_logs
-                            )
-                            SELECT user_id, email, status, updated_at
-                            FROM ranked_logs
-                            WHERE rn = 1
-                            ORDER BY user_id ASC;
+                            -- Write your SQL query below:
+                            -- Deduplicate audit log keeping only the latest record per user_id
+                            -- Output: user_id, email, status, updated_at
+                            -- TODO: Deduplicate using ROW_NUMBER() OVER (...)
+                            SELECT
+                                user_id,
+                                email,
+                                status,
+                                updated_at
+                            FROM user_profile_logs;
                             """)
                     .expectedCsv("""
                             user_id,email,status,updated_at
@@ -1619,25 +1594,14 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             ('2024-03-01', 1), ('2024-03-01', 2), ('2024-03-01', 7), ('2024-03-01', 8);
                             """)
                     .starterCode("""
-                            -- Write your query using CTE aggregation and LAG():
-                            WITH monthly_counts AS (
-                                SELECT
-                                    TO_CHAR(activity_month, 'YYYY-MM') AS active_month,
-                                    COUNT(DISTINCT user_id) AS mau_count
-                                FROM monthly_user_activity
-                                GROUP BY TO_CHAR(activity_month, 'YYYY-MM')
-                            )
+                            -- Write your SQL query below:
+                            -- Calculate monthly active users (MAU), MoM count change, and MoM growth pct
+                            -- Output: active_month, mau_count, mom_change, mom_growth_pct
+                            -- TODO: Aggregate monthly counts and compute MoM metrics using LAG() OVER (...)
                             SELECT
-                                active_month,
-                                mau_count,
-                                mau_count - LAG(mau_count, 1) OVER (ORDER BY active_month) AS mom_change,
-                                ROUND(
-                                    ((mau_count - LAG(mau_count, 1) OVER (ORDER BY active_month))::numeric /
-                                     NULLIF(LAG(mau_count, 1) OVER (ORDER BY active_month), 0)) * 100.0,
-                                    2
-                                ) AS mom_growth_pct
-                            FROM monthly_counts
-                            ORDER BY active_month ASC;
+                                activity_month,
+                                user_id
+                            FROM monthly_user_activity;
                             """)
                     .expectedCsv("""
                             active_month,mau_count,mom_change,mom_growth_pct
@@ -1727,21 +1691,14 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             (8, 300.00);
                             """)
                     .starterCode("""
-                            -- Write your query using NTILE(4) and nested window aggregation:
-                            WITH customer_quartiles AS (
-                                SELECT
-                                    customer_id,
-                                    total_lifetime_spend,
-                                    NTILE(4) OVER (ORDER BY total_lifetime_spend DESC) AS quartile
-                                FROM customer_spend
-                            )
+                            -- Write your SQL query below:
+                            -- Segment customers into 4 spend quartiles (NTILE) and compute quartile avg spend
+                            -- Output: customer_id, total_lifetime_spend, quartile, quartile_avg_spend
+                            -- TODO: Implement quartile banding and cohort averages using NTILE(4) OVER (...)
                             SELECT
                                 customer_id,
-                                total_lifetime_spend,
-                                quartile,
-                                ROUND(AVG(total_lifetime_spend) OVER (PARTITION BY quartile), 2) AS quartile_avg_spend
-                            FROM customer_quartiles
-                            ORDER BY quartile ASC, total_lifetime_spend DESC, customer_id ASC;
+                                total_lifetime_spend
+                            FROM customer_spend;
                             """)
                     .expectedCsv("""
                             customer_id,total_lifetime_spend,quartile,quartile_avg_spend
