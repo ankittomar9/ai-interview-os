@@ -41,8 +41,8 @@ class QuestionPublicControllerTest {
     private QuestionMatchService questionMatchService;
 
     @Test
-    @DisplayName("GET /api/v1/questions/{slug} should return 200 OK and STRIP all hidden tests and notes")
-    void testGetPublicQuestionStripsHiddenContent() throws Exception {
+    @DisplayName("GET /api/v1/questions/{slug}?sessionMode=INTERVIEW should return 200 OK and STRIP all hidden tests and solution code")
+    void testGetPublicQuestionInterviewModeStripsHiddenContent() throws Exception {
         QuestionDocument doc = QuestionDocument.builder()
                 .slug("lru-cache")
                 .title("LRU Cache Implementation")
@@ -50,6 +50,7 @@ class QuestionPublicControllerTest {
                 .difficulty("SENIOR")
                 .status("PUBLISHED")
                 .problemStatement("Implement LRU Cache")
+                .solutionCode("public class Solution {}")
                 .hiddenTests(List.of(new QuestionDocument.HiddenTestCase("Hidden 1", "in", "out", 1)))
                 .interviewerNotes(new QuestionDocument.InterviewerNotes(List.of("Concept"), List.of("Seed"), List.of("Checkpoint")))
                 .coaching(new QuestionDocument.CoachingContent(List.of("Mistake"), "Outline", List.of("Tip")))
@@ -57,14 +58,35 @@ class QuestionPublicControllerTest {
 
         when(questionRepository.findBySlug(eq("lru-cache"))).thenReturn(Optional.of(doc));
 
-        mockMvc.perform(get("/api/v1/questions/lru-cache"))
+        mockMvc.perform(get("/api/v1/questions/lru-cache").param("sessionMode", "INTERVIEW"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.slug").value("lru-cache"))
                 .andExpect(jsonPath("$.title").value("LRU Cache Implementation"))
-                .andExpect(jsonPath("$.hiddenTests").doesNotExist())
-                .andExpect(jsonPath("$.hiddenTestFiles").doesNotExist())
-                .andExpect(jsonPath("$.interviewerNotes").doesNotExist())
-                .andExpect(jsonPath("$.coaching").doesNotExist());
+                .andExpect(jsonPath("$.hiddenTests").isEmpty())
+                .andExpect(jsonPath("$.solutionCode").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/questions/{slug}?sessionMode=PLAYGROUND should include hidden tests and practice solution code")
+    void testGetPublicQuestionPlaygroundIncludesHiddenContent() throws Exception {
+        QuestionDocument doc = QuestionDocument.builder()
+                .slug("lru-cache")
+                .title("LRU Cache Implementation")
+                .track("ALGORITHMS_DATA_STRUCTURES")
+                .difficulty("SENIOR")
+                .status("PUBLISHED")
+                .problemStatement("Implement LRU Cache")
+                .solutionCode("public class Solution {}")
+                .hiddenTests(List.of(new QuestionDocument.HiddenTestCase("Hidden 1", "in", "out", 1)))
+                .build();
+
+        when(questionRepository.findBySlug(eq("lru-cache"))).thenReturn(Optional.of(doc));
+
+        mockMvc.perform(get("/api/v1/questions/lru-cache").param("sessionMode", "PLAYGROUND"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value("lru-cache"))
+                .andExpect(jsonPath("$.hiddenTests[0].name").value("Hidden 1"))
+                .andExpect(jsonPath("$.solutionCode").value("public class Solution {}"));
     }
 
     @Test

@@ -27,9 +27,11 @@ public class QuestionPublicController {
             @RequestParam(required = false) String track,
             @RequestParam(required = false) String difficulty,
             @RequestParam(required = false) List<String> tags,
-            @RequestParam(required = false) String q
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String sessionMode
     ) {
-        log.info("Listing public questions [track: {}, difficulty: {}, tags: {}, query: {}]", track, difficulty, tags, q);
+        log.info("Listing public questions [track: {}, difficulty: {}, tags: {}, query: {}, sessionMode: {}]", track, difficulty, tags, q, sessionMode);
+        boolean isInterview = "INTERVIEW".equalsIgnoreCase(sessionMode);
 
         List<QuestionDocument> docs;
         if (track != null && !track.isBlank() && difficulty != null && !difficulty.isBlank()) {
@@ -59,18 +61,23 @@ public class QuestionPublicController {
         }
 
         List<QuestionPublicView> publicViews = docs.stream()
-                .map(QuestionPublicView::fromDocument)
+                .map(d -> QuestionPublicView.fromDocument(d, isInterview))
                 .toList();
 
         return ResponseEntity.ok(publicViews);
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<QuestionPublicView> getQuestionBySlug(@PathVariable String slug) {
-        log.info("Fetching public question for slug: '{}'", slug);
+    public ResponseEntity<QuestionPublicView> getQuestionBySlug(
+            @PathVariable String slug,
+            @RequestParam(required = false) String sessionMode
+    ) {
+        log.info("Fetching public question for slug: '{}' (sessionMode: {})", slug, sessionMode);
+        boolean isInterview = "INTERVIEW".equalsIgnoreCase(sessionMode);
+
         return questionRepository.findBySlug(slug)
                 .filter(q -> "PUBLISHED".equalsIgnoreCase(q.getStatus()))
-                .map(QuestionPublicView::fromDocument)
+                .map(d -> QuestionPublicView.fromDocument(d, isInterview))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

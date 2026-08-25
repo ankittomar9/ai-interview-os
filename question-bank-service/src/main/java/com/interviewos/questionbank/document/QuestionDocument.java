@@ -66,7 +66,15 @@ public class QuestionDocument {
     @Builder.Default
     private boolean ordered = false;
 
+    private String solutionCode;
+
+    private Map<String, String> solutionFiles;
+
     private String solutionSql;
+
+    private List<String> hints;
+
+    private String editorialMarkdown;
 
     private ExecutionLimits limits;
 
@@ -123,6 +131,11 @@ public class QuestionDocument {
     public record CoachingContent(
             List<String> commonMistakes,
             String modelAnswerOutline,
-            List<String> presentationTips
-    ) {}
+            List<String> presentationTips,
+            String approachHint
+    ) {
+        public CoachingContent(List<String> commonMistakes, String modelAnswerOutline, List<String> presentationTips) {
+            this(commonMistakes, modelAnswerOutline, presentationTips, null);
+        }
+    }
 }

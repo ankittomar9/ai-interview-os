@@ -19,7 +19,12 @@ public record QuestionPublicView(
         Map<String, String> starterFiles,
         List<String> editablePaths,
         List<QuestionDocument.TestCase> sampleTests,
+        List<QuestionDocument.HiddenTestCase> hiddenTests,
         List<String> evaluationCriteria,
+        List<String> hints,
+        QuestionDocument.CoachingContent coaching,
+        String editorialMarkdown,
+        String solutionCode,
         QuestionDocument.ExecutionLimits limits,
         String buildProfile,
         String dbEngine,
@@ -29,6 +34,10 @@ public record QuestionPublicView(
         String solutionSql
 ) {
     public static QuestionPublicView fromDocument(QuestionDocument doc) {
+        return fromDocument(doc, false);
+    }
+
+    public static QuestionPublicView fromDocument(QuestionDocument doc, boolean isInterviewMode) {
         if (doc == null) return null;
         return QuestionPublicView.builder()
                 .slug(doc.getSlug())
@@ -42,14 +51,19 @@ public record QuestionPublicView(
                 .starterFiles(doc.getStarterFiles())
                 .editablePaths(doc.getEditablePaths())
                 .sampleTests(doc.getSampleTests())
+                .hiddenTests(isInterviewMode ? List.of() : doc.getHiddenTests())
                 .evaluationCriteria(doc.getEvaluationCriteria())
+                .hints(doc.getHints())
+                .coaching(doc.getCoaching())
+                .editorialMarkdown(isInterviewMode ? null : doc.getEditorialMarkdown())
+                .solutionCode(isInterviewMode ? null : doc.getSolutionCode())
                 .limits(doc.getLimits())
                 .buildProfile(doc.getBuildProfile())
                 .dbEngine(doc.getDbEngine())
                 .schemaMarkdown(doc.getSchemaMarkdown())
                 .expectedCsv(doc.getExpectedCsv())
                 .ordered(doc.isOrdered())
-                .solutionSql(doc.getSolutionSql())
+                .solutionSql(isInterviewMode ? null : doc.getSolutionSql())
                 .build();
     }
 }
