@@ -8,7 +8,7 @@ interface Props {
   allowMinimize?: boolean;
 }
 
-const STORAGE_POS_KEY = 'ui.webcam.position';
+const STORAGE_POS_KEY = 'ui.webcam.position.v2';
 const STORAGE_MIN_KEY = 'ui.webcam.minimized';
 
 export const WebcamTile: React.FC<Props> = ({
@@ -20,7 +20,17 @@ export const WebcamTile: React.FC<Props> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const tileRef = useRef<HTMLDivElement | null>(null);
 
-  // Position state with default bottom-right calculation
+  const getDefaultPos = () => {
+    if (typeof window !== 'undefined') {
+      return {
+        x: Math.max(16, window.innerWidth - 200),
+        y: Math.max(16, window.innerHeight - 200)
+      };
+    }
+    return { x: 800, y: 600 };
+  };
+
+  // Position state with default bottom-right calculation & viewport clamping
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -28,16 +38,15 @@ export const WebcamTile: React.FC<Props> = ({
         if (saved) {
           const parsed = JSON.parse(saved);
           if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
-            return parsed;
+            const clampedX = Math.min(Math.max(16, parsed.x), window.innerWidth - 200);
+            const clampedY = Math.min(Math.max(16, parsed.y), window.innerHeight - 200);
+            return { x: clampedX, y: clampedY };
           }
         }
       } catch {
         // Fallback
       }
-      return {
-        x: Math.max(16, window.innerWidth - 200),
-        y: Math.max(16, window.innerHeight - 200)
-      };
+      return getDefaultPos();
     }
     return { x: 800, y: 600 };
   });
@@ -199,7 +208,13 @@ export const WebcamTile: React.FC<Props> = ({
     >
       {/* Drag Header Bar */}
       <div
-        className={`flex items-center justify-between px-2 py-1 text-[10px] font-bold border-b ${
+        onDoubleClick={() => {
+          const def = getDefaultPos();
+          setPosition(def);
+          localStorage.setItem(STORAGE_POS_KEY, JSON.stringify(def));
+        }}
+        title="Double-click to reset position"
+        className={`flex items-center justify-between px-2 py-1 text-[10px] font-bold border-b cursor-pointer ${
           isTabBlurred
             ? 'bg-danger text-white border-danger'
             : 'bg-elevated text-text-2 border-border'

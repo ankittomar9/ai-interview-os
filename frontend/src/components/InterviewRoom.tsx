@@ -790,22 +790,22 @@ export const InterviewRoom: React.FC<Props> = ({
         </div>
       )}
 
-      <header className="h-12 bg-surface border-b border-border flex items-center justify-between px-3 sm:px-4 z-20 shrink-0">
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <button type="button" onClick={() => void handleEndInterview()} className="p-1 rounded-md text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer">
+      <header className="h-12 bg-surface border-b border-border flex items-center justify-between px-3 sm:px-4 z-20 shrink-0 gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+          <button type="button" onClick={() => void handleEndInterview()} className="p-1 rounded-md text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer shrink-0">
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="w-6 h-6 rounded-md bg-elevated border border-border flex items-center justify-center text-primary shrink-0">
             <Code2 className="w-3.5 h-3.5" />
           </div>
-          <span className="text-sm font-bold text-text truncate max-w-[240px]">
+          <span className="text-sm font-bold text-text truncate min-w-0">
             {activeQuestionIdx + 1}. {currentQuestion.title}
           </span>
-          <Chip variant="success" size="sm">{currentQuestion.difficulty || 'Easy'}</Chip>
+          <Chip variant="success" size="sm" className="shrink-0">{currentQuestion.difficulty || 'Easy'}</Chip>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-elevated border border-border text-xs font-mono font-bold text-text">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-elevated border border-border text-xs font-mono font-bold text-text shrink-0">
             <Timer className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-danger' : 'text-text-3'}`} />
             <span className={timeLeft < 300 ? 'text-danger' : 'text-text'}>{formatTime(timeLeft)}</span>
           </div>
@@ -814,7 +814,7 @@ export const InterviewRoom: React.FC<Props> = ({
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as any)}
-              className="hidden sm:block bg-elevated text-text border border-border rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              className="hidden md:block bg-elevated text-text border border-border rounded-md px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer shrink-0"
             >
               <option value="java">Java</option>
               <option value="python">Python</option>
@@ -850,12 +850,12 @@ export const InterviewRoom: React.FC<Props> = ({
 
       <StageStepper currentStage={currentStage} onStageClick={setCurrentStage} />
 
-      <div className="flex flex-1 overflow-hidden relative">
-        <QuestionRail items={railItems} selectedIndex={activeQuestionIdx} onSelect={handleSelectQuestion} />
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
+        <QuestionRail items={railItems} selectedIndex={activeQuestionIdx} onSelect={handleSelectQuestion} className="w-12 shrink-0 border-r border-border h-full" />
 
-        <div className="flex-1 flex overflow-hidden">
-          <Group orientation="horizontal" id="main-interview-group" className="h-full w-full flex-1">
-            <Panel defaultSize="42%" minSize="25%" maxSize="70%" id="problem-panel">
+        <div className="flex-1 min-w-0 h-full overflow-hidden">
+          <Group orientation="horizontal" id="arena-h-v2" className="h-full w-full flex-1 min-w-0">
+            <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
               <ProblemPanel
                 question={currentQuestion}
                 isSolved={statusMap[currentQuestion.slug || `q${activeQuestionIdx + 1}`] === 'PASSED'}
@@ -872,9 +872,9 @@ export const InterviewRoom: React.FC<Props> = ({
               />
             </Panel>
 
-            <Separator className="w-1 bg-border hover:bg-primary transition-colors cursor-col-resize relative flex items-center justify-center z-10 select-none" />
+            <Separator className="w-[3px] bg-border/60 hover:bg-primary/60 cursor-col-resize relative flex items-center justify-center z-10 select-none" />
 
-            <Panel defaultSize="58%" minSize="30%" id="workspace-panel">
+            <Panel defaultSize="68%" minSize="50%" id="workspace-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
               {currentQuestion.starterFiles && Object.keys(currentQuestion.starterFiles).length > 0 ? (
                 <EmbeddedWorkspace
                   key={currentQuestion.problemSlug || currentQuestion.slug || 'lld-service'}
@@ -886,8 +886,8 @@ export const InterviewRoom: React.FC<Props> = ({
                   onSubmitProject={(summary) => void triggerCandidateTurn(summary)}
                 />
               ) : (
-                <Group orientation="vertical" id="editor-testcase-group" className="h-full w-full flex-1">
-                  <Panel defaultSize="62%" minSize="25%" id="editor-panel">
+                <Group orientation="vertical" id="arena-v-v2" className="h-full w-full flex-1 min-w-0">
+                  <Panel defaultSize="65%" minSize="25%" id="editor-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
                     <div className="flex flex-col h-full bg-bg overflow-hidden relative">
                       {/* Editor Toolbar Tabs */}
                       <div className="h-9 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
@@ -979,10 +979,10 @@ export const InterviewRoom: React.FC<Props> = ({
                       <StatusBar ln={cursor.ln} col={cursor.col} language={language} />
                     </div>
                   </Panel>
-                  <Separator className="h-1 bg-border hover:bg-primary transition-colors cursor-row-resize relative flex items-center justify-center z-10 select-none">
+                  <Separator className="h-1 bg-border/60 hover:bg-primary/60 transition-colors cursor-row-resize relative flex items-center justify-center z-10 select-none">
                     <div className="h-0.5 w-6 bg-text-3/40 rounded-full" />
                   </Separator>
-                  <Panel defaultSize="38%" minSize="15%" maxSize="75%" id="testcase-panel">
+                  <Panel defaultSize="35%" minSize="15%" maxSize="75%" id="testcase-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
                     <TestcasePanel
                       testCases={allTestCases}
                       executionResult={executionResult}

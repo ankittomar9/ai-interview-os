@@ -121,12 +121,12 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
             {/* Title, Badges & Solved status */}
             <div className="space-y-2 pb-2 border-b border-border">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h1 className="text-lg font-bold text-text tracking-tight">
+                <h1 className="text-lg font-bold text-text tracking-tight leading-snug">
                   {question.title}
                 </h1>
 
                 {isSolved && (
-                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30 text-xs font-semibold">
+                  <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success/15 text-success border border-success/30 text-xs font-semibold shrink-0">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Solved</span>
                   </div>
@@ -149,21 +149,21 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
             </div>
 
             {/* Video Guide Strip (Optional Placeholder) */}
-            <div className="bg-elevated border border-border rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-md bg-surface border border-border flex items-center justify-center text-primary">
+            <div className="hidden md:flex bg-elevated border border-border rounded-lg p-3 items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-md bg-surface border border-border flex items-center justify-center text-primary shrink-0">
                   <PlayCircle className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-text">Video Guide: Problem Walkthrough &amp; Invariants</div>
-                  <div className="text-[10px] text-text-3 font-mono">12:45 • Interactive Explanation</div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-text truncate">Video Guide: Problem Walkthrough &amp; Invariants</div>
+                  <div className="text-[10px] text-text-3 font-mono shrink-0">12:45 • Interactive Explanation</div>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => setIsVideoOpen(!isVideoOpen)}
-                className="px-2.5 py-1 text-xs rounded-md bg-surface border border-border text-text hover:bg-elevated font-semibold transition-colors cursor-pointer"
+                className="px-2.5 py-1 text-xs rounded-md bg-surface border border-border text-text hover:bg-elevated font-semibold transition-colors cursor-pointer shrink-0"
               >
                 {isVideoOpen ? 'Hide' : 'Watch'}
               </button>
@@ -177,9 +177,9 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
 
             {/* Hint Row Banner */}
             <div className="bg-elevated/60 border border-border rounded-lg p-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Lightbulb className="w-4 h-4 text-warning shrink-0" />
-                <span className="text-xs text-text-2">Stuck somewhere? Get a hint to move forward.</span>
+                <span className="text-xs text-text-2 line-clamp-2">Stuck somewhere? Get a hint to move forward.</span>
               </div>
 
               {onRevealHint && hintsRevealed < tips.length ? (
@@ -191,7 +191,7 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
                   Use Hint ({hintsRevealed}/{tips.length})
                 </button>
               ) : (
-                <span className="text-[11px] text-text-3 font-mono">All hints revealed</span>
+                <span className="text-[11px] text-text-3 font-mono shrink-0">All hints revealed</span>
               )}
             </div>
 
@@ -233,7 +233,7 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
             {question.sampleTests && question.sampleTests.length > 0 && (
               <div className="space-y-3 pt-2">
                 <div className="text-xs font-bold text-text-3 uppercase tracking-wider font-mono">
-                  Sample Examples:
+                  Examples
                 </div>
                 {question.sampleTests.map((t, idx) => (
                   <div key={idx} className="bg-elevated border border-border rounded-lg p-3 space-y-2 text-xs font-mono">
