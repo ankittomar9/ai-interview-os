@@ -30,8 +30,10 @@ interface Props {
     jobDescription: string;
     provider: ModelProvider;
     apiKey: string;
+    mode?: 'INTERVIEW' | 'PLAYGROUND';
   }) => void;
   isLoading: boolean;
+  onOpenCatalog?: () => void;
 }
 
 interface TrackOption {
@@ -87,7 +89,16 @@ const SENIORITY_OPTIONS: Array<{ value: DifficultyLevel; label: string }> = [
   { value: 'STAFF', label: 'Staff / Lead (8+ YOE)' }
 ];
 
-export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
+export const SetupScreen: React.FC<Props> = ({ onStart, isLoading, onOpenCatalog }) => {
+  const [mode, setMode] = useState<'INTERVIEW' | 'PLAYGROUND'>(() => {
+    return (localStorage.getItem('app.mode') as 'INTERVIEW' | 'PLAYGROUND') || 'INTERVIEW';
+  });
+
+  const handleModeChange = (newMode: 'INTERVIEW' | 'PLAYGROUND') => {
+    setMode(newMode);
+    localStorage.setItem('app.mode', newMode);
+  };
+
   const [candidateName, setCandidateName] = useState('');
   const [candidateId, setCandidateId] = useState('candidate-01');
   const [isIdManuallyEdited, setIsIdManuallyEdited] = useState(false);
@@ -212,11 +223,12 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
     e.preventDefault();
     setErrorMessage(null);
 
+    const isPlayground = mode === 'PLAYGROUND';
     const errors: { [key: string]: string } = {};
-    if (!candidateName.trim()) {
+    if (!isPlayground && !candidateName.trim()) {
       errors.candidateName = 'Candidate name is required';
     }
-    if (!roleTitle.trim()) {
+    if (!isPlayground && !roleTitle.trim()) {
       errors.roleTitle = 'Target role title is required';
     }
     if (!track) {
@@ -234,15 +246,19 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
       return;
     }
 
+    const effectiveRole = isPlayground ? (roleTitle.trim() || 'Software Engineer') : roleTitle.trim();
+    const effectiveCandidateId = isPlayground ? 'practitioner-01' : (candidateId || 'candidate-01');
+
     onStart({
-      candidateId: candidateId || 'candidate-01',
-      roleTitle,
+      candidateId: effectiveCandidateId,
+      roleTitle: effectiveRole,
       track,
       difficulty,
-      targetCompany,
-      jobDescription,
+      targetCompany: isPlayground ? '' : targetCompany.trim(),
+      jobDescription: isPlayground ? '' : jobDescription.trim(),
       provider,
-      apiKey
+      apiKey: apiKey.trim(),
+      mode
     });
   };
 
@@ -272,7 +288,9 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
     }
   };
 
-  const isFormValid = candidateName.trim().length > 0 && roleTitle.trim().length > 0 && !!track;
+  const isFormValid = mode === 'PLAYGROUND'
+    ? !!track
+    : (candidateName.trim().length > 0 && roleTitle.trim().length > 0 && !!track);
 
   return (
     <div className="min-h-screen bg-slate-50 grid place-items-center p-4 sm:p-8 select-text font-sans">
@@ -380,94 +398,138 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
            ========================================================================= */}
         <div className="flex-1 p-8 lg:p-10 overflow-y-auto bg-white">
           <div className="max-w-2xl mx-auto">
+            {/* Mode Selector Segmented Pill */}
+            <div className="mb-6">
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200" role="tablist" aria-label="Assessment Mode">
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('INTERVIEW')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    mode === 'INTERVIEW'
+                      ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/60'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  role="tab"
+                  aria-selected={mode === 'INTERVIEW'}
+                >
+                  <span className="text-base">🎯</span>
+                  <span>Interview Mode</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('PLAYGROUND')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    mode === 'PLAYGROUND'
+                      ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/60'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  role="tab"
+                  aria-selected={mode === 'PLAYGROUND'}
+                >
+                  <span className="text-base">🧪</span>
+                  <span>Playground Mode</span>
+                </button>
+              </div>
+            </div>
+
             {/* Header */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Candidate Setup</h2>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                {mode === 'PLAYGROUND' ? 'Playground Practice Arena' : 'Candidate Setup'}
+              </h2>
               <p className="text-sm text-slate-500 mt-1">
-                Enter candidate details and customize the evaluation track.
+                {mode === 'PLAYGROUND'
+                  ? 'Unproctored practice with full hint reveals, read-only solutions, and coaching dialogue.'
+                  : 'Enter candidate details and customize the formal evaluation track.'}
               </p>
             </div>
 
             <form onSubmit={handleSubmit}>
 
-              {/* 1. Identity Grid (2 cols) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-                {/* Candidate Full Name */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                    Candidate Name *
-                  </label>
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    required
-                    placeholder="e.g. Ankit Singh Tomar"
-                    value={candidateName}
-                    onChange={(e) => handleCandidateNameChange(e.target.value)}
-                    className={`w-full h-10 bg-slate-50 border rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all ${
-                      fieldErrors.candidateName ? 'border-red-500' : 'border-slate-200'
-                    }`}
-                  />
-                  {fieldErrors.candidateName && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.candidateName}</p>
-                  )}
-                </div>
+              {/* 1. Identity Grid (2 cols) - Only in INTERVIEW mode */}
+              {mode === 'INTERVIEW' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                  {/* Candidate Full Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                      Candidate Name *
+                    </label>
+                    <input
+                      ref={nameInputRef}
+                      type="text"
+                      required={mode === 'INTERVIEW'}
+                      placeholder="e.g. Ankit Singh Tomar"
+                      value={candidateName}
+                      onChange={(e) => handleCandidateNameChange(e.target.value)}
+                      className={`w-full h-10 bg-slate-50 border rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all ${
+                        fieldErrors.candidateName ? 'border-red-500' : 'border-slate-200'
+                      }`}
+                    />
+                    {fieldErrors.candidateName && (
+                      <p className="text-xs text-red-600 mt-1">{fieldErrors.candidateName}</p>
+                    )}
+                  </div>
 
-                {/* Candidate ID Slug with 'id-' affix */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                    Candidate ID
-                  </label>
-                  <div className="flex items-center h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
-                    <span className="text-slate-400 text-sm font-mono select-none mr-1.5">id-</span>
+                  {/* Candidate ID Slug with 'id-' affix */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                      Candidate ID
+                    </label>
+                    <div className="flex items-center h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
+                      <span className="text-slate-400 text-sm font-mono select-none mr-1.5">id-</span>
+                      <input
+                        type="text"
+                        value={candidateId.replace(/^id-/, '')}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/^id-/, '');
+                          setCandidateId(raw);
+                          setIsIdManuallyEdited(true);
+                        }}
+                        placeholder="candidate-01"
+                        className="flex-1 bg-transparent border-0 text-sm text-slate-900 font-mono focus:outline-none placeholder:text-slate-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Target Role Title */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                      Target Role Title *
+                    </label>
+                    <input
+                      ref={roleInputRef}
+                      type="text"
+                      required={mode === 'INTERVIEW'}
+                      placeholder="e.g. Senior Java Backend Engineer"
+                      value={roleTitle}
+                      onChange={(e) => handleRoleTitleChange(e.target.value)}
+                      className={`w-full h-10 bg-slate-50 border rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all ${
+                        fieldErrors.roleTitle ? 'border-red-500' : 'border-slate-200'
+                      }`}
+                    />
+                    {fieldErrors.roleTitle && (
+                      <p className="text-xs text-red-600 mt-1">{fieldErrors.roleTitle}</p>
+                    )}
+                  </div>
+
+                  {/* Target Company */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                      Target Company (Optional)
+                    </label>
                     <input
                       type="text"
-                      value={candidateId.replace(/^id-/, '')}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/^id-/, '');
-                        setCandidateId(raw);
-                        setIsIdManuallyEdited(true);
-                      }}
-                      placeholder="candidate-01"
-                      className="flex-1 bg-transparent border-0 text-sm text-slate-900 font-mono focus:outline-none placeholder:text-slate-400"
+                      placeholder="e.g. Google, Stripe, Netflix"
+                      value={targetCompany}
+                      onChange={(e) => setTargetCompany(e.target.value)}
+                      className="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                     />
                   </div>
                 </div>
+              )}
 
-                {/* Target Role Title */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                    Target Role Title *
-                  </label>
-                  <input
-                    ref={roleInputRef}
-                    type="text"
-                    required
-                    placeholder="e.g. Senior Java Backend Engineer"
-                    value={roleTitle}
-                    onChange={(e) => handleRoleTitleChange(e.target.value)}
-                    className={`w-full h-10 bg-slate-50 border rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all ${
-                      fieldErrors.roleTitle ? 'border-red-500' : 'border-slate-200'
-                    }`}
-                  />
-                  {fieldErrors.roleTitle && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.roleTitle}</p>
-                  )}
-                </div>
-
-                {/* Target Company */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                    Target Company (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Google, Stripe, Netflix"
-                    value={targetCompany}
-                    onChange={(e) => setTargetCompany(e.target.value)}
-                    className="w-full h-10 bg-slate-50 border border-slate-200 rounded-lg px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                  />
-                </div>
+              {/* AI Model Provider & Key Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
 
                 {/* AI Model Provider */}
                 <div>
@@ -509,9 +571,21 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
 
               {/* 2. Assessment Track (3-col Grid) */}
               <div className="mb-8">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-4">
-                  Assessment Track *
-                </label>
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    {mode === 'PLAYGROUND' ? 'Practice Track *' : 'Assessment Track *'}
+                  </label>
+                  {onOpenCatalog && (
+                    <button
+                      type="button"
+                      onClick={onOpenCatalog}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Browse Full Question Catalog</span>
+                    </button>
+                  )}
+                </div>
                 <div
                   role="radiogroup"
                   aria-label="Assessment Track"
@@ -739,11 +813,11 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading }) => {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Launching Technical Assessment...</span>
+                    <span>{mode === 'PLAYGROUND' ? 'Entering Playground Arena...' : 'Launching Technical Assessment...'}</span>
                   </>
                 ) : (
                   <>
-                    <span>Launch Technical Assessment</span>
+                    <span>{mode === 'PLAYGROUND' ? 'Enter Playground Arena' : 'Launch Technical Assessment'}</span>
                     <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                   </>
                 )}

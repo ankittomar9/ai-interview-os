@@ -77,6 +77,7 @@ public class AiOrchestratorController {
                         .apiKey(effectiveApiKey)
                         .modelName(request.modelName())
                         .latestExecution(request.latestExecution())
+                        .sessionMode(request.sessionMode())
                         .build()
                 : request;
 

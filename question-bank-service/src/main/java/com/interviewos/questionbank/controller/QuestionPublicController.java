@@ -26,15 +26,18 @@ public class QuestionPublicController {
     public ResponseEntity<List<QuestionPublicView>> listQuestions(
             @RequestParam(required = false) String track,
             @RequestParam(required = false) String difficulty,
-            @RequestParam(required = false) List<String> tags
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String q
     ) {
-        log.info("Listing public questions [track: {}, difficulty: {}, tags: {}]", track, difficulty, tags);
+        log.info("Listing public questions [track: {}, difficulty: {}, tags: {}, query: {}]", track, difficulty, tags, q);
 
         List<QuestionDocument> docs;
         if (track != null && !track.isBlank() && difficulty != null && !difficulty.isBlank()) {
             docs = questionRepository.findByTrackAndDifficultyAndStatus(track, difficulty, "PUBLISHED");
         } else if (track != null && !track.isBlank()) {
             docs = questionRepository.findByTrackAndStatus(track, "PUBLISHED");
+        } else if (difficulty != null && !difficulty.isBlank()) {
+            docs = questionRepository.findByDifficultyAndStatus(difficulty, "PUBLISHED");
         } else {
             docs = questionRepository.findByStatus("PUBLISHED");
         }
@@ -42,6 +45,16 @@ public class QuestionPublicController {
         if (tags != null && !tags.isEmpty()) {
             docs = docs.stream()
                     .filter(d -> d.getTags() != null && d.getTags().stream().anyMatch(tags::contains))
+                    .toList();
+        }
+
+        if (q != null && !q.isBlank()) {
+            String queryLower = q.trim().toLowerCase();
+            docs = docs.stream()
+                    .filter(d -> (d.getTitle() != null && d.getTitle().toLowerCase().contains(queryLower)) ||
+                                 (d.getSlug() != null && d.getSlug().toLowerCase().contains(queryLower)) ||
+                                 (d.getTags() != null && d.getTags().stream().anyMatch(t -> t.toLowerCase().contains(queryLower))) ||
+                                 (d.getProblemStatement() != null && d.getProblemStatement().toLowerCase().contains(queryLower)))
                     .toList();
         }
 

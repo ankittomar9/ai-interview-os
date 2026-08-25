@@ -25,6 +25,7 @@ export interface SessionResponse {
     startedAt?: string;
     completedAt?: string;
     durationSeconds?: number;
+    sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
     messages: Array<{
         id: number;
         senderRole: string;
@@ -53,10 +54,18 @@ export interface GenerateQuestionResponse {
     schemaMarkdown?: string;
     expectedCsv?: string;
     ordered?: boolean;
+    solutionCode?: string;
     solutionSql?: string;
+    editorialMarkdown?: string;
+    tags?: string[];
     sampleTests?: Array<{ name: string; input?: string; expectedOutput?: string; description?: string; explanation?: string }>;
     hints: string[];
-    coaching?: { presentationTips?: string[] };
+    coaching?: {
+        presentationTips?: string[];
+        commonMistakes?: string[];
+        modelAnswerOutline?: string[];
+        approachHint?: string;
+    };
     constraints?: string[];
     evaluationCriteria: string[];
 }

@@ -47,6 +47,10 @@ public class InterviewSession {
     @Column(nullable = false)
     private SessionStatus status;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private String sessionMode = "INTERVIEW";
+
     private Instant createdAt;
     private Instant startedAt;
     private Instant completedAt;

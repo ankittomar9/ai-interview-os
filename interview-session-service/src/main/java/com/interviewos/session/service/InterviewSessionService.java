@@ -35,6 +35,7 @@ public class InterviewSessionService {
     public SessionResponse createSession(CreateSessionRequest request) {
         log.info("Creating new interview session for candidate: {}, role: {}", request.candidateId(), request.roleTitle());
 
+        String effectiveMode = request.getEffectiveMode();
         InterviewSession session = InterviewSession.builder()
                 .candidateId(request.candidateId())
                 .roleTitle(request.roleTitle())
@@ -43,6 +44,7 @@ public class InterviewSessionService {
                 .targetCompany(request.targetCompany())
                 .jobDescription(request.jobDescription())
                 .status(SessionStatus.INITIALIZED)
+                .sessionMode(effectiveMode)
                 .build();
 
         InterviewSession saved = sessionRepository.save(session);
@@ -60,11 +62,13 @@ public class InterviewSessionService {
                             .seniorityLevel(request.difficulty().name())
                             .targetCompany(request.targetCompany())
                             .status(SessionStatus.INITIALIZED.name())
+                            .sessionMode(effectiveMode)
                             .transcript(new ArrayList<>())
                             .createdAt(LocalDateTime.now())
                             .build());
 
             mongoDoc.setStatus(SessionStatus.INITIALIZED.name());
+            mongoDoc.setSessionMode(effectiveMode);
             mongoSessionRepository.save(mongoDoc);
         } catch (Exception e) {
             log.warn("⚠️ Failed to mirror session to MongoDB: {}", e.getMessage());

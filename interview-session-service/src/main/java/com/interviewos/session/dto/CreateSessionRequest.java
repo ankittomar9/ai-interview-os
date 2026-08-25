@@ -21,5 +21,22 @@ public record CreateSessionRequest(
         DifficultyLevel difficulty,
 
         String targetCompany,
-        String jobDescription
-) {}
+        String jobDescription,
+        String mode
+) {
+    public CreateSessionRequest(
+            String candidateId,
+            String candidateName,
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String targetCompany,
+            String jobDescription
+    ) {
+        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, "INTERVIEW");
+    }
+
+    public String getEffectiveMode() {
+        return (mode != null && !mode.isBlank()) ? mode.trim().toUpperCase() : "INTERVIEW";
+    }
+}

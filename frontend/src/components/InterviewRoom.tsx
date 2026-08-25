@@ -26,6 +26,8 @@ import { ProblemPanel } from './ide/ProblemPanel';
 import { TestcasePanel, type TestCaseItem, type ExecutionResult } from './ide/TestcasePanel';
 import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
+import { SelfTimer } from './ide/SelfTimer';
+import { usePlaygroundProgress } from '../hooks/usePlaygroundProgress';
 import {
   Timer,
   Play,
@@ -40,8 +42,10 @@ import {
 interface Props {
   sessionId: number;
   question: GenerateQuestionResponse;
+  initialQuestionsList?: GenerateQuestionResponse[];
   provider: ModelProvider;
   apiKey: string;
+  sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   onFinish: () => void;
 }
 
@@ -72,12 +76,22 @@ function getSessionTabId(): string {
 export const InterviewRoom: React.FC<Props> = ({
   sessionId,
   question: initialQuestion,
+  initialQuestionsList,
   provider,
   apiKey,
+  sessionMode = 'INTERVIEW',
   onFinish
 }) => {
+  const isPlayground = sessionMode === 'PLAYGROUND';
+  const { recordRun } = usePlaygroundProgress();
+
   // --- Multi-Question State & Catalog ---
-  const [questionsList, setQuestionsList] = useState<GenerateQuestionResponse[]>([initialQuestion]);
+  const [questionsList, setQuestionsList] = useState<GenerateQuestionResponse[]>(() => {
+    if (initialQuestionsList && initialQuestionsList.length > 0) {
+      return initialQuestionsList;
+    }
+    return [initialQuestion];
+  });
   const [activeQuestionIdx, setActiveQuestionIdx] = useState<number>(0);
   const currentQuestion = questionsList[activeQuestionIdx] || initialQuestion;
 
@@ -89,6 +103,7 @@ export const InterviewRoom: React.FC<Props> = ({
   const [hintsRevealedMap, setHintsRevealedMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    if (initialQuestionsList && initialQuestionsList.length > 1) return;
     listQuestions({ track: initialQuestion.track })
       .then((qs) => {
         if (qs && qs.length > 0) {
@@ -100,7 +115,7 @@ export const InterviewRoom: React.FC<Props> = ({
       .catch((err) => {
         console.warn('Could not load multi-question catalog:', err);
       });
-  }, [initialQuestion]);
+  }, [initialQuestion, initialQuestionsList]);
 
   // --- State: Timer & Stages ---
   const [timeLeft, setTimeLeft] = useState(45 * 60);
@@ -214,10 +229,12 @@ export const InterviewRoom: React.FC<Props> = ({
     content: string;
     timestamp?: string;
     metadata?: Record<string, string>;
-  }>>([
+  }>>(() => [
     {
       role: 'interviewer',
-      content: `Welcome to your technical assessment! 👋\n\nI am your AI Principal Interviewer. Let's begin with a brief introduction. Please tell me about your engineering background and recent backend systems you've built.`,
+      content: isPlayground
+        ? `Welcome to the Playground Practice Arena! 🧪\n\nI am your AI Socratic Coach. Feel free to explore solutions, request hints, or ask me for code explanations at any time.`
+        : `Welcome to your technical assessment! 👋\n\nI am your AI Principal Interviewer. Let's begin with a brief introduction. Please tell me about your engineering background and recent backend systems you've built.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -252,7 +269,7 @@ export const InterviewRoom: React.FC<Props> = ({
   const [testStatus, setTestStatus] = useState<'idle' | 'running' | 'passed' | 'failed'>('idle');
 
   // --- Proctor Sentinel Active Monitoring ---
-  const { tabSwitches, pasteDumps } = useProctorSentinel(sessionId, true);
+  const { tabSwitches, pasteDumps } = useProctorSentinel(sessionId, !isPlayground);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -590,7 +607,8 @@ export const InterviewRoom: React.FC<Props> = ({
         candidateExplanation: candidateText,
         candidateCode: code,
         modelProvider: provider,
-        apiKey
+        apiKey,
+        sessionMode: isPlayground ? 'PLAYGROUND' : 'INTERVIEW'
       });
 
       // Adaptive Stage Progression
@@ -729,6 +747,10 @@ export const InterviewRoom: React.FC<Props> = ({
           rawOutput: result.stderr || result.stdout || result.compilerOutput || 'Execution failed'
         });
       }
+
+      if (isPlayground) {
+        recordRun(slug, isPass, result.executionTimeMs, result.memoryUsedMb);
+      }
     } catch (err: any) {
       setTestStatus('failed');
       setExecutionResult({
@@ -805,10 +827,14 @@ export const InterviewRoom: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-elevated border border-border text-xs font-mono font-bold text-text shrink-0">
-            <Timer className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-danger' : 'text-text-3'}`} />
-            <span className={timeLeft < 300 ? 'text-danger' : 'text-text'}>{formatTime(timeLeft)}</span>
-          </div>
+          {isPlayground ? (
+            <SelfTimer defaultMinutes={45} onExpire={() => {}} />
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-elevated border border-border text-xs font-mono font-bold text-text shrink-0">
+              <Timer className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-danger' : 'text-text-3'}`} />
+              <span className={timeLeft < 300 ? 'text-danger' : 'text-text'}>{formatTime(timeLeft)}</span>
+            </div>
+          )}
 
           {!isSqlTrack && !isResumeTrack && (
             <select
@@ -836,14 +862,14 @@ export const InterviewRoom: React.FC<Props> = ({
 
       <div className="h-8 bg-elevated border-b border-border flex items-center justify-between px-3 text-xs shrink-0 select-none">
         <span className="px-2 py-0.5 rounded bg-surface border border-border text-text-2 font-mono text-[11px] font-bold">
-          Assignment {activeQuestionIdx + 1}/{questionsList.length}
+          {isPlayground ? 'Practice Item' : 'Assignment'} {activeQuestionIdx + 1}/{questionsList.length}
         </span>
         <div className="flex items-center gap-2">
           <Chip variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'} size="sm" icon={<Mic className="w-3 h-3" />}>
             {isSpeakingNow ? 'Speaking' : isListening ? 'Mic Active' : 'Mic Ready'}
           </Chip>
-          <button type="button" onClick={() => void handleEndInterview(false)} className="text-[11px] font-semibold text-danger hover:underline pl-1 cursor-pointer">
-            End &amp; Report
+          <button type="button" onClick={() => void handleEndInterview(false)} className={`text-[11px] font-semibold hover:underline pl-1 cursor-pointer ${isPlayground ? 'text-primary' : 'text-danger'}`}>
+            {isPlayground ? 'Finish Practice' : 'End & Report'}
           </button>
         </div>
       </div>
@@ -858,6 +884,8 @@ export const InterviewRoom: React.FC<Props> = ({
             <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
               <ProblemPanel
                 question={currentQuestion}
+                isPracticeMode={isPlayground}
+                hasRunAttempt={testStatus !== 'idle'}
                 isSolved={statusMap[currentQuestion.slug || `q${activeQuestionIdx + 1}`] === 'PASSED'}
                 isBookmarked={!!bookmarkedMap[currentQuestion.slug || 'q1']}
                 onToggleBookmark={() => {
@@ -1007,14 +1035,16 @@ export const InterviewRoom: React.FC<Props> = ({
         </div>
       </div>
 
-      <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />
+      {!isPlayground && (
+        <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />
+      )}
       <FloatingAiOrb isOpen={isAiPanelOpen} onToggle={toggleAiPanel} isAiSpeaking={isAiSpeaking} hasUnread={hasUnread} />
       <AiAssistantPanel
         open={isAiPanelOpen}
         onClose={() => setIsAiPanelOpen(false)}
         mode="live"
-        personaName="Dr. Anya Chen"
-        personaTitle="AI Principal Bar Raiser"
+        personaName={isPlayground ? 'Coach Alex' : 'Dr. Anya Chen'}
+        personaTitle={isPlayground ? 'AI Socratic Coach' : 'AI Principal Bar Raiser'}
         currentStage={currentStage}
         isAiSpeaking={isAiSpeaking}
         messages={messages}

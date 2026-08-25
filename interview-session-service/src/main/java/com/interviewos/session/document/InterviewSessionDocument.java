@@ -44,6 +44,7 @@ public class InterviewSessionDocument {
     private String resumeId;
 
     private String status;
+    private String sessionMode;
 
     @Builder.Default
     private List<String> questionSlugs = new ArrayList<>();

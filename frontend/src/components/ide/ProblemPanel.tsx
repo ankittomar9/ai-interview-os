@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { Bookmark, BookmarkCheck, Lightbulb, PlayCircle, CheckCircle2, ChevronRight, Code2, Database } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bookmark, BookmarkCheck, PlayCircle, CheckCircle2, Code2, Database, Edit3, BookOpen } from 'lucide-react';
 import type { GenerateQuestionResponse } from '../../types';
 import { MarkdownProblem } from './MarkdownProblem';
 import { Chip } from '../ui/Chip';
+import { HintsPanel } from './HintsPanel';
+import { SolutionReveal } from './SolutionReveal';
+import { usePlaygroundProgress } from '../../hooks/usePlaygroundProgress';
 
 interface ProblemPanelProps {
   question: GenerateQuestionResponse;
@@ -12,6 +15,7 @@ interface ProblemPanelProps {
   hintsRevealed?: number;
   onRevealHint?: () => void;
   isPracticeMode?: boolean;
+  hasRunAttempt?: boolean;
   className?: string;
 }
 
@@ -21,12 +25,26 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
   isBookmarked = false,
   onToggleBookmark,
   hintsRevealed = 0,
-  onRevealHint,
   isPracticeMode = false,
+  hasRunAttempt = false,
   className = ''
 }) => {
-  const [activeTab, setActiveTab] = useState<'description' | 'hints' | 'submissions' | 'editorial'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'hints' | 'scratchpad' | 'editorial' | 'submissions'>('description');
   const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const slug = question.problemSlug || question.slug || '';
+
+  const { getProgress, saveNotes, recordSolutionView } = usePlaygroundProgress();
+  const currentProgress = getProgress(slug);
+  const [scratchpadText, setScratchpadText] = useState(currentProgress.notes || '');
+
+  useEffect(() => {
+    setScratchpadText(getProgress(slug).notes || '');
+  }, [slug]);
+
+  const handleNotesChange = (text: string) => {
+    setScratchpadText(text);
+    saveNotes(slug, text);
+  };
 
   const tips = question.coaching?.presentationTips || [
     'Analyze the constraints: Can an auxiliary Hash Map optimize the search from O(N²) to O(N)?',
@@ -83,14 +101,30 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
           {isPracticeMode && (
             <button
               type="button"
+              onClick={() => setActiveTab('scratchpad')}
+              className={`px-3 py-1 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1 ${
+                activeTab === 'scratchpad'
+                  ? 'border-primary text-text'
+                  : 'border-transparent text-text-3 hover:text-text'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5 text-text-3" />
+              <span>Scratchpad</span>
+            </button>
+          )}
+
+          {isPracticeMode && (
+            <button
+              type="button"
               onClick={() => setActiveTab('editorial')}
-              className={`px-3 py-1 text-xs font-bold transition-all border-b-2 cursor-pointer ${
+              className={`px-3 py-1 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1 ${
                 activeTab === 'editorial'
                   ? 'border-primary text-text'
                   : 'border-transparent text-text-3 hover:text-text'
               }`}
             >
-              Editorial
+              <BookOpen className="w-3.5 h-3.5 text-text-3" />
+              <span>Editorial</span>
             </button>
           )}
         </div>
@@ -175,40 +209,14 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
               </div>
             )}
 
-            {/* Hint Row Banner */}
-            <div className="bg-elevated/60 border border-border rounded-lg p-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Lightbulb className="w-4 h-4 text-warning shrink-0" />
-                <span className="text-xs text-text-2 line-clamp-2">Stuck somewhere? Get a hint to move forward.</span>
-              </div>
-
-              {onRevealHint && hintsRevealed < tips.length ? (
-                <button
-                  type="button"
-                  onClick={onRevealHint}
-                  className="px-2.5 py-1 text-xs font-bold rounded-md bg-primary text-white hover:bg-primary/90 transition-colors cursor-pointer shrink-0"
-                >
-                  Use Hint ({hintsRevealed}/{tips.length})
-                </button>
-              ) : (
-                <span className="text-[11px] text-text-3 font-mono shrink-0">All hints revealed</span>
-              )}
-            </div>
-
-            {/* Revealed Hints Box */}
-            {hintsRevealed > 0 && (
-              <div className="space-y-2 bg-elevated/40 border border-border rounded-lg p-3">
-                <div className="text-xs font-bold text-text flex items-center gap-1.5">
-                  <Lightbulb className="w-3.5 h-3.5 text-warning" />
-                  <span>Hints ({hintsRevealed} of {tips.length}):</span>
-                </div>
-                {tips.slice(0, hintsRevealed).map((tip: string, idx: number) => (
-                  <div key={idx} className="text-xs text-text-2 flex items-start gap-2 pl-2">
-                    <ChevronRight className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                    <span>{tip}</span>
-                  </div>
-                ))}
-              </div>
+            {/* Solution Reveal Component in Practice Mode */}
+            {isPracticeMode && (
+              <SolutionReveal
+                solutionCode={question.solutionCode || question.solutionSql}
+                hasRunAttempt={hasRunAttempt}
+                onViewSolution={() => recordSolutionView(slug)}
+                isAssisted={currentProgress.status === 'assisted' || currentProgress.solutionViewed}
+              />
             )}
 
             {/* Rendered Markdown Problem Statement */}
@@ -260,55 +268,82 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
 
         {/* TAB 2: HINTS */}
         {activeTab === 'hints' && (
+          <HintsPanel hints={question.hints || tips} />
+        )}
+
+        {/* TAB 3: SCRATCHPAD (PRACTICE MODE ONLY) */}
+        {activeTab === 'scratchpad' && (
           <div className="space-y-3">
-            <div className="text-sm font-bold text-text">Coaching Invariants &amp; Algorithmic Hints</div>
-            <div className="space-y-2">
-              {tips.map((tip: string, idx: number) => (
-                <div
-                  key={idx}
-                  className={`p-3 rounded-lg border text-xs leading-relaxed space-y-1 ${
-                    idx < hintsRevealed
-                      ? 'bg-elevated border-border text-text'
-                      : 'bg-elevated/30 border-dashed border-border text-text-3'
-                  }`}
-                >
-                  <div className="font-bold flex items-center justify-between">
-                    <span>Hint {idx + 1}</span>
-                    {idx < hintsRevealed ? (
-                      <span className="text-success text-[10px]">Unlocked</span>
-                    ) : (
-                      <span className="text-text-3 text-[10px]">Locked</span>
-                    )}
-                  </div>
-                  <p>{idx < hintsRevealed ? tip : 'Click "Use Hint" on the Description tab to unlock this guidance.'}</p>
-                </div>
-              ))}
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-text">Personal Problem Scratchpad</h4>
+                <p className="text-xs text-text-3">Notes are auto-saved to localStorage for this challenge.</p>
+              </div>
             </div>
+            <textarea
+              value={scratchpadText}
+              onChange={(e) => handleNotesChange(e.target.value)}
+              placeholder="Jot down time complexity equations, edge cases, invariants, or pseudocode notes..."
+              rows={14}
+              className="w-full bg-elevated border border-border rounded-xl p-4 text-xs font-mono text-text placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-y leading-relaxed"
+            />
           </div>
         )}
 
-        {/* TAB 3: SUBMISSIONS */}
+        {/* TAB 4: SUBMISSIONS */}
         {activeTab === 'submissions' && (
           <div className="space-y-3">
             <div className="text-sm font-bold text-text">Submissions History</div>
             <div className="bg-elevated border border-border rounded-lg p-4 text-xs text-text-3 text-center space-y-1">
               <Code2 className="w-6 h-6 mx-auto text-text-3/60 mb-1" />
               <div className="text-text-2 font-semibold">Live Session Run History</div>
-              <div>Submissions submitted during this assessment are evaluated in real-time by the AI Bar Raiser.</div>
+              <div>
+                Total Attempts: <span className="font-mono font-bold text-text">{currentProgress.attempts}</span>
+                {currentProgress.bestTimeMs !== undefined && (
+                  <span> · Best Runtime: <span className="font-mono font-bold text-success">{currentProgress.bestTimeMs.toFixed(0)}ms</span></span>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* TAB 4: EDITORIAL (PRACTICE MODE ONLY) */}
+        {/* TAB 5: EDITORIAL (PRACTICE MODE ONLY) */}
         {activeTab === 'editorial' && (
-          <div className="space-y-3">
-            <div className="text-sm font-bold text-text">Optimal Solution &amp; Complexity Analysis</div>
-            <div className="bg-elevated border border-border rounded-lg p-3 text-xs text-text-2 space-y-2">
-              <div className="font-bold text-text">Time Complexity: O(N)</div>
-              <div>Single-pass hash table lookup achieves linear runtime.</div>
-              <div className="font-bold text-text pt-2">Space Complexity: O(N)</div>
-              <div>Stores up to N elements in the map.</div>
-            </div>
+          <div className="space-y-4">
+            <div className="text-sm font-bold text-text">Optimal Solution &amp; Algorithmic Editorial</div>
+            
+            {question.editorialMarkdown ? (
+              <div className="md-prose text-xs bg-elevated border border-border rounded-xl p-4">
+                <MarkdownProblem statement={question.editorialMarkdown} />
+              </div>
+            ) : (
+              <div className="bg-elevated border border-border rounded-xl p-4 text-xs text-text-2 space-y-3">
+                {question.coaching?.approachHint && (
+                  <div>
+                    <div className="font-bold text-text mb-1">Recommended Approach:</div>
+                    <p className="leading-relaxed">{question.coaching.approachHint}</p>
+                  </div>
+                )}
+                {question.coaching?.commonMistakes && question.coaching.commonMistakes.length > 0 && (
+                  <div>
+                    <div className="font-bold text-text mb-1">Common Pitfalls &amp; Mistakes:</div>
+                    <ul className="list-disc pl-4 space-y-1 text-text-2">
+                      {question.coaching.commonMistakes.map((m, idx) => (
+                        <li key={idx}>{m}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div>
+                  <div className="font-bold text-text mb-1">Evaluation &amp; Complexity Standards:</div>
+                  <ul className="list-disc pl-4 space-y-1 text-text-3 font-mono text-[11px]">
+                    {question.evaluationCriteria.map((c, idx) => (
+                      <li key={idx}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

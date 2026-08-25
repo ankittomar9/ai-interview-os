@@ -11,6 +11,7 @@ import type {
     DesignEvaluateResponse,
     MessageType
 } from '../types';
+import { fetchJson } from './http';
 
 const GATEWAY_BASE = '/api/v1';
 const SESSION_API = `${GATEWAY_BASE}/sessions`;
@@ -40,14 +41,13 @@ export const createSession = async (payload: {
     difficulty: DifficultyLevel;
     targetCompany?: string;
     jobDescription?: string;
+    mode?: 'INTERVIEW' | 'PLAYGROUND';
 }): Promise<SessionResponse> => {
-    const res = await fetch(SESSION_API, {
+    return fetchJson<SessionResponse>(SESSION_API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        timeoutMs: 15000
     });
-    if (!res.ok) throw new Error('Failed to create session via Gateway');
-    return res.json();
 };
 
 export const startSession = async (sessionId: number): Promise<SessionResponse> => {
@@ -150,6 +150,7 @@ export const processDialogueTurn = async (payload: {
     candidateCode?: string;
     modelProvider?: string;
     apiKey?: string;
+    sessionMode?: 'INTERVIEW' | 'PLAYGROUND' | string;
     latestExecution?: {
         status: string;
         passedTests: number;
@@ -158,17 +159,12 @@ export const processDialogueTurn = async (payload: {
         memoryUsedMb: number;
     };
 }): Promise<AiDialogueResponse> => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (payload.apiKey) {
-        headers['X-InterviewOS-Key'] = payload.apiKey;
-    }
-    const res = await fetch(`${AI_API}/dialogue`, {
+    return fetchJson<AiDialogueResponse>(`${AI_API}/dialogue`, {
         method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        apiKey: payload.apiKey,
+        timeoutMs: 70000
     });
-    if (!res.ok) throw new Error('Failed to process dialogue turn');
-    return res.json();
 };
 
 export const evaluateArchitectureDesign = async (
@@ -396,20 +392,25 @@ export const listQuestions = async (params?: {
     track?: string;
     difficulty?: string;
     tags?: string[];
+    q?: string;
 }): Promise<GenerateQuestionResponse[]> => {
     const query = new URLSearchParams();
-    if (params?.track) query.append('track', params.track);
-    if (params?.difficulty) query.append('difficulty', params.difficulty);
+    if (params?.track && params.track !== 'ALL') query.append('track', params.track);
+    if (params?.difficulty && params.difficulty !== 'ALL') query.append('difficulty', params.difficulty);
+    if (params?.q) query.append('q', params.q);
     if (params?.tags && params.tags.length > 0) {
         params.tags.forEach(t => query.append('tags', t));
     }
-    const res = await fetch(`${GATEWAY_BASE}/questions?${query.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch question catalog');
-    return res.json();
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return fetchJson<GenerateQuestionResponse[]>(`${GATEWAY_BASE}/questions${queryString}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
 };
 
 export const getQuestionBySlug = async (slug: string): Promise<GenerateQuestionResponse> => {
-    const res = await fetch(`${GATEWAY_BASE}/questions/${slug}`);
-    if (!res.ok) throw new Error(`Failed to fetch question '${slug}'`);
-    return res.json();
+    return fetchJson<GenerateQuestionResponse>(`${GATEWAY_BASE}/questions/${slug}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
 };

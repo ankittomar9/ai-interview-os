@@ -24,8 +24,26 @@ public record SessionResponse(
         Instant startedAt,
         Instant completedAt,
         Long durationSeconds,
+        String sessionMode,
         List<MessageResponse> messages
 ) {
+    public SessionResponse(
+            Long id,
+            String candidateId,
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String targetCompany,
+            String jobDescription,
+            SessionStatus status,
+            Instant createdAt,
+            Instant startedAt,
+            Instant completedAt,
+            Long durationSeconds,
+            List<MessageResponse> messages
+    ) {
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, "INTERVIEW", messages);
+    }
     public record MessageResponse(
             Long id,
             String senderRole,
@@ -70,6 +88,7 @@ public record SessionResponse(
                 session.getStartedAt(),
                 session.getCompletedAt(),
                 session.getDurationSeconds(),
+                session.getSessionMode() != null ? session.getSessionMode() : "INTERVIEW",
                 messageResponses
         );
     }

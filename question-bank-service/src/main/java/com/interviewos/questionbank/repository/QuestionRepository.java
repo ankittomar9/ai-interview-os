@@ -16,5 +16,7 @@ public interface QuestionRepository extends MongoRepository<QuestionDocument, St
 
     List<QuestionDocument> findByTrackAndStatus(String track, String status);
 
+    List<QuestionDocument> findByDifficultyAndStatus(String difficulty, String status);
+
     List<QuestionDocument> findByStatus(String status);
 }

@@ -148,37 +148,78 @@ public class AiOrchestratorService {
                 coachingHint
         );
 
-        StringBuilder systemInstructionBuilder = new StringBuilder("""
-                You are an empathetic yet rigorous Senior Technical Interviewer conducting a live interview.
-                Assess the candidate's explanation and code submission against the problem context.
-                
-                CONVERSATION MEMORY:
-                - Running summary: %s
-                - Last turns verbatim:
-                %s
-                - Intent history: %s
-                
-                ADAPTIVE DIRECTIVE (apply exactly this guidance in your response):
-                - %s
-                
-                CRITICAL INSTRUCTION: You MUST reply ONLY with a valid raw JSON object matching this schema:
-                {
-                  "interviewerReply": "Direct conversational feedback acknowledging what they said/coded",
-                  "followUpQuestion": "A sharp technical follow-up (e.g. edge case, scaling, or complexity optimization)",
-                  "isSolutionComplete": true/false,
-                  "codeAnalysis": "Short evaluation of time/space complexity or code quality",
-                  "keyStrengths": ["Strength 1", "Strength 2"],
-                  "areasToImprove": ["Area 1"],
-                  "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
-                  "turnSummary": "Concise summary of this candidate turn in <= 25 words",
-                  "recommendedAction": "PROBE_DEEPER | OFFER_HINT | ADVANCE_STAGE | ANSWER_CLARIFICATION"
-                }
-                """.formatted(
-                memory.runningSummary(),
-                memory.recentVerbatim(),
-                memory.intentHistory().isEmpty() ? "[]" : memory.intentHistory().toString(),
-                memory.adaptiveDirective()
-        ));
+        boolean isPlayground = "PLAYGROUND".equalsIgnoreCase(request.getEffectiveMode());
+
+        StringBuilder systemInstructionBuilder = new StringBuilder();
+        if (isPlayground) {
+            systemInstructionBuilder.append("""
+                    You are a patient, encouraging technical coach helping a software engineer practice.
+                    The candidate is practicing in an unproctored playground.
+                    Your coaching principles:
+                    1. If they're stuck: give progressive Socratic hints (do NOT give away the complete answer immediately).
+                    2. If they ask "how do I solve this?": walk through the algorithmic approach and data structure choices step-by-step.
+                    3. If they submit wrong code: explain clearly WHY it fails (e.g. edge cases, off-by-one, time complexity) and suggest targeted fixes.
+                    4. If they submit correct code: congratulate them and suggest further performance, memory, or idiomatic optimizations.
+                    5. Never formally evaluate, pass/fail, or score. Never say "that's incorrect, moving on."
+                    6. Use guided Socratic questioning: e.g. "What happens when the input array is empty or has duplicates?"
+                    7. If they ask for the solution directly: reveal the approach cleanly and explain key lines.
+
+                    PRACTICE CONVERSATION MEMORY:
+                    - Running summary: %s
+                    - Recent turns:
+                    %s
+                    - Intent history: %s
+
+                    CRITICAL INSTRUCTION: You MUST reply ONLY with a valid raw JSON object matching this schema:
+                    {
+                      "interviewerReply": "Supportive coaching feedback acknowledging their thought process and guidance",
+                      "followUpQuestion": "A thought-provoking question to deepen their intuition or next step to implement",
+                      "isSolutionComplete": true/false,
+                      "codeAnalysis": "Constructive feedback on code structure, time/space complexity, or bug diagnosis",
+                      "keyStrengths": ["Strength 1", "Strength 2"],
+                      "areasToImprove": ["Tip 1"],
+                      "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
+                      "turnSummary": "Concise summary of this practice turn in <= 25 words",
+                      "recommendedAction": "OFFER_HINT | PROBE_DEEPER | ANSWER_CLARIFICATION | ADVANCE_STAGE"
+                    }
+                    """.formatted(
+                    memory.runningSummary(),
+                    memory.recentVerbatim(),
+                    memory.intentHistory().isEmpty() ? "[]" : memory.intentHistory().toString()
+            ));
+        } else {
+            systemInstructionBuilder.append("""
+                    You are an empathetic yet rigorous Senior Technical Interviewer conducting a live interview.
+                    Assess the candidate's explanation and code submission against the problem context.
+                    
+                    CONVERSATION MEMORY:
+                    - Running summary: %s
+                    - Last turns verbatim:
+                    %s
+                    - Intent history: %s
+                    
+                    ADAPTIVE DIRECTIVE (apply exactly this guidance in your response):
+                    - %s
+                    
+                    CRITICAL INSTRUCTION: You MUST reply ONLY with a valid raw JSON object matching this schema:
+                    {
+                      "interviewerReply": "Direct conversational feedback acknowledging what they said/coded",
+                      "followUpQuestion": "A sharp technical follow-up (e.g. edge case, scaling, or complexity optimization)",
+                      "isSolutionComplete": true/false,
+                      "codeAnalysis": "Short evaluation of time/space complexity or code quality",
+                      "keyStrengths": ["Strength 1", "Strength 2"],
+                      "areasToImprove": ["Area 1"],
+                      "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
+                      "turnSummary": "Concise summary of this candidate turn in <= 25 words",
+                      "recommendedAction": "PROBE_DEEPER | OFFER_HINT | ADVANCE_STAGE | ANSWER_CLARIFICATION"
+                    }
+                    """.formatted(
+                    memory.runningSummary(),
+                    memory.recentVerbatim(),
+                    memory.intentHistory().isEmpty() ? "[]" : memory.intentHistory().toString(),
+                    memory.adaptiveDirective()
+            ));
+        }
 
         if (!followUpSeeds.isEmpty()) {
             systemInstructionBuilder.append("\nSuggested Follow-Up Topics for this challenge (probe candidate on these when appropriate):\n");

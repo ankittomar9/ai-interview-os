@@ -7,8 +7,11 @@ import { PreInterviewChecklist } from './components/PreInterviewChecklist';
 import { InterviewRoom } from './components/InterviewRoom';
 import { DiagnosticReportView } from './components/DiagnosticReportView';
 import { PhoneProctorView } from './components/PhoneProctorView';
+import { QuestionCatalog } from './components/QuestionCatalog';
+import { PracticeSummary } from './components/PracticeSummary';
+import { Toaster } from './components/ui/Toaster';
 
-type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR';
+type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY';
 
 export function App() {
   const [sessionId, setSessionId] = useState<number | null>(() => {
@@ -28,13 +31,17 @@ export function App() {
     return 'SETUP';
   });
 
+  const [sessionMode, setSessionMode] = useState<'INTERVIEW' | 'PLAYGROUND'>('INTERVIEW');
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [playlistQuestions, setPlaylistQuestions] = useState<GenerateQuestionResponse[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [candidateId, setCandidateId] = useState('candidate-01');
   const [roleTitle, setRoleTitle] = useState('Senior Java Backend Engineer');
   const [question, setQuestion] = useState<GenerateQuestionResponse | null>(null);
   const [report, setReport] = useState<DiagnosticReportResponse | null>(null);
-  const [provider, setProvider] = useState<ModelProvider>('OLLAMA');
+  const [provider, setProvider] = useState<ModelProvider>('GEMINI');
   const [apiKey, setApiKey] = useState('');
 
   const handleStartInterview = async (config: {
@@ -46,8 +53,11 @@ export function App() {
     jobDescription: string;
     provider: ModelProvider;
     apiKey: string;
+    mode?: 'INTERVIEW' | 'PLAYGROUND';
   }) => {
     setIsLoading(true);
+    const chosenMode = config.mode || 'INTERVIEW';
+    setSessionMode(chosenMode);
     setCandidateId(config.candidateId);
     setRoleTitle(config.roleTitle);
     setProvider(config.provider);
@@ -60,7 +70,8 @@ export function App() {
         track: config.track,
         difficulty: config.difficulty,
         targetCompany: config.targetCompany,
-        jobDescription: config.jobDescription
+        jobDescription: config.jobDescription,
+        mode: chosenMode
       });
       setSessionId(session.id);
       await startSession(session.id);
@@ -75,7 +86,14 @@ export function App() {
       });
 
       setQuestion(q);
-      setView('CHECKLIST');
+      setPlaylistQuestions([q]);
+
+      if (chosenMode === 'PLAYGROUND') {
+        // Spec: Skip PreInterviewChecklist in Playground mode
+        setView('ROOM');
+      } else {
+        setView('CHECKLIST');
+      }
     } catch (err: any) {
       alert(`Error starting session: ${err.message || 'Make sure all backend microservices are running.'}`);
     } finally {
@@ -83,8 +101,45 @@ export function App() {
     }
   };
 
+  const handleLaunchPlaylist = async (selectedQuestions: GenerateQuestionResponse[]) => {
+    if (!selectedQuestions || selectedQuestions.length === 0) return;
+    setIsLoading(true);
+    setIsCatalogOpen(false);
+    setSessionMode('PLAYGROUND');
+
+    const firstQ = selectedQuestions[0];
+    const track = firstQ.track || 'ALGORITHMS_DATA_STRUCTURES';
+    const difficulty = (firstQ.difficulty?.toUpperCase() as DifficultyLevel) || 'MID';
+
+    try {
+      const session = await createSession({
+        candidateId: 'practitioner-01',
+        roleTitle: `${firstQ.track} Practice Playlist`,
+        track,
+        difficulty,
+        mode: 'PLAYGROUND'
+      });
+      setSessionId(session.id);
+      await startSession(session.id);
+
+      setQuestion(firstQ);
+      setPlaylistQuestions(selectedQuestions);
+      setView('ROOM');
+    } catch (err: any) {
+      alert(`Error launching practice playlist: ${err.message || 'Backend service unreachable.'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleFinishInterview = async () => {
     if (!sessionId) return;
+
+    if (sessionMode === 'PLAYGROUND') {
+      setView('PRACTICE_SUMMARY');
+      return;
+    }
+
     setIsGeneratingReport(true);
     try {
       const rep = await generateDiagnosticReport(sessionId);
@@ -104,6 +159,8 @@ export function App() {
 
   return (
     <div className="relative">
+      <Toaster />
+
       {/* FULL-SCREEN REPORT GENERATION OVERLAY */}
       {isGeneratingReport && (
         <div className="fixed inset-0 z-50 bg-bg/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-fade-in">
@@ -127,8 +184,24 @@ export function App() {
         </div>
       )}
 
+      {/* QUESTION CATALOG MODAL */}
+      {isCatalogOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            <QuestionCatalog
+              onSelectQuestions={handleLaunchPlaylist}
+              onClose={() => setIsCatalogOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {view === 'SETUP' && (
-        <SetupScreen onStart={handleStartInterview} isLoading={isLoading} />
+        <SetupScreen
+          onStart={handleStartInterview}
+          isLoading={isLoading}
+          onOpenCatalog={() => setIsCatalogOpen(true)}
+        />
       )}
 
       {view === 'CHECKLIST' && sessionId && (
@@ -144,9 +217,22 @@ export function App() {
         <InterviewRoom
           sessionId={sessionId}
           question={question}
+          initialQuestionsList={playlistQuestions}
           provider={provider}
           apiKey={apiKey}
+          sessionMode={sessionMode}
           onFinish={handleFinishInterview}
+        />
+      )}
+
+      {view === 'PRACTICE_SUMMARY' && (
+        <PracticeSummary
+          questions={playlistQuestions}
+          onReturnHome={() => setView('SETUP')}
+          onBrowseCatalog={() => {
+            setView('SETUP');
+            setIsCatalogOpen(true);
+          }}
         />
       )}
 
