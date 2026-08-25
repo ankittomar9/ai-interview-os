@@ -362,6 +362,15 @@ export const PreInterviewChecklist: React.FC<Props> = ({
 
         </div>
 
+        {capabilities?.engines?.dsa && !capabilities.engines.dsa.ready && (
+          <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg flex items-center gap-2.5 text-xs text-red-500 dark:text-red-400">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+            <div className="flex-1">
+              <strong>DSA Sandbox Offline:</strong> Check <code>judge0-workers</code> logs. ({capabilities.engines.dsa.detail || 'Service unreachable'})
+            </div>
+          </div>
+        )}
+
         {!allChecksPassed && envMode === 'prod' && (
           <div className="bg-elevated border border-warning/30 p-3 rounded-lg flex items-center gap-2 text-xs text-warning">
             <AlertTriangle className="w-4 h-4 shrink-0" />

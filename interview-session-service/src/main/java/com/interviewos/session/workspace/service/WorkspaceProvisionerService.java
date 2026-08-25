@@ -80,8 +80,18 @@ public class WorkspaceProvisionerService {
             String volumeName,
             int hostPort,
             Instant createdAt,
+            Instant lastActiveAt,
             String problemSlug
-    ) {}
+    ) {
+        public ActiveWorkspaceInfo withLastActive(Instant now) {
+            return new ActiveWorkspaceInfo(sessionId, containerId, volumeName, hostPort, createdAt, now, problemSlug);
+        }
+    }
+
+    public void touchWorkspace(Long sessionId) {
+        if (sessionId == null) return;
+        activeWorkspaces.computeIfPresent(sessionId, (k, info) -> info.withLastActive(Instant.now()));
+    }
 
     public WorkspaceProvisionerService(
             QuestionBankClient questionBankClient,
@@ -238,8 +248,9 @@ public class WorkspaceProvisionerService {
             boolean ready = waitForReadiness(containerName, hostPort, 15);
 
             if (ready) {
+                Instant now = Instant.now();
                 activeWorkspaces.put(sessionId, new ActiveWorkspaceInfo(
-                        sessionId, containerId, volumeName, hostPort, Instant.now(), request.problemSlug()
+                        sessionId, containerId, volumeName, hostPort, now, now, request.problemSlug()
                 ));
                 log.info("✅ Embedded VS Code Workspace READY for session {} at {}", sessionId, workspaceUrl);
                 return WorkspaceProvisionResponse.builder()
@@ -515,7 +526,7 @@ public class WorkspaceProvisionerService {
         ensureDockerInitialized();
         if (!isDockerAvailable || dockerClient == null) return;
 
-        Instant cutoff = Instant.now().minus(Duration.ofMinutes(60));
+        Instant cutoff = Instant.now().minus(Duration.ofMinutes(45));
 
         // 1. Check in-memory active list
         for (Map.Entry<Long, ActiveWorkspaceInfo> entry : activeWorkspaces.entrySet()) {
@@ -523,8 +534,9 @@ public class WorkspaceProvisionerService {
             ActiveWorkspaceInfo info = entry.getValue();
 
             boolean shouldReap = false;
-            if (info.createdAt().isBefore(cutoff)) {
-                log.info("⏰ Workspace for session {} exceeded 60 min TTL. Reaping...", sessionId);
+            Instant lastActivity = info.lastActiveAt() != null ? info.lastActiveAt() : info.createdAt();
+            if (lastActivity.isBefore(cutoff)) {
+                log.info("⏰ Workspace for session {} exceeded 45 min inactivity cutoff. Reaping...", sessionId);
                 shouldReap = true;
             } else {
                 try {
@@ -542,7 +554,20 @@ public class WorkspaceProvisionerService {
             }
 
             if (shouldReap) {
-                destroyWorkspace(sessionId);
+                // Re-verify session status from DB before destroying to prevent premature destruction
+                try {
+                    Optional<InterviewSession> sessionOpt = sessionRepository.findById(sessionId);
+                    if (sessionOpt.isPresent()) {
+                        SessionStatus st = sessionOpt.get().getStatus();
+                        if (st == SessionStatus.COMPLETED || st == SessionStatus.EVALUATED || lastActivity.isBefore(cutoff)) {
+                            destroyWorkspace(sessionId);
+                        }
+                    } else if (lastActivity.isBefore(cutoff)) {
+                        destroyWorkspace(sessionId);
+                    }
+                } catch (Exception e) {
+                    destroyWorkspace(sessionId);
+                }
             }
         }
 

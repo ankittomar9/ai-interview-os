@@ -26,6 +26,7 @@ public class CodeExecutionService {
     private final List<TrackRunner> trackRunners;
     private final QuestionBankClient questionBankClient;
     private final InterviewSessionMongoRepository sessionMongoRepository;
+    private final org.springframework.beans.factory.ObjectProvider<com.interviewos.session.workspace.service.WorkspaceProvisionerService> workspaceProvisionerProvider;
 
     /**
      * Executes single-file DSA / algorithm submissions (backward compatible).
@@ -54,6 +55,8 @@ public class CodeExecutionService {
     public ExecutionResultResponse executeProject(Long sessionId, ExecuteProjectRequest request) {
         log.info("Executing multi-file project for session {} [Problem: {}, Source: {}]",
                 sessionId, request.problemSlug(), request.source());
+
+        workspaceProvisionerProvider.ifAvailable(p -> p.touchWorkspace(sessionId));
 
         Optional<ProblemDocument> problemOpt = resolveProblem(request.problemSlug());
         if (problemOpt.isEmpty()) {

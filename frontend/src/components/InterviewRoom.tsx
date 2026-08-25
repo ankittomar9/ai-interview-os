@@ -31,6 +31,7 @@ import { usePlaygroundProgress } from '../hooks/usePlaygroundProgress';
 import { useTheme } from './theme-provider';
 import { defineMonacoThemes } from '../lib/syntax-themes';
 import { TrackNavMenu } from './ui/TrackNavMenu';
+import { saveSubmission, type SubmissionStatus, type SubmissionCaseResult } from '../lib/submissions';
 import {
   Timer,
   Play,
@@ -697,22 +698,22 @@ export const InterviewRoom: React.FC<Props> = ({
 
     setIsAiResponding(true);
 
+    const latestExecPayload = executionResult ? {
+      status: (executionResult.status === 'passed' || testStatus === 'passed') ? 'PASSED' : 'FAILED',
+      passedTests: executionResult.passedTests !== undefined ? executionResult.passedTests : (testStatus === 'passed' ? 1 : 0),
+      totalTests: executionResult.totalTests !== undefined ? executionResult.totalTests : 1,
+      executionTimeMs: executionResult.executionTimeMs || 0,
+      memoryUsedMb: executionResult.memoryUsedMb || 0
+    } : (statusMap[currentQuestion.slug || 'q1'] === 'PASSED') ? {
+      status: 'PASSED',
+      passedTests: 1,
+      totalTests: 1,
+      executionTimeMs: 0,
+      memoryUsedMb: 0
+    } : undefined;
+
     try {
       const contextPayload = `Problem: ${currentQuestion.title}\nDescription: ${currentQuestion.problemStatement}\n[Current Stage: ${currentStage}]`;
-
-      const latestExecPayload = executionResult ? {
-        status: (executionResult.status === 'passed' || testStatus === 'passed') ? 'PASSED' : 'FAILED',
-        passedTests: executionResult.passedTests !== undefined ? executionResult.passedTests : (testStatus === 'passed' ? 1 : 0),
-        totalTests: executionResult.totalTests !== undefined ? executionResult.totalTests : 1,
-        executionTimeMs: executionResult.executionTimeMs || 0,
-        memoryUsedMb: executionResult.memoryUsedMb || 0
-      } : (statusMap[currentQuestion.slug || 'q1'] === 'PASSED') ? {
-        status: 'PASSED',
-        passedTests: 1,
-        totalTests: 1,
-        executionTimeMs: 0,
-        memoryUsedMb: 0
-      } : undefined;
 
       const dialogue = await processDialogueTurn({
         sessionId,
@@ -774,7 +775,16 @@ export const InterviewRoom: React.FC<Props> = ({
         metadata: meta
       });
     } catch {
-      const fallback = "I see your technical direction. Looking at your data structure choices and architecture scratchpad, how would you handle thread contention and cache eviction under peak write load?";
+      let fallback: string;
+      const isAllPassed = latestExecPayload?.status === 'PASSED' ||
+        (latestExecPayload && latestExecPayload.passedTests > 0 && latestExecPayload.passedTests === latestExecPayload.totalTests);
+
+      if (isAllPassed) {
+        fallback = "Your solution is correct and passes all test cases! Excellent work.\n\nYou can now move to the next question using the Question Rail on the left, or finish and submit the practice session.";
+      } else {
+        fallback = "Thank you for sharing your approach. I see your logic taking shape. How would you optimize this solution for higher throughput or handle edge cases where input is empty or scaled?";
+      }
+
       setMessages((prev) => [
         ...prev,
         { role: 'interviewer', content: fallback, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
@@ -809,17 +819,24 @@ export const InterviewRoom: React.FC<Props> = ({
         problemSlug: slug
       });
 
+      let verdictTitle: string;
+      let submissionStatus: SubmissionStatus;
+
       const isPass = result.status === 'PASSED' || result.status === 'ACCEPTED';
       if (result.status === 'COMPILE_ERROR' || result.status === 'SYNTAX_ERROR') {
+        verdictTitle = result.status === 'SYNTAX_ERROR' ? 'Syntax Error' : 'Compile Error';
+        submissionStatus = 'Compile Error';
         setTestStatus('failed');
         setExecutionResult({
-          status: 'failed',
-          verdictTitle: result.status === 'SYNTAX_ERROR' ? 'Syntax Error' : 'Compilation Failed',
+          status: 'error',
+          verdictTitle,
           executionTimeMs: result.executionTimeMs || 0,
           memoryUsedMb: result.memoryUsedMb || 0,
-          rawOutput: result.compilerOutput || result.stderr || 'Syntax error encountered during execution.'
+          rawOutput: result.compilerOutput || result.stderr || 'Compilation failed.'
         });
       } else if (isPass) {
+        verdictTitle = 'Accepted';
+        submissionStatus = 'Accepted';
         setTestStatus('passed');
         const caseItems: TestCaseItem[] = (result.testResults || []).map((t: TestCaseResult, idx: number) => ({
           id: idx,
@@ -827,7 +844,8 @@ export const InterviewRoom: React.FC<Props> = ({
           expectedOutput: t.expectedOutput || 'Match',
           actualOutput: t.actualOutput || 'Match',
           passed: t.status === 'PASS',
-          executionTimeMs: t.durationMs
+          executionTimeMs: t.durationMs,
+          error: t.error
         }));
         setExecutionResult({
           status: 'passed',
@@ -840,6 +858,15 @@ export const InterviewRoom: React.FC<Props> = ({
           rawOutput: result.stdout || '🎉 All test cases passed successfully!'
         });
       } else {
+        verdictTitle =
+          result.status === 'TIMEOUT' ? 'Time Limit Exceeded' :
+          result.status === 'ENGINE_UNAVAILABLE' ? 'Engine Unavailable' :
+          result.status === 'RUNTIME_ERROR' ? 'Runtime Error' : 'Wrong Answer';
+        submissionStatus =
+          result.status === 'TIMEOUT' ? 'Time Limit Exceeded' :
+          result.status === 'ENGINE_UNAVAILABLE' ? 'Engine Unavailable' :
+          result.status === 'RUNTIME_ERROR' ? 'Runtime Error' : 'Wrong Answer';
+
         setTestStatus('failed');
         const caseItems: TestCaseItem[] = (result.testResults || []).map((t: TestCaseResult, idx: number) => ({
           id: idx,
@@ -847,21 +874,43 @@ export const InterviewRoom: React.FC<Props> = ({
           expectedOutput: t.expectedOutput || 'Expected',
           actualOutput: t.actualOutput || t.error || 'Failed',
           passed: t.status === 'PASS',
-          executionTimeMs: t.durationMs
+          executionTimeMs: t.durationMs,
+          error: t.error
         }));
         setExecutionResult({
-          status: 'failed',
-          verdictTitle: result.status === 'TIMEOUT' ? 'Time Limit Exceeded' :
-                        result.status === 'ENGINE_UNAVAILABLE' ? 'Engine Offline' :
-                        result.status === 'RUNTIME_ERROR' ? 'Runtime Error' : 'Wrong Answer',
+          status: result.status === 'RUNTIME_ERROR' || result.status === 'ENGINE_UNAVAILABLE' ? 'error' : 'failed',
+          verdictTitle,
           executionTimeMs: result.executionTimeMs || 0,
           memoryUsedMb: result.memoryUsedMb || 0,
           passedTests: result.passedTests || 0,
           totalTests: result.totalTests || (caseItems.length > 0 ? caseItems.length : 1),
           cases: caseItems,
-          rawOutput: result.stderr || result.stdout || result.compilerOutput || 'Execution failed'
+          rawOutput: result.compilerOutput || result.stderr || result.stdout || 'Execution failed'
         });
       }
+
+      // Record submission entry into session-scoped history
+      const subCases: SubmissionCaseResult[] = (result.testResults || []).map((t: TestCaseResult) => ({
+        name: t.name,
+        passed: t.status === 'PASS',
+        input: t.input,
+        expectedOutput: t.expectedOutput,
+        actualOutput: t.actualOutput,
+        error: t.error,
+        isHidden: t.isHidden
+      }));
+
+      saveSubmission(sessionId, slug, {
+        language: lang,
+        status: submissionStatus,
+        runtimeMs: result.executionTimeMs || 0,
+        memoryMb: result.memoryUsedMb || 0,
+        passedTests: result.passedTests || 0,
+        totalTests: result.totalTests || (subCases.length > 0 ? subCases.length : 1),
+        rawOutput: result.stdout || result.stderr,
+        compilerOutput: result.compilerOutput || (result.status === 'RUNTIME_ERROR' ? result.stderr : undefined),
+        cases: subCases
+      });
 
       if (isPlayground) {
         recordRun(slug, isPass, result.executionTimeMs, result.memoryUsedMb);
@@ -881,10 +930,6 @@ export const InterviewRoom: React.FC<Props> = ({
   const handleSubmitSolution = async () => {
     const slug = currentQuestion.slug || `q${activeQuestionIdx + 1}`;
     setStatusMap((prev) => ({ ...prev, [slug]: 'PASSED' }));
-
-    if (isPlayground) {
-      recordRun(slug, true, executionResult?.executionTimeMs, executionResult?.memoryUsedMb);
-    }
 
     await triggerCandidateTurn(
       isSqlTrack
@@ -1027,6 +1072,7 @@ export const InterviewRoom: React.FC<Props> = ({
             <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
               <ProblemPanel
                 question={currentQuestion}
+                sessionId={sessionId}
                 isPracticeMode={isPlayground}
                 hasRunAttempt={testStatus !== 'idle'}
                 isSolved={statusMap[currentQuestion.slug || `q${activeQuestionIdx + 1}`] === 'PASSED'}

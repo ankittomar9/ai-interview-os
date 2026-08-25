@@ -17,7 +17,6 @@ import { ResizeHandle } from '../ui/ResizeHandle';
 import { ProjectWorkspace } from '../ProjectWorkspace';
 import {
   provisionWorkspace,
-  destroyWorkspace,
   executeProject,
   type ExecutionResultResponse
 } from '../../services/api';
@@ -160,7 +159,6 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
   };
 
   const handleSubmit = () => {
-    void destroyWorkspace(sessionId);
     if (onSubmitProject) {
       onSubmitProject(`Candidate submitted Spring Boot project from embedded workspace (Volume: ${volumeName}).`);
     }

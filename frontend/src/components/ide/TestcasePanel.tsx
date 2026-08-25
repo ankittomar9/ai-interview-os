@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { CheckCircle2, XCircle, Clock, HardDrive, Terminal, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  HardDrive,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  AlertTriangle
+} from 'lucide-react';
 
 export interface TestCaseItem {
   id?: number | string;
@@ -8,6 +19,7 @@ export interface TestCaseItem {
   actualOutput?: string;
   passed?: boolean;
   executionTimeMs?: number;
+  error?: string;
 }
 
 export interface ExecutionResult {
@@ -52,7 +64,10 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
   if (
     executionResult?.status &&
     executionResult.status !== lastStatus &&
-    (executionResult.status === 'passed' || executionResult.status === 'failed' || executionResult.status === 'running')
+    (executionResult.status === 'passed' ||
+      executionResult.status === 'failed' ||
+      executionResult.status === 'error' ||
+      executionResult.status === 'running')
   ) {
     setLastStatus(executionResult.status);
     setActiveTab('result');
@@ -69,6 +84,13 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
       setSelectedCaseIdx(testCases.length);
     }
   };
+
+  const isExecutionError =
+    executionResult?.status === 'error' ||
+    executionResult?.verdictTitle === 'Compile Error' ||
+    executionResult?.verdictTitle === 'Compilation Error' ||
+    executionResult?.verdictTitle === 'Runtime Error' ||
+    executionResult?.verdictTitle === 'Engine Unavailable';
 
   return (
     <div className={`bg-surface border-t border-border flex flex-col h-full overflow-hidden select-text ${className}`}>
@@ -105,7 +127,7 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
             {executionResult?.status === 'passed' && (
               <span className="w-1.5 h-1.5 rounded-full bg-success" />
             )}
-            {executionResult?.status === 'failed' && (
+            {(executionResult?.status === 'failed' || executionResult?.status === 'error') && (
               <span className="w-1.5 h-1.5 rounded-full bg-danger" />
             )}
           </button>
@@ -152,58 +174,54 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                   </button>
                 ))}
 
-                {onAddCustomCase && (
+                {onAddCustomCase && !isAddingNew && (
                   <button
                     type="button"
                     onClick={() => setIsAddingNew(true)}
-                    title="Add Custom Test Case"
-                    className={`px-2 py-1 text-xs rounded-md border border-dashed transition-colors flex items-center gap-1 cursor-pointer ${
-                      isAddingNew
-                        ? 'bg-surface text-primary border-primary'
-                        : 'bg-elevated/50 text-text-3 border-border hover:text-text hover:border-zinc-500'
-                    }`}
+                    className="px-2 py-1 text-xs font-semibold rounded-md border border-dashed border-border text-text-3 hover:text-primary hover:border-primary transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
+                    <span>Custom Case</span>
                   </button>
                 )}
               </div>
 
-              {/* Case Input / Expected Viewer or Creator */}
+              {/* Case Details Form / Viewer */}
               {isAddingNew ? (
-                <div className="space-y-2 bg-elevated/50 p-3 rounded-lg border border-border">
-                  <div className="text-xs font-bold text-text">New Custom Test Case</div>
+                <div className="space-y-2.5 p-3 rounded-lg bg-elevated border border-border">
+                  <div className="text-xs font-bold text-text">Add Custom Test Case</div>
                   <div>
-                    <label className="text-[11px] font-mono text-text-3 block mb-1">Standard Input (stdin)</label>
+                    <label className="text-[11px] font-mono text-text-3 block mb-1">Standard Input (stdin):</label>
                     <textarea
-                      rows={3}
                       value={customInput}
                       onChange={(e) => setCustomInput(e.target.value)}
-                      placeholder="e.g. 4\n2 7 11 15\n9"
-                      className="w-full bg-surface border border-border rounded-md p-2 text-xs font-mono text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="e.g. 5\n1 2 3 4 5"
+                      rows={3}
+                      className="w-full bg-surface border border-border rounded p-2 text-xs font-mono text-text focus:outline-none focus:border-primary"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-mono text-text-3 block mb-1">Expected Output (stdout)</label>
+                    <label className="text-[11px] font-mono text-text-3 block mb-1">Expected Output (stdout):</label>
                     <textarea
-                      rows={2}
                       value={customExpected}
                       onChange={(e) => setCustomExpected(e.target.value)}
-                      placeholder="e.g. 0 1"
-                      className="w-full bg-surface border border-border rounded-md p-2 text-xs font-mono text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="e.g. 15"
+                      rows={2}
+                      className="w-full bg-surface border border-border rounded p-2 text-xs font-mono text-text focus:outline-none focus:border-primary"
                     />
                   </div>
-                  <div className="flex gap-2 justify-end pt-1">
+                  <div className="flex justify-end gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => setIsAddingNew(false)}
-                      className="px-2.5 py-1 text-xs text-text-3 hover:text-text"
+                      className="px-3 py-1 text-xs rounded bg-surface border border-border text-text-3 hover:text-text cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
                       onClick={handleSaveNewCase}
-                      className="px-3 py-1 text-xs font-bold rounded bg-primary text-white hover:bg-primary/90"
+                      className="px-3 py-1 text-xs font-bold rounded bg-primary text-white hover:bg-primary/90 cursor-pointer"
                     >
                       Add Case
                     </button>
@@ -236,7 +254,7 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                           onDeleteCase(selectedCaseIdx);
                           setSelectedCaseIdx(0);
                         }}
-                        className="text-[11px] text-danger hover:underline flex items-center gap-1"
+                        className="text-[11px] text-danger hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" /> Remove Case
                       </button>
@@ -258,6 +276,33 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                 <div className="flex items-center justify-center gap-2.5 py-6 text-warning font-semibold text-xs">
                   <span className="w-3 h-3 border-2 border-warning border-t-transparent rounded-full animate-spin" />
                   <span>Executing in Judge0 sandbox container...</span>
+                </div>
+              ) : isExecutionError ? (
+                <div className="space-y-3">
+                  {/* Explicit Execution / Compile / Runtime Error Card */}
+                  <div className="rounded-lg border border-danger/30 bg-danger/10 p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-danger font-bold text-sm">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span>{executionResult.verdictTitle || 'Execution Error'}</span>
+                      </div>
+                      <span className="text-xs text-text-3 font-mono">
+                        {executionResult.passedTests ?? 0} / {executionResult.totalTests ?? testCases.length} Passed
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-text-2">
+                      {executionResult.verdictTitle === 'Compile Error' || executionResult.verdictTitle === 'Compilation Error'
+                        ? 'Compilation failed. See diagnostic output below:'
+                        : executionResult.verdictTitle === 'Runtime Error'
+                        ? 'A runtime exception or signal occurred during execution:'
+                        : 'Execution failed in the sandbox runner:'}
+                    </p>
+
+                    <pre className="p-3 bg-surface/90 rounded border border-danger/20 text-xs font-mono text-danger whitespace-pre-wrap overflow-x-auto max-h-56 leading-relaxed">
+                      {executionResult.rawOutput || 'No diagnostic output was returned by the sandbox.'}
+                    </pre>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -285,11 +330,11 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                     <div className="flex items-center gap-4 text-xs font-mono">
                       <div className="flex items-center gap-1 text-text-2">
                         <Clock className="w-3.5 h-3.5 text-text-3" />
-                        <span>Runtime: <strong className="text-text">{executionResult.executionTimeMs ?? 1} ms</strong></span>
+                        <span>Runtime: <strong className="text-text">{executionResult.executionTimeMs !== undefined ? `${executionResult.executionTimeMs.toFixed(0)} ms` : '1 ms'}</strong></span>
                       </div>
                       <div className="flex items-center gap-1 text-text-2">
                         <HardDrive className="w-3.5 h-3.5 text-text-3" />
-                        <span>Memory: <strong className="text-text">{executionResult.memoryUsedMb ? executionResult.memoryUsedMb.toFixed(1) : '38.4'} MB</strong></span>
+                        <span>Memory: <strong className="text-text">{executionResult.memoryUsedMb ? `${executionResult.memoryUsedMb.toFixed(1)} MB` : '38.4 MB'}</strong></span>
                       </div>
                     </div>
                   </div>
@@ -314,7 +359,13 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                             </span>
                           </div>
 
-                          {!c.passed && c.actualOutput !== undefined && (
+                          {!c.passed && c.error && (
+                            <div className="text-danger text-[11px] bg-surface p-2 rounded border border-danger/20 whitespace-pre-wrap">
+                              {c.error}
+                            </div>
+                          )}
+
+                          {!c.passed && !c.error && c.actualOutput !== undefined && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                               <div>
                                 <span className="text-[10px] text-text-3 block">Expected:</span>
@@ -340,7 +391,7 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                         className="text-xs text-text-3 hover:text-text flex items-center gap-1 font-mono cursor-pointer"
                       >
                         <Terminal className="w-3.5 h-3.5" />
-                        <span>{showRawOutput ? 'Hide Output Logs' : 'View Output Logs'}</span>
+                        <span>{showRawOutput ? 'Hide Diagnostic Logs' : 'View Diagnostic Logs'}</span>
                       </button>
 
                       {showRawOutput && (

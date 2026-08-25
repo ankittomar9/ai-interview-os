@@ -87,9 +87,16 @@ public class DsaJudge0Runner implements TrackRunner {
             }
 
             Judge0Client.Judge0SubmissionResponse resp = optResp.get();
-            String compileOutput = resp.compile_output() != null ? resp.compile_output() : "";
+            String compileOutput = resp.compile_output() != null ? resp.compile_output().trim() : "";
+            String stderr = resp.stderr() != null ? resp.stderr().trim() : "";
+            String message = resp.message() != null ? resp.message().trim() : "";
             int statusId = resp.status() != null ? resp.status().id() : 0;
 
+            String errDetail = !compileOutput.isBlank()
+                    ? compileOutput
+                    : (!stderr.isBlank() ? stderr : message);
+
+            // Compilation Error (6, or non-empty compile_output, or exec format 14)
             if (statusId == 6 || !compileOutput.isBlank()) {
                 return ExecutionResultResponse.builder()
                         .status("COMPILE_ERROR")
@@ -98,13 +105,14 @@ public class DsaJudge0Runner implements TrackRunner {
                         .executionTimeMs(0.0)
                         .memoryUsedMb(0.0)
                         .stdout(resp.stdout() != null ? resp.stdout() : "")
-                        .stderr(resp.stderr() != null ? resp.stderr() : "")
-                        .compilerOutput(compileOutput)
+                        .stderr(stderr)
+                        .compilerOutput(!compileOutput.isBlank() ? compileOutput : (!stderr.isBlank() ? stderr : "Compilation Failed."))
                         .testResults(List.of())
                         .build();
             }
 
-            if (statusId == 5) {
+            // Timeout / TLE (5 or 20)
+            if (statusId == 5 || statusId == 20) {
                 return ExecutionResultResponse.builder()
                         .status("TIMEOUT")
                         .totalTests(totalTests)
@@ -112,8 +120,40 @@ public class DsaJudge0Runner implements TrackRunner {
                         .executionTimeMs(problem.getLimits().timeLimitMs())
                         .memoryUsedMb(maxMemoryMb)
                         .stdout(aggregatedStdout.toString())
-                        .stderr("Time Limit Exceeded on test: " + test.name())
+                        .stderr("Time Limit Exceeded on test: " + test.name() + (message.isBlank() ? "" : " - " + message))
                         .compilerOutput("")
+                        .testResults(testResults)
+                        .build();
+            }
+
+            // Runtime Errors (7-12, 15, 16)
+            if ((statusId >= 7 && statusId <= 12) || statusId == 15 || statusId == 16) {
+                String runtimeErr = !errDetail.isBlank() ? errDetail : "Runtime Error (Status " + statusId + ": " + (resp.status() != null ? resp.status().description() : "NZEC") + ")";
+                return ExecutionResultResponse.builder()
+                        .status("RUNTIME_ERROR")
+                        .totalTests(totalTests)
+                        .passedTests(passedCount)
+                        .executionTimeMs(maxExecTimeMs)
+                        .memoryUsedMb(maxMemoryMb)
+                        .stdout(aggregatedStdout.toString())
+                        .stderr(runtimeErr)
+                        .compilerOutput(runtimeErr)
+                        .testResults(testResults)
+                        .build();
+            }
+
+            // Engine / Internal error (13, 14)
+            if (statusId == 13 || statusId == 14) {
+                String engineErr = !errDetail.isBlank() ? errDetail : "Sandbox execution error (Status " + statusId + ")";
+                return ExecutionResultResponse.builder()
+                        .status("ENGINE_UNAVAILABLE")
+                        .totalTests(totalTests)
+                        .passedTests(passedCount)
+                        .executionTimeMs(maxExecTimeMs)
+                        .memoryUsedMb(maxMemoryMb)
+                        .stdout(aggregatedStdout.toString())
+                        .stderr(engineErr)
+                        .compilerOutput(engineErr)
                         .testResults(testResults)
                         .build();
             }
@@ -134,11 +174,15 @@ public class DsaJudge0Runner implements TrackRunner {
 
             String actualStdout = resp.stdout() != null ? resp.stdout().trim() : "";
             String expected = test.expectedOutput() != null ? test.expectedOutput().trim() : "";
-            boolean passed = (statusId == 3) || actualStdout.equals(expected);
+            boolean passed = (statusId == 3) || (actualStdout.equals(expected) && stderr.isBlank());
 
             if (passed) {
                 passedCount++;
             }
+
+            String testFailureReason = passed
+                    ? null
+                    : (!errDetail.isBlank() ? errDetail : "Expected: '" + expected + "', Got: '" + actualStdout + "'");
 
             testResults.add(ExecutionResultResponse.TestCaseResult.builder()
                     .name(test.name())
@@ -147,7 +191,7 @@ public class DsaJudge0Runner implements TrackRunner {
                     .input(test.isHidden() ? "[Hidden Input]" : test.input())
                     .expectedOutput(test.isHidden() ? "[Hidden Expected]" : test.expectedOutput())
                     .actualOutput(test.isHidden() ? (passed ? "[Verified]" : "[Mismatch]") : actualStdout)
-                    .error(passed ? null : (resp.stderr() != null && !resp.stderr().isBlank() ? resp.stderr().trim() : "Expected: '" + expected + "', Got: '" + actualStdout + "'"))
+                    .error(testFailureReason)
                     .isHidden(test.isHidden())
                     .build());
         }
