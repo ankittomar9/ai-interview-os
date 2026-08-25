@@ -1,26 +1,33 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { type ThemeId, themes } from '../lib/themes';
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = ThemeId | 'system';
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  resolvedTheme: 'light' | 'dark';
+  resolvedTheme: ThemeId;
+  isDark: boolean;
+  activeThemeDefinition: typeof themes[0];
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'editor-theme';
+const STORAGE_KEY = 'ai-interview-theme';
 
 export const ThemeProvider: React.FC<{
   children: React.ReactNode;
   defaultTheme?: Theme;
-}> = ({ children, defaultTheme = 'system' }) => {
+}> = ({ children, defaultTheme = 'light-studio' }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'light' || stored === 'dark' || stored === 'system') {
-        return stored;
+      if (stored) {
+        if (stored === 'system') return 'system';
+        const found = themes.find((t) => t.id === stored);
+        if (found) return found.id;
+        if (stored === 'dark') return 'graphite-indigo';
+        if (stored === 'light') return 'light-studio';
       }
     } catch {
       // Ignored
@@ -28,26 +35,26 @@ export const ThemeProvider: React.FC<{
     return defaultTheme;
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return theme;
-  });
+  const getSystemTheme = (): ThemeId => {
+    if (typeof window === 'undefined') return 'graphite-indigo';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'graphite-indigo'
+      : 'light-studio';
+  };
+
+  const resolvedTheme: ThemeId = theme === 'system' ? getSystemTheme() : theme;
+  const activeDef = themes.find((t) => t.id === resolvedTheme) || themes[0];
 
   useEffect(() => {
     const root = document.documentElement;
 
     const applyTheme = () => {
-      const isDark =
-        theme === 'dark' ||
-        (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const activeThemeId: ThemeId = theme === 'system' ? getSystemTheme() : theme;
+      const def = themes.find((t) => t.id === activeThemeId) || themes[0];
 
-      const targetTheme = isDark ? 'dark' : 'light';
-      setResolvedTheme(targetTheme);
+      root.setAttribute('data-theme', activeThemeId);
 
-      if (isDark) {
+      if (def.isDark) {
         root.classList.add('dark');
         root.style.colorScheme = 'dark';
       } else {
@@ -79,7 +86,15 @@ export const ThemeProvider: React.FC<{
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        setTheme,
+        resolvedTheme,
+        isDark: activeDef.isDark,
+        activeThemeDefinition: activeDef
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

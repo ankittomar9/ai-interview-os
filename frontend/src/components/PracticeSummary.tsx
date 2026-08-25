@@ -65,7 +65,7 @@ export const PracticeSummary: React.FC<Props> = ({
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
             <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attempted</div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-              {questions.length - skippedCount}/{questions.length}
+              {attemptedCount + solvedCount + assistedCount}/{questions.length}
             </div>
           </div>
 

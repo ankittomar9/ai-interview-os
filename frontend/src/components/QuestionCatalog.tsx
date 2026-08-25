@@ -44,7 +44,6 @@ export const QuestionCatalog: React.FC<Props> = ({ onSelectQuestions, onClose })
   const { allProgress } = usePlaygroundProgress();
 
   useEffect(() => {
-    setIsLoading(true);
     listQuestions({})
       .then((data) => {
         setQuestions(data || []);

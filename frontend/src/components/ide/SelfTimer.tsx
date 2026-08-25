@@ -12,21 +12,26 @@ export const SelfTimer: React.FC<Props> = ({ initialMinutes = 30, defaultMinutes
   const startingMinutes = defaultMinutes !== undefined ? defaultMinutes : initialMinutes;
   const [secondsLeft, setSecondsLeft] = useState(startingMinutes * 60);
   const [isRunning, setIsRunning] = useState(false);
-  const [hasNotifiedExpiry, setHasNotifiedExpiry] = useState(false);
 
   useEffect(() => {
-    let interval: any = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     if (isRunning && secondsLeft > 0) {
       interval = setInterval(() => {
-        setSecondsLeft((s) => s - 1);
+        setSecondsLeft((s) => {
+          if (s <= 1) {
+            toast.info('Your practice timer has expired! You can add 15 minutes or continue untimed.', 'Practice Timer Expiry');
+            onExpire?.();
+            setIsRunning(false);
+            return 0;
+          }
+          return s - 1;
+        });
       }, 1000);
-    } else if (secondsLeft === 0 && !hasNotifiedExpiry && isRunning) {
-      setHasNotifiedExpiry(true);
-      toast.info('Your practice timer has expired! You can add 15 minutes or continue untimed.', 'Practice Timer Expiry');
-      onExpire?.();
     }
-    return () => clearInterval(interval);
-  }, [isRunning, secondsLeft, hasNotifiedExpiry, onExpire]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRunning, secondsLeft, onExpire]);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -36,13 +41,11 @@ export const SelfTimer: React.FC<Props> = ({ initialMinutes = 30, defaultMinutes
 
   const handleAddMinutes = (mins: number) => {
     setSecondsLeft((s) => s + mins * 60);
-    setHasNotifiedExpiry(false);
   };
 
   const handleReset = (mins: number) => {
     setSecondsLeft(mins * 60);
     setIsRunning(false);
-    setHasNotifiedExpiry(false);
   };
 
   return (

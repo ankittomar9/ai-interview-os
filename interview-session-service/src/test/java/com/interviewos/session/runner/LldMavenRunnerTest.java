@@ -1,5 +1,6 @@
 package com.interviewos.session.runner;
 
+import com.github.dockerjava.api.DockerClient;
 import com.interviewos.session.sandbox.document.ProblemDocument;
 import com.interviewos.session.sandbox.dto.ExecutionResultResponse;
 import org.junit.jupiter.api.DisplayName;
@@ -88,7 +89,7 @@ class LldMavenRunnerTest {
     @Test
     @DisplayName("run() in fallback mode should return honest ENGINE_UNAVAILABLE status when Docker is missing")
     void testFallbackExecution() {
-        LldMavenRunner runner = new LldMavenRunner(); // Docker client not passed -> fallback mode
+        LldMavenRunner runner = new LldMavenRunner((DockerClient) null); // Explicitly null Docker client -> fallback mode
 
         ProblemDocument problem = ProblemDocument.builder()
                 .problemSlug("lld-order-service")

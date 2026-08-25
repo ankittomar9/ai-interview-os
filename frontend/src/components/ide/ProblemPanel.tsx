@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bookmark, BookmarkCheck, PlayCircle, CheckCircle2, Code2, Database, Edit3, BookOpen } from 'lucide-react';
 import type { GenerateQuestionResponse } from '../../types';
 import { MarkdownProblem } from './MarkdownProblem';
@@ -36,10 +36,12 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
   const { getProgress, saveNotes, recordSolutionView } = usePlaygroundProgress();
   const currentProgress = getProgress(slug);
   const [scratchpadText, setScratchpadText] = useState(currentProgress.notes || '');
+  const [prevSlug, setPrevSlug] = useState(slug);
 
-  useEffect(() => {
+  if (prevSlug !== slug) {
+    setPrevSlug(slug);
     setScratchpadText(getProgress(slug).notes || '');
-  }, [slug]);
+  }
 
   const handleNotesChange = (text: string) => {
     setScratchpadText(text);

@@ -28,6 +28,8 @@ import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
 import { SelfTimer } from './ide/SelfTimer';
 import { usePlaygroundProgress } from '../hooks/usePlaygroundProgress';
+import { useTheme } from './theme-provider';
+import { defineMonacoThemes } from '../lib/syntax-themes';
 import {
   Timer,
   Play,
@@ -84,6 +86,17 @@ export const InterviewRoom: React.FC<Props> = ({
 }) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
   const { recordRun } = usePlaygroundProgress();
+  const { resolvedTheme } = useTheme();
+
+  const getMonacoTheme = (themeId: string) => {
+    if (themeId === 'intellij-darcula') return 'intellij-darcula';
+    if (themeId === 'intellij-light') return 'intellij-light';
+    if (themeId === 'deep-ocean') return 'deep-ocean';
+    if (themeId === 'material-oceanic') return 'material-oceanic';
+    if (themeId === 'warm-charcoal') return 'warm-charcoal';
+    if (themeId === 'light-studio') return 'vs';
+    return 'vs-dark';
+  };
 
   // --- Multi-Question State & Catalog ---
   const [questionsList, setQuestionsList] = useState<GenerateQuestionResponse[]>(() => {
@@ -960,7 +973,7 @@ export const InterviewRoom: React.FC<Props> = ({
                       </div>
 
                       {/* Code Editor Surface */}
-                      <div className="flex-1 relative overflow-hidden bg-[#18181b]">
+                      <div className="flex-1 relative overflow-hidden bg-surface">
                         {editorTab === 'solution' && (
                           <Editor
                             height="100%"
@@ -975,7 +988,8 @@ export const InterviewRoom: React.FC<Props> = ({
                                 ? 'javascript'
                                 : 'java'
                             }
-                            theme="vs-dark"
+                            theme={getMonacoTheme(resolvedTheme)}
+                            beforeMount={defineMonacoThemes}
                             value={code}
                             onChange={(val) => handleCodeChange(val || '')}
                             onMount={(editor) => {

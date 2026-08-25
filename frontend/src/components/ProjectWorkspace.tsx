@@ -18,6 +18,8 @@ import { ActivityBar } from './ide/ActivityBar';
 import { BreadcrumbBar } from './ide/BreadcrumbBar';
 import { StatusBar } from './ide/StatusBar';
 import { executeProject } from '../services/api';
+import { useTheme } from './theme-provider';
+import { defineMonacoThemes } from '../lib/syntax-themes';
 
 interface Props {
   sessionId: number;
@@ -44,6 +46,7 @@ export const ProjectWorkspace: React.FC<Props> = ({
   engineReady = true,
   proctorClean = true
 }) => {
+  const { resolvedTheme } = useTheme();
   // Candidate project files state: Map of path -> content
   const [files, setFiles] = useState<Record<string, string>>(() => ({ ...starterFiles }));
   
@@ -343,7 +346,22 @@ export const ProjectWorkspace: React.FC<Props> = ({
               <Editor
                 height="100%"
                 language={getLanguage(activePath)}
-                theme="vs-dark"
+                theme={
+                  resolvedTheme === 'intellij-darcula'
+                    ? 'intellij-darcula'
+                    : resolvedTheme === 'intellij-light'
+                    ? 'intellij-light'
+                    : resolvedTheme === 'deep-ocean'
+                    ? 'deep-ocean'
+                    : resolvedTheme === 'material-oceanic'
+                    ? 'material-oceanic'
+                    : resolvedTheme === 'warm-charcoal'
+                    ? 'warm-charcoal'
+                    : resolvedTheme === 'light-studio'
+                    ? 'vs'
+                    : 'vs-dark'
+                }
+                beforeMount={defineMonacoThemes}
                 value={files[activePath] || ''}
                 onChange={handleContentChange}
                 onMount={(editor) => {
