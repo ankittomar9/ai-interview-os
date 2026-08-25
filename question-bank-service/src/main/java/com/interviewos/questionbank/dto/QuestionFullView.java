@@ -23,6 +23,12 @@ public record QuestionFullView(
         List<QuestionDocument.HiddenTestCase> hiddenTests,
         Map<String, String> hiddenTestFiles,
         String buildProfile,
+        String dbEngine,
+        String setupSql,
+        String schemaMarkdown,
+        String expectedCsv,
+        boolean ordered,
+        String solutionSql,
         QuestionDocument.ExecutionLimits limits,
         List<String> evaluationCriteria,
         QuestionDocument.InterviewerNotes interviewerNotes,
@@ -49,6 +55,12 @@ public record QuestionFullView(
                 .hiddenTests(doc.getHiddenTests())
                 .hiddenTestFiles(doc.getHiddenTestFiles())
                 .buildProfile(doc.getBuildProfile())
+                .dbEngine(doc.getDbEngine())
+                .setupSql(doc.getSetupSql())
+                .schemaMarkdown(doc.getSchemaMarkdown())
+                .expectedCsv(doc.getExpectedCsv())
+                .ordered(doc.isOrdered())
+                .solutionSql(doc.getSolutionSql())
                 .limits(doc.getLimits())
                 .evaluationCriteria(doc.getEvaluationCriteria())
                 .interviewerNotes(doc.getInterviewerNotes())
@@ -76,6 +88,12 @@ public record QuestionFullView(
                 .hiddenTests(this.hiddenTests)
                 .hiddenTestFiles(this.hiddenTestFiles)
                 .buildProfile(this.buildProfile)
+                .dbEngine(this.dbEngine)
+                .setupSql(this.setupSql)
+                .schemaMarkdown(this.schemaMarkdown)
+                .expectedCsv(this.expectedCsv)
+                .ordered(this.ordered)
+                .solutionSql(this.solutionSql)
                 .limits(this.limits)
                 .evaluationCriteria(this.evaluationCriteria)
                 .interviewerNotes(this.interviewerNotes)

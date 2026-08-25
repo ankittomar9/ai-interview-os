@@ -46,6 +46,20 @@ public class ProblemDocument {
     private String buildProfile = "judge0";
 
     @Builder.Default
+    private String dbEngine = "postgres-13";
+
+    private String setupSql;
+
+    private String schemaMarkdown;
+
+    private String expectedCsv;
+
+    @Builder.Default
+    private boolean ordered = false;
+
+    private String solutionSql;
+
+    @Builder.Default
     private List<TestCase> sampleTests = new ArrayList<>();
 
     @Builder.Default

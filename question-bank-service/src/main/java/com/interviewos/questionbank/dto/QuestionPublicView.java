@@ -21,7 +21,12 @@ public record QuestionPublicView(
         List<QuestionDocument.TestCase> sampleTests,
         List<String> evaluationCriteria,
         QuestionDocument.ExecutionLimits limits,
-        String buildProfile
+        String buildProfile,
+        String dbEngine,
+        String schemaMarkdown,
+        String expectedCsv,
+        boolean ordered,
+        String solutionSql
 ) {
     public static QuestionPublicView fromDocument(QuestionDocument doc) {
         if (doc == null) return null;
@@ -40,6 +45,11 @@ public record QuestionPublicView(
                 .evaluationCriteria(doc.getEvaluationCriteria())
                 .limits(doc.getLimits())
                 .buildProfile(doc.getBuildProfile())
+                .dbEngine(doc.getDbEngine())
+                .schemaMarkdown(doc.getSchemaMarkdown())
+                .expectedCsv(doc.getExpectedCsv())
+                .ordered(doc.isOrdered())
+                .solutionSql(doc.getSolutionSql())
                 .build();
     }
 }

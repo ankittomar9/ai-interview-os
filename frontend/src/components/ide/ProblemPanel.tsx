@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bookmark, BookmarkCheck, Lightbulb, PlayCircle, CheckCircle2, ChevronRight, Code2 } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Lightbulb, PlayCircle, CheckCircle2, ChevronRight, Code2, Database } from 'lucide-react';
 import type { GenerateQuestionResponse } from '../../types';
 import { MarkdownProblem } from './MarkdownProblem';
 import { Chip } from '../ui/Chip';
@@ -215,6 +215,19 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
             <div className="md-prose">
               <MarkdownProblem statement={question.problemStatement} />
             </div>
+
+            {/* Rendered Database Schema for SQL track */}
+            {question.schemaMarkdown && (
+              <div className="space-y-2 pt-2">
+                <div className="text-xs font-bold text-text-3 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-primary" />
+                  <span>Database Schema:</span>
+                </div>
+                <div className="bg-elevated border border-border rounded-lg p-3 md-prose overflow-x-auto text-xs">
+                  <MarkdownProblem statement={question.schemaMarkdown} />
+                </div>
+              </div>
+            )}
 
             {/* Sample Examples */}
             {question.sampleTests && question.sampleTests.length > 0 && (

@@ -9,7 +9,8 @@ import {
   transcribeAudio,
   getStoredApiKey,
   executeCode,
-  listQuestions
+  listQuestions,
+  type TestCaseResult
 } from '../services/api';
 import { useProctorSentinel } from '../hooks/useProctorSentinel';
 import { StageStepper, type InterviewStage } from './StageStepper';
@@ -658,12 +659,13 @@ export const InterviewRoom: React.FC<Props> = ({
     triggerCandidateTurnRef.current = triggerCandidateTurn;
   });
 
-  // Real Judge0 CE Sandbox Test Runner
+  // Sandbox Test Runner (DSA Judge0, LLD Maven, and SQL PostgreSQL 13)
   const handleRunCode = async () => {
     setTestStatus('running');
 
     try {
-      const lang = language.toLowerCase().includes('python') ? 'python' :
+      const lang = (currentQuestion.track === 'SQL' || isSqlTrack) ? 'sql' :
+                   language.toLowerCase().includes('python') ? 'python' :
                    language.toLowerCase().includes('script') ? 'javascript' : 'java';
 
       const slug = currentQuestion.problemSlug || currentQuestion.slug || currentQuestion.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -674,56 +676,59 @@ export const InterviewRoom: React.FC<Props> = ({
         problemSlug: slug
       });
 
-      if (result.status === 'COMPILE_ERROR') {
+      const isPass = result.status === 'PASSED' || result.status === 'ACCEPTED';
+      if (result.status === 'COMPILE_ERROR' || result.status === 'SYNTAX_ERROR') {
         setTestStatus('failed');
         setExecutionResult({
           status: 'failed',
-          verdictTitle: 'Compilation Failed',
-          executionTimeMs: 0,
-          memoryUsedMb: 0,
-          rawOutput: result.compilerOutput || result.stderr || 'Syntax error encountered during build.'
+          verdictTitle: result.status === 'SYNTAX_ERROR' ? 'Syntax Error' : 'Compilation Failed',
+          executionTimeMs: result.executionTimeMs || 0,
+          memoryUsedMb: result.memoryUsedMb || 0,
+          rawOutput: result.compilerOutput || result.stderr || 'Syntax error encountered during execution.'
         });
-      } else if (result.status === 'PASSED') {
-          setTestStatus('passed');
-          const caseItems: TestCaseItem[] = (result.testResults || []).map((t, idx) => ({
-            id: idx,
-            input: `Case ${idx + 1}`,
-            expectedOutput: 'Match',
-            actualOutput: 'Match',
-            passed: t.status === 'PASS',
-            executionTimeMs: t.durationMs
-          }));
-          setExecutionResult({
-            status: 'passed',
-            verdictTitle: 'All Tests Passed',
-            executionTimeMs: result.executionTimeMs,
-            memoryUsedMb: result.memoryUsedMb,
-            passedTests: result.passedTests,
-            totalTests: result.totalTests,
-            cases: caseItems,
-            rawOutput: '🎉 All test cases passed successfully!'
-          });
-        } else {
-          setTestStatus('failed');
-          const caseItems: TestCaseItem[] = (result.testResults || []).map((t, idx) => ({
-            id: idx,
-            input: `Case ${idx + 1}`,
-            expectedOutput: 'Expected',
-            actualOutput: t.error || 'Failed',
-            passed: t.status === 'PASS',
-            executionTimeMs: t.durationMs
-          }));
-          setExecutionResult({
-            status: 'failed',
-            verdictTitle: result.status === 'ENGINE_UNAVAILABLE' ? 'Engine Offline' : 'Wrong Answer',
-            executionTimeMs: result.executionTimeMs || 0,
-            memoryUsedMb: result.memoryUsedMb || 0,
-            passedTests: result.passedTests,
-            totalTests: result.totalTests,
-            cases: caseItems,
-            rawOutput: result.stderr || result.compilerOutput || 'Test fixture failed'
-          });
-        }
+      } else if (isPass) {
+        setTestStatus('passed');
+        const caseItems: TestCaseItem[] = (result.testResults || []).map((t: TestCaseResult, idx: number) => ({
+          id: idx,
+          input: t.name || `Case ${idx + 1}`,
+          expectedOutput: t.expectedOutput || 'Match',
+          actualOutput: t.actualOutput || 'Match',
+          passed: t.status === 'PASS',
+          executionTimeMs: t.durationMs
+        }));
+        setExecutionResult({
+          status: 'passed',
+          verdictTitle: 'Accepted',
+          executionTimeMs: result.executionTimeMs,
+          memoryUsedMb: result.memoryUsedMb,
+          passedTests: result.passedTests,
+          totalTests: result.totalTests || (caseItems.length > 0 ? caseItems.length : 1),
+          cases: caseItems,
+          rawOutput: result.stdout || '🎉 All test cases passed successfully!'
+        });
+      } else {
+        setTestStatus('failed');
+        const caseItems: TestCaseItem[] = (result.testResults || []).map((t: TestCaseResult, idx: number) => ({
+          id: idx,
+          input: t.name || `Case ${idx + 1}`,
+          expectedOutput: t.expectedOutput || 'Expected',
+          actualOutput: t.actualOutput || t.error || 'Failed',
+          passed: t.status === 'PASS',
+          executionTimeMs: t.durationMs
+        }));
+        setExecutionResult({
+          status: 'failed',
+          verdictTitle: result.status === 'TIMEOUT' ? 'Time Limit Exceeded' :
+                        result.status === 'ENGINE_UNAVAILABLE' ? 'Engine Offline' :
+                        result.status === 'RUNTIME_ERROR' ? 'Runtime Error' : 'Wrong Answer',
+          executionTimeMs: result.executionTimeMs || 0,
+          memoryUsedMb: result.memoryUsedMb || 0,
+          passedTests: result.passedTests || 0,
+          totalTests: result.totalTests || (caseItems.length > 0 ? caseItems.length : 1),
+          cases: caseItems,
+          rawOutput: result.stderr || result.stdout || result.compilerOutput || 'Execution failed'
+        });
+      }
     } catch (err: any) {
       setTestStatus('failed');
       setExecutionResult({

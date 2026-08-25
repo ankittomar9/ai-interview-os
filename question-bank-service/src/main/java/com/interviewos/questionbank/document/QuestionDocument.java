@@ -53,7 +53,20 @@ public class QuestionDocument {
 
     private Map<String, String> hiddenTestFiles;
 
-    private String buildProfile; // judge0, maven-spring
+    private String buildProfile; // judge0, maven-spring, sql-postgres
+
+    private String dbEngine; // e.g. postgres-13
+
+    private String setupSql;
+
+    private String schemaMarkdown;
+
+    private String expectedCsv;
+
+    @Builder.Default
+    private boolean ordered = false;
+
+    private String solutionSql;
 
     private ExecutionLimits limits;
 

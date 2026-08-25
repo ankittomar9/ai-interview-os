@@ -118,6 +118,12 @@ public class QuestionBankClient {
                 .editablePaths(dto.editablePaths() != null ? dto.editablePaths() : List.of())
                 .hiddenTestFiles(dto.hiddenTestFiles() != null ? dto.hiddenTestFiles() : Map.of())
                 .buildProfile(dto.buildProfile() != null ? dto.buildProfile() : "judge0")
+                .dbEngine(dto.dbEngine() != null ? dto.dbEngine() : "postgres-13")
+                .setupSql(dto.setupSql())
+                .schemaMarkdown(dto.schemaMarkdown())
+                .expectedCsv(dto.expectedCsv())
+                .ordered(dto.ordered())
+                .solutionSql(dto.solutionSql())
                 .sampleTests(sampleTests)
                 .hiddenTests(hiddenTests)
                 .limits(limits)
@@ -151,6 +157,11 @@ public class QuestionBankClient {
                 .starterFiles(dto.starterFiles() != null ? dto.starterFiles() : Map.of())
                 .editablePaths(dto.editablePaths() != null ? dto.editablePaths() : List.of())
                 .buildProfile(dto.buildProfile() != null ? dto.buildProfile() : "judge0")
+                .dbEngine(dto.dbEngine() != null ? dto.dbEngine() : "postgres-13")
+                .schemaMarkdown(dto.schemaMarkdown())
+                .expectedCsv(dto.expectedCsv())
+                .ordered(dto.ordered())
+                .solutionSql(dto.solutionSql())
                 .sampleTests(sampleTests)
                 .limits(limits)
                 .build();
@@ -173,6 +184,12 @@ public class QuestionBankClient {
             List<HiddenTestCaseDto> hiddenTests,
             Map<String, String> hiddenTestFiles,
             String buildProfile,
+            String dbEngine,
+            String setupSql,
+            String schemaMarkdown,
+            String expectedCsv,
+            boolean ordered,
+            String solutionSql,
             ExecutionLimitsDto limits
     ) {}
 
@@ -190,6 +207,11 @@ public class QuestionBankClient {
             List<String> editablePaths,
             List<TestCaseDto> sampleTests,
             String buildProfile,
+            String dbEngine,
+            String schemaMarkdown,
+            String expectedCsv,
+            boolean ordered,
+            String solutionSql,
             ExecutionLimitsDto limits
     ) {}
 

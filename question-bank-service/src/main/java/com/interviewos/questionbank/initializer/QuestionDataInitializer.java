@@ -982,109 +982,815 @@ public class QuestionDataInitializer implements CommandLineRunner {
                     .source("CORE")
                     .build();
 
-            // 8. SQL Customer Analytics (SQL - MID)
-            QuestionDocument sqlCustomerAnalytics = QuestionDocument.builder()
-                    .slug("sql-customer-analytics")
-                    .title("Customer Order & Revenue Analytics")
+            // 8. SQL Running Revenue (Cumulative Spend via SUM OVER)
+            QuestionDocument sqlRunningRevenue = QuestionDocument.builder()
+                    .slug("sql-running-revenue")
+                    .title("Cumulative Spend per Customer (Running Total)")
                     .track("SQL")
                     .difficulty("MID")
-                    .tags(List.of("sql", "aggregation", "joins", "group-by", "analytics"))
-                    .buildProfile("judge0")
+                    .tags(List.of("sql", "window-functions", "running-total", "sum-over", "data-engineering"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `customer_orders`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `order_id` | `INT PRIMARY KEY` | Unique order identifier |
+                            | `customer_id` | `INT NOT NULL` | Customer ID |
+                            | `order_date` | `DATE NOT NULL` | Date of the order |
+                            | `amount` | `DECIMAL(10,2) NOT NULL` | Order amount in USD |
+                            """)
                     .problemStatement("""
-                            ### Customer Order & Revenue Analytics
-                            Write a SQL query that reports the `customer_id`, `customer_name`, `total_orders`, and `total_spent` for all customers.
-                            Include customers who have placed zero orders (with `total_orders = 0` and `total_spent = 0.00`).
-                            Sort the results by `total_spent` descending, then by `customer_name` ascending.
+                            ### Cumulative Spend per Customer
+                            Write a SQL query that calculates the running total (cumulative spend) for each customer ordered chronologically by `order_date`.
 
-                            ### Schema:
-                            - `customers (id INT PRIMARY KEY, name VARCHAR(100), signup_date DATE)`
-                            - `orders (id INT PRIMARY KEY, customer_id INT, order_date DATE, total_amount DECIMAL(10,2))`
+                            ### Output Format:
+                            Columns: `customer_id`, `order_date`, `order_amount`, `running_total`
+                            Sort by `customer_id` ASC, `order_date` ASC, `order_id` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE customer_orders (
+                                order_id INT PRIMARY KEY,
+                                customer_id INT NOT NULL,
+                                order_date DATE NOT NULL,
+                                amount DECIMAL(10,2) NOT NULL
+                            );
+                            INSERT INTO customer_orders VALUES
+                            (1, 101, '2024-01-01', 50.00),
+                            (2, 101, '2024-01-05', 30.00),
+                            (3, 101, '2024-01-10', 20.00),
+                            (4, 102, '2024-01-02', 100.00),
+                            (5, 102, '2024-01-08', 50.00),
+                            (6, 103, '2024-01-04', 75.00);
                             """)
                     .starterCode("""
-                            -- Write your SQL query below:
+                            -- Write your SQL query below using SUM() OVER (PARTITION BY ... ORDER BY ...):
                             SELECT
-                                c.id AS customer_id,
-                                c.name AS customer_name,
-                                COUNT(o.id) AS total_orders,
-                                COALESCE(SUM(o.total_amount), 0.00) AS total_spent
-                            FROM customers c
-                            LEFT JOIN orders o ON c.id = o.customer_id
-                            GROUP BY c.id, c.name
-                            ORDER BY total_spent DESC, customer_name ASC;
+                                customer_id,
+                                order_date,
+                                amount AS order_amount,
+                                SUM(amount) OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS running_total
+                            FROM customer_orders
+                            ORDER BY customer_id, order_date, order_id;
+                            """)
+                    .expectedCsv("""
+                            customer_id,order_date,order_amount,running_total
+                            101,2024-01-01,50.00,50.00
+                            101,2024-01-05,30.00,80.00
+                            101,2024-01-10,20.00,100.00
+                            102,2024-01-02,100.00,100.00
+                            102,2024-01-08,50.00,150.00
+                            103,2024-01-04,75.00,75.00
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            SELECT
+                                customer_id,
+                                order_date,
+                                amount AS order_amount,
+                                SUM(amount) OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS running_total
+                            FROM customer_orders
+                            ORDER BY customer_id, order_date, order_id;
                             """)
                     .sampleTests(List.of(
-                            new QuestionDocument.TestCase("SampleAggregate", "", "", "Returns aggregated total_spent with LEFT JOIN on customers")
+                            new QuestionDocument.TestCase("RunningTotalByCustomer", "", "", "Computes cumulative spend partitioned by customer_id")
                     ))
-                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
-                    .evaluationCriteria(List.of("Correct LEFT JOIN preserving zero-order customers", "COALESCE/IFNULL for zero spending", "Correct GROUP BY and ORDER BY"))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("Window function SUM() OVER with PARTITION BY and ORDER BY", "Tie-breaking on order_id", "Deterministic sorting"))
                     .interviewerNotes(new QuestionDocument.InterviewerNotes(
-                            List.of("LEFT JOIN vs INNER JOIN", "COALESCE function", "GROUP BY aggregation rules"),
-                            List.of("Why would an INNER JOIN produce incorrect results for newly registered customers?"),
-                            List.of("Candidate explains handling NULLs in SUM and COUNT(o.id) vs COUNT(*).")
+                            List.of("SUM() OVER", "PARTITION BY", "Frame specification (UNBOUNDED PRECEDING)"),
+                            List.of("What is the default window frame when ORDER BY is specified without ROWS/RANGE?"),
+                            List.of("Candidate explains RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW.")
                     ))
                     .coaching(new QuestionDocument.CoachingContent(
-                            List.of("Using COUNT(*) which would count 1 for customers with 0 orders due to the null joined row."),
-                            "Use LEFT JOIN with COUNT(o.id) and COALESCE(SUM(o.total_amount), 0).",
-                            List.of("Always test edge cases like customers with no orders.")
+                            List.of("Omitting ORDER BY in window function producing total sum instead of running total."),
+                            "Use SUM(amount) OVER (PARTITION BY customer_id ORDER BY order_date, order_id).",
+                            List.of("Always include tie-breaker in ORDER BY for deterministic results.")
                     ))
                     .status("PUBLISHED")
                     .source("CORE")
                     .build();
 
-            // 9. SQL Monthly Recurring Revenue (SQL - SENIOR)
-            QuestionDocument sqlMrr = QuestionDocument.builder()
-                    .slug("sql-monthly-recurring-revenue")
-                    .title("Monthly Recurring Revenue (MRR) Cohort Growth")
+            // 9. SQL Top N Per Group (DENSE_RANK)
+            QuestionDocument sqlTopNPerGroup = QuestionDocument.builder()
+                    .slug("sql-top-n-per-group")
+                    .title("Top-2 Salaries per Department (DENSE_RANK)")
                     .track("SQL")
                     .difficulty("SENIOR")
-                    .tags(List.of("sql", "window-functions", "cte", "lag", "financial-analytics"))
-                    .buildProfile("judge0")
+                    .tags(List.of("sql", "window-functions", "dense-rank", "top-n", "data-engineering"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `employees`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `employee_id` | `INT PRIMARY KEY` | Employee ID |
+                            | `department_id` | `INT NOT NULL` | Department ID |
+                            | `name` | `VARCHAR(50) NOT NULL` | Employee Name |
+                            | `salary` | `INT NOT NULL` | Salary in USD |
+                            """)
                     .problemStatement("""
-                            ### Monthly Recurring Revenue (MRR) Growth
-                            Calculate the monthly revenue and Month-over-Month (MoM) revenue growth percentage for a SaaS platform.
-                            Output: `revenue_month` (YYYY-MM), `total_mrr`, `prev_month_mrr`, and `mom_growth_pct` rounded to 2 decimal places.
+                            ### Top-2 Salaries per Department
+                            Find the employees who earn the top 2 highest unique salaries in each department.
+                            If there are ties in salary, include all tied employees.
 
-                            ### Schema:
-                            - `subscriptions (id INT, customer_id INT, amount DECIMAL(10,2), start_date DATE, end_date DATE, status VARCHAR(20))`
+                            ### Output Format:
+                            Columns: `department_id`, `employee_id`, `name`, `salary`, `rank`
+                            Sort by `department_id` ASC, `salary` DESC, `employee_id` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE employees (
+                                employee_id INT PRIMARY KEY,
+                                department_id INT NOT NULL,
+                                name VARCHAR(50) NOT NULL,
+                                salary INT NOT NULL
+                            );
+                            INSERT INTO employees VALUES
+                            (1, 1, 'Alice', 90000),
+                            (2, 1, 'Bob', 85000),
+                            (3, 1, 'Charlie', 85000),
+                            (4, 1, 'David', 70000),
+                            (5, 2, 'Eve', 95000),
+                            (6, 2, 'Frank', 92000),
+                            (7, 2, 'Grace', 92000),
+                            (8, 2, 'Heidi', 80000);
                             """)
                     .starterCode("""
-                            -- Write your SQL query using CTE and LAG() window function:
-                            WITH monthly_rev AS (
+                            -- Write your query using DENSE_RANK() OVER (PARTITION BY ... ORDER BY ...):
+                            WITH ranked_employees AS (
                                 SELECT
-                                    TO_CHAR(start_date, 'YYYY-MM') AS revenue_month,
-                                    SUM(amount) AS total_mrr
-                                FROM subscriptions
-                                WHERE status = 'ACTIVE'
-                                GROUP BY TO_CHAR(start_date, 'YYYY-MM')
+                                    department_id,
+                                    employee_id,
+                                    name,
+                                    salary,
+                                    DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) as rank
+                                FROM employees
                             )
-                            SELECT
-                                revenue_month,
-                                total_mrr,
-                                LAG(total_mrr, 1) OVER (ORDER BY revenue_month) AS prev_month_mrr,
-                                ROUND(((total_mrr - LAG(total_mrr, 1) OVER (ORDER BY revenue_month)) / NULLIF(LAG(total_mrr, 1) OVER (ORDER BY revenue_month), 0)) * 100, 2) AS mom_growth_pct
-                            FROM monthly_rev
-                            ORDER BY revenue_month;
+                            SELECT department_id, employee_id, name, salary, rank
+                            FROM ranked_employees
+                            WHERE rank <= 2
+                            ORDER BY department_id ASC, salary DESC, employee_id ASC;
+                            """)
+                    .expectedCsv("""
+                            department_id,employee_id,name,salary,rank
+                            1,1,Alice,90000,1
+                            1,2,Bob,85000,2
+                            1,3,Charlie,85000,2
+                            2,5,Eve,95000,1
+                            2,6,Frank,92000,2
+                            2,7,Grace,92000,2
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            WITH ranked_employees AS (
+                                SELECT
+                                    department_id,
+                                    employee_id,
+                                    name,
+                                    salary,
+                                    DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) as rank
+                                FROM employees
+                            )
+                            SELECT department_id, employee_id, name, salary, rank
+                            FROM ranked_employees
+                            WHERE rank <= 2
+                            ORDER BY department_id ASC, salary DESC, employee_id ASC;
                             """)
                     .sampleTests(List.of(
-                            new QuestionDocument.TestCase("CohortCalculation", "", "", "Computes MoM percentage growth across active subscription cohorts")
+                            new QuestionDocument.TestCase("Top2SalariesWithTies", "", "", "Returns employees with top 2 unique salaries per department")
                     ))
-                    .limits(new QuestionDocument.ExecutionLimits(256, 3000))
-                    .evaluationCriteria(List.of("Common Table Expressions (CTE)", "LAG() window function", "NULLIF division-by-zero protection"))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("DENSE_RANK vs RANK vs ROW_NUMBER distinction", "CTE / Subquery filtering on rank <= 2", "Deterministic secondary sorting"))
                     .interviewerNotes(new QuestionDocument.InterviewerNotes(
-                            List.of("Window Functions", "LAG/LEAD", "NULLIF", "Time-series aggregation"),
-                            List.of("How do you handle months where no revenue was generated (sparse data)?"),
-                            List.of("Candidate discusses generate_series / date calendar tables.")
+                            List.of("DENSE_RANK()", "RANK()", "ROW_NUMBER()", "Ties handling"),
+                            List.of("Why does RANK() skip numbers on ties whereas DENSE_RANK() preserves consecutive integers?"),
+                            List.of("Candidate explains difference between RANK (1,2,2,4) and DENSE_RANK (1,2,2,3).")
                     ))
                     .coaching(new QuestionDocument.CoachingContent(
-                            List.of("Dividing by zero when previous month MRR is 0 or null."),
-                            "Use LAG(total_mrr) with NULLIF to safely calculate percentage growth.",
-                            List.of("Mention indexing on (status, start_date) for high performance.")
+                            List.of("Using ROW_NUMBER() which arbitrarily drops tied candidates."),
+                            "Use DENSE_RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) inside a CTE.",
+                            List.of("Highlight the difference between unique rank count vs row count.")
                     ))
                     .status("PUBLISHED")
                     .source("CORE")
                     .build();
 
-            // 10. Distributed Rate Limiter (SYSTEM_DESIGN - SENIOR)
+            // 10. SQL Sessionization (Gaps and Islands)
+            QuestionDocument sqlSessionization = QuestionDocument.builder()
+                    .slug("sql-sessionization")
+                    .title("Gaps-and-Islands Clickstream Sessionization")
+                    .track("SQL")
+                    .difficulty("SENIOR")
+                    .tags(List.of("sql", "window-functions", "gaps-and-islands", "lag", "sessionization", "data-engineering"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `user_events`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `event_id` | `INT PRIMARY KEY` | Event ID |
+                            | `user_id` | `INT NOT NULL` | User ID |
+                            | `event_time` | `TIMESTAMP NOT NULL` | Event timestamp |
+                            | `event_name` | `VARCHAR(50) NOT NULL` | Event type name |
+                            """)
+                    .problemStatement("""
+                            ### Clickstream Sessionization
+                            Segment user clickstream events into browsing sessions.
+                            A new session starts if more than 30 minutes (1800 seconds) have elapsed since the user's previous event.
+                            Assign a sequential `session_id` starting from 1 for each user.
+
+                            ### Output Format:
+                            Columns: `user_id`, `event_time`, `event_name`, `session_id`
+                            Sort by `user_id` ASC, `event_time` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE user_events (
+                                event_id INT PRIMARY KEY,
+                                user_id INT NOT NULL,
+                                event_time TIMESTAMP NOT NULL,
+                                event_name VARCHAR(50) NOT NULL
+                            );
+                            INSERT INTO user_events VALUES
+                            (1, 101, '2024-01-01 10:00:00', 'login'),
+                            (2, 101, '2024-01-01 10:15:00', 'view_item'),
+                            (3, 101, '2024-01-01 11:00:00', 'checkout'),
+                            (4, 102, '2024-01-01 09:00:00', 'login'),
+                            (5, 102, '2024-01-01 09:10:00', 'add_to_cart'),
+                            (6, 102, '2024-01-01 10:30:00', 'login');
+                            """)
+                    .starterCode("""
+                            -- Write your query using LAG() and cumulative SUM() to identify session boundaries:
+                            WITH lag_events AS (
+                                SELECT
+                                    user_id,
+                                    event_time,
+                                    event_name,
+                                    CASE
+                                        WHEN LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) IS NULL THEN 1
+                                        WHEN EXTRACT(EPOCH FROM (event_time - LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time))) > 1800 THEN 1
+                                        ELSE 0
+                                    END AS is_new_session
+                                FROM user_events
+                            )
+                            SELECT
+                                user_id,
+                                TO_CHAR(event_time, 'YYYY-MM-DD HH24:MI:SS') AS event_time,
+                                event_name,
+                                SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+                            FROM lag_events
+                            ORDER BY user_id ASC, event_time ASC;
+                            """)
+                    .expectedCsv("""
+                            user_id,event_time,event_name,session_id
+                            101,2024-01-01 10:00:00,login,1
+                            101,2024-01-01 10:15:00,view_item,1
+                            101,2024-01-01 11:00:00,checkout,2
+                            102,2024-01-01 09:00:00,login,1
+                            102,2024-01-01 09:10:00,add_to_cart,1
+                            102,2024-01-01 10:30:00,login,2
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            WITH lag_events AS (
+                                SELECT
+                                    user_id,
+                                    event_time,
+                                    event_name,
+                                    CASE
+                                        WHEN LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) IS NULL THEN 1
+                                        WHEN EXTRACT(EPOCH FROM (event_time - LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time))) > 1800 THEN 1
+                                        ELSE 0
+                                    END AS is_new_session
+                                FROM user_events
+                            )
+                            SELECT
+                                user_id,
+                                TO_CHAR(event_time, 'YYYY-MM-DD HH24:MI:SS') AS event_time,
+                                event_name,
+                                SUM(is_new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+                            FROM lag_events
+                            ORDER BY user_id ASC, event_time ASC;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("SessionBoundaryIdentification", "", "", "Calculates session boundaries with 30-minute inactivity thresholds")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("LAG() window function", "EPOCH timestamp difference calculation", "Cumulative SUM() to generate contiguous IDs"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Gaps and Islands", "LAG()", "Timestamp arithmetic", "EXTRACT(EPOCH)"),
+                            List.of("How do you handle out-of-order event arrivals in a production streaming pipeline?"),
+                            List.of("Candidate discusses watermarks and event-time windowing in Flink/Spark.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Subtracting timestamps without extracting epoch seconds."),
+                            "Use LAG(event_time) with EXTRACT(EPOCH FROM ...) > 1800, then cumulative SUM(is_new_session).",
+                            List.of("State the time complexity O(N log N) dominated by sorting.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 11. SQL 7-Day Moving Average
+            QuestionDocument sql7dMovingAvg = QuestionDocument.builder()
+                    .slug("sql-7d-moving-average")
+                    .title("Rolling 7-Day Order Volume (RANGE BETWEEN INTERVAL)")
+                    .track("SQL")
+                    .difficulty("SENIOR")
+                    .tags(List.of("sql", "window-functions", "moving-average", "range-between", "data-engineering"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `daily_sales`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `order_date` | `DATE PRIMARY KEY` | Sales date |
+                            | `amount` | `DECIMAL(10,2) NOT NULL` | Total daily revenue in USD |
+                            """)
+                    .problemStatement("""
+                            ### Rolling 7-Day Moving Average
+                            Calculate the 7-day rolling average daily sales revenue (including the current day and previous 6 days).
+                            Round the moving average to 2 decimal places.
+
+                            ### Output Format:
+                            Columns: `order_date`, `daily_amount`, `moving_avg_7d`
+                            Sort by `order_date` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE daily_sales (
+                                order_date DATE PRIMARY KEY,
+                                amount DECIMAL(10,2) NOT NULL
+                            );
+                            INSERT INTO daily_sales VALUES
+                            ('2024-01-01', 100.00),
+                            ('2024-01-02', 150.00),
+                            ('2024-01-03', 200.00),
+                            ('2024-01-04', 250.00),
+                            ('2024-01-05', 300.00),
+                            ('2024-01-06', 350.00),
+                            ('2024-01-07', 400.00),
+                            ('2024-01-08', 450.00);
+                            """)
+                    .starterCode("""
+                            -- Write your query using AVG() OVER (ORDER BY ... RANGE BETWEEN INTERVAL ...):
+                            SELECT
+                                order_date,
+                                amount AS daily_amount,
+                                ROUND(AVG(amount) OVER (
+                                    ORDER BY order_date
+                                    RANGE BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW
+                                ), 2) AS moving_avg_7d
+                            FROM daily_sales
+                            ORDER BY order_date ASC;
+                            """)
+                    .expectedCsv("""
+                            order_date,daily_amount,moving_avg_7d
+                            2024-01-01,100.00,100.00
+                            2024-01-02,150.00,125.00
+                            2024-01-03,200.00,150.00
+                            2024-01-04,250.00,175.00
+                            2024-01-05,300.00,200.00
+                            2024-01-06,350.00,225.00
+                            2024-01-07,400.00,250.00
+                            2024-01-08,450.00,300.00
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            SELECT
+                                order_date,
+                                amount AS daily_amount,
+                                ROUND(AVG(amount) OVER (
+                                    ORDER BY order_date
+                                    RANGE BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW
+                                ), 2) AS moving_avg_7d
+                            FROM daily_sales
+                            ORDER BY order_date ASC;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("SevenDayRollingWindow", "", "", "Calculates 7-day trailing average using RANGE BETWEEN INTERVAL")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("RANGE BETWEEN INTERVAL vs ROWS BETWEEN 6 PRECEDING", "Handling sparse missing dates correctly", "Rounding to 2 decimal places"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("RANGE vs ROWS frames", "INTERVAL arithmetic in PostgreSQL", "Rolling aggregates"),
+                            List.of("What happens with ROWS BETWEEN 6 PRECEDING if 3 days of sales data are missing?"),
+                            List.of("Candidate explains that ROWS takes 6 physical rows while RANGE takes 6 logical days.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Using ROWS BETWEEN 6 PRECEDING which breaks on missing calendar dates."),
+                            "Use RANGE BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW.",
+                            List.of("Emphasize the distinction between logical date ranges and physical row counts.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 12. SQL Funnel Conversion Ratios
+            QuestionDocument sqlFunnelRatios = QuestionDocument.builder()
+                    .slug("sql-funnel-ratios")
+                    .title("Step Conversion Funnel Ratios (LAG over Aggregates)")
+                    .track("SQL")
+                    .difficulty("MID")
+                    .tags(List.of("sql", "window-functions", "lag", "funnel-analysis", "analytics"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `funnel_steps`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `step_number` | `INT PRIMARY KEY` | Sequential step number |
+                            | `step_name` | `VARCHAR(50) NOT NULL` | Step description |
+                            | `user_count` | `INT NOT NULL` | Number of users who completed this step |
+                            """)
+                    .problemStatement("""
+                            ### Onboarding Funnel Conversion Ratios
+                            Calculate the step-by-step conversion rate through an onboarding funnel.
+                            For each step, calculate the `conversion_rate_pct` relative to the immediate previous step.
+                            For Step 1, the conversion rate is `100.00%`.
+
+                            ### Output Format:
+                            Columns: `step_number`, `step_name`, `user_count`, `conversion_rate_pct`
+                            Sort by `step_number` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE funnel_steps (
+                                step_number INT PRIMARY KEY,
+                                step_name VARCHAR(50) NOT NULL,
+                                user_count INT NOT NULL
+                            );
+                            INSERT INTO funnel_steps VALUES
+                            (1, 'Landing Page', 10000),
+                            (2, 'Sign Up', 4000),
+                            (3, 'Verify Email', 3000),
+                            (4, 'Complete Profile', 1500),
+                            (5, 'First Transaction', 600);
+                            """)
+                    .starterCode("""
+                            -- Write your query using LAG() and division protection:
+                            SELECT
+                                step_number,
+                                step_name,
+                                user_count,
+                                ROUND(
+                                    COALESCE(
+                                        (user_count::numeric / NULLIF(LAG(user_count) OVER (ORDER BY step_number), 0)) * 100.0,
+                                        100.00
+                                    ),
+                                    2
+                                ) AS conversion_rate_pct
+                            FROM funnel_steps
+                            ORDER BY step_number ASC;
+                            """)
+                    .expectedCsv("""
+                            step_number,step_name,user_count,conversion_rate_pct
+                            1,Landing Page,10000,100.00
+                            2,Sign Up,4000,40.00
+                            3,Verify Email,3000,75.00
+                            4,Complete Profile,1500,50.00
+                            5,First Transaction,600,40.00
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            SELECT
+                                step_number,
+                                step_name,
+                                user_count,
+                                ROUND(
+                                    COALESCE(
+                                        (user_count::numeric / NULLIF(LAG(user_count) OVER (ORDER BY step_number), 0)) * 100.0,
+                                        100.00
+                                    ),
+                                    2
+                                ) AS conversion_rate_pct
+                            FROM funnel_steps
+                            ORDER BY step_number ASC;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("FunnelStepConversion", "", "", "Computes relative conversion rate per funnel stage")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("LAG() window function", "NULLIF division by zero safeguard", "COALESCE for initial step default"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Funnel Conversion", "LAG()", "Numeric casting", "Division safety"),
+                            List.of("How do you convert user event logs directly into funnel steps?"),
+                            List.of("Candidate discusses conditional COUNT(DISTINCT CASE WHEN ...) aggregation.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Integer division truncating percentage to zero without ::numeric cast."),
+                            "Cast user_count::numeric before dividing by LAG(user_count).",
+                            List.of("Always guard divisions with NULLIF.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 13. SQL Dedup Keep Latest (ROW_NUMBER)
+            QuestionDocument sqlDedup = QuestionDocument.builder()
+                    .slug("sql-dedup-keep-latest")
+                    .title("Entity Deduplication Keeping Latest Record (ROW_NUMBER)")
+                    .track("SQL")
+                    .difficulty("MID")
+                    .tags(List.of("sql", "window-functions", "row-number", "deduplication", "data-engineering"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `user_profile_logs`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `log_id` | `INT PRIMARY KEY` | Log audit ID |
+                            | `user_id` | `INT NOT NULL` | User ID |
+                            | `email` | `VARCHAR(100) NOT NULL` | Current Email |
+                            | `status` | `VARCHAR(20) NOT NULL` | User Status |
+                            | `updated_at` | `TIMESTAMP NOT NULL` | Audit timestamp |
+                            """)
+                    .problemStatement("""
+                            ### Profile Log Deduplication
+                            Deduplicate user profile update audit records, selecting the most recent record per `user_id` based on `updated_at`.
+                            If there are ties in timestamp, break ties by choosing the higher `log_id`.
+
+                            ### Output Format:
+                            Columns: `user_id`, `email`, `status`, `updated_at`
+                            Sort by `user_id` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE user_profile_logs (
+                                log_id INT PRIMARY KEY,
+                                user_id INT NOT NULL,
+                                email VARCHAR(100) NOT NULL,
+                                status VARCHAR(20) NOT NULL,
+                                updated_at TIMESTAMP NOT NULL
+                            );
+                            INSERT INTO user_profile_logs VALUES
+                            (1, 101, 'alice@old.com', 'PENDING', '2024-01-01 10:00:00'),
+                            (2, 101, 'alice@new.com', 'ACTIVE', '2024-01-02 12:00:00'),
+                            (3, 102, 'bob@work.com', 'ACTIVE', '2024-01-01 08:00:00'),
+                            (4, 102, 'bob@home.com', 'SUSPENDED', '2024-01-03 09:00:00'),
+                            (5, 103, 'carol@test.com', 'ACTIVE', '2024-01-01 05:00:00');
+                            """)
+                    .starterCode("""
+                            -- Write your query using ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...):
+                            WITH ranked_logs AS (
+                                SELECT
+                                    user_id,
+                                    email,
+                                    status,
+                                    TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI:SS') AS updated_at,
+                                    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC, log_id DESC) AS rn
+                                FROM user_profile_logs
+                            )
+                            SELECT user_id, email, status, updated_at
+                            FROM ranked_logs
+                            WHERE rn = 1
+                            ORDER BY user_id ASC;
+                            """)
+                    .expectedCsv("""
+                            user_id,email,status,updated_at
+                            101,alice@new.com,ACTIVE,2024-01-02 12:00:00
+                            102,bob@home.com,SUSPENDED,2024-01-03 09:00:00
+                            103,carol@test.com,ACTIVE,2024-01-01 05:00:00
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            WITH ranked_logs AS (
+                                SELECT
+                                    user_id,
+                                    email,
+                                    status,
+                                    TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI:SS') AS updated_at,
+                                    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC, log_id DESC) AS rn
+                                FROM user_profile_logs
+                            )
+                            SELECT user_id, email, status, updated_at
+                            FROM ranked_logs
+                            WHERE rn = 1
+                            ORDER BY user_id ASC;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("DeduplicateKeepingLatest", "", "", "Deduplicates by user_id keeping newest timestamp and highest log_id")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("ROW_NUMBER() partitioning", "Deterministic tie-breaking on log_id", "Filtering where rn = 1"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Deduplication Patterns", "ROW_NUMBER()", "DISTINCT ON (PostgreSQL syntax)"),
+                            List.of("How does DISTINCT ON (user_id) compare with ROW_NUMBER() in PostgreSQL?"),
+                            List.of("Candidate explains DISTINCT ON performance and ANSI SQL portability.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Using GROUP BY MAX(updated_at) and joining back which is less efficient and requires 2 table scans."),
+                            "Use ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC, log_id DESC) inside a CTE.",
+                            List.of("Mention that ROW_NUMBER guarantees exactly one row per partition.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 14. SQL Month-Over-Month Active Users & Churn
+            QuestionDocument sqlMonthOverMonth = QuestionDocument.builder()
+                    .slug("sql-month-over-month")
+                    .title("Month-Over-Month Active Users & Churn Velocity")
+                    .track("SQL")
+                    .difficulty("SENIOR")
+                    .tags(List.of("sql", "window-functions", "lag", "mom-growth", "analytics"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `monthly_user_activity`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `activity_month` | `DATE NOT NULL` | Month start date |
+                            | `user_id` | `INT NOT NULL` | User identifier |
+                            """)
+                    .problemStatement("""
+                            ### Month-Over-Month Active Users
+                            Calculate monthly active users (MAU) and the MoM change in active users count.
+                            Output: `active_month` (YYYY-MM), `mau_count`, `mom_change`, `mom_growth_pct` rounded to 2 decimal places.
+
+                            ### Output Format:
+                            Sort by `active_month` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE monthly_user_activity (
+                                activity_month DATE NOT NULL,
+                                user_id INT NOT NULL,
+                                PRIMARY KEY (activity_month, user_id)
+                            );
+                            INSERT INTO monthly_user_activity VALUES
+                            ('2024-01-01', 1), ('2024-01-01', 2), ('2024-01-01', 3), ('2024-01-01', 4),
+                            ('2024-02-01', 1), ('2024-02-01', 2), ('2024-02-01', 3), ('2024-02-01', 5), ('2024-02-01', 6),
+                            ('2024-03-01', 1), ('2024-03-01', 2), ('2024-03-01', 7), ('2024-03-01', 8);
+                            """)
+                    .starterCode("""
+                            -- Write your query using CTE aggregation and LAG():
+                            WITH monthly_counts AS (
+                                SELECT
+                                    TO_CHAR(activity_month, 'YYYY-MM') AS active_month,
+                                    COUNT(DISTINCT user_id) AS mau_count
+                                FROM monthly_user_activity
+                                GROUP BY TO_CHAR(activity_month, 'YYYY-MM')
+                            )
+                            SELECT
+                                active_month,
+                                mau_count,
+                                mau_count - LAG(mau_count, 1) OVER (ORDER BY active_month) AS mom_change,
+                                ROUND(
+                                    ((mau_count - LAG(mau_count, 1) OVER (ORDER BY active_month))::numeric /
+                                     NULLIF(LAG(mau_count, 1) OVER (ORDER BY active_month), 0)) * 100.0,
+                                    2
+                                ) AS mom_growth_pct
+                            FROM monthly_counts
+                            ORDER BY active_month ASC;
+                            """)
+                    .expectedCsv("""
+                            active_month,mau_count,mom_change,mom_growth_pct
+                            2024-01,4,NULL,NULL
+                            2024-02,5,1,25.00
+                            2024-03,4,-1,-20.00
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            WITH monthly_counts AS (
+                                SELECT
+                                    TO_CHAR(activity_month, 'YYYY-MM') AS active_month,
+                                    COUNT(DISTINCT user_id) AS mau_count
+                                FROM monthly_user_activity
+                                GROUP BY TO_CHAR(activity_month, 'YYYY-MM')
+                            )
+                            SELECT
+                                active_month,
+                                mau_count,
+                                mau_count - LAG(mau_count, 1) OVER (ORDER BY active_month) AS mom_change,
+                                ROUND(
+                                    ((mau_count - LAG(mau_count, 1) OVER (ORDER BY active_month))::numeric /
+                                     NULLIF(LAG(mau_count, 1) OVER (ORDER BY active_month), 0)) * 100.0,
+                                    2
+                                ) AS mom_growth_pct
+                            FROM monthly_counts
+                            ORDER BY active_month ASC;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("MonthlyActiveGrowth", "", "", "Computes month-over-month active users and growth percentage")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("CTE aggregation by month", "LAG() for previous period lookup", "Handling NULL values for first cohort month"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("Time Series Metrics", "MoM Growth", "LAG()", "Date Truncation"),
+                            List.of("How would you compute customer retention across cohorts (e.g. Month 1 to Month 3 retention)?"),
+                            List.of("Candidate discusses self-joining cohorts on user_id with date intervals.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Attempting to use LAG inside the same query block as GROUP BY without a CTE or subquery."),
+                            "Compute monthly aggregated counts in a CTE first, then apply LAG in outer query.",
+                            List.of("Explain why the first month produces NULL for growth metrics.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 15. SQL Spend Quartiles (NTILE)
+            QuestionDocument sqlSpendQuartiles = QuestionDocument.builder()
+                    .slug("sql-spend-quartiles")
+                    .title("Customer Spend Quartiles & Average Cohort Spend (NTILE)")
+                    .track("SQL")
+                    .difficulty("SENIOR")
+                    .tags(List.of("sql", "window-functions", "ntile", "customer-segmentation", "analytics"))
+                    .buildProfile("sql-postgres")
+                    .dbEngine("postgres-13")
+                    .schemaMarkdown("""
+                            ### Schema: `customer_spend`
+                            | Column | Type | Description |
+                            |---|---|---|
+                            | `customer_id` | `INT PRIMARY KEY` | Customer ID |
+                            | `total_lifetime_spend` | `DECIMAL(10,2) NOT NULL` | Cumulative spend |
+                            """)
+                    .problemStatement("""
+                            ### Customer Spend Quartile Segmentation
+                            Segment customers into 4 spend quartiles using `NTILE(4)` ordered by `total_lifetime_spend` descending.
+                            Quartile 1 represents the top 25% highest spending customers.
+                            Report each customer's `customer_id`, `total_lifetime_spend`, `quartile`, and the `quartile_avg_spend` rounded to 2 decimal places.
+
+                            ### Output Format:
+                            Columns: `customer_id`, `total_lifetime_spend`, `quartile`, `quartile_avg_spend`
+                            Sort by `quartile` ASC, `total_lifetime_spend` DESC, `customer_id` ASC.
+                            """)
+                    .setupSql("""
+                            CREATE TABLE customer_spend (
+                                customer_id INT PRIMARY KEY,
+                                total_lifetime_spend DECIMAL(10,2) NOT NULL
+                            );
+                            INSERT INTO customer_spend VALUES
+                            (1, 5000.00),
+                            (2, 4200.00),
+                            (3, 3100.00),
+                            (4, 2800.00),
+                            (5, 1900.00),
+                            (6, 1200.00),
+                            (7, 800.00),
+                            (8, 300.00);
+                            """)
+                    .starterCode("""
+                            -- Write your query using NTILE(4) and nested window aggregation:
+                            WITH customer_quartiles AS (
+                                SELECT
+                                    customer_id,
+                                    total_lifetime_spend,
+                                    NTILE(4) OVER (ORDER BY total_lifetime_spend DESC) AS quartile
+                                FROM customer_spend
+                            )
+                            SELECT
+                                customer_id,
+                                total_lifetime_spend,
+                                quartile,
+                                ROUND(AVG(total_lifetime_spend) OVER (PARTITION BY quartile), 2) AS quartile_avg_spend
+                            FROM customer_quartiles
+                            ORDER BY quartile ASC, total_lifetime_spend DESC, customer_id ASC;
+                            """)
+                    .expectedCsv("""
+                            customer_id,total_lifetime_spend,quartile,quartile_avg_spend
+                            1,5000.00,1,4600.00
+                            2,4200.00,1,4600.00
+                            3,3100.00,2,2950.00
+                            4,2800.00,2,2950.00
+                            5,1900.00,3,1550.00
+                            6,1200.00,3,1550.00
+                            7,800.00,4,550.00
+                            8,300.00,4,550.00
+                            """)
+                    .ordered(true)
+                    .solutionSql("""
+                            WITH customer_quartiles AS (
+                                SELECT
+                                    customer_id,
+                                    total_lifetime_spend,
+                                    NTILE(4) OVER (ORDER BY total_lifetime_spend DESC) AS quartile
+                                FROM customer_spend
+                            )
+                            SELECT
+                                customer_id,
+                                total_lifetime_spend,
+                                quartile,
+                                ROUND(AVG(total_lifetime_spend) OVER (PARTITION BY quartile), 2) AS quartile_avg_spend
+                            FROM customer_quartiles
+                            ORDER BY quartile ASC, total_lifetime_spend DESC, customer_id ASC;
+                            """)
+                    .sampleTests(List.of(
+                            new QuestionDocument.TestCase("CustomerQuartileBanding", "", "", "Divides customer base into 4 quartiles and calculates cohort average spend")
+                    ))
+                    .limits(new QuestionDocument.ExecutionLimits(256, 5000))
+                    .evaluationCriteria(List.of("NTILE(4) bucket allocation", "AVG() OVER (PARTITION BY quartile) cohort calculation", "Deterministic ordering"))
+                    .interviewerNotes(new QuestionDocument.InterviewerNotes(
+                            List.of("NTILE()", "Window Aggregates", "Customer Cohort Segmentation"),
+                            List.of("How does NTILE handle datasets where total rows is not divisible by the bucket count?"),
+                            List.of("Candidate explains that larger buckets are assigned to the lowest numbered buckets.")
+                    ))
+                    .coaching(new QuestionDocument.CoachingContent(
+                            List.of("Attempting to partition by quartile in the same CTE where quartile is computed."),
+                            "Compute quartile via NTILE(4) in CTE first, then compute AVG() OVER (PARTITION BY quartile) in outer query.",
+                            List.of("Always sort by quartile ASC, then spend DESC.")
+                    ))
+                    .status("PUBLISHED")
+                    .source("CORE")
+                    .build();
+
+            // 16. Distributed Rate Limiter (SYSTEM_DESIGN - SENIOR)
             QuestionDocument distributedRateLimiter = QuestionDocument.builder()
                     .slug("distributed-rate-limiter")
                     .title("Design a Distributed Rate Limiter")
@@ -1127,7 +1833,7 @@ public class QuestionDataInitializer implements CommandLineRunner {
                     .source("CORE")
                     .build();
 
-            // 11. URL Shortener (SYSTEM_DESIGN - MID)
+            // 17. URL Shortener (SYSTEM_DESIGN - MID)
             QuestionDocument urlShortener = QuestionDocument.builder()
                     .slug("url-shortener-system-design")
                     .title("Design a Global URL Shortener (TinyURL)")
@@ -1170,7 +1876,7 @@ public class QuestionDataInitializer implements CommandLineRunner {
                     .source("CORE")
                     .build();
 
-            // 12. Behavioral STAR: Technical Conflict Resolution (BEHAVIORAL_STAR / RESUME_BASED - SENIOR)
+            // 18. Behavioral STAR: Technical Conflict Resolution (BEHAVIORAL_STAR / RESUME_BASED - SENIOR)
             QuestionDocument behavioralConflict = QuestionDocument.builder()
                     .slug("behavioral-technical-conflict")
                     .title("Resolving a Critical Architectural Disagreement")
@@ -1214,8 +1920,8 @@ public class QuestionDataInitializer implements CommandLineRunner {
                     .source("CORE")
                     .build();
 
-            // Idempotent Seeding for all 12 questions
-            List<QuestionDocument> all12Questions = List.of(
+            // Idempotent Seeding for all questions catalog
+            List<QuestionDocument> allSeededQuestions = List.of(
                     lruCache,
                     reverseString,
                     twoSum,
@@ -1223,14 +1929,20 @@ public class QuestionDataInitializer implements CommandLineRunner {
                     mergeKSortedLists,
                     validParentheses,
                     longestSubstring,
-                    sqlCustomerAnalytics,
-                    sqlMrr,
+                    sqlRunningRevenue,
+                    sqlTopNPerGroup,
+                    sqlSessionization,
+                    sql7dMovingAvg,
+                    sqlFunnelRatios,
+                    sqlDedup,
+                    sqlMonthOverMonth,
+                    sqlSpendQuartiles,
                     distributedRateLimiter,
                     urlShortener,
                     behavioralConflict
             );
 
-            for (QuestionDocument q : all12Questions) {
+            for (QuestionDocument q : allSeededQuestions) {
                 questionRepository.findBySlug(q.getSlug())
                         .ifPresentOrElse(
                                 existing -> {
@@ -1240,7 +1952,7 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                 () -> questionRepository.save(q)
                         );
             }
-            log.info("✅ Question Bank initialized with {} core problems across DSA, SQL, LLD, System Design, and STAR tracks.", all12Questions.size());
+            log.info("✅ Question Bank initialized with {} core problems across DSA, SQL, LLD, System Design, and STAR tracks.", allSeededQuestions.size());
         } catch (Exception e) {
             log.warn("⚠️ Question Bank initialization notice: {}", e.getMessage());
         }

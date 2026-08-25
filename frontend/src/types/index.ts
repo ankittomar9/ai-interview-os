@@ -48,6 +48,12 @@ export interface GenerateQuestionResponse {
     starterFiles?: Record<string, string>;
     editablePaths?: string[];
     buildProfile?: string;
+    dbEngine?: string;
+    setupSql?: string;
+    schemaMarkdown?: string;
+    expectedCsv?: string;
+    ordered?: boolean;
+    solutionSql?: string;
     sampleTests?: Array<{ name: string; input?: string; expectedOutput?: string; description?: string; explanation?: string }>;
     hints: string[];
     coaching?: { presentationTips?: string[] };
