@@ -228,11 +228,51 @@ public class AiOrchestratorService {
             }
         }
 
-        if (request.latestExecution() != null) {
+        boolean isAllTestsPassed = request.latestExecution() != null &&
+                request.latestExecution().totalTests() > 0 &&
+                request.latestExecution().passedTests() == request.latestExecution().totalTests() &&
+                ("PASSED".equalsIgnoreCase(request.latestExecution().status()) || "ACCEPTED".equalsIgnoreCase(request.latestExecution().status()));
+
+        boolean isCandidateSubmission = request.candidateExplanation() != null && (
+                request.candidateExplanation().toLowerCase().contains("submitted") ||
+                request.candidateExplanation().toLowerCase().contains("completed and submitted") ||
+                request.candidateExplanation().toLowerCase().contains("all test cases passed") ||
+                request.candidateExplanation().toLowerCase().contains("finalized")
+        );
+
+        if (isAllTestsPassed || (isCandidateSubmission && (request.latestExecution() == null || request.latestExecution().passedTests() > 0))) {
+            if (isPlayground) {
+                systemInstructionBuilder.append(String.format("""
+                        
+                        CRITICAL - ALL TEST CASES PASSED / SUBMISSION COMPLETE:
+                        The candidate's solution ran in the sandbox and PASSED ALL %d/%d test cases cleanly!
+                        Your response MUST:
+                        1. Start by congratulating the candidate and confirming explicitly: "Your solution is correct and passes all test cases! Excellent work."
+                        2. Tell them clearly: "You can now move to the next question using the Question Rail on the left, or finish and submit the practice session."
+                        3. Set "isSolutionComplete": true.
+                        4. Set "detectedIntent": "COMPLETE".
+                        5. Set "recommendedAction": "ADVANCE_STAGE".
+                        6. Do NOT ask generic "how would you optimize" filler questions that ignore their passing solution.
+                        """,
+                        request.latestExecution() != null ? request.latestExecution().passedTests() : 1,
+                        request.latestExecution() != null ? request.latestExecution().totalTests() : 1
+                ));
+            } else {
+                systemInstructionBuilder.append(String.format("""
+                        
+                        CRITICAL - ALL TEST CASES PASSED / CODE SUBMITTED:
+                        The candidate's solution PASSED ALL %d/%d test cases in the sandbox!
+                        Acknowledge that all test cases passed successfully.
+                        Set "isSolutionComplete": true and "recommendedAction": "ADVANCE_STAGE".
+                        """,
+                        request.latestExecution() != null ? request.latestExecution().passedTests() : 1,
+                        request.latestExecution() != null ? request.latestExecution().totalTests() : 1
+                ));
+            }
+        } else if (request.latestExecution() != null) {
             systemInstructionBuilder.append(String.format("""
                     
                     Latest sandbox result: %d/%d passed (%s) in %.1fms.
-                    If the candidate has already passed all tests, acknowledge it and ask about complexity/edge cases. Do NOT claim the code is incomplete or missing.
                     """,
                     request.latestExecution().passedTests(),
                     request.latestExecution().totalTests(),

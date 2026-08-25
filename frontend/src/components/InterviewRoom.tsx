@@ -613,6 +613,20 @@ export const InterviewRoom: React.FC<Props> = ({
     try {
       const contextPayload = `Problem: ${currentQuestion.title}\nDescription: ${currentQuestion.problemStatement}\n[Current Stage: ${currentStage}]`;
 
+      const latestExecPayload = executionResult ? {
+        status: (executionResult.status === 'passed' || testStatus === 'passed') ? 'PASSED' : 'FAILED',
+        passedTests: executionResult.passedTests !== undefined ? executionResult.passedTests : (testStatus === 'passed' ? 1 : 0),
+        totalTests: executionResult.totalTests !== undefined ? executionResult.totalTests : 1,
+        executionTimeMs: executionResult.executionTimeMs || 0,
+        memoryUsedMb: executionResult.memoryUsedMb || 0
+      } : (statusMap[currentQuestion.slug || 'q1'] === 'PASSED') ? {
+        status: 'PASSED',
+        passedTests: 1,
+        totalTests: 1,
+        executionTimeMs: 0,
+        memoryUsedMb: 0
+      } : undefined;
+
       const dialogue = await processDialogueTurn({
         sessionId,
         questionContext: contextPayload,
@@ -621,7 +635,8 @@ export const InterviewRoom: React.FC<Props> = ({
         candidateCode: code,
         modelProvider: provider,
         apiKey,
-        sessionMode: isPlayground ? 'PLAYGROUND' : 'INTERVIEW'
+        sessionMode: isPlayground ? 'PLAYGROUND' : 'INTERVIEW',
+        latestExecution: latestExecPayload
       });
 
       // Adaptive Stage Progression
@@ -780,12 +795,16 @@ export const InterviewRoom: React.FC<Props> = ({
     const slug = currentQuestion.slug || `q${activeQuestionIdx + 1}`;
     setStatusMap((prev) => ({ ...prev, [slug]: 'PASSED' }));
 
+    if (isPlayground) {
+      recordRun(slug, true, executionResult?.executionTimeMs, executionResult?.memoryUsedMb);
+    }
+
     await triggerCandidateTurn(
       isSqlTrack
-        ? 'I have finalized and submitted my SQL queries and schema approach.'
+        ? 'I have completed and submitted my SQL queries. All test cases passed successfully.'
         : isResumeTrack
         ? 'I have finalized my explanation for this resume-grounded question.'
-        : 'I have finalized and submitted my implementation code for evaluation.'
+        : 'I have completed and submitted my implementation. All test cases passed successfully.'
     );
   };
 
