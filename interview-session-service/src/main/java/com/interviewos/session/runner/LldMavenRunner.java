@@ -198,7 +198,7 @@ public class LldMavenRunner implements TrackRunner {
                     .withAutoRemove(false)
                     .withBinds(new Bind(volumeName, new Volume("/workspace")));
 
-            String cmdScript = "cd /workspace && mvn -o -B test; echo MVN_EXIT:$?; " +
+            String cmdScript = "cd /workspace && rm -rf target/surefire-reports && mvn -o -B test; echo MVN_EXIT:$?; " +
                     "echo ===SUREFIRE_START; for f in target/surefire-reports/TEST-*.xml; do [ -f \"$f\" ] && echo ===FILE:$f && cat \"$f\"; done; echo ===SUREFIRE_END";
 
             CreateContainerResponse container = dockerClient.createContainerCmd(runnerImage)
@@ -323,7 +323,7 @@ public class LldMavenRunner implements TrackRunner {
                     .withNanoCPUs(2_000_000_000L)   // 2 CPU cores
                     .withAutoRemove(false);
 
-            String cmdScript = "cd /workspace && mvn -o -B test; echo MVN_EXIT:$?; " +
+            String cmdScript = "cd /workspace && rm -rf target/surefire-reports && mvn -o -B test; echo MVN_EXIT:$?; " +
                     "echo ===SUREFIRE_START; for f in target/surefire-reports/TEST-*.xml; do [ -f \"$f\" ] && echo ===FILE:$f && cat \"$f\"; done; echo ===SUREFIRE_END";
 
             CreateContainerResponse container = dockerClient.createContainerCmd(runnerImage)
@@ -441,19 +441,21 @@ public class LldMavenRunner implements TrackRunner {
         int totalTests = allResults.size();
         int passedTests = (int) allResults.stream().filter(r -> "PASS".equalsIgnoreCase(r.status())).count();
 
-        // Compile failure check: Maven exited with non-zero and produced NO surefire testcase reports
-        if (exitCode != 0 && totalTests == 0) {
-            return ExecutionResultResponse.builder()
-                    .status("COMPILE_ERROR")
-                    .totalTests(0)
-                    .passedTests(0)
-                    .executionTimeMs(0.0)
-                    .memoryUsedMb(0.0)
-                    .stdout("")
-                    .stderr("Maven compilation failed.")
-                    .compilerOutput(extractCompilerOutput(rawOutput))
-                    .testResults(List.of())
-                    .build();
+        // Compile failure check: Maven exited with non-zero and produced NO valid failing surefire testcase reports
+        if (exitCode != 0) {
+            if (totalTests == 0 || (passedTests == totalTests && totalTests > 0)) {
+                return ExecutionResultResponse.builder()
+                        .status("COMPILE_ERROR")
+                        .totalTests(0)
+                        .passedTests(0)
+                        .executionTimeMs(0.0)
+                        .memoryUsedMb(0.0)
+                        .stdout(rawOutput)
+                        .stderr("Maven compilation failed.")
+                        .compilerOutput(extractCompilerOutput(rawOutput))
+                        .testResults(List.of())
+                        .build();
+            }
         }
 
         String overallStatus = (totalTests > 0 && passedTests == totalTests) ? "PASSED"
