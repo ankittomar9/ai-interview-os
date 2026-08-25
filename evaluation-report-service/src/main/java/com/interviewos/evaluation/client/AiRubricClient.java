@@ -39,6 +39,7 @@ public class AiRubricClient {
             RubricResponseDto response = restClient.post()
                     .uri("/api/v1/ai/rubric-evaluate")
                     .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
                     .body(RubricResponseDto.class);
