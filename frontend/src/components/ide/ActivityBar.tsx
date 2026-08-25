@@ -20,15 +20,12 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
         <button
           type="button"
           title="Explorer"
-          className={`relative w-full py-2 flex items-center justify-center transition-colors cursor-pointer ${
+          className={`w-full py-2 flex items-center justify-center transition-colors cursor-pointer ${
             active === 'explorer'
-              ? 'text-primary-2'
+              ? 'text-primary'
               : 'text-text-3 hover:text-text'
           }`}
         >
-          {active === 'explorer' && (
-            <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-primary rounded-r" />
-          )}
           <Files className="w-4 h-4" />
         </button>
 
@@ -48,7 +45,7 @@ export const ActivityBar: React.FC<ActivityBarProps> = ({
             type="button"
             onClick={onRun}
             title="Run Test Suite (Ctrl+Enter)"
-            className="w-8 h-8 rounded flex items-center justify-center text-emerald-400 hover:text-emerald-300 hover:bg-surface/80 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded flex items-center justify-center text-text-3 hover:text-text hover:bg-surface transition-colors cursor-pointer"
           >
             <Play className="w-4 h-4 fill-current" />
           </button>

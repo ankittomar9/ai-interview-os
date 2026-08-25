@@ -48,12 +48,12 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
             aria-checked={isSelected}
             disabled={disabled}
             onClick={() => onChange(opt.value)}
-            className={`flex items-center justify-center font-semibold rounded shrink-0 transition-all duration-150 select-none cursor-pointer ${
+            className={`flex items-center justify-center font-semibold rounded shrink-0 transition-colors select-none cursor-pointer ${
               itemSizeStyles[size]
             } ${
               isSelected
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-text-3 hover:text-text hover:bg-surface/60'
+                ? 'bg-primary text-white'
+                : 'text-text-3 hover:text-text hover:bg-elevated'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {opt.icon && <span className="shrink-0">{opt.icon}</span>}

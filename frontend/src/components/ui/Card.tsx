@@ -26,8 +26,8 @@ export const Card: React.FC<CardProps> = ({
 
   const variantStyles: Record<CardVariant, string> = {
     default: 'bg-surface',
-    elevated: 'bg-elevated shadow-lg shadow-black/40',
-    glass: 'bg-surface/80 backdrop-blur-md'
+    elevated: 'bg-surface',
+    glass: 'bg-surface'
   };
 
   return (

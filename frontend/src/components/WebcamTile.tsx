@@ -5,12 +5,18 @@ interface Props {
   isTabBlurred: boolean;
   tabSwitchCount: number;
   pasteCount: number;
+  allowMinimize?: boolean;
 }
 
 const STORAGE_POS_KEY = 'ui.webcam.position';
 const STORAGE_MIN_KEY = 'ui.webcam.minimized';
 
-export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, pasteCount }) => {
+export const WebcamTile: React.FC<Props> = ({
+  isTabBlurred,
+  tabSwitchCount,
+  pasteCount,
+  allowMinimize = false
+}) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const tileRef = useRef<HTMLDivElement | null>(null);
 
@@ -44,6 +50,9 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
     }
   });
 
+  // Minimization is strictly allowed only when allowMinimize is true (e.g. COMPLETED/EVALUATED)
+  const effectiveMinimized = allowMinimize && isMinimized;
+
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
     startX: 0,
@@ -71,7 +80,7 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
         stream.getTracks().forEach((t) => t.stop());
       }
     };
-  }, [isMinimized]);
+  }, [effectiveMinimized]);
 
   // Drag handlers
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -100,8 +109,8 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
     const deltaX = e.clientX - dragStartRef.current.startX;
     const deltaY = e.clientY - dragStartRef.current.startY;
 
-    const tileWidth = isMinimized ? 150 : 176;
-    const tileHeight = isMinimized ? 36 : 140;
+    const tileWidth = effectiveMinimized ? 150 : 176;
+    const tileHeight = effectiveMinimized ? 36 : 140;
 
     const maxX = Math.max(0, window.innerWidth - tileWidth - 8);
     const maxY = Math.max(0, window.innerHeight - tileHeight - 8);
@@ -110,7 +119,7 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
     const nextY = Math.min(maxY, Math.max(8, dragStartRef.current.initY + deltaY));
 
     setPosition({ x: nextX, y: nextY });
-  }, [isDragging, isMinimized]);
+  }, [isDragging, effectiveMinimized]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!isDragging) return;
@@ -126,6 +135,7 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
   }, [isDragging, position]);
 
   const toggleMinimized = () => {
+    if (!allowMinimize) return;
     setIsMinimized((prev) => {
       const next = !prev;
       localStorage.setItem(STORAGE_MIN_KEY, String(next));
@@ -137,7 +147,7 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
     ? { left: `${position.x}px`, top: `${position.y}px` }
     : { right: '20px', bottom: '100px' };
 
-  if (isMinimized) {
+  if (effectiveMinimized) {
     return (
       <div
         ref={tileRef}
@@ -145,17 +155,17 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         style={posStyle}
-        className={`fixed z-50 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-surface/95 border backdrop-blur-md shadow-xl select-none cursor-grab active:cursor-grabbing transition-shadow ${
+        className={`fixed z-50 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-surface border select-none cursor-grab active:cursor-grabbing ${
           isTabBlurred
-            ? 'border-danger text-danger ring-2 ring-danger/40 animate-pulse'
-            : 'border-border text-text hover:border-primary/50'
+            ? 'border-danger text-danger'
+            : 'border-border text-text hover:border-zinc-500'
         }`}
       >
-        <GripHorizontal className="w-3 h-3 text-text-3 opacity-60 shrink-0" />
+        <GripHorizontal className="w-3 h-3 text-text-3 shrink-0" />
         {isTabBlurred ? (
           <ShieldAlert className="w-3.5 h-3.5 text-danger shrink-0" />
         ) : (
-          <Camera className="w-3.5 h-3.5 text-success shrink-0" />
+          <Camera className="w-3.5 h-3.5 text-text-3 shrink-0" />
         )}
         <span className="text-[11px] font-bold tracking-tight">
           {isTabBlurred ? 'FOCUS LOST' : 'PROCTOR ACTIVE'}
@@ -179,24 +189,24 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       style={posStyle}
-      className={`fixed z-50 w-44 rounded-lg overflow-hidden bg-surface/95 border backdrop-blur-md shadow-2xl select-none transition-shadow ${
-        isDragging ? 'cursor-grabbing ring-2 ring-primary/60' : 'cursor-grab'
+      className={`fixed z-50 w-44 rounded-lg overflow-hidden bg-surface border select-none ${
+        isDragging ? 'cursor-grabbing border-primary' : 'cursor-grab'
       } ${
         isTabBlurred
-          ? 'border-danger shadow-danger/30 ring-2 ring-danger animate-pulse'
-          : 'border-border shadow-black/60 hover:border-primary/40'
+          ? 'border-danger'
+          : 'border-border hover:border-zinc-500'
       }`}
     >
       {/* Drag Header Bar */}
       <div
-        className={`flex items-center justify-between px-2 py-1 text-[10px] font-bold border-b backdrop-blur-xs ${
+        className={`flex items-center justify-between px-2 py-1 text-[10px] font-bold border-b ${
           isTabBlurred
             ? 'bg-danger text-white border-danger'
-            : 'bg-elevated/90 text-text-2 border-border'
+            : 'bg-elevated text-text-2 border-border'
         }`}
       >
         <div className="flex items-center gap-1.5">
-          <GripHorizontal className="w-3 h-3 text-text-3 opacity-80 shrink-0" />
+          <GripHorizontal className="w-3 h-3 text-text-3 shrink-0" />
           {isTabBlurred ? (
             <>
               <ShieldAlert className="w-3 h-3 text-white" />
@@ -204,20 +214,22 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
             </>
           ) : (
             <>
-              <ShieldCheck className="w-3 h-3 text-success" />
+              <ShieldCheck className="w-3 h-3 text-text-3" />
               <span>PROCTOR LOCKED</span>
             </>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={toggleMinimized}
-          title="Minimize Camera Tile"
-          className="p-0.5 rounded hover:bg-black/20 text-text-3 hover:text-text cursor-pointer"
-        >
-          <Minimize2 className="w-3 h-3" />
-        </button>
+        {allowMinimize && (
+          <button
+            type="button"
+            onClick={toggleMinimized}
+            title="Minimize Camera Tile"
+            className="p-0.5 rounded hover:bg-black/20 text-text-3 hover:text-text cursor-pointer"
+          >
+            <Minimize2 className="w-3 h-3" />
+          </button>
+        )}
       </div>
 
       {/* Video Stream */}
@@ -232,9 +244,9 @@ export const WebcamTile: React.FC<Props> = ({ isTabBlurred, tabSwitchCount, past
       </div>
 
       {/* Footer Proctor Telemetry */}
-      <div className="px-2 py-1 bg-elevated/80 border-t border-border flex items-center justify-between text-[9px] text-text-3 font-mono">
-        <span>Switches: <strong className={tabSwitchCount > 0 ? 'text-amber-400' : 'text-text'}>{tabSwitchCount}</strong></span>
-        <span>Pastes: <strong className={pasteCount > 0 ? 'text-amber-400' : 'text-text'}>{pasteCount}</strong></span>
+      <div className="px-2 py-1 bg-elevated border-t border-border flex items-center justify-between text-[9px] text-text-3 font-mono">
+        <span>Switches: <strong className={tabSwitchCount > 0 ? 'text-warning' : 'text-text'}>{tabSwitchCount}</strong></span>
+        <span>Pastes: <strong className={pasteCount > 0 ? 'text-warning' : 'text-text'}>{pasteCount}</strong></span>
       </div>
     </div>
   );

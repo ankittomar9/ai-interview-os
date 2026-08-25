@@ -30,9 +30,9 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const variantStyles: Record<ButtonVariant, string> = {
-    primary: 'bg-primary text-white hover:bg-primary-2 shadow-sm hover:shadow-primary/25',
+    primary: 'bg-primary text-white hover:bg-primary/90',
     secondary: 'bg-elevated text-text border border-border hover:bg-border/60 hover:text-white',
-    danger: 'bg-danger text-white hover:bg-danger/90 shadow-sm hover:shadow-danger/25',
+    danger: 'bg-danger text-white hover:bg-danger/90',
     ghost: 'bg-transparent text-text-2 hover:bg-elevated hover:text-text border border-transparent'
   };
 

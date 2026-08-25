@@ -140,14 +140,14 @@ export const PreInterviewChecklist: React.FC<Props> = ({
 
   return (
     <div className="min-h-screen bg-bg text-text py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center select-text">
-      <Card padding="lg" variant="elevated" className="w-full max-w-5xl space-y-6 shadow-2xl border border-border">
+      <Card padding="lg" variant="default" className="w-full max-w-5xl space-y-6 border border-border">
 
         {/* Header & Mode Switcher */}
         <div className="border-b border-border pb-5 flex items-center justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <ShieldCheck className="w-7 h-7 text-primary" />
-              <h1 className="text-xl font-black text-white tracking-tight">Pre-Assessment System Verification</h1>
+              <ShieldCheck className="w-6 h-6 text-text" />
+              <h1 className="text-xl font-bold text-text tracking-tight">Pre-Assessment System Verification</h1>
             </div>
             <p className="text-xs text-text-3 mt-1">
               Candidate Readiness Check for <strong className="text-text">{roleTitle}</strong> • Session #{sessionId}
@@ -155,7 +155,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center gap-1 bg-surface p-1 rounded-md border border-border">
+          <div className="flex items-center gap-1 bg-elevated p-1 rounded-md border border-border">
             <button
               type="button"
               onClick={() => setEnvMode('dev')}
@@ -172,7 +172,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               onClick={() => setEnvMode('prod')}
               className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors flex items-center gap-1.5 cursor-pointer ${
                 envMode === 'prod'
-                  ? 'bg-success text-white'
+                  ? 'bg-elevated text-text border border-border'
                   : 'text-text-3 hover:text-text'
               }`}
             >
@@ -185,7 +185,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
           <div className="flex justify-between items-center flex-wrap gap-2">
             <div className="flex items-center gap-2 text-xs font-bold text-text">
-              <Server className="w-4 h-4 text-primary-2" />
+              <Server className="w-4 h-4 text-text-3" />
               <span>Platform Capability &amp; Sandbox Readiness</span>
             </div>
             <span className="text-[11px] text-text-3">
@@ -194,42 +194,42 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-            <div className="bg-elevated p-2.5 rounded border border-border-subtle flex flex-col justify-between space-y-1">
+            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
               <span className="text-[11px] font-semibold text-text-2">DSA Track</span>
-              <Chip variant={capabilities?.engines?.dsa?.ready ? 'success' : 'warning'} size="sm">
+              <Chip variant={capabilities?.engines?.dsa?.ready ? 'success' : 'neutral'} size="sm">
                 {capabilities?.engines?.dsa?.ready ? 'Judge0 Online' : 'Sandbox Offline'}
               </Chip>
             </div>
 
-            <div className="bg-elevated p-2.5 rounded border border-border-subtle flex flex-col justify-between space-y-1">
+            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
               <span className="text-[11px] font-semibold text-text-2">Spring Boot LLD</span>
-              <Chip variant={capabilities?.engines?.lld?.ready ? 'success' : 'warning'} size="sm">
+              <Chip variant={capabilities?.engines?.lld?.ready ? 'success' : 'neutral'} size="sm">
                 {capabilities?.engines?.lld?.ready ? 'Docker Maven Online' : 'Docker Offline'}
               </Chip>
             </div>
 
-            <div className="bg-elevated p-2.5 rounded border border-border-subtle flex flex-col justify-between space-y-1">
+            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
               <span className="text-[11px] font-semibold text-text-2">System Design</span>
-              <Chip variant="success" size="sm">
+              <Chip variant="neutral" size="sm">
                 Canvas &amp; Vision Ready
               </Chip>
             </div>
 
-            <div className="bg-elevated p-2.5 rounded border border-border-subtle flex flex-col justify-between space-y-1">
+            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
               <span className="text-[11px] font-semibold text-text-2">Behavioral STAR</span>
-              <Chip variant="success" size="sm">
+              <Chip variant="neutral" size="sm">
                 Neural Dialogue Ready
               </Chip>
             </div>
           </div>
 
           {capabilities && (!capabilities.engines?.dsa?.ready || !capabilities.engines?.lld?.ready) && (
-            <div className="bg-primary/5 border border-primary/20 rounded p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-text-3">
+            <div className="bg-elevated border border-border rounded p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-text-3">
               <div className="flex items-center gap-1.5">
-                <Terminal className="w-3.5 h-3.5 text-primary-2 shrink-0" />
+                <Terminal className="w-3.5 h-3.5 text-text-3 shrink-0" />
                 <span>To spin up local Judge0 and Docker Maven execution sandboxes:</span>
               </div>
-              <code className="bg-elevated px-2 py-1 rounded text-primary-2 font-mono text-[11px] border border-border">
+              <code className="bg-surface px-2 py-1 rounded text-text font-mono text-[11px] border border-border">
                 docker compose --profile engines up -d
               </code>
             </div>
@@ -237,9 +237,9 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         </div>
 
         {envMode === 'dev' && (
-          <div className="bg-primary/10 border border-primary/30 p-3.5 rounded-lg flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2 text-xs text-primary-2">
-              <Cpu className="w-4 h-4 shrink-0" />
+          <div className="bg-elevated border border-border p-3.5 rounded-lg flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2 text-xs text-text-2">
+              <Cpu className="w-4 h-4 text-text-3 shrink-0" />
               <span><strong>Development Mode Active:</strong> Hardware and sandbox verification constraints can be bypassed for rapid testing.</span>
             </div>
             <Button
@@ -260,7 +260,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-xs font-bold text-text">
-                  <Camera className={`w-4 h-4 ${cameraOk ? 'text-success' : 'text-danger'}`} />
+                  <Camera className="w-4 h-4 text-text-3" />
                   <span>1. Frontal Webcam Video</span>
                 </div>
                 <Chip variant={cameraOk ? 'success' : 'danger'} size="sm">
@@ -268,7 +268,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 </Chip>
               </div>
 
-              <div className="w-full h-36 bg-bg rounded-md overflow-hidden">
+              <div className="w-full h-36 bg-bg rounded-md overflow-hidden border border-border">
                 <video
                   ref={videoPreviewRef}
                   autoPlay
@@ -282,15 +282,15 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-xs font-bold text-text">
-                  <Mic className={`w-4 h-4 ${micOk ? 'text-success' : 'text-danger'}`} />
+                  <Mic className="w-4 h-4 text-text-3" />
                   <span>2. Microphone Audio Input</span>
                 </div>
-                <Chip variant={micOk ? 'success' : 'warning'} size="sm">
+                <Chip variant={micOk ? 'success' : 'neutral'} size="sm">
                   {micOk ? 'Audio Detected' : 'Speak to Test'}
                 </Chip>
               </div>
 
-              <div className="h-2.5 bg-elevated rounded-full overflow-hidden">
+              <div className="h-2.5 bg-elevated rounded-full overflow-hidden border border-border">
                 <div
                   className={`h-full transition-all duration-100 rounded-full ${
                     audioLevel > 50 ? 'bg-success' : 'bg-primary'
@@ -309,7 +309,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             <div className="bg-surface border border-border rounded-lg p-4 space-y-2">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-xs font-bold text-text">
-                  <Monitor className={`w-4 h-4 ${isScreenCheckSatisfied ? 'text-success' : 'text-danger'}`} />
+                  <Monitor className="w-4 h-4 text-text-3" />
                   <span>3. Single Monitor Check</span>
                 </div>
                 <Chip variant={isScreenCheckSatisfied ? 'success' : 'danger'} size="sm">
@@ -335,12 +335,12 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               )}
             </div>
 
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex gap-4 items-center">
+            <div className="bg-surface border border-border rounded-lg p-4 flex gap-4 items-center">
               <div className="bg-white p-1.5 rounded-md shrink-0">
                 <QRCodeSVG value={phoneProctorUrl} size={70} />
               </div>
               <div className="space-y-1">
-                <div className="text-xs font-bold text-primary-2">
+                <div className="text-xs font-bold text-text">
                   4. Dual-Camera Phone Link (Optional)
                 </div>
                 <p className="text-[11px] text-text-3 leading-relaxed">
@@ -351,7 +351,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
 
             <div className="bg-surface border border-border rounded-lg p-4 flex justify-between items-center">
               <div className="flex items-center gap-2 text-xs font-bold text-text">
-                <Wifi className="w-4 h-4 text-success" />
+                <Wifi className="w-4 h-4 text-text-3" />
                 <span>5. Network Connection</span>
               </div>
               <Chip variant="success" size="sm">
@@ -363,7 +363,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         </div>
 
         {!allChecksPassed && envMode === 'prod' && (
-          <div className="bg-warning/10 border border-warning/30 p-3 rounded-lg flex items-center gap-2 text-xs text-warning">
+          <div className="bg-elevated border border-warning/30 p-3 rounded-lg flex items-center gap-2 text-xs text-warning">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>Please satisfy hardware checks (or switch to Dev Mode) to proceed with assessment.</span>
           </div>

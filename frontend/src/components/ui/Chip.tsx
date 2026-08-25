@@ -26,11 +26,11 @@ export const Chip: React.FC<ChipProps> = ({
 
   const variantStyles: Record<ChipVariant, string> = {
     default: 'bg-elevated text-text-2 border-border',
-    primary: 'bg-primary/15 text-primary-2 border-primary/30',
-    success: 'bg-success/15 text-success border-success/30',
-    warning: 'bg-warning/15 text-warning border-warning/30',
-    danger: 'bg-danger/15 text-danger border-danger/30',
-    neutral: 'bg-surface text-text-3 border-border-subtle'
+    primary: 'bg-primary/10 text-primary-2 border-primary/20',
+    success: 'bg-success/10 text-success border-success/20',
+    warning: 'bg-warning/10 text-warning border-warning/20',
+    danger: 'bg-danger/10 text-danger border-danger/20',
+    neutral: 'bg-elevated text-text-3 border-border'
   };
 
   return (

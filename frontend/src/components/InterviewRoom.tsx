@@ -804,28 +804,28 @@ export const InterviewRoom: React.FC<Props> = ({
       )}
 
       {/* TOP FLAT HEADER BAR */}
-      <header className="h-14 bg-surface border-b border-border flex items-center justify-between px-4 z-20 shrink-0">
+      <header className="h-12 bg-surface border-b border-border flex items-center justify-between px-4 z-20 shrink-0">
         {/* Brand & Problem Title */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-elevated border border-border flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-2" />
+            <div className="w-6 h-6 rounded-md bg-elevated border border-border flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-text" />
             </div>
-            <span className="font-extrabold text-sm tracking-tight text-white">
+            <span className="font-bold text-sm tracking-tight text-text">
               AI Interview OS
             </span>
           </div>
 
-          <div className="w-px h-5 bg-border hidden sm:block" />
+          <div className="w-px h-4 bg-border hidden sm:block" />
 
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-sm font-bold text-text truncate max-w-[200px] lg:max-w-xs">
+            <span className="text-sm font-semibold text-text truncate max-w-[200px] lg:max-w-xs">
               {question.title}
             </span>
-            <Chip variant="primary" size="sm">
+            <Chip variant="neutral" size="sm">
               {question.track}
             </Chip>
-            <Chip variant="warning" size="sm">
+            <Chip variant="neutral" size="sm">
               {question.difficulty}
             </Chip>
           </div>
@@ -854,7 +854,7 @@ export const InterviewRoom: React.FC<Props> = ({
 
           {/* Countdown Timer */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-elevated border border-border text-xs font-mono font-bold text-text">
-            <Timer className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-danger' : 'text-primary-2'}`} />
+            <Timer className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-danger' : 'text-text-3'}`} />
             <span className={timeLeft < 300 ? 'text-danger' : 'text-text'}>{formatTime(timeLeft)}</span>
           </div>
 
@@ -1108,7 +1108,7 @@ export const InterviewRoom: React.FC<Props> = ({
                   <Button
                     variant={editorTab === 'solution' ? 'secondary' : 'ghost'}
                     size="sm"
-                    icon={<Code2 className="w-3.5 h-3.5 text-primary-2" />}
+                    icon={<Code2 className="w-3.5 h-3.5 text-text-3" />}
                     onClick={() => setEditorTab('solution')}
                   >
                     {isSqlTrack ? 'Solution.sql' : isResumeTrack ? 'Response_Notes.md' : `Solution.${currentCodeExt}`}
@@ -1118,7 +1118,7 @@ export const InterviewRoom: React.FC<Props> = ({
                     <Button
                       variant={editorTab === 'tests' ? 'secondary' : 'ghost'}
                       size="sm"
-                      icon={<FileText className="w-3.5 h-3.5 text-sky-400" />}
+                      icon={<FileText className="w-3.5 h-3.5 text-text-3" />}
                       onClick={() => setEditorTab('tests')}
                     >
                       tests.{language === 'python' ? 'py' : 'java'}
@@ -1128,7 +1128,7 @@ export const InterviewRoom: React.FC<Props> = ({
                   <Button
                     variant={editorTab === 'whiteboard' ? 'secondary' : 'ghost'}
                     size="sm"
-                    icon={<Layers className="w-3.5 h-3.5 text-purple-400" />}
+                    icon={<Layers className="w-3.5 h-3.5 text-text-3" />}
                     onClick={() => setEditorTab('whiteboard')}
                   >
                     HLD Whiteboard
@@ -1168,7 +1168,6 @@ export const InterviewRoom: React.FC<Props> = ({
                       icon={<Play className="w-3 h-3 fill-white" />}
                       onClick={handleRunCode}
                       loading={testStatus === 'running'}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
                     >
                       {testStatus === 'running' ? 'Running...' : 'Run Tests'}
                     </Button>
