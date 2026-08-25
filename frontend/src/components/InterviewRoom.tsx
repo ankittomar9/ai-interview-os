@@ -32,6 +32,7 @@ import { useTheme } from './theme-provider';
 import { defineMonacoThemes } from '../lib/syntax-themes';
 import { TrackNavMenu } from './ui/TrackNavMenu';
 import { saveSubmission, type SubmissionStatus, type SubmissionCaseResult } from '../lib/submissions';
+import { BehavioralStudio } from './behavioral/BehavioralStudio';
 import {
   Timer,
   Play,
@@ -946,6 +947,28 @@ export const InterviewRoom: React.FC<Props> = ({
     difficulty: q.difficulty,
     status: statusMap[q.slug || `q${idx + 1}`] || 'UNTOUCHED'
   }));
+
+  const isBehavioralOrResume =
+    currentQuestion.track === 'BEHAVIORAL_STAR' ||
+    currentQuestion.track === 'RESUME_BASED' ||
+    String(currentQuestion.track).toUpperCase().includes('BEHAVIORAL') ||
+    String(currentQuestion.track).toUpperCase().includes('RESUME');
+
+  if (isBehavioralOrResume) {
+    return (
+      <BehavioralStudio
+        sessionId={sessionId}
+        track={currentQuestion.track}
+        difficulty={currentQuestion.difficulty}
+        roleTitle={currentQuestion.title || 'Frontier Behavioral & Experience Studio'}
+        isPlayground={isPlayground}
+        provider={provider}
+        apiKey={apiKey}
+        initialQuestion={currentQuestion}
+        onFinish={onFinish}
+      />
+    );
+  }
 
   const currentCodeExt = language === 'python' ? 'py' : language === 'javascript' ? 'js' : 'java';
 

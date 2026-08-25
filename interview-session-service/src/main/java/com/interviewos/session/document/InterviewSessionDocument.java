@@ -42,6 +42,7 @@ public class InterviewSessionDocument {
     private String targetCompany;
 
     private String resumeId;
+    private ResumeDocument parsedResume;
 
     private String status;
     private String sessionMode;

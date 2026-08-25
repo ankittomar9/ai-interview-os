@@ -150,3 +150,19 @@ export interface DesignEvaluateResponse {
     llmGenerated: boolean;
     modality?: 'VISION' | 'TEXT';
 }
+
+export interface ResumeDocument {
+    id?: string;
+    candidateId?: string;
+    candidateName?: string;
+    resumeTitle?: string;
+    fileName?: string;
+    rawText?: string;
+    skills?: string[];
+    projectExperiences?: string[];
+    yearsOfExperience?: number;
+    characterCount?: number;
+    wordCount?: number;
+    summary?: string;
+    uploadedAt?: string;
+}

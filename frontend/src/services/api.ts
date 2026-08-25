@@ -9,6 +9,7 @@ import type {
     AttachmentUploadResponse,
     DesignEvaluateRequest,
     DesignEvaluateResponse,
+    ResumeDocument,
     MessageType
 } from '../types';
 import { fetchJson } from './http';
@@ -276,6 +277,44 @@ export const uploadResumeText = async (payload: {
 export const fetchSessionTranscript = async (sessionId: number) => {
     const res = await fetch(`${SESSION_API}/resume/transcript/${sessionId}`);
     if (!res.ok) throw new Error('Failed to fetch session transcript');
+    return res.json();
+};
+
+export const updateSessionResume = async (
+    sessionId: number,
+    payload: {
+        resumeText?: string;
+        candidateName?: string;
+        resumeTitle?: string;
+    }
+): Promise<ResumeDocument> => {
+    return fetchJson<ResumeDocument>(`${SESSION_API}/${sessionId}/resume`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    });
+};
+
+export const uploadSessionResumeFile = async (
+    sessionId: number,
+    file: File,
+    candidateName?: string
+): Promise<ResumeDocument> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (candidateName) formData.append('candidateName', candidateName);
+
+    const res = await fetch(`${SESSION_API}/${sessionId}/resume/upload`, {
+        method: 'POST',
+        body: formData
+    });
+    if (!res.ok) throw new Error('Failed to upload and update session resume');
+    return res.json();
+};
+
+export const getSessionResume = async (sessionId: number): Promise<ResumeDocument | null> => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/resume`);
+    if (res.status === 204 || res.status === 404) return null;
+    if (!res.ok) return null;
     return res.json();
 };
 

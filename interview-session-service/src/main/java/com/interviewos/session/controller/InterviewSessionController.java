@@ -86,4 +86,44 @@ public class InterviewSessionController {
         log.info("Found {} sessions for candidate: {}", responses.size(), candidateId);
         return ResponseEntity.ok(responses);
     }
+
+    /**
+     * Update/Ingest Resume for an ongoing Session.
+     */
+    @PostMapping("/{id}/resume")
+    public ResponseEntity<com.interviewos.session.document.ResumeDocument> updateSessionResume(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> payload
+    ) {
+        log.info("Updating resume for Session ID: {}", id);
+        com.interviewos.session.document.ResumeDocument doc = sessionService.updateSessionResume(id, payload);
+        return ResponseEntity.ok(doc);
+    }
+
+    /**
+     * Upload & Ingest Resume file for an ongoing Session.
+     */
+    @PostMapping(value = "/{id}/resume/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<com.interviewos.session.document.ResumeDocument> uploadSessionResumeFile(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "candidateName", required = false) String candidateName
+    ) {
+        log.info("Uploading resume file for Session ID: {}", id);
+        com.interviewos.session.document.ResumeDocument doc = sessionService.updateSessionResumeFile(id, file, candidateName);
+        return ResponseEntity.status(HttpStatus.CREATED).body(doc);
+    }
+
+    /**
+     * Get the active parsed resume for a session.
+     */
+    @GetMapping("/{id}/resume")
+    public ResponseEntity<com.interviewos.session.document.ResumeDocument> getSessionResume(@PathVariable Long id) {
+        log.info("Fetching resume for Session ID: {}", id);
+        com.interviewos.session.document.ResumeDocument doc = sessionService.getSessionResume(id);
+        if (doc == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(doc);
+    }
 }

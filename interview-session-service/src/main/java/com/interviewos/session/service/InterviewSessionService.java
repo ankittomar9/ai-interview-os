@@ -10,16 +10,19 @@ import com.interviewos.session.model.SessionStatus;
 import com.interviewos.session.repository.InterviewSessionMongoRepository;
 import com.interviewos.session.repository.InterviewSessionRepository;
 import com.interviewos.session.repository.SessionMessageRepository;
+import com.interviewos.session.document.ResumeDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Slf4j
@@ -30,6 +33,7 @@ public class InterviewSessionService {
     private final InterviewSessionRepository sessionRepository;
     private final SessionMessageRepository messageRepository;
     private final InterviewSessionMongoRepository mongoSessionRepository;
+    private final ResumeParsingService resumeParsingService;
 
     @Transactional
     public SessionResponse createSession(CreateSessionRequest request) {
@@ -221,6 +225,57 @@ public class InterviewSessionService {
         }
 
         return SessionResponse.fromEntity(saved);
+    }
+
+    @Transactional
+    public ResumeDocument updateSessionResume(Long sessionId, Map<String, String> payload) {
+        findSessionOrThrow(sessionId);
+        String candidateName = payload.getOrDefault("candidateName", "Candidate");
+        String resumeText = payload.getOrDefault("resumeText", "");
+        String resumeTitle = payload.getOrDefault("resumeTitle", "Session Resume");
+
+        ResumeDocument doc = resumeParsingService.parseAndSaveText(String.valueOf(sessionId), candidateName, resumeTitle, resumeText);
+
+        try {
+            mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(mongoDoc -> {
+                mongoDoc.setParsedResume(doc);
+                mongoDoc.setResumeId(doc.getId());
+                mongoSessionRepository.save(mongoDoc);
+                log.info("Attached updated parsed resume ({}) to session {}", doc.getId(), sessionId);
+            });
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to mirror resume to mongo session doc: {}", e.getMessage());
+        }
+
+        return doc;
+    }
+
+    @Transactional
+    public ResumeDocument updateSessionResumeFile(Long sessionId, MultipartFile file, String candidateName) {
+        findSessionOrThrow(sessionId);
+        String cName = candidateName != null && !candidateName.isBlank() ? candidateName : "Candidate";
+
+        try {
+            ResumeDocument doc = resumeParsingService.parseAndSaveResume(String.valueOf(sessionId), cName, "Session Uploaded Resume", file);
+            mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(mongoDoc -> {
+                mongoDoc.setParsedResume(doc);
+                mongoDoc.setResumeId(doc.getId());
+                mongoSessionRepository.save(mongoDoc);
+                log.info("Attached updated parsed resume file ({}) to session {}", doc.getId(), sessionId);
+            });
+            return doc;
+        } catch (Exception e) {
+            log.error("⚠️ Failed to parse uploaded resume file for session {}: {}", sessionId, e.getMessage(), e);
+            throw new RuntimeException("Failed to parse uploaded resume: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public ResumeDocument getSessionResume(Long sessionId) {
+        findSessionOrThrow(sessionId);
+        return mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)
+                .map(InterviewSessionDocument::getParsedResume)
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
