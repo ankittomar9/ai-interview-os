@@ -89,8 +89,8 @@ export const InterviewRoom: React.FC<Props> = ({
   const { resolvedTheme } = useTheme();
 
   const getMonacoTheme = (themeId: string) => {
-    if (themeId === 'intellij-darcula') return 'intellij-darcula';
-    if (themeId === 'intellij-light') return 'intellij-light';
+    if (themeId === 'ide-slate') return 'ide-slate';
+    if (themeId === 'ide-paper') return 'ide-paper';
     if (themeId === 'deep-ocean') return 'deep-ocean';
     if (themeId === 'material-oceanic') return 'material-oceanic';
     if (themeId === 'warm-charcoal') return 'warm-charcoal';
@@ -887,7 +887,11 @@ export const InterviewRoom: React.FC<Props> = ({
         </div>
       </div>
 
-      <StageStepper currentStage={currentStage} onStageClick={setCurrentStage} />
+      <StageStepper
+        currentStage={currentStage}
+        isPlayground={isPlayground}
+        onStageClick={isPlayground ? setCurrentStage : undefined}
+      />
 
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <QuestionRail items={railItems} selectedIndex={activeQuestionIdx} onSelect={handleSelectQuestion} className="w-12 shrink-0 border-r border-border h-full" />

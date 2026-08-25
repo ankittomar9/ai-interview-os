@@ -347,10 +347,10 @@ export const ProjectWorkspace: React.FC<Props> = ({
                 height="100%"
                 language={getLanguage(activePath)}
                 theme={
-                  resolvedTheme === 'intellij-darcula'
-                    ? 'intellij-darcula'
-                    : resolvedTheme === 'intellij-light'
-                    ? 'intellij-light'
+                  resolvedTheme === 'ide-slate'
+                    ? 'ide-slate'
+                    : resolvedTheme === 'ide-paper'
+                    ? 'ide-paper'
                     : resolvedTheme === 'deep-ocean'
                     ? 'deep-ocean'
                     : resolvedTheme === 'material-oceanic'

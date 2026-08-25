@@ -4,8 +4,8 @@ export type ThemeId =
   | 'warm-charcoal'
   | 'deep-ocean'
   | 'material-oceanic'
-  | 'intellij-darcula'
-  | 'intellij-light';
+  | 'ide-slate'
+  | 'ide-paper';
 
 export interface ThemeDefinition {
   id: ThemeId;
@@ -70,23 +70,23 @@ export const themes: ThemeDefinition[] = [
     isDark: true
   },
   {
-    id: 'intellij-darcula',
-    name: 'IntelliJ Darcula',
-    description: 'Stock JetBrains dark IDE',
-    accent: '#4a88c7',
-    background: '#2b2b2b',
-    panel: '#3c3f41',
-    border: '#4e5254',
+    id: 'ide-slate',
+    name: 'IDE Slate',
+    description: 'Editor-grade dark, low-saturation syntax',
+    accent: '#548af7',
+    background: '#1e1f22',
+    panel: '#2b2d30',
+    border: '#393b40',
     isDark: true
   },
   {
-    id: 'intellij-light',
-    name: 'IntelliJ Light',
-    description: 'Stock JetBrains light IDE',
+    id: 'ide-paper',
+    name: 'IDE Paper',
+    description: 'Clean, high-contrast light mode',
     accent: '#3574f0',
-    background: '#f7f8fa',
-    panel: '#ffffff',
-    border: '#dfe1e5',
+    background: '#ffffff',
+    panel: '#f7f8fa',
+    border: '#e0e2e6',
     isDark: false
   }
 ];

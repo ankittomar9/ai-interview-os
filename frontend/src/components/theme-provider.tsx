@@ -13,7 +13,19 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'ai-interview-theme';
+const STORAGE_KEYS = ['ai-interview-theme', 'theme', 'editor-theme'];
+
+const migrateThemeName = (name: string | null): ThemeId | 'system' | null => {
+  if (!name) return null;
+  if (name === 'intellij-darcula' || name === 'darcula') return 'ide-slate';
+  if (name === 'intellij-light') return 'ide-paper';
+  if (name === 'system') return 'system';
+  const found = themes.find((t) => t.id === name);
+  if (found) return found.id;
+  if (name === 'dark') return 'ide-slate';
+  if (name === 'light') return 'light-studio';
+  return null;
+};
 
 export const ThemeProvider: React.FC<{
   children: React.ReactNode;
@@ -21,13 +33,15 @@ export const ThemeProvider: React.FC<{
 }> = ({ children, defaultTheme = 'light-studio' }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        if (stored === 'system') return 'system';
-        const found = themes.find((t) => t.id === stored);
-        if (found) return found.id;
-        if (stored === 'dark') return 'graphite-indigo';
-        if (stored === 'light') return 'light-studio';
+      for (const key of STORAGE_KEYS) {
+        const stored = localStorage.getItem(key);
+        const migrated = migrateThemeName(stored);
+        if (migrated) {
+          if (stored !== migrated) {
+            localStorage.setItem(key, migrated);
+          }
+          return migrated;
+        }
       }
     } catch {
       // Ignored
@@ -36,9 +50,9 @@ export const ThemeProvider: React.FC<{
   });
 
   const getSystemTheme = (): ThemeId => {
-    if (typeof window === 'undefined') return 'graphite-indigo';
+    if (typeof window === 'undefined') return 'ide-slate';
     return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'graphite-indigo'
+      ? 'ide-slate'
       : 'light-studio';
   };
 
@@ -78,7 +92,9 @@ export const ThemeProvider: React.FC<{
 
   const setTheme = (newTheme: Theme) => {
     try {
-      localStorage.setItem(STORAGE_KEY, newTheme);
+      for (const key of STORAGE_KEYS) {
+        localStorage.setItem(key, newTheme);
+      }
     } catch {
       // Ignored
     }

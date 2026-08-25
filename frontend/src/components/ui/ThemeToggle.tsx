@@ -14,7 +14,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '', size =
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Cycle through all themes in exact spec order:
-  // light-studio -> graphite-indigo -> warm-charcoal -> deep-ocean -> material-oceanic -> intellij-darcula -> intellij-light
+  // light-studio -> graphite-indigo -> warm-charcoal -> deep-ocean -> material-oceanic -> ide-slate -> ide-paper
   const cycleTheme = useCallback(() => {
     const currentIndex = themes.findIndex((t) => t.id === resolvedTheme);
     const nextIndex = (currentIndex + 1) % themes.length;

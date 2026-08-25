@@ -25,7 +25,7 @@
   --code-literal: #ea580c;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --radius-sm: 6px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
 
@@ -101,7 +101,7 @@
   --success: #16a34a;
   --warning: #d97706;
   --error: #dc2626;
-  --radius-sm: 6px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
 }
@@ -124,7 +124,7 @@
   --warning: #d29922;
   --error: #f85149;
   --info: #58a6ff;
-  --radius-sm: 6px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
 
@@ -170,7 +170,7 @@
   --warning: #f59e0b;
   --error: #ef4444;
   --info: #38bdf8;
-  --radius-sm: 6px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
 
@@ -216,7 +216,7 @@
   --warning: #f59e0b;
   --error: #f43f5e;
   --info: #0ea5e9;
-  --radius-sm: 6px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
 
@@ -262,7 +262,7 @@
   --warning: #ffcb6b;
   --error: #ff5370;
   --info: #82aaff;
-  --radius-sm: 6px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
 
@@ -290,38 +290,49 @@
   --editor-text: #eeffff;
 }
 
-/* 6. IntelliJ Darcula (Stock JetBrains dark IDE) */
-[data-theme="intellij-darcula"] {
-  --background: #2b2b2b;
-  --surface: #3c3f41;
-  --surface-elevated: #46494b;
-  --surface-inset: #2b2b2b;
-  --border: #4e5254;
-  --border-subtle: #616365;
-  --text-primary: #bbbbbb;
-  --text-secondary: #a9b7c6;
-  --text-muted: #808080;
-  --text-on-accent: #ffffff;
-  --accent: #4a88c7;
-  --accent-hover: #5b9bd5;
-  --accent-soft: #214283;
-  --success: #6a8759;
-  --warning: #bbb529;
-  --error: #ff6b68;
-  --info: #6897bb;
-  --code-keyword: #cc7832;
-  --code-type: #a9b7c6;
-  --code-string: #6a8759;
-  --code-function: #ffc66d;
-  --code-comment: #808080;
-  --code-literal: #6897bb;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.5);
-  --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
+/* 6. IDE Slate (Modern Island Dark Theme) */
+[data-theme="ide-slate"] {
+  /* Surfaces */
+  --background: #1e1f22;
+  --surface: #2b2d30;
+  --surface-elevated: #303235;
+  --surface-inset: #1e1f22;
 
-  /* Aliases for existing tokens */
+  /* Borders */
+  --border: #393b40;
+  --border-subtle: #2e3033;
+
+  /* Text */
+  --text-primary: #dfe1e5;
+  --text-secondary: #bcbec4;
+  --text-muted: #7a7e85;
+  --text-on-accent: #ffffff;
+
+  /* Accents */
+  --accent: #548af7;
+  --accent-hover: #6a9bf8;
+  --accent-soft: #2e436e;
+
+  /* Status */
+  --success: #6aab73;
+  --warning: #b3ae60;
+  --error: #f75464;
+  --info: #2aacb8;
+
+  /* Syntax (Low saturation, calm) */
+  --code-keyword: #cf8e6d;
+  --code-type: #bcbec4;
+  --code-string: #6aab73;
+  --code-function: #56a8f5;
+  --code-comment: #7a7e85;
+  --code-literal: #2aacb8;
+
+  /* Shape */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Aliases for existing component tokens */
   --color-bg: var(--background);
   --color-surface: var(--surface);
   --color-elevated: var(--surface-elevated);
@@ -332,55 +343,53 @@
   --color-text-3: var(--text-muted);
   --color-primary: var(--accent);
   --color-primary-2: var(--accent-hover);
-  --color-rail-bg: #313335;
-  --color-mandatory: #cc7832;
-  --color-solved: #6a8759;
-  --color-success: #6a8759;
-  --color-warning: #bbb529;
-  --color-danger: #ff6b68;
+  --color-rail-bg: var(--surface);
+  --color-mandatory: #cf8e6d;
+  --color-solved: var(--success);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--error);
 
-  --verdict-pass: #6a8759;
-  --verdict-warn: #bbb529;
-  --verdict-fail: #ff6b68;
+  --verdict-pass: var(--success);
+  --verdict-warn: var(--warning);
+  --verdict-fail: var(--error);
 
   --editor-bg: var(--background);
   --editor-surface: var(--surface);
-  --editor-gutter: #313335;
-  --editor-active-line: #323232;
+  --editor-gutter: var(--background);
+  --editor-active-line: #26282b;
   --editor-status: var(--surface-elevated);
-  --editor-text: var(--text-secondary);
+  --editor-text: var(--text-primary);
 }
 
-/* 7. IntelliJ Light (Stock JetBrains light IDE) */
-[data-theme="intellij-light"] {
-  --background: #f7f8fa;
-  --surface: #ffffff;
-  --surface-elevated: #ebecf0;
+/* 7. IDE Paper (Clean, High-Contrast Light Mode) */
+[data-theme="ide-paper"] {
+  --background: #ffffff;
+  --surface: #f7f8fa;
+  --surface-elevated: #ffffff;
   --surface-inset: #ffffff;
-  --border: #dfe1e5;
-  --border-subtle: #ebecf0;
-  --text-primary: #000000;
+  --border: #e0e2e6;
+  --border-subtle: #f0f1f3;
+  --text-primary: #1e1f22;
   --text-secondary: #4a4a4a;
-  --text-muted: #8c8c8c;
+  --text-muted: #818594;
   --text-on-accent: #ffffff;
   --accent: #3574f0;
-  --accent-hover: #5b9bd5;
+  --accent-hover: #2b62d6;
   --accent-soft: #d4e2ff;
-  --success: #067d17;
-  --warning: #b38600;
-  --error: #d93025;
-  --info: #1750eb;
+  --success: #2e7d32;
+  --warning: #9c8b06;
+  --error: #d32f2f;
+  --info: #0288d1;
   --code-keyword: #0033b3;
   --code-type: #000000;
   --code-string: #067d17;
   --code-function: #00627a;
   --code-comment: #8c8c8c;
   --code-literal: #1750eb;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.08);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.12);
-  --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 
   --color-bg: var(--background);
   --color-surface: var(--surface);
@@ -392,21 +401,21 @@
   --color-text-3: var(--text-muted);
   --color-primary: var(--accent);
   --color-primary-2: var(--accent-hover);
-  --color-rail-bg: var(--surface-elevated);
-  --color-mandatory: #d93025;
-  --color-solved: #067d17;
-  --color-success: #067d17;
-  --color-warning: #b38600;
-  --color-danger: #d93025;
+  --color-rail-bg: var(--surface);
+  --color-mandatory: #d32f2f;
+  --color-solved: var(--success);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--error);
 
-  --verdict-pass: #067d17;
-  --verdict-warn: #b38600;
-  --verdict-fail: #d93025;
+  --verdict-pass: var(--success);
+  --verdict-warn: var(--warning);
+  --verdict-fail: var(--error);
 
   --editor-bg: var(--background);
   --editor-surface: var(--surface);
   --editor-gutter: var(--background);
-  --editor-active-line: #f2f3f5;
+  --editor-active-line: #f0f1f3;
   --editor-status: var(--surface-elevated);
   --editor-text: var(--text-primary);
 }

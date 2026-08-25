@@ -1,52 +1,52 @@
 import type { Monaco } from '@monaco-editor/react';
 
 export function defineMonacoThemes(monaco: Monaco) {
-  // 1. IntelliJ Darcula
-  monaco.editor.defineTheme('intellij-darcula', {
+  // 1. IDE Slate (Modern island dark theme)
+  monaco.editor.defineTheme('ide-slate', {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'keyword', foreground: 'cc7832' },
-      { token: 'type', foreground: 'a9b7c6' },
-      { token: 'string', foreground: '6a8759' },
-      { token: 'number', foreground: '6897bb' },
-      { token: 'comment', foreground: '808080', fontStyle: 'italic' },
-      { token: 'identifier', foreground: 'a9b7c6' },
-      { token: 'function', foreground: 'ffc66d' },
-      { token: 'delimiter', foreground: 'cc7832' },
-      { token: 'operator', foreground: 'a9b7c6' }
+      { token: 'keyword', foreground: 'cf8e6d' },
+      { token: 'type', foreground: 'bcbec4' },
+      { token: 'string', foreground: '6aab73' },
+      { token: 'function', foreground: '56a8f5' },
+      { token: 'comment', foreground: '7a7e85', fontStyle: 'italic' },
+      { token: 'number', foreground: '2aacb8' },
+      { token: 'identifier', foreground: 'dfe1e5' },
+      { token: 'delimiter', foreground: 'cf8e6d' },
+      { token: 'operator', foreground: 'bcbec4' }
     ],
     colors: {
-      'editor.background': '#2b2b2b',
-      'editor.foreground': '#bbbbbb',
-      'editor.lineHighlightBackground': '#323232',
-      'editor.selectionBackground': '#214283',
-      'editorCursor.foreground': '#bbbbbb',
-      'editorGutter.background': '#313335',
-      'editorLineNumber.foreground': '#606366',
-      'editorLineNumber.activeForeground': '#a4a3a3'
+      'editor.background': '#1e1f22',
+      'editor.foreground': '#dfe1e5',
+      'editor.lineHighlightBackground': '#26282b',
+      'editor.selectionBackground': '#2e436e',
+      'editorCursor.foreground': '#dfe1e5',
+      'editorGutter.background': '#1e1f22',
+      'editorLineNumber.foreground': '#7a7e85',
+      'editorLineNumber.activeForeground': '#bcbec4'
     }
   });
 
-  // 2. IntelliJ Light
-  monaco.editor.defineTheme('intellij-light', {
+  // 2. IDE Paper (Clean, high-contrast light theme)
+  monaco.editor.defineTheme('ide-paper', {
     base: 'vs',
     inherit: true,
     rules: [
       { token: 'keyword', foreground: '0033b3' },
       { token: 'type', foreground: '000000' },
       { token: 'string', foreground: '067d17' },
-      { token: 'number', foreground: '1750eb' },
+      { token: 'function', foreground: '00627a' },
       { token: 'comment', foreground: '8c8c8c', fontStyle: 'italic' },
-      { token: 'function', foreground: '00627a' }
+      { token: 'number', foreground: '1750eb' }
     ],
     colors: {
-      'editor.background': '#f7f8fa',
-      'editor.foreground': '#000000',
-      'editor.lineHighlightBackground': '#f2f3f5',
+      'editor.background': '#ffffff',
+      'editor.foreground': '#1e1f22',
+      'editor.lineHighlightBackground': '#f0f1f3',
       'editor.selectionBackground': '#d4e2ff',
-      'editorGutter.background': '#f7f8fa',
-      'editorLineNumber.foreground': '#adadad'
+      'editorGutter.background': '#ffffff',
+      'editorLineNumber.foreground': '#818594'
     }
   });
 
