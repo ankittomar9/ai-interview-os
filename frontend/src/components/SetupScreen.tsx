@@ -80,7 +80,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
             <button
               type="button"
               onClick={() => setSessionMode("INTERVIEW")}
-              className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "INTERVIEW" ? "bg-primary text-white shadow-sm" : "text-text-3 hover:text-text")}
+              className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "INTERVIEW" ? "bg-primary text-on-accent shadow-sm" : "text-text-3 hover:text-text")}
             >
               <ShieldAlert className="w-4 h-4" />
               <span>Proctored Interview</span>
@@ -88,7 +88,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
             <button
               type="button"
               onClick={() => setSessionMode("PLAYGROUND")}
-              className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "PLAYGROUND" ? "bg-success text-white shadow-sm" : "text-text-3 hover:text-text")}
+              className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "PLAYGROUND" ? "bg-success text-on-accent shadow-sm" : "text-text-3 hover:text-text")}
             >
               <Play className="w-4 h-4 fill-current" />
               <span>Playground Practice</span>

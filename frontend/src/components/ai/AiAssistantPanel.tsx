@@ -106,7 +106,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
           <AiOrbAvatar isAiSpeaking={isAiSpeaking} size="sm" />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-white truncate">{personaName}</span>
+              <span className="text-xs font-bold text-text truncate">{personaName}</span>
               <Chip variant="primary" size="sm">
                 {currentStage}
               </Chip>

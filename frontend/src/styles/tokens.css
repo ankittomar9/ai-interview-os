@@ -46,6 +46,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--error);
+  --color-on-accent: var(--text-on-accent);
 
   /* Verdict State Tokens */
   --verdict-pass: var(--success);
@@ -104,6 +105,13 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-2: #e2e8f0;
+  --color-sidebar-text-3: #64748b;
+  --color-sidebar-accent: #1e293b;
 }
 
 [data-theme="graphite-indigo"], .dark {
@@ -150,6 +158,13 @@
   --editor-active-line: #21262d;
   --editor-status: #161b22;
   --editor-text: #f0f6fc;
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #0a0e14;
+  --color-sidebar-text: #8b949e;
+  --color-sidebar-text-2: #f0f6fc;
+  --color-sidebar-text-3: #6e7681;
+  --color-sidebar-accent: #161b22;
 }
 
 [data-theme="warm-charcoal"] {
@@ -196,6 +211,13 @@
   --editor-active-line: #28252d;
   --editor-status: #1f1d23;
   --editor-text: #f5f5f4;
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #13121a;
+  --color-sidebar-text: #a8a29e;
+  --color-sidebar-text-2: #f5f5f4;
+  --color-sidebar-text-3: #78716c;
+  --color-sidebar-accent: #1f1d23;
 }
 
 [data-theme="deep-ocean"] {
@@ -242,6 +264,13 @@
   --editor-active-line: #102534;
   --editor-status: #0c1c27;
   --editor-text: #f0f9ff;
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #050c14;
+  --color-sidebar-text: #94a3b8;
+  --color-sidebar-text-2: #f0f9ff;
+  --color-sidebar-text-3: #64748b;
+  --color-sidebar-accent: #0c1c27;
 }
 
 [data-theme="material-oceanic"] {
@@ -288,6 +317,13 @@
   --editor-active-line: #17243a;
   --editor-status: #121c2d;
   --editor-text: #eeffff;
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #0a0f1a;
+  --color-sidebar-text: #80cbc4;
+  --color-sidebar-text-2: #eeffff;
+  --color-sidebar-text-3: #546e7a;
+  --color-sidebar-accent: #121c2d;
 }
 
 /* 6. IDE Slate (Modern Island Dark Theme) */
@@ -360,6 +396,13 @@
   --editor-active-line: #26282b;
   --editor-status: var(--surface-elevated);
   --editor-text: var(--text-primary);
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #191a1d;
+  --color-sidebar-text: #bcbec4;
+  --color-sidebar-text-2: #dfe1e5;
+  --color-sidebar-text-3: #7a7e85;
+  --color-sidebar-accent: #2b2d30;
 }
 
 /* 7. IDE Paper (Clean, High-Contrast Light Mode) */
@@ -418,4 +461,11 @@
   --editor-active-line: #f0f1f3;
   --editor-status: var(--surface-elevated);
   --editor-text: var(--text-primary);
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #0f172a;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-text-2: #e2e8f0;
+  --color-sidebar-text-3: #64748b;
+  --color-sidebar-accent: #1e293b;
 }

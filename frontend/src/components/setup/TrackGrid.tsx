@@ -76,7 +76,7 @@ export const TrackGrid: React.FC<TrackGridProps> = ({
               onClick={() => onSelectDifficulty(diff)}
               className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
                 selectedDifficulty === diff
-                  ? 'bg-primary text-white shadow-xs'
+                  ? 'bg-primary text-on-accent shadow-xs'
                   : 'text-text-3 hover:text-text'
               }`}
             >
@@ -102,7 +102,7 @@ export const TrackGrid: React.FC<TrackGridProps> = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                    isSelected ? 'bg-primary text-white' : 'bg-elevated text-primary'
+                    isSelected ? 'bg-primary text-on-accent' : 'bg-elevated text-primary'
                   }`}>
                     {item.icon}
                   </div>

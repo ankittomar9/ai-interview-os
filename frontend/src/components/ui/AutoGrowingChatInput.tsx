@@ -122,7 +122,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
             title={isListening ? 'Listening… (Click to stop)' : 'Start Voice Input (Groq Whisper / WebSpeech)'}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all duration-150 ${
               isListening
-                ? 'bg-primary text-white ring-2 ring-primary/80 ring-offset-1 ring-offset-bg shadow-sm shadow-primary/30 animate-pulse'
+                ? 'bg-primary text-on-accent ring-2 ring-primary/80 ring-offset-1 ring-offset-bg shadow-sm shadow-primary/30 animate-pulse'
                 : 'bg-surface hover:bg-border/60 text-text-2 hover:text-text border border-border/60'
             }`}
           >
@@ -171,7 +171,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
             title="Send response (Enter)"
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer ${
               value.trim() && !isAiResponding
-                ? 'bg-primary text-white hover:bg-primary-2 shadow-sm shadow-primary/20 hover:scale-105'
+                ? 'bg-primary text-on-accent hover:bg-primary-2 shadow-sm shadow-primary/20 hover:scale-105'
                 : 'bg-surface text-text-3/40 border border-border/40 cursor-not-allowed opacity-50'
             }`}
           >

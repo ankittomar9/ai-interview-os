@@ -52,7 +52,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
               itemSizeStyles[size]
             } ${
               isSelected
-                ? 'bg-primary text-white'
+                ? 'bg-primary text-on-accent'
                 : 'text-text-3 hover:text-text hover:bg-elevated'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >

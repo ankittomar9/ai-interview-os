@@ -55,7 +55,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       </div>
 
       {selected && (
-        <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center shrink-0">
+        <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-primary text-on-accent flex items-center justify-center shrink-0">
           <Check className="w-3 h-3" />
         </div>
       )}

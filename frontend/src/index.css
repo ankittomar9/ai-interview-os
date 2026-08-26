@@ -22,6 +22,12 @@
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-danger: var(--color-danger);
+  --color-on-accent: var(--color-on-accent);
+  --color-sidebar-bg: var(--color-sidebar-bg);
+  --color-sidebar-text: var(--color-sidebar-text);
+  --color-sidebar-text-2: var(--color-sidebar-text-2);
+  --color-sidebar-text-3: var(--color-sidebar-text-3);
+  --color-sidebar-accent: var(--color-sidebar-accent);
 
   --verdict-pass: var(--verdict-pass);
   --verdict-warn: var(--verdict-warn);

@@ -119,9 +119,9 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
           }
           className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200 cursor-pointer shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             isListening
-              ? 'bg-primary text-white ring-4 ring-emerald-500/50 shadow-emerald-500/30 scale-105 animate-pulse'
+              ? 'bg-primary text-on-accent ring-4 ring-success/50 shadow-success/30 scale-105 animate-pulse'
               : isAiSpeaking
-              ? 'bg-primary text-white ring-4 ring-primary/50 shadow-primary/30 scale-105'
+              ? 'bg-primary text-on-accent ring-4 ring-primary/50 shadow-primary/30 scale-105'
               : isOpen
               ? 'bg-surface border-2 border-primary text-primary ring-2 ring-primary/30 scale-105'
               : 'bg-surface border border-border text-text hover:border-primary/60 hover:scale-105'
@@ -129,9 +129,9 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
         >
           {/* Animated Waveform when speaking, Mic otherwise */}
           {isAiSpeaking ? (
-            <WaveformBars isSpeaking={true} className="text-white" />
+            <WaveformBars isSpeaking={true} className="text-on-accent" />
           ) : isListening ? (
-            <Mic className="w-5 h-5 text-emerald-300 animate-bounce" />
+            <Mic className="w-5 h-5 text-success animate-bounce" />
           ) : (
             <Mic className="w-5 h-5" />
           )}
@@ -147,12 +147,12 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
 
         {/* State Tooltip / Indicator */}
         {isListening && (
-          <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-bold shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 pointer-events-none">
+          <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-success text-on-accent text-[10px] font-bold shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 pointer-events-none">
             Listening…
           </span>
         )}
         {isAiSpeaking && (
-          <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-primary text-white text-[10px] font-bold shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 pointer-events-none">
+          <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-primary text-on-accent text-[10px] font-bold shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 pointer-events-none">
             Speaking…
           </span>
         )}

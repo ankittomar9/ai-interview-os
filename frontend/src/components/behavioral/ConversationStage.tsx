@@ -58,7 +58,7 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
           {/* Persona Info */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-primary/60 flex items-center justify-center text-white font-bold shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-primary/60 flex items-center justify-center text-on-accent font-bold shadow-sm">
                 <Bot className="w-5 h-5" />
               </div>
               {isSpeakingNow && (
@@ -155,7 +155,7 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
                     className={`max-w-2xl rounded-2xl p-4 space-y-2 text-xs sm:text-sm leading-relaxed ${
                       isAi
                         ? 'bg-elevated border border-border text-text rounded-tl-xs shadow-xs'
-                        : 'bg-primary text-white rounded-tr-xs shadow-md'
+                        : 'bg-primary text-on-accent rounded-tr-xs shadow-md'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3 text-[11px] opacity-80 border-b border-current/10 pb-1 mb-1">
@@ -175,7 +175,7 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
                             className={`px-2 py-0.5 rounded-md font-mono ${
                               isAi
                                 ? 'bg-surface border border-border text-text-3'
-                                : 'bg-white/20 text-white'
+                                : 'bg-white/20 text-on-accent'
                             }`}
                           >
                             Intent: {msg.metadata.detectedIntent}
@@ -186,7 +186,7 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
                             className={`px-2 py-0.5 rounded-md font-mono italic ${
                               isAi
                                 ? 'bg-surface border border-border text-text-3'
-                                : 'bg-white/20 text-white'
+                                : 'bg-white/20 text-on-accent'
                             }`}
                           >
                             {msg.metadata.turnSummary}

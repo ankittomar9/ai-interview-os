@@ -120,7 +120,7 @@ export const ResumeSection: React.FC<ResumeSectionProps> = ({
             type="button"
             onClick={handleTextSubmit}
             disabled={isUploading || !resumeText.trim()}
-            className="px-3 py-1 bg-primary text-white text-xs font-semibold rounded-md hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
+            className="px-3 py-1 bg-primary text-on-accent text-xs font-semibold rounded-md hover:bg-primary/90 disabled:opacity-50 cursor-pointer"
           >
             Ingest Resume
           </button>

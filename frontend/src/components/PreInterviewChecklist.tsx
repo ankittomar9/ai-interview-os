@@ -161,7 +161,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               onClick={() => setEnvMode('dev')}
               className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors flex items-center gap-1.5 cursor-pointer ${
                 envMode === 'dev'
-                  ? 'bg-primary text-white'
+                  ? 'bg-primary text-on-accent'
                   : 'text-text-3 hover:text-text'
               }`}
             >

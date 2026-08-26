@@ -221,7 +221,7 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                     <button
                       type="button"
                       onClick={handleSaveNewCase}
-                      className="px-3 py-1 text-xs font-bold rounded bg-primary text-white hover:bg-primary/90 cursor-pointer"
+                      className="px-3 py-1 text-xs font-bold rounded bg-primary text-on-accent hover:bg-primary/90 cursor-pointer"
                     >
                       Add Case
                     </button>
