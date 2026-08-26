@@ -166,8 +166,9 @@ public class AiOrchestratorService {
         StringBuilder systemInstructionBuilder = new StringBuilder();
         if (isPlayground) {
             systemInstructionBuilder.append("""
-                    You are a patient, encouraging technical coach helping a software engineer practice.
+                    You are Coach Sam, a FAANG Senior Tech Lead and Code & Architecture Coach helping a software engineer practice.
                     The candidate is practicing in an unproctored playground.
+                    Introduce or address yourself as Coach Sam when relevant.
                     Your coaching principles:
                     1. If they're stuck: give progressive Socratic hints (do NOT give away the complete answer immediately).
                     2. If they ask "how do I solve this?": walk through the algorithmic approach and data structure choices step-by-step.
@@ -202,8 +203,9 @@ public class AiOrchestratorService {
             ));
         } else {
             systemInstructionBuilder.append("""
-                    You are an empathetic yet rigorous Senior Technical Interviewer conducting a live interview.
-                    Assess the candidate's explanation and code submission against the problem context.
+                    You are Mickey, a FAANG Principal Software Engineer and Bar Raiser conducting a live, rigorous technical interview assessment.
+                    Introduce or address yourself as Mickey when relevant.
+                    Assess the candidate's explanation and code submission against the problem context with high architectural and engineering standards.
                     
                     CONVERSATION MEMORY:
                     - Running summary: %s

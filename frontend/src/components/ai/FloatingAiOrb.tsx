@@ -8,6 +8,7 @@ export interface FloatingAiOrbProps {
   isAiSpeaking: boolean;
   isListening?: boolean;
   hasUnread?: boolean;
+  sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   stackAbove?: 'webcam' | 'none';
   className?: string;
 }
@@ -18,9 +19,13 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
   isAiSpeaking,
   isListening = false,
   hasUnread = false,
+  sessionMode = 'INTERVIEW',
   stackAbove = 'none',
   className = ''
 }) => {
+  const isPlayground = sessionMode === 'PLAYGROUND';
+  const personaLabel = isPlayground ? 'Coach Sam' : 'Mickey';
+  const personaDesc = isPlayground ? 'Coach Sam (Senior Tech Lead)' : 'Mickey (Principal Engineer & Bar Raiser)';
   // Dragging support with localStorage position persistence
   const [pos, setPos] = useState<{ x: number; y: number } | null>(() => {
     try {
@@ -101,16 +106,16 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
               onToggle();
             }
           }}
-          aria-label={isOpen ? 'Close AI Coach' : 'Open AI Coach'}
+          aria-label={isOpen ? `Close ${personaLabel}` : `Open ${personaLabel}`}
           aria-expanded={isOpen}
           title={
             isListening
-              ? 'Listening to microphone… (Click to toggle AI Coach)'
+              ? `Listening to microphone… (Click to toggle ${personaLabel})`
               : isAiSpeaking
-              ? 'AI Coach is speaking… (Click to toggle AI Coach)'
+              ? `${personaLabel} is speaking… (Click to toggle)`
               : isOpen
-              ? 'Collapse AI Coach'
-              : 'Open AI Coach (Voice & Socratic Guidance)'
+              ? `Collapse ${personaLabel}`
+              : `Open ${personaDesc}`
           }
           className={`relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200 cursor-pointer shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             isListening
@@ -135,7 +140,7 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
           {hasUnread && !isOpen && (
             <span
               className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-danger rounded-full ring-2 ring-surface animate-bounce"
-              aria-label="Unread AI Coach message"
+              aria-label={`Unread ${personaLabel} message`}
             />
           )}
         </button>
@@ -153,9 +158,9 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
         )}
       </div>
 
-      {/* Visible "AI Coach" Label */}
+      {/* Visible Persona Badge */}
       <span className="text-[10px] font-bold tracking-tight text-text-3 px-1.5 py-0.5 rounded bg-surface/90 border border-border/80 shadow-xs pointer-events-none">
-        AI Coach
+        {personaLabel}
       </span>
     </div>
   );

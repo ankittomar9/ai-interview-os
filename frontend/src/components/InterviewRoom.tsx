@@ -336,8 +336,8 @@ export const InterviewRoom: React.FC<Props> = ({
     {
       role: 'interviewer',
       content: isPlayground
-        ? `Welcome to the Playground Practice Arena! 🧪\n\nI am your AI Socratic Coach. Feel free to explore solutions, request hints, or ask me for code explanations at any time.`
-        : `Welcome to your technical assessment! 👋\n\nI am your AI Principal Interviewer. Let's begin with a brief introduction. Please tell me about your engineering background and recent backend systems you've built.`,
+        ? `Welcome to the Playground Practice Arena! 🧪\n\nI am Coach Sam, your Senior Tech Lead & Socratic Coach. Feel free to explore solutions, request hints, or ask me for code explanations at any time.`
+        : `Welcome to your Technical Assessment! 👋\n\nI am Mickey, Principal Engineer & Bar Raiser. Let's begin with a brief introduction. Please tell me about your engineering background and recent systems you've built.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -1300,6 +1300,7 @@ export const InterviewRoom: React.FC<Props> = ({
         isAiSpeaking={isAiSpeaking}
         isListening={isListening}
         hasUnread={hasUnread}
+        sessionMode={sessionMode}
       />
       <AiAssistantPanel
         open={isAiPanelOpen}
@@ -1308,8 +1309,8 @@ export const InterviewRoom: React.FC<Props> = ({
           sessionStorage.setItem(coachCollapseKey, 'true');
         }}
         mode="live"
-        personaName={isPlayground ? 'Coach Alex' : 'Dr. Anya Chen'}
-        personaTitle={isPlayground ? 'AI Socratic Coach' : 'AI Principal Bar Raiser'}
+        personaName={isPlayground ? 'Coach Sam' : 'Mickey'}
+        personaTitle={isPlayground ? 'Senior Tech Lead' : 'Principal Engineer & Bar Raiser'}
         currentStage={currentStage}
         isAiSpeaking={isAiSpeaking}
         messages={messages}

@@ -26,6 +26,8 @@ interface ConversationStageProps {
   isAiResponding: boolean;
   onReplaySpeech?: (text: string) => void;
   targetRole?: string;
+  personaName?: string;
+  personaTitle?: string;
   className?: string;
 }
 
@@ -36,6 +38,8 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
   isAiResponding,
   onReplaySpeech,
   targetRole = 'Engineering Lead',
+  personaName = 'Mickey',
+  personaTitle = 'Principal Engineer & Bar Raiser',
   className = ''
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -64,13 +68,13 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
 
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-xs sm:text-sm font-bold text-text">Frontier AI Interviewer</h3>
+                <h3 className="text-xs sm:text-sm font-bold text-text">{personaName}</h3>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface border border-border text-text-3 font-mono">
-                  {targetRole}
+                  {personaTitle}
                 </span>
               </div>
               <p className="text-[11px] text-text-3">
-                Grounded conversational evaluation · Active Dialogue Turn #{messages.length}
+                Evaluating for {targetRole} · Active Dialogue Turn #{messages.length}
               </p>
             </div>
           </div>
@@ -156,7 +160,7 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
                   >
                     <div className="flex items-center justify-between gap-3 text-[11px] opacity-80 border-b border-current/10 pb-1 mb-1">
                       <span className="font-bold uppercase tracking-wider">
-                        {isAi ? 'AI Interviewer' : 'Candidate Response'}
+                        {isAi ? personaName : 'Candidate Response'}
                       </span>
                       <span>{msg.timestamp}</span>
                     </div>

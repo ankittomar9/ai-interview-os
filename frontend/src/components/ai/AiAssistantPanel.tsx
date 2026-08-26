@@ -46,8 +46,8 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
   open,
   onClose,
   mode,
-  personaName = 'Dr. Anya Chen',
-  personaTitle = 'AI Principal Bar Raiser',
+  personaName = 'Coach Sam',
+  personaTitle = 'Senior Tech Lead',
   currentStage = 'Assessment',
   isAiSpeaking = false,
   voiceEnabled = true,
@@ -155,19 +155,19 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white">AI Bar Raiser Standing By</h3>
+              <h3 className="text-sm font-bold text-white">{personaName} ({personaTitle}) Standing By</h3>
               <p className="text-xs text-text-3 leading-relaxed">
-                Live interactive voice dialogue, technical problem coaching, and intent analysis will unlock automatically when you begin your assessment.
+                Live interactive voice dialogue, technical problem coaching, and intent analysis will unlock automatically when you begin your session.
               </p>
             </div>
 
             <div className="p-3 bg-elevated/70 rounded-lg border border-border text-left space-y-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-text">
                 <ShieldCheck className="w-4 h-4 text-success shrink-0" />
-                <span>Zero-Fluff Autonomous Evaluation</span>
+                <span>Zero-Fluff Autonomous Guidance</span>
               </div>
               <p className="text-[11px] text-text-3 leading-relaxed">
-                The AI will dynamically probe your architectural tradeoffs, time/space complexity, and code quality in real-time.
+                {personaName} will dynamically probe your architectural tradeoffs, time/space complexity, and code quality in real-time.
               </p>
             </div>
 
@@ -184,7 +184,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             {messages.length === 0 && (
               <div className="text-center py-6 text-text-3 text-xs">
                 <MessageSquare className="w-6 h-6 mx-auto mb-2 text-text-3/50" />
-                <span>AI Interviewer is preparing introductory inquiry...</span>
+                <span>{personaName} is preparing introductory inquiry...</span>
               </div>
             )}
 
@@ -246,7 +246,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                 }`}
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
-                  <span>{turn.senderRole === 'CANDIDATE' ? 'Candidate' : 'AI Bar Raiser'}</span>
+                  <span>{turn.senderRole === 'CANDIDATE' ? 'Candidate' : personaName}</span>
                   {turn.messageType && (
                     <span className="text-text-3 text-[9px] font-mono">{turn.messageType}</span>
                   )}

@@ -486,6 +486,8 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
             isAiResponding={isAiResponding}
             onReplaySpeech={(text) => speakText(text)}
             targetRole={roleTitle}
+            personaName={isPlayground ? 'Coach Sam' : 'Mickey'}
+            personaTitle={isPlayground ? 'Senior Tech Lead' : 'Principal Engineer & Bar Raiser'}
             className="flex-1"
           />
 
