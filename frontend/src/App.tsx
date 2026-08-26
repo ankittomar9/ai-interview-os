@@ -4,7 +4,7 @@ import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionRespons
 import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, startSession } from './services/api';
 import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
-import { InterviewRoom } from './components/InterviewRoom';
+import { ArenaRoom } from './components/arena/ArenaRoom';
 import { DiagnosticReportView } from './components/DiagnosticReportView';
 import { PhoneProctorView } from './components/PhoneProctorView';
 import { QuestionCatalog } from './components/QuestionCatalog';
@@ -224,7 +224,7 @@ export function App() {
       )}
 
       {view === 'ROOM' && sessionId && question && (
-        <InterviewRoom
+        <ArenaRoom
           sessionId={sessionId}
           question={question}
           initialQuestionsList={playlistQuestions}

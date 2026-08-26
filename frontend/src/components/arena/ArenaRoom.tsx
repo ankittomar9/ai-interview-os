@@ -1,0 +1,168 @@
+import React, { useState, useCallback } from 'react';
+import type { GenerateQuestionResponse, InterviewTrack, ModelProvider } from '../../types';
+import { useSessionCatalog } from './hooks/useSessionCatalog';
+import { useExecution } from './hooks/useExecution';
+import { useDialogue } from './hooks/useDialogue';
+import { useProctoring } from './hooks/useProctoring';
+import { useCoachVoice } from './hooks/useCoachVoice';
+import { ArenaShell } from './ArenaShell';
+import { getPersona } from '../../lib/personas';
+import type { InterviewStage } from '../StageStepper';
+
+interface ArenaRoomProps {
+  sessionId: number;
+  question: GenerateQuestionResponse;
+  initialQuestionsList?: GenerateQuestionResponse[];
+  provider: ModelProvider;
+  apiKey: string;
+  sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
+  onFinish: () => void;
+}
+
+export const ArenaRoom: React.FC<ArenaRoomProps> = ({
+  sessionId,
+  question: initialQuestion,
+  initialQuestionsList,
+  provider,
+  apiKey,
+  sessionMode = 'INTERVIEW',
+  onFinish
+}) => {
+  const isPlayground = sessionMode === 'PLAYGROUND';
+  const persona = getPersona(isPlayground);
+
+  const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
+
+  // 1. Session Catalog (Strict track query with zero cross-track bleed)
+  const {
+    questionsList,
+    activeQuestion,
+    activeQuestionIndex,
+    questionStatusMap,
+    selectQuestion,
+    markQuestionStatus
+  } = useSessionCatalog({
+    initialQuestion,
+    initialQuestionsList,
+    track: activeTrack
+  });
+
+  // 2. Code State
+  const [code, setCode] = useState(activeQuestion.starterCode || '');
+  const [language, setLanguage] = useState(
+    activeTrack === 'SQL' ? 'sql' : 'java'
+  );
+
+  // 3. Execution Engine
+  const {
+    isExecuting,
+    executionResult,
+    runCode,
+    submitSolution
+  } = useExecution({
+    sessionId,
+    activeQuestion
+  });
+
+  // 4. Voice Management
+  const voice = useCoachVoice();
+
+  // 5. Proctoring Sentinel
+  const proctoring = useProctoring({
+    sessionId,
+    isPlayground
+  });
+
+  // 6. Dialogue Engine
+  const dialogue = useDialogue({
+    sessionId,
+    provider,
+    apiKey,
+    isPlayground,
+    questionContext: activeQuestion.problemStatement || '',
+    problemSlug: activeQuestion.problemSlug || activeQuestion.slug,
+    initialWelcome: persona.welcomeMessage,
+    onAiSpeechRequested: voice.speakText,
+    getIntegritySignals: proctoring.getIntegritySignals
+  });
+
+  // Handlers
+  const handleRunCode = async () => {
+    await runCode(code, language);
+  };
+
+  const handleSubmitSolution = async () => {
+    const result = await submitSolution(code, language);
+    if (result && result.status === 'Accepted') {
+      markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, 'PASSED');
+    } else {
+      markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, 'ATTEMPTED');
+    }
+
+    await dialogue.triggerCandidateTurn(
+      `I have submitted my solution for ${activeQuestion.title || 'the problem'}.`,
+      code
+    );
+  };
+
+  const handleStageClick = useCallback((targetStage: InterviewStage) => {
+    // Strict isolation: if clicked stage is different, ask confirmation before switching
+    if (targetStage !== dialogue.currentStage) {
+      dialogue.setCurrentStage(targetStage);
+    }
+  }, [dialogue]);
+
+  return (
+    <ArenaShell
+      sessionId={sessionId}
+      track={activeTrack}
+      onSwitchTrack={setActiveTrack}
+      question={activeQuestion}
+      questionsList={questionsList}
+      activeQuestionIndex={activeQuestionIndex}
+      onSelectQuestion={(idx) => {
+        selectQuestion(idx);
+        const nextQ = questionsList[idx];
+        if (nextQ && nextQ.starterCode) {
+          setCode(nextQ.starterCode);
+        }
+      }}
+      questionStatusMap={questionStatusMap}
+      code={code}
+      onChangeCode={setCode}
+      language={language}
+      onChangeLanguage={setLanguage}
+      onRunCode={handleRunCode}
+      onSubmitSolution={handleSubmitSolution}
+      isExecuting={isExecuting}
+      executionResult={executionResult}
+      provider={provider}
+      apiKey={apiKey}
+      sessionMode={sessionMode}
+      onFinish={onFinish}
+      messages={dialogue.messages}
+      chatInput={dialogue.chatInput}
+      setChatInput={dialogue.setChatInput}
+      onSendTurn={(text) => dialogue.triggerCandidateTurn(text, code)}
+      isAiResponding={dialogue.isAiResponding}
+      currentStage={dialogue.currentStage}
+      onStageClick={handleStageClick}
+      isAiPanelOpen={voice.isAiPanelOpen}
+      onToggleAiPanel={voice.toggleAiPanel}
+      onCloseAiPanel={() => voice.setIsAiPanelOpen(false)}
+      isListening={voice.isListening}
+      isSpeakingNow={voice.isSpeakingNow}
+      isAiSpeaking={voice.isAiSpeaking}
+      voiceOutputEnabled={voice.voiceOutputEnabled}
+      onToggleVoice={() => voice.setVoiceOutputEnabled(!voice.voiceOutputEnabled)}
+      onMicToggle={() => {
+        if (voice.isListening) voice.stopListening();
+        else voice.startListening();
+      }}
+      hasUnreadAi={dialogue.hasUnread}
+      isWindowBlurred={proctoring.isWindowBlurred}
+      tabSwitches={proctoring.tabSwitches}
+      pasteDumps={proctoring.pasteDumps}
+    />
+  );
+};
