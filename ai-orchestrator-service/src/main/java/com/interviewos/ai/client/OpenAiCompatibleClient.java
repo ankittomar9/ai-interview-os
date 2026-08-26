@@ -73,7 +73,21 @@ public class OpenAiCompatibleClient implements AiClient {
             throw new IllegalArgumentException("API Key is required for provider: " + provider);
         }
 
-        log.info("Dispatching prompt to OpenAI-compatible provider: {} using model: {} (vision: {})", provider, model, imageBytes != null);
+        List<String> modelCandidates;
+        if (provider == ModelProvider.GROQ) {
+            String requested = (customModel != null && !customModel.isBlank()) ? customModel : (model != null && !model.isBlank() ? model : "qwen/qwen3.8-27b");
+            List<String> fallbacks = List.of("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "groq/compound-mini");
+            List<String> list = new java.util.ArrayList<>();
+            list.add(requested);
+            for (String fb : fallbacks) {
+                if (!list.contains(fb)) {
+                    list.add(fb);
+                }
+            }
+            modelCandidates = list;
+        } else {
+            modelCandidates = List.of(model);
+        }
 
         Object userContent;
         if (provider == ModelProvider.OPENAI && imageBytes != null && imageBytes.length > 0) {
@@ -89,27 +103,39 @@ public class OpenAiCompatibleClient implements AiClient {
             userContent = userPrompt;
         }
 
-        // Build standard chat completions payload
-        Map<String, Object> requestPayload = Map.of(
-                "model", model,
-                "messages", List.of(
-                        Map.of("role", "system", "content", systemInstruction),
-                        Map.of("role", "user", "content", userContent)
-                ),
-                "temperature", 0.3
-        );
-
         RestClient restClient = restClientBuilder.build();
+        Exception lastException = null;
 
-        String rawResponse = restClient.post()
-                .uri(endpoint)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + effectiveKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(requestPayload)
-                .retrieve()
-                .body(String.class);
+        for (String targetModel : modelCandidates) {
+            try {
+                log.info("Dispatching prompt to OpenAI-compatible provider: {} using model: {} (vision: {})", provider, targetModel, imageBytes != null);
 
-        return extractContentFromChatCompletion(provider, rawResponse);
+                // Build standard chat completions payload
+                Map<String, Object> requestPayload = Map.of(
+                        "model", targetModel,
+                        "messages", List.of(
+                                Map.of("role", "system", "content", systemInstruction),
+                                Map.of("role", "user", "content", userContent)
+                        ),
+                        "temperature", 0.3
+                );
+
+                String rawResponse = restClient.post()
+                        .uri(endpoint)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + effectiveKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(requestPayload)
+                        .retrieve()
+                        .body(String.class);
+
+                return extractContentFromChatCompletion(provider, rawResponse);
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("⚠️ Provider {} model '{}' execution notice: {}. Trying next fallback model if available...", provider, targetModel, e.getMessage());
+            }
+        }
+
+        throw new RuntimeException("All model attempts failed for provider: " + provider, lastException);
     }
 
     private String resolveEnvApiKey(ModelProvider provider) {

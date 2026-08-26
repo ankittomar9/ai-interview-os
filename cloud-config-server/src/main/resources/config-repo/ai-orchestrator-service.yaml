@@ -9,7 +9,7 @@ ai:
       api-key: ${GEMINI_API_KEY:}
     groq:
       endpoint: "https://api.groq.com/openai/v1/chat/completions"
-      default-model: "llama-3.3-70b-versatile"
+      default-model: ${GROQ_MODEL:qwen/qwen3.8-27b}
       api-key: ${GROQ_API_KEY:}
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
