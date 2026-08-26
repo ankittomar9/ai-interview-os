@@ -24,6 +24,7 @@ import {
   completeSession,
   getSessionResume
 } from '../../services/api';
+import { getPersona } from '../../lib/personas';
 
 interface BehavioralStudioProps {
   sessionId: number;
@@ -486,8 +487,8 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
             isAiResponding={isAiResponding}
             onReplaySpeech={(text) => speakText(text)}
             targetRole={roleTitle}
-            personaName={isPlayground ? 'Coach Sam' : 'Mickey'}
-            personaTitle={isPlayground ? 'Senior Tech Lead' : 'Principal Engineer & Bar Raiser'}
+            personaName={getPersona(isPlayground).name}
+            personaTitle={getPersona(isPlayground).title}
             className="flex-1"
           />
 

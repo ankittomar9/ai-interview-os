@@ -34,6 +34,7 @@ import { TrackNavMenu } from './ui/TrackNavMenu';
 import { saveSubmission, type SubmissionStatus, type SubmissionCaseResult } from '../lib/submissions';
 import { BehavioralStudio } from './behavioral/BehavioralStudio';
 import { useKeystrokeTracker } from '../hooks/useKeystrokeTracker';
+import { getPersona } from '../lib/personas';
 import {
   Timer,
   Play,
@@ -326,6 +327,8 @@ export const InterviewRoom: React.FC<Props> = ({
     }
   }, [sessionId]);
 
+  const persona = getPersona(isPlayground);
+
   // --- State: Conversation & Dialogue ---
   const [messages, setMessages] = useState<Array<{
     role: 'interviewer' | 'candidate';
@@ -335,9 +338,7 @@ export const InterviewRoom: React.FC<Props> = ({
   }>>(() => [
     {
       role: 'interviewer',
-      content: isPlayground
-        ? `Welcome to the Playground Practice Arena! 🧪\n\nI am Coach Sam, your Senior Tech Lead & Socratic Coach. Feel free to explore solutions, request hints, or ask me for code explanations at any time.`
-        : `Welcome to your Technical Assessment! 👋\n\nI am Mickey, Principal Engineer & Bar Raiser. Let's begin with a brief introduction. Please tell me about your engineering background and recent systems you've built.`,
+      content: getPersona(isPlayground).welcomeMessage,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -1309,8 +1310,8 @@ export const InterviewRoom: React.FC<Props> = ({
           sessionStorage.setItem(coachCollapseKey, 'true');
         }}
         mode="live"
-        personaName={isPlayground ? 'Coach Sam' : 'Mickey'}
-        personaTitle={isPlayground ? 'Senior Tech Lead' : 'Principal Engineer & Bar Raiser'}
+        personaName={persona.name}
+        personaTitle={persona.title}
         currentStage={currentStage}
         isAiSpeaking={isAiSpeaking}
         messages={messages}

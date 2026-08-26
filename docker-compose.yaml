@@ -258,7 +258,10 @@ services:
       - OLLAMA_MODEL=qwen2.5-coder:7b
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - GROQ_MODEL=${GROQ_MODEL:-qwen/qwen3.8-27b}
+      - GROQ_MODEL_DIALOGUE=${GROQ_MODEL_DIALOGUE:-openai/gpt-oss-120b}
+      - GROQ_MODEL_FAST=${GROQ_MODEL_FAST:-openai/gpt-oss-20b}
+      - GROQ_MODEL_EVAL=${GROQ_MODEL_EVAL:-qwen/qwen3.8-27b}
+      - GROQ_MODEL_STT=${GROQ_MODEL_STT:-whisper-large-v3-turbo}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

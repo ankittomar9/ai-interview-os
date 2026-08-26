@@ -9,7 +9,11 @@ ai:
       api-key: ${GEMINI_API_KEY:}
     groq:
       endpoint: "https://api.groq.com/openai/v1/chat/completions"
-      default-model: ${GROQ_MODEL:qwen/qwen3.8-27b}
+      default-model: ${GROQ_MODEL_DIALOGUE:openai/gpt-oss-120b}
+      model-dialogue: ${GROQ_MODEL_DIALOGUE:openai/gpt-oss-120b}
+      model-fast: ${GROQ_MODEL_FAST:openai/gpt-oss-20b}
+      model-eval: ${GROQ_MODEL_EVAL:qwen/qwen3.8-27b}
+      model-stt: ${GROQ_MODEL_STT:whisper-large-v3-turbo}
       api-key: ${GROQ_API_KEY:}
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}

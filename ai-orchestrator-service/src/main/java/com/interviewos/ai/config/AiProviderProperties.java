@@ -14,8 +14,25 @@ public record AiProviderProperties(Map<String, ProviderConfig> providers) {
     public record ProviderConfig(
             String endpoint,
             String defaultModel,
+            String modelDialogue,
+            String modelFast,
+            String modelEval,
+            String modelStt,
             String apiKey
-    ) {}
+    ) {
+        public String getEffectiveModelFor(String task) {
+            if ("dialogue".equalsIgnoreCase(task) || "conversation".equalsIgnoreCase(task)) {
+                return (modelDialogue != null && !modelDialogue.isBlank()) ? modelDialogue : defaultModel;
+            }
+            if ("fast".equalsIgnoreCase(task) || "hints".equalsIgnoreCase(task) || "intent".equalsIgnoreCase(task)) {
+                return (modelFast != null && !modelFast.isBlank()) ? modelFast : defaultModel;
+            }
+            if ("eval".equalsIgnoreCase(task) || "rubric".equalsIgnoreCase(task) || "report".equalsIgnoreCase(task)) {
+                return (modelEval != null && !modelEval.isBlank()) ? modelEval : defaultModel;
+            }
+            return defaultModel;
+        }
+    }
 
     public ProviderConfig getConfigFor(ModelProvider provider) {
         if (provider == null) return null;

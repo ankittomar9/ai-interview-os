@@ -38,8 +38,8 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
   isAiResponding,
   onReplaySpeech,
   targetRole = 'Engineering Lead',
-  personaName = 'Mickey',
-  personaTitle = 'Principal Engineer & Bar Raiser',
+  personaName = 'Dr. Anya Chen',
+  personaTitle = 'AI Principal Bar Raiser',
   className = ''
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
