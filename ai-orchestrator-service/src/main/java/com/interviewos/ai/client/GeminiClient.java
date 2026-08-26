@@ -55,12 +55,17 @@ public class GeminiClient implements AiClient {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(ModelProvider.GEMINI);
         String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
 
-        if (apiKey == null || apiKey.isBlank()) {
+        String effectiveKey = (apiKey != null && !apiKey.isBlank()) ? apiKey : System.getenv("GEMINI_API_KEY");
+        if (effectiveKey == null || effectiveKey.isBlank()) {
+            effectiveKey = System.getenv("GEMINI_KEY");
+        }
+
+        if (effectiveKey == null || effectiveKey.isBlank()) {
             throw new IllegalArgumentException("API Key is required for Google Gemini");
         }
 
         // Target URL: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}
-        String requestUrl = config.endpoint() + model + ":generateContent?key=" + apiKey;
+        String requestUrl = config.endpoint() + model + ":generateContent?key=" + effectiveKey;
 
         log.info("Dispatching prompt to Google Gemini using model: {} (multimodal: {})", model, imageBytes != null);
 

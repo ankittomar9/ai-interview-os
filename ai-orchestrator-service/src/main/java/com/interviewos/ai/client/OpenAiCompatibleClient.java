@@ -67,11 +67,13 @@ public class OpenAiCompatibleClient implements AiClient {
         String endpoint = config.endpoint();
         String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
 
-        log.info("Dispatching prompt to OpenAI-compatible provider: {} using model: {} (vision: {})", provider, model, imageBytes != null);
+        String effectiveKey = (apiKey != null && !apiKey.isBlank()) ? apiKey : resolveEnvApiKey(provider);
 
-        if (apiKey == null || apiKey.isBlank()) {
+        if (effectiveKey == null || effectiveKey.isBlank()) {
             throw new IllegalArgumentException("API Key is required for provider: " + provider);
         }
+
+        log.info("Dispatching prompt to OpenAI-compatible provider: {} using model: {} (vision: {})", provider, model, imageBytes != null);
 
         Object userContent;
         if (provider == ModelProvider.OPENAI && imageBytes != null && imageBytes.length > 0) {
@@ -101,13 +103,23 @@ public class OpenAiCompatibleClient implements AiClient {
 
         String rawResponse = restClient.post()
                 .uri(endpoint)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + effectiveKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestPayload)
                 .retrieve()
                 .body(String.class);
 
-        // Parse choices[0].message.content
+        return extractContentFromChatCompletion(provider, rawResponse);
+    }
+
+    private String resolveEnvApiKey(ModelProvider provider) {
+        String envKeyName = provider.name().toUpperCase() + "_API_KEY";
+        String envVal = System.getenv(envKeyName);
+        if (envVal != null && !envVal.isBlank()) return envVal;
+        return System.getenv(provider.name().toUpperCase() + "_KEY");
+    }
+
+    private String extractContentFromChatCompletion(ModelProvider provider, String rawResponse) {
         try {
             JsonNode root = objectMapper.readTree(rawResponse);
             return root.path("choices").get(0).path("message").path("content").asText();
