@@ -1,9 +1,12 @@
 import React from 'react';
 import type { GenerateQuestionResponse, InterviewTrack, ModelProvider } from '../../types';
 import { DsaScreen } from './screens/DsaScreen';
+import { SqlScreen } from './screens/SqlScreen';
+import { LldScreen } from './screens/LldScreen';
+import { HldScreen } from './screens/HldScreen';
+import { BehavioralScreen } from './screens/BehavioralScreen';
+import { ResumeScreen } from './screens/ResumeScreen';
 import { EmptyTrackState } from './EmptyTrackState';
-import { EmbeddedWorkspace } from '../workspace/EmbeddedWorkspace';
-import { HldWhiteboardCanvas } from '../HldWhiteboardCanvas';
 import type { ExecutionResult } from '../ide/TestcasePanel';
 
 interface TrackScreenRouterProps {
@@ -16,12 +19,14 @@ interface TrackScreenRouterProps {
   language: string;
   onChangeLanguage: (lang: string) => void;
   onRunCode: () => Promise<void>;
-  onSubmitSolution: () => Promise<void>;
+  onSubmitSolution: (summary?: string) => Promise<void>;
   isExecuting: boolean;
   executionResult: ExecutionResult | null;
   provider: ModelProvider;
   apiKey: string;
   isPlayground?: boolean;
+  onFinish?: () => void;
+  candidateName?: string;
   onSelectTrack?: (track: InterviewTrack) => void;
   onBrowseCatalog?: () => void;
 }
@@ -42,6 +47,8 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   provider,
   apiKey,
   isPlayground,
+  onFinish = () => {},
+  candidateName,
   onSelectTrack,
   onBrowseCatalog
 }) => {
@@ -55,33 +62,77 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
     );
   }
 
-  // LLD Track / Starter Files Workspace
-  if (question.starterFiles && Object.keys(question.starterFiles).length > 0) {
+  // 1. BEHAVIORAL STAR Track
+  if (track === 'BEHAVIORAL_STAR') {
     return (
-      <EmbeddedWorkspace
-        key={question.problemSlug || question.slug || 'lld-service'}
+      <BehavioralScreen
         sessionId={sessionId}
-        problemSlug={question.problemSlug || question.slug || 'lld-service'}
-        problemTitle={question.title || 'Spring Boot Microservice'}
-        starterFiles={question.starterFiles}
-        editablePaths={question.editablePaths || []}
-        onSubmitProject={() => void onSubmitSolution()}
+        initialQuestion={question}
+        provider={provider}
+        apiKey={apiKey}
+        isPlayground={isPlayground}
+        onFinish={onFinish}
+        candidateName={candidateName}
       />
     );
   }
 
-  // HLD Track (mapped to SYSTEM_DESIGN)
+  // 2. RESUME BASED Track
+  if (track === 'RESUME_BASED') {
+    return (
+      <ResumeScreen
+        sessionId={sessionId}
+        initialQuestion={question}
+        provider={provider}
+        apiKey={apiKey}
+        isPlayground={isPlayground}
+        onFinish={onFinish}
+        candidateName={candidateName}
+      />
+    );
+  }
+
+  // 3. SQL Track
+  if (track === 'SQL') {
+    return (
+      <SqlScreen
+        sessionId={sessionId}
+        question={question}
+        code={code}
+        onChangeCode={onChangeCode}
+        onRunCode={onRunCode}
+        onSubmitSolution={onSubmitSolution}
+        isExecuting={isExecuting}
+        executionResult={executionResult}
+        isPlayground={isPlayground}
+      />
+    );
+  }
+
+  // 4. LLD / Starter Files Project Track
+  if (track === 'SPRING_LLD' || (question.starterFiles && Object.keys(question.starterFiles).length > 0)) {
+    return (
+      <LldScreen
+        sessionId={sessionId}
+        question={question}
+        onSubmitProject={onSubmitSolution}
+      />
+    );
+  }
+
+  // 5. HLD System Design Track
   if (track === 'SYSTEM_DESIGN') {
     return (
-      <HldWhiteboardCanvas
+      <HldScreen
         sessionId={sessionId}
+        question={question}
         provider={provider}
         apiKey={apiKey}
       />
     );
   }
 
-  // Default DSA / SQL Screen
+  // 6. Default DSA / Algorithms & Data Structures Track
   return (
     <DsaScreen
       sessionId={sessionId}
