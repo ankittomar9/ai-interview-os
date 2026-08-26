@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import { Volume2, VolumeX, X, Sparkles, MessageSquare, ShieldCheck, Lock } from 'lucide-react';
-import { AiOrbAvatar, WaveformBars } from './AiOrbAvatar';
-import { Chip } from '../ui/Chip';
-import { AutoGrowingChatInput } from '../ui/AutoGrowingChatInput';
+import React, { useEffect, useRef } from "react";
+import { Volume2, VolumeX, X, Sparkles, MessageSquare, ShieldCheck } from "lucide-react";
+import { AiOrbAvatar, WaveformBars } from "./AiOrbAvatar";
+import { Chip } from "../ui/Chip";
+import { AutoGrowingChatInput } from "../ui/AutoGrowingChatInput";
 
 export interface ChatMessage {
-  role: 'candidate' | 'interviewer' | 'system';
+  role: "candidate" | "interviewer" | "system";
   content: string;
   timestamp?: string;
   metadata?: Record<string, string>;
@@ -23,7 +23,7 @@ export interface TranscriptTurn {
 export interface AiAssistantPanelProps {
   open: boolean;
   onClose: () => void;
-  mode: 'intro' | 'live' | 'review';
+  mode: "intro" | "live" | "review";
   personaName?: string;
   personaTitle?: string;
   currentStage?: string;
@@ -37,8 +37,11 @@ export interface AiAssistantPanelProps {
   onSend?: (forcedText?: string) => void;
   onMicToggle?: () => void;
   isListening?: boolean;
+  interimTranscript?: string;
+  micError?: string | null;
+  onClearMicError?: () => void;
   transcript?: TranscriptTurn[];
-  stackAbove?: 'webcam' | 'none';
+  stackAbove?: "webcam" | "none";
   className?: string;
 }
 
@@ -46,59 +49,58 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
   open,
   onClose,
   mode,
-  personaName = 'Coach Sam',
-  personaTitle = 'Senior Tech Lead',
-  currentStage = 'Assessment',
+  personaName = "Coach Sam",
+  personaTitle = "Senior Tech Lead",
+  currentStage = "Assessment",
   isAiSpeaking = false,
   voiceEnabled = true,
   onToggleVoice,
   messages = [],
   isAiResponding = false,
-  chatInput = '',
+  chatInput = "",
   setChatInput,
   onSend,
   onMicToggle,
   isListening = false,
+  interimTranscript = "",
+  micError = null,
+  onClearMicError,
   transcript = [],
-  stackAbove = 'none',
-  className = ''
+  stackAbove = "none",
+  className = ""
 }) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) {
+      if (e.key === "Escape" && open) {
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  // Auto-scroll messages
   useEffect(() => {
     if (open) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [open, messages, transcript, isAiResponding]);
 
   if (!open) return null;
 
-  // Position anchored above the floating orb
-  const positionClass = stackAbove === 'webcam'
-    ? 'fixed bottom-52 right-5'
-    : 'fixed bottom-20 right-5';
+  const positionClass = stackAbove === "webcam"
+    ? "fixed bottom-52 right-5"
+    : "fixed bottom-20 right-5";
 
   return (
     <div
       ref={panelRef}
       role="dialog"
       aria-label="AI Assistant"
-      className={`${positionClass} w-[360px] sm:w-[380px] max-h-[70vh] flex flex-col rounded-xl border border-border bg-surface shadow-2xl z-40 overflow-hidden animate-fade-in ${className}`}
+      className={positionClass + " w-[360px] sm:w-[380px] max-h-[70vh] flex flex-col rounded-xl border border-border bg-surface shadow-2xl z-40 overflow-hidden animate-fade-in " + className}
     >
-      {/* Top Header */}
       <div className="h-12 px-3 bg-elevated/90 border-b border-border flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
           <AiOrbAvatar isAiSpeaking={isAiSpeaking} size="sm" />
@@ -115,97 +117,66 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Action Controls: Voice Mute + Close X */}
         <div className="flex items-center gap-1 shrink-0">
           {onToggleVoice && (
             <button
               type="button"
               onClick={onToggleVoice}
-              title={voiceEnabled ? 'Mute AI Voice' : 'Unmute AI Voice'}
-              className={`p-1.5 rounded-md border transition-colors cursor-pointer ${
-                voiceEnabled
-                  ? 'bg-surface border-border text-primary hover:bg-border/60'
-                  : 'bg-danger/15 border-danger/30 text-danger hover:bg-danger/25'
-              }`}
+              title={voiceEnabled ? "Mute AI Voice" : "Unmute AI Voice"}
+              className="p-1.5 text-text-3 hover:text-text rounded-md hover:bg-surface transition-colors cursor-pointer"
             >
-              {voiceEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              {voiceEnabled ? <Volume2 className="w-4 h-4 text-primary" /> : <VolumeX className="w-4 h-4 text-text-3" />}
             </button>
           )}
-
           <button
             type="button"
             onClick={onClose}
-            title="Close Assistant (Esc)"
-            className="p-1.5 text-text-3 hover:text-text hover:bg-surface rounded-md border border-transparent hover:border-border transition-colors cursor-pointer"
+            title="Minimize Assistant"
+            className="p-1.5 text-text-3 hover:text-text rounded-md hover:bg-surface transition-colors cursor-pointer"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Body Area by Mode */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 text-xs select-text">
-
-        {/* MODE: INTRO (Setup & Checklist Screens) */}
-        {mode === 'intro' && (
-          <div className="space-y-4 py-2 text-center">
-            <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center mx-auto text-primary">
-              <Sparkles className="w-6 h-6 animate-pulse" />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white">{personaName} ({personaTitle}) Standing By</h3>
-              <p className="text-xs text-text-3 leading-relaxed">
-                Live interactive voice dialogue, technical problem coaching, and intent analysis will unlock automatically when you begin your session.
-              </p>
-            </div>
-
-            <div className="p-3 bg-elevated/70 rounded-lg border border-border text-left space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-text">
-                <ShieldCheck className="w-4 h-4 text-success shrink-0" />
-                <span>Zero-Fluff Autonomous Guidance</span>
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 text-xs">
+        {mode === "intro" && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg bg-elevated border border-border space-y-2">
+              <div className="flex items-center gap-2 text-primary font-bold text-xs">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Autonomous AI Technical Evaluator</span>
               </div>
-              <p className="text-[11px] text-text-3 leading-relaxed">
-                {personaName} will dynamically probe your architectural tradeoffs, time/space complexity, and code quality in real-time.
+              <p className="text-text-2 text-[11px] leading-relaxed">
+                Welcome to AI Interview OS. I am {personaName}, your {personaTitle}. Configure your target track, difficulty level, and optional resume grounding to begin.
               </p>
-            </div>
-
-            <div className="p-2.5 bg-surface rounded-md border border-border text-text-3 text-[11px] flex items-center justify-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-text-3" />
-              <span>Chat &amp; Voice input unlocks in Room</span>
             </div>
           </div>
         )}
 
-        {/* MODE: LIVE (Interview Room) */}
-        {mode === 'live' && (
+        {mode === "live" && (
           <>
             {messages.length === 0 && (
-              <div className="text-center py-6 text-text-3 text-xs">
-                <MessageSquare className="w-6 h-6 mx-auto mb-2 text-text-3/50" />
-                <span>{personaName} is preparing introductory inquiry...</span>
+              <div className="text-center py-6 text-text-3 text-xs space-y-1">
+                <MessageSquare className="w-5 h-5 mx-auto text-text-3/60 mb-1" />
+                <p>Dialogue channel initialized.</p>
+                <p className="text-[10px]">Your explanation and code submissions will be evaluated here.</p>
               </div>
             )}
-
             {messages.map((m, idx) => (
               <div
                 key={idx}
-                className={`p-2.5 rounded-lg border text-xs leading-relaxed ${
-                  m.role === 'candidate'
-                    ? 'bg-primary/10 border-primary/40 text-text'
-                    : 'bg-elevated border-border text-text'
-                }`}
+                className={"p-2.5 rounded-lg border text-xs leading-relaxed " + (m.role === "candidate" ? "bg-primary/10 border-primary/40 text-text" : "bg-elevated border-border text-text")}
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
                   <div className="flex items-center gap-1.5">
-                    <span>{m.role === 'candidate' ? 'You' : (m.metadata?.senderName || (m.metadata?.offlineFallback === 'true' ? 'Offline Coach' : personaName))}</span>
-                    {m.metadata?.offlineFallback === 'true' && (
+                    <span>{m.role === "candidate" ? "You" : (m.metadata?.senderName || (m.metadata?.offlineFallback === "true" ? "Offline Coach" : personaName))}</span>
+                    {m.metadata?.offlineFallback === "true" && (
                       <span className="px-1 py-0.2 rounded text-[9px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-0.5">
                         Offline Coach
                       </span>
                     )}
-                    {m.metadata?.recommendedAction === 'OFFER_HINT' && (
+                    {m.metadata?.recommendedAction === "OFFER_HINT" && (
                       <span className="px-1 py-0.2 rounded text-[9px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-0.5">
                         💡 Hint
                       </span>
@@ -216,7 +187,6 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                 <div className="whitespace-pre-wrap">{m.content}</div>
               </div>
             ))}
-
             {isAiResponding && (
               <div className="p-2 rounded-md bg-elevated border border-border text-primary-2 text-xs flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 animate-spin text-primary" />
@@ -227,31 +197,24 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
           </>
         )}
 
-        {/* MODE: REVIEW (Diagnostic Report View) */}
-        {mode === 'review' && (
+        {mode === "review" && (
           <>
             <div className="p-2 rounded bg-elevated border border-border text-[11px] text-text-3 mb-2 flex items-center justify-between">
               <span>Audited Dialogue Transcript ({transcript.length} turns)</span>
               <Chip variant="neutral" size="sm">Read-Only</Chip>
             </div>
-
             {transcript.length === 0 && (
               <div className="text-center py-6 text-text-3 text-xs">
                 <span>No transcript turns recorded for this session.</span>
               </div>
             )}
-
             {transcript.map((turn, idx) => (
               <div
                 key={idx}
-                className={`p-2.5 rounded-lg border text-xs leading-relaxed ${
-                  turn.senderRole === 'CANDIDATE'
-                    ? 'bg-primary/10 border-primary/40'
-                    : 'bg-elevated border-border'
-                }`}
+                className={"p-2.5 rounded-lg border text-xs leading-relaxed " + (turn.senderRole === "CANDIDATE" ? "bg-primary/10 border-primary/40" : "bg-elevated border-border")}
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
-                  <span>{turn.senderRole === 'CANDIDATE' ? 'Candidate' : personaName}</span>
+                  <span>{turn.senderRole === "CANDIDATE" ? "Candidate" : personaName}</span>
                   {turn.messageType && (
                     <span className="text-text-3 text-[9px] font-mono">{turn.messageType}</span>
                   )}
@@ -267,11 +230,9 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             <div ref={messagesEndRef} />
           </>
         )}
-
       </div>
 
-      {/* Bottom Input Area in Live Mode */}
-      {mode === 'live' && setChatInput && onSend && (
+      {mode === "live" && setChatInput && onSend && (
         <div className="p-2.5 border-t border-border bg-elevated/70 shrink-0">
           <AutoGrowingChatInput
             value={chatInput}
@@ -280,6 +241,9 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             isListening={isListening}
             onToggleListening={onMicToggle || (() => {})}
             isAiResponding={isAiResponding}
+            interimTranscript={interimTranscript}
+            micError={micError}
+            onClearMicError={onClearMicError}
             placeholder="Speak or type your response..."
           />
         </div>

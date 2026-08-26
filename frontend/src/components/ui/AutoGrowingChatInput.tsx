@@ -8,6 +8,9 @@ interface AutoGrowingChatInputProps {
   isListening: boolean;
   onToggleListening: () => void;
   isAiResponding: boolean;
+  interimTranscript?: string;
+  micError?: string | null;
+  onClearMicError?: () => void;
   placeholder?: string;
   minHeight?: number;
   maxHeight?: number;
@@ -20,6 +23,9 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   isListening,
   onToggleListening,
   isAiResponding,
+  interimTranscript = '',
+  micError = null,
+  onClearMicError,
   placeholder = 'Speak or type your explanation...',
   minHeight = 44,
   maxHeight = 180
@@ -55,18 +61,30 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
     <div
       className={`relative rounded-xl border bg-elevated/80 transition-all duration-200 shadow-sm ${
         isListening
-          ? 'border-danger/70 ring-1 ring-danger/40 bg-danger/5'
+          ? 'border-primary/80 ring-2 ring-primary/40 bg-primary/5'
           : 'border-border focus-within:border-primary/80 focus-within:ring-1 focus-within:ring-primary/40'
       }`}
     >
+      {/* Mic Error Banner */}
+      {micError && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-danger/10 border-b border-danger/20 text-[11px] text-danger rounded-t-xl">
+          <span>{micError}</span>
+          {onClearMicError && (
+            <button type="button" onClick={onClearMicError} className="text-danger hover:text-danger/80 font-bold ml-2 cursor-pointer">
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Live Recording Header Strip */}
       {isListening && (
-        <div className="flex items-center justify-between px-3 pt-2 pb-1 text-[11px] text-danger font-medium border-b border-danger/20">
-          <div className="flex items-center gap-1.5 animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
-            <span>Recording live candidate audio...</span>
+        <div className="flex items-center justify-between px-3 pt-2 pb-1 text-[11px] text-primary font-medium border-b border-primary/20">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+            <span className="font-semibold">Listening…</span>
           </div>
-          <span className="text-[10px] text-text-3 font-normal">Click mic to finish</span>
+          <span className="text-[10px] text-text-3 font-normal">Click Voice / Enter to finish</span>
         </div>
       )}
 
@@ -76,7 +94,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
           ref={textareaRef}
           value={value}
           rows={1}
-          placeholder={isListening ? 'Listening to your speech...' : placeholder}
+          placeholder={isListening ? 'Speak your thoughts...' : placeholder}
           onChange={(e) => {
             onChange(e.target.value);
             adjustHeight();
@@ -85,6 +103,13 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
           disabled={isAiResponding}
           className="w-full bg-transparent text-xs text-text placeholder:text-text-3 resize-none focus:outline-none leading-relaxed transition-all min-h-[44px] max-h-[180px] scrollbar-thin scrollbar-thumb-border"
         />
+        {/* Streaming Interim Transcript Live Preview */}
+        {isListening && interimTranscript && (
+          <div className="mt-1 px-1 text-[11px] text-primary-2 italic animate-pulse flex items-center gap-1">
+            <span>🎙️</span>
+            <span>{interimTranscript}</span>
+          </div>
+        )}
       </div>
 
       {/* Bottom Action Strip */}
@@ -94,17 +119,17 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
           <button
             type="button"
             onClick={onToggleListening}
-            title={isListening ? 'Stop Speaking' : 'Start Voice Input (Groq Whisper / WebSpeech)'}
+            title={isListening ? 'Listening… (Click to stop)' : 'Start Voice Input (Groq Whisper / WebSpeech)'}
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all duration-150 ${
               isListening
-                ? 'bg-danger text-white hover:bg-danger/90 shadow-sm shadow-danger/20 animate-pulse'
+                ? 'bg-primary text-white ring-2 ring-primary/80 ring-offset-1 ring-offset-bg shadow-sm shadow-primary/30 animate-pulse'
                 : 'bg-surface hover:bg-border/60 text-text-2 hover:text-text border border-border/60'
             }`}
           >
             {isListening ? (
               <>
                 <MicOff className="w-3.5 h-3.5" />
-                <span>Stop</span>
+                <span>Listening…</span>
               </>
             ) : (
               <>

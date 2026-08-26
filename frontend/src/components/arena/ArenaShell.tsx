@@ -62,6 +62,9 @@ interface ArenaShellProps {
   voiceOutputEnabled: boolean;
   onToggleVoice: () => void;
   onMicToggle: () => void;
+  interimTranscript?: string;
+  micError?: string | null;
+  onClearMicError?: () => void;
   hasUnreadAi: boolean;
   isWindowBlurred?: boolean;
   tabSwitches?: number;
@@ -112,6 +115,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
   voiceOutputEnabled,
   onToggleVoice,
   onMicToggle,
+  interimTranscript = '',
+  micError = null,
+  onClearMicError,
   hasUnreadAi,
   isWindowBlurred = false,
   tabSwitches = 0,
@@ -229,6 +235,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
         voiceEnabled={voiceOutputEnabled}
         onToggleVoice={onToggleVoice}
         onMicToggle={onMicToggle}
+        interimTranscript={interimTranscript}
+        micError={micError}
+        onClearMicError={onClearMicError}
         stackAbove="webcam"
       />
     </div>

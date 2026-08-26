@@ -73,7 +73,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   });
 
   // 4. Voice Management
-  const voice = useCoachVoice();
+  const voice = useCoachVoice({
+    onCandidateSpeechFinal: (text) => dialogue.triggerCandidateTurn(text, code),
+    apiKey
+  });
 
   // 5. Proctoring Sentinel
   const proctoring = useProctoring({
@@ -182,12 +185,12 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       isListening={voice.isListening}
       isSpeakingNow={voice.isSpeakingNow}
       isAiSpeaking={voice.isAiSpeaking}
+      interimTranscript={voice.interimTranscript}
+      micError={voice.micError}
+      onClearMicError={voice.clearMicError}
       voiceOutputEnabled={voice.voiceOutputEnabled}
       onToggleVoice={() => voice.setVoiceOutputEnabled(!voice.voiceOutputEnabled)}
-      onMicToggle={() => {
-        if (voice.isListening) voice.stopListening();
-        else voice.startListening();
-      }}
+      onMicToggle={voice.toggleListening}
       hasUnreadAi={dialogue.hasUnread}
       isWindowBlurred={proctoring.isWindowBlurred}
       tabSwitches={proctoring.tabSwitches}

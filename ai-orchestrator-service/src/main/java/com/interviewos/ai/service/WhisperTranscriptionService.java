@@ -35,10 +35,16 @@ public class WhisperTranscriptionService {
      */
     public Map<String, String> transcribeAudio(MultipartFile audioFile, String customApiKey, String customModel) {
         String apiKey = (customApiKey != null && !customApiKey.isBlank()) ? customApiKey : defaultGroqApiKey;
+        if (apiKey == null || apiKey.isBlank()) {
+            String envKey = System.getenv("GROQ_API_KEY");
+            if (envKey != null && !envKey.isBlank()) {
+                apiKey = envKey.trim();
+            }
+        }
         String model = (customModel != null && !customModel.isBlank()) ? customModel : DEFAULT_WHISPER_MODEL;
 
         if (apiKey == null || apiKey.isBlank()) {
-            log.warn("⚠️ No Groq API Key provided for Whisper transcription. Provide key via BYOK or GROQ_API_KEY env.");
+            log.warn("⚠️ No Groq API Key provided for Whisper transcription. Provide key via BYOK, header, or GROQ_API_KEY env.");
             return Map.of("text", "", "status", "MISSING_API_KEY");
         }
 
@@ -74,8 +80,8 @@ public class WhisperTranscriptionService {
             String transcript = root.path("text").asText("");
             long duration = System.currentTimeMillis() - startTime;
 
-            log.info("🎙️ Groq Whisper Transcribed ({}ms): \"{}\"", duration, transcript);
-            return Map.of("text", transcript, "status", "SUCCESS", "latencyMs", String.valueOf(duration));
+            log.info("🎙️ Groq Whisper Transcribed using model '{}' ({}ms): \"{}\"", model, duration, transcript);
+            return Map.of("text", transcript, "status", "SUCCESS", "latencyMs", String.valueOf(duration), "model", model);
 
         } catch (Exception e) {
             log.error("⚠️ Groq Whisper transcription error: {}", e.getMessage(), e);
