@@ -69,7 +69,7 @@ class DesignEvaluationServiceTest {
                 }
                 """;
 
-        when(aiClient.generateCompletionWithVision(eq(ModelProvider.GEMINI), anyString(), anyString(), any(), eq("image/png"), eq("custom-key"), isNull()))
+        when(aiClient.generateCompletionWithVision(eq(ModelProvider.GEMINI), anyString(), anyString(), any(), eq("image/png"), eq("custom-key"), any()))
                 .thenReturn(mockAiJson);
 
         DesignEvaluationResponse response = evaluationService.evaluateDesign(request);

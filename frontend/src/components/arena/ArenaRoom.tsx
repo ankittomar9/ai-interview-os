@@ -9,6 +9,13 @@ import { ArenaShell } from './ArenaShell';
 import { getPersona } from '../../lib/personas';
 import type { InterviewStage } from '../StageStepper';
 
+const STAGE_TRACK_MAP: Record<InterviewStage, InterviewTrack> = {
+  INTRODUCTION: 'BEHAVIORAL_STAR',
+  CORE_TECH: 'SPRING_LLD',
+  CODING_DSA: 'ALGORITHMS_DATA_STRUCTURES',
+  SYSTEM_DESIGN: 'SYSTEM_DESIGN'
+};
+
 interface ArenaRoomProps {
   sessionId: number;
   question: GenerateQuestionResponse;
@@ -32,6 +39,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const persona = getPersona(isPlayground);
 
   const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
+  const [pendingStageSwitch, setPendingStageSwitch] = useState<{ stage: InterviewStage; targetTrack: InterviewTrack } | null>(null);
 
   // 1. Session Catalog (Strict track query with zero cross-track bleed)
   const {
@@ -106,11 +114,25 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   };
 
   const handleStageClick = useCallback((targetStage: InterviewStage) => {
-    // Strict isolation: if clicked stage is different, ask confirmation before switching
-    if (targetStage !== dialogue.currentStage) {
+    const mappedTrack = STAGE_TRACK_MAP[targetStage];
+    if (mappedTrack && mappedTrack !== activeTrack) {
+      setPendingStageSwitch({ stage: targetStage, targetTrack: mappedTrack });
+    } else {
       dialogue.setCurrentStage(targetStage);
     }
-  }, [dialogue]);
+  }, [activeTrack, dialogue]);
+
+  const handleConfirmStageSwitch = useCallback(() => {
+    if (pendingStageSwitch) {
+      setActiveTrack(pendingStageSwitch.targetTrack);
+      dialogue.setCurrentStage(pendingStageSwitch.stage);
+      setPendingStageSwitch(null);
+    }
+  }, [pendingStageSwitch, dialogue]);
+
+  const handleCancelStageSwitch = useCallback(() => {
+    setPendingStageSwitch(null);
+  }, []);
 
   return (
     <ArenaShell
@@ -147,6 +169,13 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       isAiResponding={dialogue.isAiResponding}
       currentStage={dialogue.currentStage}
       onStageClick={handleStageClick}
+      providerError={dialogue.providerError}
+      onRetryProvider={dialogue.retryLastTurn}
+      onClearProviderError={dialogue.clearProviderError}
+      onOpenProviderSettings={onFinish}
+      pendingStageSwitch={pendingStageSwitch}
+      onConfirmStageSwitch={handleConfirmStageSwitch}
+      onCancelStageSwitch={handleCancelStageSwitch}
       isAiPanelOpen={voice.isAiPanelOpen}
       onToggleAiPanel={voice.toggleAiPanel}
       onCloseAiPanel={() => voice.setIsAiPanelOpen(false)}

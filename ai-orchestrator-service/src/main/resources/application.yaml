@@ -3,3 +3,21 @@ spring:
     name: ai-orchestrator-service
   config:
     import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+
+ai:
+  providers:
+    gemini:
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/"
+      default-model: "gemini-2.0-flash"
+      api-key: ${GEMINI_API_KEY:}
+    groq:
+      endpoint: "https://api.groq.com/openai/v1/chat/completions"
+      default-model: ${GROQ_MODEL_DIALOGUE:openai/gpt-oss-120b}
+      model-dialogue: ${GROQ_MODEL_DIALOGUE:openai/gpt-oss-120b}
+      model-fast: ${GROQ_MODEL_FAST:openai/gpt-oss-20b}
+      model-eval: ${GROQ_MODEL_EVAL:qwen/qwen3.8-27b}
+      model-stt: ${GROQ_MODEL_STT:whisper-large-v3-turbo}
+      api-key: ${GROQ_API_KEY:}
+    ollama:
+      endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
+      default-model: ${OLLAMA_MODEL:qwen2.5-coder:7b}

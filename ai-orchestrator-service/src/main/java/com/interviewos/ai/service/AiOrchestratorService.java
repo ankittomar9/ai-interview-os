@@ -320,7 +320,7 @@ public class AiOrchestratorService {
                     systemInstruction,
                     userPrompt,
                     effectiveApiKey,
-                    request.modelName()
+                    request.modelName() != null ? request.modelName() : "dialogue"
             );
 
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);

@@ -101,7 +101,7 @@ public class RubricService {
                     systemInstruction,
                     userPrompt,
                     configuredApiKey,
-                    null
+                    "eval"
             );
 
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);

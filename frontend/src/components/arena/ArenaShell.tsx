@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { GenerateQuestionResponse, InterviewTrack, ModelProvider } from '../../types';
 import { TrackNavMenu } from '../ui/TrackNavMenu';
@@ -14,6 +14,9 @@ import { SelfTimer } from '../ide/SelfTimer';
 import { getPersona } from '../../lib/personas';
 import { TrackScreenRouter } from './TrackScreenRouter';
 import type { ExecutionResult } from '../ide/TestcasePanel';
+import type { ProviderErrorState } from './hooks/useDialogue';
+import { ProviderToast } from './ProviderToast';
+import { StageSwitchModal } from './StageSwitchModal';
 
 interface ArenaShellProps {
   sessionId: number;
@@ -36,7 +39,6 @@ interface ArenaShellProps {
   apiKey: string;
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   onFinish: () => void;
-  // Dialogue & Proctoring state
   messages: any[];
   chatInput: string;
   setChatInput: (val: string) => void;
@@ -44,6 +46,13 @@ interface ArenaShellProps {
   isAiResponding: boolean;
   currentStage: InterviewStage;
   onStageClick?: (stage: InterviewStage) => void;
+  providerError?: ProviderErrorState | null;
+  onRetryProvider?: () => void;
+  onClearProviderError?: () => void;
+  onOpenProviderSettings?: () => void;
+  pendingStageSwitch?: { stage: InterviewStage; targetTrack: InterviewTrack } | null;
+  onConfirmStageSwitch?: () => void;
+  onCancelStageSwitch?: () => void;
   isAiPanelOpen: boolean;
   onToggleAiPanel: () => void;
   onCloseAiPanel: () => void;
@@ -87,6 +96,13 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
   isAiResponding,
   currentStage,
   onStageClick,
+  providerError,
+  onRetryProvider,
+  onClearProviderError,
+  onOpenProviderSettings,
+  pendingStageSwitch,
+  onConfirmStageSwitch,
+  onCancelStageSwitch,
   isAiPanelOpen,
   onToggleAiPanel,
   onCloseAiPanel,
@@ -107,24 +123,33 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
   const [hintsRevealed, setHintsRevealed] = useState<Record<string, number>>({});
   const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    if (!providerError || !onClearProviderError) return;
+    const timer = setTimeout(onClearProviderError, 8000);
+    return () => clearTimeout(timer);
+  }, [providerError, onClearProviderError]);
+
   const handleTrackSelect = useCallback((trackKey: string) => {
-    if (onSwitchTrack && trackKey !== 'ALL') {
-      onSwitchTrack(trackKey as InterviewTrack);
-    }
+    if (onSwitchTrack && trackKey !== 'ALL') onSwitchTrack(trackKey as InterviewTrack);
   }, [onSwitchTrack]);
 
   const railItems: QuestionRailItem[] = questionsList.map((q, idx) => ({
-    slug: q.slug || `q${idx + 1}`,
-    title: q.title || `Problem ${idx + 1}`,
+    slug: q.slug || ('q' + (idx + 1)),
+    title: q.title || ('Problem ' + (idx + 1)),
     difficulty: q.difficulty,
-    status: questionStatusMap[q.slug || `q${idx + 1}`] || 'UNTOUCHED'
+    status: questionStatusMap[q.slug || ('q' + (idx + 1))] || 'UNTOUCHED'
   }));
 
-  const activeSlug = question.slug || `q${activeQuestionIndex + 1}`;
+  const activeSlug = question.slug || ('q' + (activeQuestionIndex + 1));
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg text-text select-none">
-      {/* Shared Top Navigation Bar */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg text-text select-none relative">
+      {providerError && (
+        <ProviderToast error={providerError} onRetry={onRetryProvider} onOpenSettings={onOpenProviderSettings} onClose={onClearProviderError} />
+      )}
+      {pendingStageSwitch && onConfirmStageSwitch && onCancelStageSwitch && (
+        <StageSwitchModal targetTrack={pendingStageSwitch.targetTrack} onConfirm={onConfirmStageSwitch} onCancel={onCancelStageSwitch} />
+      )}
       <div className="h-12 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 z-20">
         <div className="flex items-center gap-3">
           <TrackNavMenu activeTrack={track} onSelectTrack={handleTrackSelect} isPlayground={isPlayground} />
@@ -132,35 +157,20 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
             {isPlayground ? 'PLAYGROUND' : 'PROCTORED INTERVIEW'}
           </Chip>
         </div>
-
         <div className="flex items-center gap-3">
           <SelfTimer />
           <ThemeToggle />
           <Chip variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'} size="sm">
             {isSpeakingNow ? 'Speaking' : isListening ? 'Mic Active' : 'Mic Ready'}
           </Chip>
-          <button
-            type="button"
-            onClick={onFinish}
-            className={`text-xs font-semibold hover:underline cursor-pointer ${isPlayground ? 'text-primary' : 'text-danger'}`}
-          >
+          <button type="button" onClick={onFinish} className={'text-xs font-semibold hover:underline cursor-pointer ' + (isPlayground ? 'text-primary' : 'text-danger')}>
             {isPlayground ? 'Finish Practice' : 'End & Report'}
           </button>
         </div>
       </div>
-
-      {/* Stage Stepper */}
       <StageStepper currentStage={currentStage} isPlayground={isPlayground} onStageClick={onStageClick} />
-
-      {/* Main Split Body: Question Rail + Problem Panel + Router Screen */}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <QuestionRail
-          items={railItems}
-          selectedIndex={activeQuestionIndex}
-          onSelect={onSelectQuestion}
-          className="w-12 shrink-0 border-r border-border h-full"
-        />
-
+        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} className="w-12 shrink-0 border-r border-border h-full" />
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           <Group orientation="horizontal" id="arena-shell-group" className="h-full w-full flex-1 min-w-0">
             <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
@@ -176,9 +186,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
                 onRevealHint={() => setHintsRevealed((p) => ({ ...p, [activeSlug]: (p[activeSlug] || 0) + 1 }))}
               />
             </Panel>
-
             <Separator className="w-[3px] bg-border/60 hover:bg-primary/60 cursor-col-resize relative flex items-center justify-center z-10 select-none" />
-
             <Panel defaultSize="68%" minSize="50%" id="router-screen-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
               <TrackScreenRouter
                 track={track}
@@ -202,23 +210,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
           </Group>
         </div>
       </div>
-
-      {/* Proctoring Webcam in Interview Mode */}
-      {!isPlayground && (
-        <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />
-      )}
-
-      {/* Floating AI Orb */}
-      <FloatingAiOrb
-        isOpen={isAiPanelOpen}
-        onToggle={onToggleAiPanel}
-        isAiSpeaking={isAiSpeaking}
-        isListening={isListening}
-        hasUnread={hasUnreadAi}
-        sessionMode={sessionMode}
-      />
-
-      {/* AI Assistant Coach Panel */}
+      {!isPlayground && <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />}
+      <FloatingAiOrb isOpen={isAiPanelOpen} onToggle={onToggleAiPanel} isAiSpeaking={isAiSpeaking} isListening={isListening} hasUnread={hasUnreadAi} sessionMode={sessionMode} />
       <AiAssistantPanel
         open={isAiPanelOpen}
         onClose={onCloseAiPanel}

@@ -126,7 +126,7 @@ public class DesignEvaluationService {
                         pngBytes,
                         "image/png",
                         apiKey,
-                        null
+                        "eval"
                 );
             } else {
                 log.info("Executing text-only architecture inference for session {}", request.sessionId());
@@ -135,7 +135,7 @@ public class DesignEvaluationService {
                         systemInstruction,
                         userPrompt,
                         apiKey,
-                        null
+                        "eval"
                 );
             }
 

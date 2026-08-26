@@ -199,7 +199,12 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
                   <div className="flex items-center gap-1.5">
-                    <span>{m.role === 'candidate' ? 'You' : personaName}</span>
+                    <span>{m.role === 'candidate' ? 'You' : (m.metadata?.senderName || (m.metadata?.offlineFallback === 'true' ? 'Offline Coach' : personaName))}</span>
+                    {m.metadata?.offlineFallback === 'true' && (
+                      <span className="px-1 py-0.2 rounded text-[9px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-0.5">
+                        Offline Coach
+                      </span>
+                    )}
                     {m.metadata?.recommendedAction === 'OFFER_HINT' && (
                       <span className="px-1 py-0.2 rounded text-[9px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-0.5">
                         💡 Hint
