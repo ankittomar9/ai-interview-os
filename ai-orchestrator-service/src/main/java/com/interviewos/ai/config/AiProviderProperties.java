@@ -13,13 +13,15 @@ public record AiProviderProperties(Map<String, ProviderConfig> providers) {
 
     public record ProviderConfig(
             String endpoint,
-            String defaultModel
+            String defaultModel,
+            String apiKey
     ) {}
 
     public ProviderConfig getConfigFor(ModelProvider provider) {
+        if (provider == null) return null;
         String key = provider.name().toLowerCase();
         if (providers == null || !providers.containsKey(key)) {
-            throw new IllegalArgumentException("No configuration found for provider: " + provider);
+            return null;
         }
         return providers.get(key);
     }

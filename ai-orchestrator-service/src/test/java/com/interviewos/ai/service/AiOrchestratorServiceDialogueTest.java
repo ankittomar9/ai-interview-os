@@ -28,6 +28,9 @@ class AiOrchestratorServiceDialogueTest {
     private AiClientFactory clientFactory;
 
     @Mock
+    private com.interviewos.ai.config.AiProviderProperties providerProperties;
+
+    @Mock
     private ProblemCatalogClient problemCatalogClient;
 
     @Mock
@@ -44,6 +47,7 @@ class AiOrchestratorServiceDialogueTest {
         objectMapper = new ObjectMapper();
         orchestratorService = new AiOrchestratorService(
                 clientFactory,
+                providerProperties,
                 problemCatalogClient,
                 sessionTranscriptClient,
                 objectMapper

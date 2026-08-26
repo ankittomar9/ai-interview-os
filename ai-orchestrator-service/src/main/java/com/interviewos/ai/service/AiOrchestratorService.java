@@ -6,6 +6,7 @@ import com.interviewos.ai.client.AiClient;
 import com.interviewos.ai.client.AiClientFactory;
 import com.interviewos.ai.client.ProblemCatalogClient;
 import com.interviewos.ai.client.SessionTranscriptClient;
+import com.interviewos.ai.config.AiProviderProperties;
 import com.interviewos.ai.dto.AiDialogueRequest;
 import com.interviewos.ai.dto.AiDialogueResponse;
 import com.interviewos.ai.dto.GenerateQuestionRequest;
@@ -13,6 +14,7 @@ import com.interviewos.ai.dto.GenerateQuestionResponse;
 import com.interviewos.ai.dto.TranscriptTurnDto;
 import com.interviewos.ai.model.DifficultyLevel;
 import com.interviewos.ai.model.InterviewTrack;
+import com.interviewos.ai.model.ModelProvider;
 import com.interviewos.ai.util.DialogueMemoryBuilder;
 import com.interviewos.ai.util.JsonCleaner;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ import java.util.Optional;
 public class AiOrchestratorService {
 
     private final AiClientFactory clientFactory;
+    private final AiProviderProperties providerProperties;
     private final ProblemCatalogClient problemCatalogClient;
     private final SessionTranscriptClient sessionTranscriptClient;
     private final ObjectMapper objectMapper;
@@ -102,7 +105,17 @@ public class AiOrchestratorService {
      * Handles live conversational dialogue, memory construction, adaptive directives, and single-pass intent extraction.
      */
     public AiDialogueResponse processDialogue(AiDialogueRequest request) {
-        AiClient client = clientFactory.getClient(request.modelProvider());
+        ModelProvider effectiveProvider = request.modelProvider() != null ? request.modelProvider() : ModelProvider.GROQ;
+        String effectiveApiKey = request.apiKey();
+
+        if (effectiveProvider == ModelProvider.GEMINI && (effectiveApiKey == null || effectiveApiKey.isBlank()) && !isGeminiConfigured()) {
+            if (isGroqConfigured()) {
+                log.info("⚡ Auto-routing dialogue from unconfigured GEMINI to configured GROQ provider");
+                effectiveProvider = ModelProvider.GROQ;
+            }
+        }
+
+        AiClient client = clientFactory.getClient(effectiveProvider);
 
         // 1. Fetch lightweight session transcript for memory (graceful fallback to empty list)
         List<TranscriptTurnDto> transcript = List.of();
@@ -301,10 +314,10 @@ public class AiOrchestratorService {
 
         try {
             String rawResponse = client.generateCompletion(
-                    request.modelProvider(),
+                    effectiveProvider,
                     systemInstruction,
                     userPrompt,
-                    request.apiKey(),
+                    effectiveApiKey,
                     request.modelName()
             );
 
@@ -380,6 +393,24 @@ public class AiOrchestratorService {
                     "PROBE_DEEPER"
             );
         }
+    }
+
+    private boolean isGroqConfigured() {
+        try {
+            var cfg = providerProperties.getConfigFor(ModelProvider.GROQ);
+            if (cfg != null && cfg.apiKey() != null && !cfg.apiKey().isBlank()) return true;
+        } catch (Exception ignored) {}
+        String envKey = System.getenv("GROQ_API_KEY");
+        return envKey != null && !envKey.isBlank();
+    }
+
+    private boolean isGeminiConfigured() {
+        try {
+            var cfg = providerProperties.getConfigFor(ModelProvider.GEMINI);
+            if (cfg != null && cfg.apiKey() != null && !cfg.apiKey().isBlank()) return true;
+        } catch (Exception ignored) {}
+        String envKey = System.getenv("GEMINI_API_KEY");
+        return envKey != null && !envKey.isBlank();
     }
 
     private String resolveProblemSlug(AiDialogueRequest req) {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider } from './types';
-import { createSession, generateDiagnosticReport, generateQuestion, startSession } from './services/api';
+import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, startSession } from './services/api';
 import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
 import { InterviewRoom } from './components/InterviewRoom';
@@ -41,8 +41,13 @@ export function App() {
   const [roleTitle, setRoleTitle] = useState('Senior Java Backend Engineer');
   const [question, setQuestion] = useState<GenerateQuestionResponse | null>(null);
   const [report, setReport] = useState<DiagnosticReportResponse | null>(null);
-  const [provider, setProvider] = useState<ModelProvider>('GEMINI');
-  const [apiKey, setApiKey] = useState('');
+  const [provider, setProvider] = useState<ModelProvider>(() => {
+    return (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
+  });
+  const [apiKey, setApiKey] = useState(() => {
+    const p = (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
+    return getStoredApiKey(p);
+  });
 
   const handleStartInterview = async (config: {
     candidateId: string;
@@ -106,6 +111,11 @@ export function App() {
     setIsLoading(true);
     setIsCatalogOpen(false);
     setSessionMode('PLAYGROUND');
+
+    const activeProvider = provider || (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
+    const activeApiKey = apiKey || getStoredApiKey(activeProvider);
+    setProvider(activeProvider);
+    setApiKey(activeApiKey);
 
     const firstQ = selectedQuestions[0];
     const track = firstQ.track || 'ALGORITHMS_DATA_STRUCTURES';

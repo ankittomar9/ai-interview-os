@@ -107,8 +107,13 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading, onOpenCatalog
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('MID');
   const [targetCompany, setTargetCompany] = useState('');
   const [jobDescription, setJobDescription] = useState('');
-  const [provider, setProvider] = useState<ModelProvider>('GEMINI');
-  const [apiKey, setApiKey] = useState(getStoredApiKey('GEMINI'));
+  const [provider, setProvider] = useState<ModelProvider>(() => {
+    return (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
+  });
+  const [apiKey, setApiKey] = useState(() => {
+    const p = (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
+    return getStoredApiKey(p);
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
 
@@ -161,6 +166,7 @@ export const SetupScreen: React.FC<Props> = ({ onStart, isLoading, onOpenCatalog
 
   const handleProviderChange = (newProvider: ModelProvider) => {
     setProvider(newProvider);
+    localStorage.setItem('app.provider', newProvider);
     setApiKey(getStoredApiKey(newProvider));
   };
 

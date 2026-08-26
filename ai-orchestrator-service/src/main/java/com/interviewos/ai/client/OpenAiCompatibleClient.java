@@ -113,10 +113,25 @@ public class OpenAiCompatibleClient implements AiClient {
     }
 
     private String resolveEnvApiKey(ModelProvider provider) {
+        try {
+            AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(provider);
+            if (config != null && config.apiKey() != null && !config.apiKey().isBlank()) {
+                return config.apiKey().trim();
+            }
+        } catch (Exception ignored) {}
+
         String envKeyName = provider.name().toUpperCase() + "_API_KEY";
         String envVal = System.getenv(envKeyName);
-        if (envVal != null && !envVal.isBlank()) return envVal;
-        return System.getenv(provider.name().toUpperCase() + "_KEY");
+        if (envVal != null && !envVal.isBlank()) return envVal.trim();
+        String altVal = System.getenv(provider.name().toUpperCase() + "_KEY");
+        if (altVal != null && !altVal.isBlank()) return altVal.trim();
+
+        if (provider == ModelProvider.GROQ) {
+            String groqKey = System.getenv("GROQ_API_KEY");
+            if (groqKey != null && !groqKey.isBlank()) return groqKey.trim();
+        }
+
+        return null;
     }
 
     private String extractContentFromChatCompletion(ModelProvider provider, String rawResponse) {

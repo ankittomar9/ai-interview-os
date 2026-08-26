@@ -755,14 +755,17 @@ export const InterviewRoom: React.FC<Props> = ({
     try {
       const contextPayload = `Problem: ${currentQuestion.title}\nDescription: ${currentQuestion.problemStatement}\n[Current Stage: ${currentStage}]`;
 
+      const effectiveProvider = provider || (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
+      const effectiveApiKey = apiKey || getStoredApiKey(effectiveProvider);
+
       const dialogue = await processDialogueTurn({
         sessionId,
         questionContext: contextPayload,
         problemSlug: currentQuestion.problemSlug || currentQuestion.slug,
         candidateExplanation: candidateText,
         candidateCode: code,
-        modelProvider: provider,
-        apiKey,
+        modelProvider: effectiveProvider,
+        apiKey: effectiveApiKey,
         sessionMode: isPlayground ? 'PLAYGROUND' : 'INTERVIEW',
         latestExecution: latestExecPayload,
         integritySignals: integrityMetadata

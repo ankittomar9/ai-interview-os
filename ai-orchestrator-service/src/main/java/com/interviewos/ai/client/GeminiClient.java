@@ -55,7 +55,10 @@ public class GeminiClient implements AiClient {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(ModelProvider.GEMINI);
         String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
 
-        String effectiveKey = (apiKey != null && !apiKey.isBlank()) ? apiKey : System.getenv("GEMINI_API_KEY");
+        String effectiveKey = (apiKey != null && !apiKey.isBlank()) ? apiKey : (config != null && config.apiKey() != null && !config.apiKey().isBlank() ? config.apiKey().trim() : null);
+        if (effectiveKey == null || effectiveKey.isBlank()) {
+            effectiveKey = System.getenv("GEMINI_API_KEY");
+        }
         if (effectiveKey == null || effectiveKey.isBlank()) {
             effectiveKey = System.getenv("GEMINI_KEY");
         }
@@ -65,7 +68,8 @@ public class GeminiClient implements AiClient {
         }
 
         // Target URL: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}
-        String requestUrl = config.endpoint() + model + ":generateContent?key=" + effectiveKey;
+        String endpoint = config != null && config.endpoint() != null ? config.endpoint() : "https://generativelanguage.googleapis.com/v1beta/models/";
+        String requestUrl = endpoint + model + ":generateContent?key=" + effectiveKey.trim();
 
         log.info("Dispatching prompt to Google Gemini using model: {} (multimodal: {})", model, imageBytes != null);
 
