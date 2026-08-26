@@ -35,7 +35,9 @@ public record AiDialogueRequest(
 
         ExecutionDto latestExecution,
 
-        String sessionMode
+        String sessionMode,
+
+        IntegritySignals integritySignals
 ) {
     public String getEffectiveMode() {
         return (sessionMode != null && !sessionMode.isBlank()) ? sessionMode.trim().toUpperCase() : "INTERVIEW";
@@ -51,7 +53,7 @@ public record AiDialogueRequest(
             String apiKey,
             String modelName
     ) {
-        this(questionContext, null, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null, "INTERVIEW");
+        this(questionContext, null, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null, "INTERVIEW", null);
     }
 
     public AiDialogueRequest(
@@ -65,7 +67,7 @@ public record AiDialogueRequest(
             String modelName,
             ExecutionDto latestExecution
     ) {
-        this(questionContext, null, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW");
+        this(questionContext, null, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null);
     }
 
     public AiDialogueRequest(
@@ -80,11 +82,22 @@ public record AiDialogueRequest(
             String modelName,
             ExecutionDto latestExecution
     ) {
-        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW");
+        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null);
     }
 
     public record ChatMessageDto(
             String role,     // "interviewer" or "candidate"
             String content
+    ) {}
+
+    public record IntegritySignals(
+            Integer keystrokeCount,
+            Integer avgKeystrokeIntervalMs,
+            Integer keystrokeVariance,
+            Integer estimatedWpm,
+            Boolean suspiciousTyping,
+            Integer copyCount,
+            Integer pasteCount,
+            Integer tabSwitchCount
     ) {}
 }

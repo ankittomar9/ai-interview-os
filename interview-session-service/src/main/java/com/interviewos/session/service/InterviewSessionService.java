@@ -126,6 +126,18 @@ public class InterviewSessionService {
                 .timestamp(Instant.now())
                 .build();
 
+        if (request.integritySignals() != null) {
+            var signals = request.integritySignals();
+            message.setKeystrokeCount(signals.keystrokeCount());
+            message.setAvgKeystrokeIntervalMs(signals.avgKeystrokeIntervalMs());
+            message.setKeystrokeVariance(signals.keystrokeVariance());
+            message.setEstimatedWpm(signals.estimatedWpm());
+            message.setSuspiciousTyping(signals.suspiciousTyping());
+            message.setCopyCount(signals.copyCount());
+            message.setPasteCount(signals.pasteCount());
+            message.setTabSwitchCount(signals.tabSwitchCount());
+        }
+
         SessionMessage saved = messageRepository.save(message);
         log.info("Added {} message to session {}", request.senderRole(), sessionId);
 
@@ -135,31 +147,35 @@ public class InterviewSessionService {
                 if (doc.getTranscript() == null) {
                     doc.setTranscript(new ArrayList<>());
                 }
-                InterviewSessionDocument.TranscriptTurn turn = InterviewSessionDocument.TranscriptTurn.builder()
+                InterviewSessionDocument.TranscriptTurn.TranscriptTurnBuilder turnBuilder = InterviewSessionDocument.TranscriptTurn.builder()
                         .turnNumber(doc.getTranscript().size() + 1)
                         .senderRole(request.senderRole().toUpperCase())
                         .messageType(request.messageType().name())
                         .content(request.content())
                         .codeSnippet(request.codeSnippet())
                         .metadata(request.metadata())
-                        .timestamp(LocalDateTime.now())
-                        .build();
-                doc.getTranscript().add(turn);
+                        .timestamp(LocalDateTime.now());
+
+                if (request.integritySignals() != null) {
+                    var signals = request.integritySignals();
+                    turnBuilder.keystrokeCount(signals.keystrokeCount())
+                            .avgKeystrokeIntervalMs(signals.avgKeystrokeIntervalMs())
+                            .keystrokeVariance(signals.keystrokeVariance())
+                            .estimatedWpm(signals.estimatedWpm())
+                            .suspiciousTyping(signals.suspiciousTyping())
+                            .copyCount(signals.copyCount())
+                            .pasteCount(signals.pasteCount())
+                            .tabSwitchCount(signals.tabSwitchCount());
+                }
+
+                doc.getTranscript().add(turnBuilder.build());
                 mongoSessionRepository.save(doc);
             });
         } catch (Exception e) {
             log.warn("⚠️ MongoDB sync warning on addMessage: {}", e.getMessage());
         }
 
-        return new SessionResponse.MessageResponse(
-                saved.getId(),
-                saved.getSenderRole(),
-                saved.getMessageType(),
-                saved.getContent(),
-                saved.getCodeSnippet(),
-                saved.getTimestamp(),
-                request.metadata()
-        );
+        return SessionResponse.MessageResponse.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)
@@ -182,7 +198,15 @@ public class InterviewSessionService {
                                 t.getContent(),
                                 t.getCodeSnippet(),
                                 t.getTimestamp() != null ? t.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant() : Instant.now(),
-                                t.getMetadata()
+                                t.getMetadata(),
+                                t.getKeystrokeCount(),
+                                t.getAvgKeystrokeIntervalMs(),
+                                t.getKeystrokeVariance(),
+                                t.getEstimatedWpm(),
+                                t.getSuspiciousTyping(),
+                                t.getCopyCount(),
+                                t.getPasteCount(),
+                                t.getTabSwitchCount()
                         ))
                         .toList();
             }

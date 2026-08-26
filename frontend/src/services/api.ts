@@ -10,7 +10,9 @@ import type {
     DesignEvaluateRequest,
     DesignEvaluateResponse,
     ResumeDocument,
-    MessageType
+    MessageType,
+    IntegritySignals,
+    SessionMessage
 } from '../types';
 import { fetchJson } from './http';
 
@@ -65,6 +67,7 @@ export const addMessageToSession = async (
         content: string;
         codeSnippet?: string;
         metadata?: Record<string, string>;
+        integritySignals?: IntegritySignals;
     }
 ) => {
     const res = await fetch(`${SESSION_API}/${sessionId}/messages`, {
@@ -159,6 +162,7 @@ export const processDialogueTurn = async (payload: {
         executionTimeMs: number;
         memoryUsedMb: number;
     };
+    integritySignals?: IntegritySignals;
 }): Promise<AiDialogueResponse> => {
     return fetchJson<AiDialogueResponse>(`${AI_API}/dialogue`, {
         method: 'POST',
@@ -274,8 +278,8 @@ export const uploadResumeText = async (payload: {
     return res.json();
 };
 
-export const fetchSessionTranscript = async (sessionId: number) => {
-    const res = await fetch(`${SESSION_API}/resume/transcript/${sessionId}`);
+export const fetchSessionTranscript = async (sessionId: number): Promise<SessionMessage[]> => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/transcript`);
     if (!res.ok) throw new Error('Failed to fetch session transcript');
     return res.json();
 };

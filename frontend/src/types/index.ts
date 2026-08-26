@@ -12,6 +12,35 @@ export type HiringVerdict = 'STRONG_HIRE' | 'HIRE' | 'LEAN_HIRE' | 'NO_HIRE';
 
 export type TelemetryEventType = 'TAB_BLUR' | 'TAB_FOCUS' | 'PASTE_DUMP' | 'KEYSTROKE_BURST' | 'IDLE_TIMEOUT' | 'COPY_ATTEMPT';
 
+export interface IntegritySignals {
+    keystrokeCount?: number;
+    avgKeystrokeIntervalMs?: number;
+    keystrokeVariance?: number;
+    estimatedWpm?: number;
+    suspiciousTyping?: boolean;
+    copyCount?: number;
+    pasteCount?: number;
+    tabSwitchCount?: number;
+}
+
+export interface SessionMessage {
+    id: number;
+    senderRole: string;
+    messageType: MessageType;
+    content: string;
+    codeSnippet?: string;
+    timestamp: string;
+    metadata?: Record<string, string>;
+    keystrokeCount?: number;
+    avgKeystrokeIntervalMs?: number;
+    keystrokeVariance?: number;
+    estimatedWpm?: number;
+    suspiciousTyping?: boolean;
+    copyCount?: number;
+    pasteCount?: number;
+    tabSwitchCount?: number;
+}
+
 export interface SessionResponse {
     id: number;
     candidateId: string;
@@ -26,15 +55,7 @@ export interface SessionResponse {
     completedAt?: string;
     durationSeconds?: number;
     sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
-    messages: Array<{
-        id: number;
-        senderRole: string;
-        messageType: MessageType;
-        content: string;
-        codeSnippet?: string;
-        timestamp: string;
-        metadata?: Record<string, string>;
-    }>;
+    messages: SessionMessage[];
 }
 
 export interface GenerateQuestionResponse {

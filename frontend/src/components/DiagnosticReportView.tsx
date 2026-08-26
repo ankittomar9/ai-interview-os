@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import type { DiagnosticReportResponse, DimensionScore } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import type { DiagnosticReportResponse, DimensionScore, SessionMessage } from '../types';
 import { fetchSessionTranscript } from '../services/api';
 import {
   CheckCircle2,
@@ -9,6 +9,8 @@ import {
   Download,
   MessageSquare,
   ShieldCheck,
+  Shield,
+  ShieldAlert,
   Brain,
   Code2,
   Layers,
@@ -30,17 +32,10 @@ interface Props {
 
 export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => {
   const [activeTab, setActiveTab] = useState<'report' | 'transcript'>('report');
-  const [transcriptData, setTranscriptData] = useState<{
+  const [transcriptData, setTranscriptData] = useState<SessionMessage[] | {
     totalTurns?: number;
     candidateName?: string;
-    transcript?: Array<{
-      turnNumber?: number;
-      senderRole: string;
-      messageType: string;
-      content: string;
-      codeSnippet?: string;
-      timestamp?: string;
-    }>;
+    transcript?: SessionMessage[];
   } | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.report') === 'true');
 
@@ -56,9 +51,56 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     if (report.sessionId) {
       fetchSessionTranscript(report.sessionId)
         .then((data) => setTranscriptData(data))
-        .catch((err) => console.warn('Could not load transcript from MongoDB:', err));
+        .catch((err) => console.warn('Could not load transcript records:', err));
     }
   }, [report.sessionId]);
+
+  const transcriptList = useMemo((): SessionMessage[] => {
+    if (!transcriptData) return [];
+    if (Array.isArray(transcriptData)) return transcriptData;
+    return transcriptData.transcript || [];
+  }, [transcriptData]);
+
+  // Calculate aggregate integrity metrics
+  const integrityMetrics = useMemo(() => {
+    const candidateMessages = transcriptList.filter(
+      (m) => m.senderRole === 'CANDIDATE' || m.senderRole === 'candidate'
+    );
+
+    const totalKeystrokes = candidateMessages.reduce((sum, m) => sum + (m.keystrokeCount || 0), 0);
+    const totalCopies = candidateMessages.reduce((sum, m) => sum + (m.copyCount || 0), 0);
+    const totalPastes = candidateMessages.reduce((sum, m) => sum + (m.pasteCount || 0), 0);
+    const totalTabSwitches = candidateMessages.reduce((sum, m) => sum + (m.tabSwitchCount || 0), 0);
+
+    const suspiciousTurns = candidateMessages.filter((m) => m.suspiciousTyping).length;
+    const avgWpm = candidateMessages.length > 0
+      ? Math.round(candidateMessages.reduce((sum, m) => sum + (m.estimatedWpm || 0), 0) / candidateMessages.length)
+      : 0;
+
+    const calculateIntegrityScore = (copies: number, pastes: number, tabSwitches: number, suspiciousTurns: number, totalTurns: number) => {
+      if (totalTurns === 0) return 100;
+      let score = 100;
+      // Penalize copy events (-10 per copy)
+      score -= copies * 10;
+      // Penalize excessive pastes (-5 per paste beyond 2)
+      score -= Math.max(0, pastes - 2) * 5;
+      // Penalize tab switches (-3 per switch beyond 1)
+      score -= Math.max(0, tabSwitches - 1) * 3;
+      // Penalize suspicious typing (-20 per suspicious turn)
+      score -= suspiciousTurns * 20;
+      return Math.max(0, Math.min(100, score));
+    };
+
+    return {
+      totalKeystrokes,
+      totalCopies,
+      totalPastes,
+      totalTabSwitches,
+      suspiciousTurns,
+      avgWpm,
+      integrityScore: calculateIntegrityScore(totalCopies, totalPastes, totalTabSwitches, suspiciousTurns, candidateMessages.length)
+    };
+  }, [transcriptList]);
 
   const getVerdictChip = (verdict: string) => {
     switch (verdict) {
@@ -99,21 +141,21 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
 
   // Export Transcript to formatted text file
   const handleDownloadTranscript = () => {
-    if (!transcriptData || !transcriptData.transcript) return;
+    if (transcriptList.length === 0) return;
 
     let content = `==========================================================\n`;
     content += `AI INTERVIEW OS - CANDIDATE TRANSCRIPT AUDIT LOG\n`;
     content += `==========================================================\n`;
     content += `Session ID: ${report.sessionId}\n`;
-    content += `Candidate: ${transcriptData.candidateName || report.candidateId}\n`;
+    content += `Candidate: ${report.candidateId}\n`;
     content += `Target Role: ${report.roleTitle} (${report.difficulty})\n`;
     content += `Track: ${report.track}\n`;
     content += `Overall Score: ${report.overallScore}/100 [Verdict: ${report.verdict}]\n`;
-    content += `Total Dialogue Turns: ${transcriptData.totalTurns || 0}\n`;
+    content += `Total Dialogue Turns: ${transcriptList.length}\n`;
     content += `==========================================================\n\n`;
 
-    transcriptData.transcript.forEach((turn, index: number) => {
-      content += `[TURN #${turn.turnNumber || index + 1}] - ${turn.senderRole} (${turn.timestamp || 'N/A'})\n`;
+    transcriptList.forEach((turn, index: number) => {
+      content += `[TURN #${index + 1}] - ${turn.senderRole} (${turn.timestamp || 'N/A'})\n`;
       content += `Type: ${turn.messageType}\n`;
       content += `Content: ${turn.content}\n`;
       if (turn.codeSnippet && turn.codeSnippet.trim()) {
@@ -182,7 +224,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
         </div>
 
         <div className="flex items-center gap-2 print:hidden">
-          {transcriptData && (
+          {transcriptList.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -242,7 +284,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
           >
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
-              <span>Audited Transcript {transcriptData?.totalTurns ? `(${transcriptData.totalTurns} Turns)` : ''}</span>
+              <span>Audited Transcript {transcriptList.length > 0 ? `(${transcriptList.length} Turns)` : ''}</span>
             </div>
           </button>
         </div>
@@ -369,6 +411,80 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
               </div>
             )}
 
+            {/* Integrity Signals Section */}
+            <section className="bg-surface border border-border rounded-lg p-6 space-y-4">
+              <h2 className="text-base font-bold text-text flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                <span>Integrity &amp; Anti-Cheating Signals</span>
+              </h2>
+
+              {/* Integrity Score */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-text">Integrity Score</span>
+                <span className={`text-2xl font-bold font-mono ${
+                  integrityMetrics.integrityScore >= 80 ? 'text-success' :
+                  integrityMetrics.integrityScore >= 50 ? 'text-warning' :
+                  'text-danger'
+                }`}>
+                  {integrityMetrics.integrityScore}/100
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full bg-elevated rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    integrityMetrics.integrityScore >= 80 ? 'bg-success' :
+                    integrityMetrics.integrityScore >= 50 ? 'bg-warning' :
+                    'bg-danger'
+                  }`}
+                  style={{ width: `${integrityMetrics.integrityScore}%` }}
+                />
+              </div>
+
+              {/* Detailed Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-border">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-text font-mono">{integrityMetrics.totalKeystrokes.toLocaleString()}</div>
+                  <div className="text-xs text-text-3 mt-1">Total Keystrokes</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-text font-mono">{integrityMetrics.avgWpm}</div>
+                  <div className="text-xs text-text-3 mt-1">Avg WPM</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-warning font-mono">{integrityMetrics.totalCopies}</div>
+                  <div className="text-xs text-text-3 mt-1">Copy Events</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-warning font-mono">{integrityMetrics.totalPastes}</div>
+                  <div className="text-xs text-text-3 mt-1">Paste Events</div>
+                </div>
+              </div>
+
+              {/* Flags */}
+              {integrityMetrics.totalTabSwitches > 1 && (
+                <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg text-xs text-warning">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Tab switches detected: {integrityMetrics.totalTabSwitches} (may indicate external resource usage)</span>
+                </div>
+              )}
+
+              {integrityMetrics.suspiciousTurns > 0 && (
+                <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/30 rounded-lg text-xs text-danger">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Suspicious typing patterns detected in {integrityMetrics.suspiciousTurns} turn(s) (possible copy-paste or bot-like behavior)</span>
+                </div>
+              )}
+
+              {integrityMetrics.integrityScore < 70 && (
+                <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/30 rounded-lg text-xs text-danger">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>Low integrity score suggests potential academic dishonesty. Review candidate behavior and code similarity.</span>
+                </div>
+              )}
+            </section>
+
             {/* E. 7-DAY TARGETED MASTERY PLAN */}
             {report.sevenDayStudyPlan && report.sevenDayStudyPlan.length > 0 && (
               <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
@@ -408,8 +524,8 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
             </div>
 
             <div className="space-y-1">
-              {transcriptData && transcriptData.transcript ? (
-                transcriptData.transcript.map((turn, index: number) => (
+              {transcriptList && transcriptList.length > 0 ? (
+                transcriptList.map((turn, index: number) => (
                   <div
                     key={index}
                     className="border-b border-border/50 py-3 space-y-1.5 last:border-b-0"
@@ -419,7 +535,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                         <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-elevated border border-border text-text-2">
                           {turn.senderRole}
                         </span>
-                        <span className="text-xs text-text-3">Turn #{turn.turnNumber || index + 1}</span>
+                        <span className="text-xs text-text-3">Turn #{turn.id || index + 1}</span>
                       </div>
                       <span className="text-[11px] text-text-3 font-mono">{turn.timestamp || 'N/A'}</span>
                     </div>
@@ -465,7 +581,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
         personaName="Dr. Anya Chen"
         personaTitle="AI Principal Bar Raiser"
         currentStage="Audited Transcript"
-        transcript={transcriptData?.transcript || []}
+        transcript={transcriptList}
         stackAbove="none"
       />
     </div>

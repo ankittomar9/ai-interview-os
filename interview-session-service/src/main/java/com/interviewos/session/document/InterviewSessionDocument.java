@@ -76,5 +76,15 @@ public class InterviewSessionDocument {
         private String scratchpadSnapshot;
         private java.util.Map<String, String> metadata;
         private LocalDateTime timestamp;
+
+        // Integrity Signals
+        private Integer keystrokeCount;
+        private Integer avgKeystrokeIntervalMs;
+        private Integer keystrokeVariance;
+        private Integer estimatedWpm;
+        private Boolean suspiciousTyping;
+        private Integer copyCount;
+        private Integer pasteCount;
+        private Integer tabSwitchCount;
     }
 }

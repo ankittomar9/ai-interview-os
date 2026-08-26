@@ -18,9 +18,15 @@ public record AddMessageRequest(
 
         String codeSnippet,
 
-        Map<String, String> metadata
+        Map<String, String> metadata,
+
+        IntegritySignals integritySignals
 ) {
     public AddMessageRequest(String senderRole, MessageType messageType, String content, String codeSnippet) {
-        this(senderRole, messageType, content, codeSnippet, null);
+        this(senderRole, messageType, content, codeSnippet, null, null);
+    }
+
+    public AddMessageRequest(String senderRole, MessageType messageType, String content, String codeSnippet, Map<String, String> metadata) {
+        this(senderRole, messageType, content, codeSnippet, metadata, null);
     }
 }

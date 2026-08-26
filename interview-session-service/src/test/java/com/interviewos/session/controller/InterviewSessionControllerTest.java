@@ -151,4 +151,59 @@ class InterviewSessionControllerTest {
                 .andExpect(jsonPath("$[1].metadata.detectedIntent").value("EXPLAINING_APPROACH"))
                 .andExpect(jsonPath("$[1].metadata.recommendedAction").value("PROBE_DEEPER"));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions/{id}/messages with integrity signals should return 201 CREATED and integrity fields")
+    void testAddMessageWithIntegritySignals() throws Exception {
+        com.interviewos.session.dto.IntegritySignals signals = com.interviewos.session.dto.IntegritySignals.builder()
+                .keystrokeCount(350)
+                .avgKeystrokeIntervalMs(120)
+                .keystrokeVariance(450)
+                .estimatedWpm(75)
+                .suspiciousTyping(false)
+                .copyCount(1)
+                .pasteCount(2)
+                .tabSwitchCount(0)
+                .build();
+
+        com.interviewos.session.dto.AddMessageRequest request = new com.interviewos.session.dto.AddMessageRequest(
+                "CANDIDATE",
+                com.interviewos.session.model.MessageType.EXPLANATION,
+                "Here is my solution explanation.",
+                "int a = 1;",
+                null,
+                signals
+        );
+
+        SessionResponse.MessageResponse mockResponse = new SessionResponse.MessageResponse(
+                11L,
+                "CANDIDATE",
+                com.interviewos.session.model.MessageType.EXPLANATION,
+                "Here is my solution explanation.",
+                "int a = 1;",
+                Instant.now(),
+                null,
+                350,
+                120,
+                450,
+                75,
+                false,
+                1,
+                2,
+                0
+        );
+
+        when(sessionService.addMessage(any(), any(com.interviewos.session.dto.AddMessageRequest.class))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/v1/sessions/1/messages")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(11))
+                .andExpect(jsonPath("$.keystrokeCount").value(350))
+                .andExpect(jsonPath("$.estimatedWpm").value(75))
+                .andExpect(jsonPath("$.suspiciousTyping").value(false))
+                .andExpect(jsonPath("$.copyCount").value(1))
+                .andExpect(jsonPath("$.pasteCount").value(2));
+    }
 }

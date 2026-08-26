@@ -43,6 +43,31 @@ public class SessionMessage {
     @Column(nullable = false)
     private Instant timestamp;
 
+    // Integrity Signals (Interview mode only)
+    @Column
+    private Integer keystrokeCount;
+
+    @Column
+    private Integer avgKeystrokeIntervalMs;
+
+    @Column
+    private Integer keystrokeVariance;
+
+    @Column
+    private Integer estimatedWpm;
+
+    @Column
+    private Boolean suspiciousTyping;
+
+    @Column
+    private Integer copyCount;
+
+    @Column
+    private Integer pasteCount;
+
+    @Column
+    private Integer tabSwitchCount;
+
     @PrePersist
     protected void onCreate() {
         if (this.timestamp == null) {

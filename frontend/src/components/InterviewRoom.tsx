@@ -33,6 +33,7 @@ import { defineMonacoThemes } from '../lib/syntax-themes';
 import { TrackNavMenu } from './ui/TrackNavMenu';
 import { saveSubmission, type SubmissionStatus, type SubmissionCaseResult } from '../lib/submissions';
 import { BehavioralStudio } from './behavioral/BehavioralStudio';
+import { useKeystrokeTracker } from '../hooks/useKeystrokeTracker';
 import {
   Timer,
   Play,
@@ -370,8 +371,32 @@ export const InterviewRoom: React.FC<Props> = ({
   // --- Execution Status ---
   const [testStatus, setTestStatus] = useState<'idle' | 'running' | 'passed' | 'failed'>('idle');
 
-  // --- Proctor Sentinel Active Monitoring ---
+  // --- Proctor Sentinel & Anti-Cheating Behavioral Monitoring ---
   const { tabSwitches, pasteDumps } = useProctorSentinel(sessionId, !isPlayground);
+  const [copyCount, setCopyCount] = useState(0);
+  const [pasteCount, setPasteCount] = useState(0);
+  const { getAnalytics, reset: resetKeystrokes } = useKeystrokeTracker(!isPlayground);
+
+  useEffect(() => {
+    if (isPlayground) return;
+
+    const handleCopy = () => setCopyCount((c) => c + 1);
+    const handlePaste = () => setPasteCount((p) => p + 1);
+
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('paste', handlePaste);
+
+    return () => {
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [isPlayground]);
+
+  useEffect(() => {
+    if (!isPlayground) {
+      resetKeystrokes();
+    }
+  }, [currentQuestion?.slug, isPlayground, resetKeystrokes]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -681,6 +706,19 @@ export const InterviewRoom: React.FC<Props> = ({
     setChatInput('');
 
     const candidateTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Collect integrity signals (Interview mode only)
+    const keystrokeData = !isPlayground ? getAnalytics() : null;
+    const integrityMetadata = !isPlayground ? {
+      keystrokeCount: keystrokeData?.totalKeystrokes,
+      avgKeystrokeIntervalMs: keystrokeData?.avgInterval,
+      keystrokeVariance: keystrokeData?.variance,
+      estimatedWpm: keystrokeData?.wpm,
+      suspiciousTyping: keystrokeData?.isSuspicious,
+      copyCount,
+      pasteCount,
+      tabSwitchCount: tabSwitches
+    } : undefined;
+
     setMessages((prev) => [
       ...prev,
       { role: 'candidate', content: candidateText, timestamp: candidateTimestamp }
@@ -691,7 +729,8 @@ export const InterviewRoom: React.FC<Props> = ({
         senderRole: 'CANDIDATE',
         messageType: 'EXPLANATION',
         content: candidateText,
-        codeSnippet: code
+        codeSnippet: code,
+        integritySignals: integrityMetadata
       });
     } catch {
       // Ignore
@@ -725,7 +764,8 @@ export const InterviewRoom: React.FC<Props> = ({
         modelProvider: provider,
         apiKey,
         sessionMode: isPlayground ? 'PLAYGROUND' : 'INTERVIEW',
-        latestExecution: latestExecPayload
+        latestExecution: latestExecPayload,
+        integritySignals: integrityMetadata
       });
 
       // Adaptive Stage Progression
