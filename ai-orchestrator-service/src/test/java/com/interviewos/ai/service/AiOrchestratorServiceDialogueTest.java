@@ -133,4 +133,50 @@ class AiOrchestratorServiceDialogueTest {
         assertEquals("Candidate shared technical explanation.", response.turnSummary());
         assertEquals("PROBE_DEEPER", response.recommendedAction());
     }
+
+    @Test
+    @DisplayName("processDialogue replaces LLM reply claiming tests passed when execution failed")
+    void testPostGuardInterceptsFalselyClaimedPassOnFailedRun() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Congratulations! Your code passed all test cases perfectly!",
+                  "followUpQuestion": "Would you like to optimize further?",
+                  "isSolutionComplete": true,
+                  "codeAnalysis": "Looks good.",
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "COMPLETE",
+                  "turnSummary": "Candidate finished.",
+                  "recommendedAction": "ADVANCE_STAGE"
+                }
+                """;
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Reverse a String")
+                .candidateExplanation("Here is my solution")
+                .candidateCode("class Solution {}")
+                .chatHistory(List.of())
+                .modelProvider(ModelProvider.OLLAMA)
+                .apiKey("fake-key")
+                .latestExecution(new com.interviewos.ai.rubric.dto.ExecutionDto(
+                        "FAILED",
+                        0,
+                        2,
+                        120.0,
+                        15.0
+                ))
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertTrue(response.interviewerReply().contains("0/2 test cases passing"));
+        assertTrue(response.interviewerReply().contains("Let's debug this together"));
+        assertFalse(response.isSolutionComplete());
+        assertEquals("OFFER_HINT", response.recommendedAction());
+    }
 }

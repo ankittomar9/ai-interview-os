@@ -363,19 +363,18 @@ public class AiOrchestratorService {
                     ? root.get("recommendedAction").asText().trim()
                     : "PROBE_DEEPER";
 
-            // T2 Deterministic Post-Guard: never trust the model on verdicts
-            if (isExecutionFailed) {
-                String replyLower = reply.toLowerCase();
-                if (replyLower.matches(".*\\b(all (test cases? )?(passed|pass)|passes all|passed all|passed successfully)\\b.*")) {
-                    int passed = request.latestExecution().passedTests();
-                    int total = request.latestExecution().totalTests();
-                    String status = request.latestExecution().status() != null ? request.latestExecution().status() : "FAILED";
-                    log.warn("🛡️ Deterministic Post-Guard triggered: LLM incorrectly claimed tests passed when sandbox execution failed ({}/{}, status: {}). Overriding with failure-aware template.", passed, total, status);
-                    reply = String.format("I noticed your latest run resulted in %s with %d/%d test cases passing. Let's analyze why this failed.", status, passed, total);
-                    followUp = "What edge case or logic error do you think caused the failing test case, and how can we debug it?";
-                    isComplete = false;
-                    recommendedAction = "OFFER_HINT";
-                }
+            // POST-GUARD: Never trust the model on verdicts
+            if (isExecutionFailed && reply.toLowerCase().matches(".*(all (test cases? )?(passed|pass|correct|solved)|passes all|passed all|passed successfully).*")) {
+                reply = String.format(
+                    "I see your submission resulted in %d/%d test cases passing. Let's debug this together. " +
+                    "Can you walk me through your approach and where you think the logic might be breaking down?",
+                    request.latestExecution().passedTests(),
+                    request.latestExecution().totalTests()
+                );
+                followUp = "What edge case or logic error do you think caused the failing test case, and how can we debug it?";
+                isComplete = false;
+                recommendedAction = "OFFER_HINT";
+                log.info("POST-GUARD: Replaced LLM reply that incorrectly claimed tests passed");
             }
 
             return new AiDialogueResponse(
