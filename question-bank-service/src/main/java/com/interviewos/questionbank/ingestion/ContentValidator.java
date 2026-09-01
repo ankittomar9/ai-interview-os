@@ -11,6 +11,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -50,8 +52,18 @@ public class ContentValidator {
         if ("ALGORITHMS_DATA_STRUCTURES".equals(track)) {
             if (doc.getSolutionCode() == null || doc.getSolutionCode().isBlank()) {
                 errors.add("DSA Question requires valid solutionCode");
-            } else if (!doc.getSolutionCode().contains("class") && !doc.getSolutionCode().contains("def ")) {
-                warnings.add("solutionCode does not appear to contain a class or function structure");
+            } else {
+                if (!doc.getSolutionCode().contains("class") && !doc.getSolutionCode().contains("def ")) {
+                    warnings.add("solutionCode does not appear to contain a class or function structure");
+                }
+                // Single-file DSA Java solutionCode must declare class 'Main'
+                Matcher publicClassMatcher = Pattern.compile("public\\s+class\\s+(\\w+)").matcher(doc.getSolutionCode());
+                if (publicClassMatcher.find()) {
+                    String className = publicClassMatcher.group(1);
+                    if (!"Main".equals(className)) {
+                        errors.add("DSA solutionCode must declare class 'Main', but found: " + className);
+                    }
+                }
             }
 
             int testCount = (doc.getSampleTests() != null ? doc.getSampleTests().size() : 0) +

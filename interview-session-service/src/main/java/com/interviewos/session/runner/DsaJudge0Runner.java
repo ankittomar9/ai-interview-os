@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -35,6 +37,9 @@ public class DsaJudge0Runner implements TrackRunner {
     public ExecutionResultResponse run(Long sessionId, ProblemDocument problem, Map<String, String> candidateFiles, String language) {
         String codeSnippet = candidateFiles != null ? candidateFiles.values().stream().findFirst().orElse("") : "";
         int languageId = resolveLanguageId(language);
+        if (languageId == 62) {
+            codeSnippet = normalizeJavaCode(codeSnippet);
+        }
 
         log.info("Running DSA Judge0 sandbox for session {} [Language: {} (ID: {}), Problem: {}]",
                 sessionId, language, languageId, problem.getProblemSlug());
@@ -221,6 +226,30 @@ public class DsaJudge0Runner implements TrackRunner {
             case "c" -> 50; // C (GCC 9.2.0)
             default -> 62; // Java (OpenJDK 13.0.1)
         };
+    }
+
+    public static String normalizeJavaCode(String code) {
+        if (code == null || code.isBlank()) {
+            return "";
+        }
+        // 1. If public class <Name> (where Name != Main), rename to public class Main
+        Matcher publicClassMatcher = Pattern.compile("public\\s+class\\s+(\\w+)").matcher(code);
+        if (publicClassMatcher.find()) {
+            String name = publicClassMatcher.group(1);
+            if (!"Main".equals(name)) {
+                return publicClassMatcher.replaceFirst("public class Main");
+            }
+            return code;
+        }
+        // 2. If non-public class <Name> where Name != Main (and no Main class exists), rename first occurrence to public class Main
+        Matcher classMatcher = Pattern.compile("(?m)^\\s*class\\s+(\\w+)").matcher(code);
+        if (classMatcher.find()) {
+            String name = classMatcher.group(1);
+            if (!"Main".equals(name) && !code.contains("class Main")) {
+                return classMatcher.replaceFirst("public class Main");
+            }
+        }
+        return code;
     }
 
     private record TestDescriptor(String name, String input, String expectedOutput, boolean isHidden) {}

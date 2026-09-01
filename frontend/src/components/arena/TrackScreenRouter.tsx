@@ -26,6 +26,8 @@ interface TrackScreenRouterProps {
   provider: ModelProvider;
   apiKey: string;
   isPlayground?: boolean;
+  onNextQuestion?: () => void;
+  onNextStage?: () => void;
   onFinish?: () => void;
   candidateName?: string;
   onSelectTrack?: (track: InterviewTrack) => void;
@@ -48,6 +50,8 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   provider,
   apiKey,
   isPlayground,
+  onNextQuestion,
+  onNextStage,
   onFinish = () => {},
   candidateName,
   onSelectTrack,
@@ -108,6 +112,8 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
           isExecuting={isExecuting}
           executionResult={executionResult}
           isPlayground={isPlayground}
+          onNextQuestion={onNextQuestion}
+          onNextStage={onNextStage}
         />
       );
     }
@@ -149,6 +155,8 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
         isExecuting={isExecuting}
         executionResult={executionResult}
         isPlayground={isPlayground}
+        onNextQuestion={onNextQuestion}
+        onNextStage={onNextStage}
       />
     );
   };

@@ -168,7 +168,7 @@ public class AiOrchestratorService {
             systemInstructionBuilder.append("""
                     You are Coach Sam, a FAANG Senior Tech Lead and Code & Architecture Coach helping a software engineer practice.
                     The candidate is practicing in an unproctored playground.
-                    Introduce or address yourself as Coach Sam when relevant.
+                    Do not state your own name or introduce yourself by name in your responses. The UI displays your persona header separately.
                     Your coaching principles:
                     1. If they're stuck: give progressive Socratic hints (do NOT give away the complete answer immediately).
                     2. If they ask "how do I solve this?": walk through the algorithmic approach and data structure choices step-by-step.
@@ -204,7 +204,7 @@ public class AiOrchestratorService {
         } else {
             systemInstructionBuilder.append("""
                     You are Mickey, a FAANG Principal Software Engineer and Bar Raiser conducting a live, rigorous technical interview assessment.
-                    Introduce or address yourself as Mickey when relevant.
+                    Do not state your own name or introduce yourself by name in your responses. The UI displays your persona header separately.
                     Assess the candidate's explanation and code submission against the problem context with high architectural and engineering standards.
                     
                     CONVERSATION MEMORY:
@@ -243,19 +243,13 @@ public class AiOrchestratorService {
             }
         }
 
-        boolean isAllTestsPassed = request.latestExecution() != null &&
-                request.latestExecution().totalTests() > 0 &&
+        boolean isExecutionAvailable = request.latestExecution() != null && request.latestExecution().totalTests() > 0;
+        boolean isAllTestsPassed = isExecutionAvailable &&
                 request.latestExecution().passedTests() == request.latestExecution().totalTests() &&
                 ("PASSED".equalsIgnoreCase(request.latestExecution().status()) || "ACCEPTED".equalsIgnoreCase(request.latestExecution().status()));
+        boolean isExecutionFailed = isExecutionAvailable && !isAllTestsPassed;
 
-        boolean isCandidateSubmission = request.candidateExplanation() != null && (
-                request.candidateExplanation().toLowerCase().contains("submitted") ||
-                request.candidateExplanation().toLowerCase().contains("completed and submitted") ||
-                request.candidateExplanation().toLowerCase().contains("all test cases passed") ||
-                request.candidateExplanation().toLowerCase().contains("finalized")
-        );
-
-        if (isAllTestsPassed || (isCandidateSubmission && (request.latestExecution() == null || request.latestExecution().passedTests() > 0))) {
+        if (isAllTestsPassed) {
             if (isPlayground) {
                 systemInstructionBuilder.append(String.format("""
                         
@@ -269,8 +263,8 @@ public class AiOrchestratorService {
                         5. Set "recommendedAction": "ADVANCE_STAGE".
                         6. Do NOT ask generic "how would you optimize" filler questions that ignore their passing solution.
                         """,
-                        request.latestExecution() != null ? request.latestExecution().passedTests() : 1,
-                        request.latestExecution() != null ? request.latestExecution().totalTests() : 1
+                        request.latestExecution().passedTests(),
+                        request.latestExecution().totalTests()
                 ));
             } else {
                 systemInstructionBuilder.append(String.format("""
@@ -280,10 +274,24 @@ public class AiOrchestratorService {
                         Acknowledge that all test cases passed successfully.
                         Set "isSolutionComplete": true and "recommendedAction": "ADVANCE_STAGE".
                         """,
-                        request.latestExecution() != null ? request.latestExecution().passedTests() : 1,
-                        request.latestExecution() != null ? request.latestExecution().totalTests() : 1
+                        request.latestExecution().passedTests(),
+                        request.latestExecution().totalTests()
                 ));
             }
+        } else if (isExecutionFailed) {
+            int passed = request.latestExecution().passedTests();
+            int total = request.latestExecution().totalTests();
+            String status = request.latestExecution().status() != null ? request.latestExecution().status() : "FAILED";
+            systemInstructionBuilder.append(String.format("""
+                    
+                    CRITICAL - CODE EXECUTION FAILED:
+                    The candidate's latest run FAILED (%d/%d test cases passed, status: %s).
+                    NEVER claim tests passed or congratulate them on passing.
+                    Acknowledge the failure, reference the failing test case or error, and ask one guiding debugging question to help them fix the issue.
+                    Set "isSolutionComplete": false and "recommendedAction": "OFFER_HINT".
+                    """,
+                    passed, total, status
+            ));
         } else if (request.latestExecution() != null) {
             systemInstructionBuilder.append(String.format("""
                     
@@ -340,7 +348,7 @@ public class AiOrchestratorService {
                 root.get("areasToImprove").forEach(a -> areas.add(a.asText()));
             }
 
-            // Defaults for new M6.5 intent and action fields
+            // Defaults for intent and action fields
             String detectedIntent = root.hasNonNull("detectedIntent") && !root.get("detectedIntent").asText().isBlank()
                     ? root.get("detectedIntent").asText().trim()
                     : "EXPLAINING_APPROACH";
@@ -352,6 +360,21 @@ public class AiOrchestratorService {
             String recommendedAction = root.hasNonNull("recommendedAction") && !root.get("recommendedAction").asText().isBlank()
                     ? root.get("recommendedAction").asText().trim()
                     : "PROBE_DEEPER";
+
+            // T2 Deterministic Post-Guard: never trust the model on verdicts
+            if (isExecutionFailed) {
+                String replyLower = reply.toLowerCase();
+                if (replyLower.matches(".*\\b(all (test cases? )?(passed|pass)|passes all|passed all|passed successfully)\\b.*")) {
+                    int passed = request.latestExecution().passedTests();
+                    int total = request.latestExecution().totalTests();
+                    String status = request.latestExecution().status() != null ? request.latestExecution().status() : "FAILED";
+                    log.warn("🛡️ Deterministic Post-Guard triggered: LLM incorrectly claimed tests passed when sandbox execution failed ({}/{}, status: {}). Overriding with failure-aware template.", passed, total, status);
+                    reply = String.format("I noticed your latest run resulted in %s with %d/%d test cases passing. Let's analyze why this failed.", status, passed, total);
+                    followUp = "What edge case or logic error do you think caused the failing test case, and how can we debug it?";
+                    isComplete = false;
+                    recommendedAction = "OFFER_HINT";
+                }
+            }
 
             return new AiDialogueResponse(
                     reply,
@@ -367,12 +390,12 @@ public class AiOrchestratorService {
         } catch (Exception e) {
             log.warn("⚠️ LLM dialogue extraction notice: {}. Using completion-aware structured fallback dialogue.", e.getMessage());
 
-            if (isAllTestsPassed || (isCandidateSubmission && (request.latestExecution() == null || request.latestExecution().passedTests() > 0))) {
-                int passed = request.latestExecution() != null ? request.latestExecution().passedTests() : 1;
-                int total = request.latestExecution() != null ? request.latestExecution().totalTests() : 1;
+            if (isAllTestsPassed) {
+                int passed = request.latestExecution().passedTests();
+                int total = request.latestExecution().totalTests();
                 return new AiDialogueResponse(
                         String.format("Your solution is correct and passes all %d/%d test cases! Excellent work.", passed, total),
-                        "You can now move to the next question using the Question Rail on the left, or finish and submit the practice session.",
+                        "You can now move to the next question using the Question Rail on the left, or advance to the next stage.",
                         true,
                         "Solution passes all sandbox functional test cases cleanly.",
                         List.of("Passed all test invariants", "Correct boundary and edge case handling"),
@@ -380,6 +403,21 @@ public class AiOrchestratorService {
                         "COMPLETE",
                         "Candidate successfully solved and submitted passing solution.",
                         "ADVANCE_STAGE"
+                );
+            } else if (isExecutionFailed) {
+                int passed = request.latestExecution().passedTests();
+                int total = request.latestExecution().totalTests();
+                String status = request.latestExecution().status() != null ? request.latestExecution().status() : "FAILED";
+                return new AiDialogueResponse(
+                        String.format("Your latest execution resulted in %s with %d/%d test cases passing.", status, passed, total),
+                        "Which test case or edge condition do you think failed, and what adjustments should we make to the code?",
+                        false,
+                        "The solution encountered test case failures or compilation/runtime errors.",
+                        List.of("Active attempt on problem implementation"),
+                        List.of("Diagnose failing test case boundary conditions"),
+                        "EXPLAINING_APPROACH",
+                        "Candidate submitted solution that did not pass all test cases.",
+                        "OFFER_HINT"
                 );
             }
 

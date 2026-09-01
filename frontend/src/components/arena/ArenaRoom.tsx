@@ -104,7 +104,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   const handleSubmitSolution = async () => {
     const result = await submitSolution(code, language);
-    if (result && result.status === 'Accepted') {
+    const isPassed = result && (result.status === 'Accepted' || (result.passedTests > 0 && result.passedTests === result.totalTests));
+    if (isPassed) {
       markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, 'PASSED');
     } else {
       markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, 'ATTEMPTED');
@@ -112,7 +113,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
     await dialogue.triggerCandidateTurn(
       `I have submitted my solution for ${activeQuestion.title || 'the problem'}.`,
-      code
+      code,
+      result
     );
   };
 
@@ -124,6 +126,20 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       dialogue.setCurrentStage(targetStage);
     }
   }, [activeTrack, dialogue]);
+
+  const handleNextQuestion = useCallback(() => {
+    if (activeQuestionIndex < questionsList.length - 1) {
+      selectQuestion(activeQuestionIndex + 1);
+    }
+  }, [activeQuestionIndex, questionsList.length, selectQuestion]);
+
+  const handleNextStage = useCallback(() => {
+    const STAGES: InterviewStage[] = ['INTRODUCTION', 'CORE_TECH', 'CODING_DSA', 'SYSTEM_DESIGN'];
+    const currentIdx = STAGES.indexOf(dialogue.currentStage);
+    if (currentIdx < STAGES.length - 1) {
+      handleStageClick(STAGES[currentIdx + 1]);
+    }
+  }, [dialogue.currentStage, handleStageClick]);
 
   const handleConfirmStageSwitch = useCallback(() => {
     if (pendingStageSwitch) {
@@ -143,6 +159,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       track={activeTrack}
       onSwitchTrack={setActiveTrack}
       question={activeQuestion}
+      onNextQuestion={handleNextQuestion}
+      onNextStage={handleNextStage}
       questionsList={questionsList}
       activeQuestionIndex={activeQuestionIndex}
       onSelectQuestion={(idx) => {

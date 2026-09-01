@@ -19,6 +19,8 @@ interface SqlScreenProps {
   isExecuting: boolean;
   executionResult: ExecutionResult | null;
   isPlayground?: boolean;
+  onNextQuestion?: () => void;
+  onNextStage?: () => void;
 }
 
 export const SqlScreen: React.FC<SqlScreenProps> = ({
@@ -28,7 +30,10 @@ export const SqlScreen: React.FC<SqlScreenProps> = ({
   onRunCode,
   onSubmitSolution,
   isExecuting,
-  executionResult
+  executionResult,
+  isPlayground,
+  onNextQuestion,
+  onNextStage
 }) => {
   const { resolvedTheme } = useTheme();
   const [cursor, setCursor] = useState({ ln: 1, col: 1 });
@@ -171,6 +176,26 @@ export const SqlScreen: React.FC<SqlScreenProps> = ({
 
       {/* SQL Query Result Tables & Execution Result Panel */}
       <Panel defaultSize="40%" minSize="15%" maxSize="75%" id="sql-testcase-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
+        {executionResult?.status === 'passed' && (
+          <div className="bg-success/15 border-b border-success/30 px-3 py-1.5 flex items-center justify-between gap-2 text-xs shrink-0 select-none animate-in fade-in">
+            <div className="flex items-center gap-1.5 font-bold text-success">
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <span>All tests passed.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isPlayground && onNextQuestion && (
+                <Button variant="secondary" size="sm" onClick={onNextQuestion} className="h-6 text-[11px] px-2.5">
+                  Next Question →
+                </Button>
+              )}
+              {onNextStage && (
+                <Button variant="primary" size="sm" onClick={onNextStage} className="h-6 text-[11px] px-2.5 font-bold">
+                  Next Stage →
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
         <TestcasePanel
           testCases={allTestCases}
           executionResult={executionResult}

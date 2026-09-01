@@ -54,7 +54,7 @@ export function useDialogue({
 
   const lastTurnRef = useRef<{ textToSend: string; codeSnapshot: string } | null>(null);
 
-  const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "") => {
+  const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any) => {
     const textToSend = (forcedText !== undefined ? forcedText : chatInput).trim();
     if (!textToSend && !codeSnapshot) return;
 
@@ -90,6 +90,13 @@ export function useDialogue({
         modelProvider: provider,
         apiKey,
         sessionMode: isPlayground ? "PLAYGROUND" : "INTERVIEW",
+        latestExecution: latestExecution ? {
+          status: latestExecution.status || 'FAILED',
+          passedTests: latestExecution.passedTests || 0,
+          totalTests: latestExecution.totalTests || 0,
+          executionTimeMs: latestExecution.executionTimeMs || 0,
+          memoryUsedMb: latestExecution.memoryUsedMb || 0
+        } : undefined,
         integritySignals: integrity
       });
 

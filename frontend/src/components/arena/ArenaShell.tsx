@@ -53,6 +53,8 @@ interface ArenaShellProps {
   pendingStageSwitch?: { stage: InterviewStage; targetTrack: InterviewTrack } | null;
   onConfirmStageSwitch?: () => void;
   onCancelStageSwitch?: () => void;
+  onNextQuestion?: () => void;
+  onNextStage?: () => void;
   isAiPanelOpen: boolean;
   onToggleAiPanel: () => void;
   onCloseAiPanel: () => void;
@@ -106,6 +108,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
   pendingStageSwitch,
   onConfirmStageSwitch,
   onCancelStageSwitch,
+  onNextQuestion,
+  onNextStage,
   isAiPanelOpen,
   onToggleAiPanel,
   onCloseAiPanel,
@@ -185,11 +189,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
                 sessionId={sessionId}
                 isPracticeMode={isPlayground}
                 hasRunAttempt={executionResult !== null}
-                isSolved={questionStatusMap[activeSlug] === 'PASSED'}
-                isBookmarked={!!bookmarkedMap[activeSlug]}
+                isSolved={questionStatusMap[activeSlug] === 'PASSED'} isBookmarked={!!bookmarkedMap[activeSlug]}
                 onToggleBookmark={() => setBookmarkedMap((p) => ({ ...p, [activeSlug]: !p[activeSlug] }))}
-                hintsRevealed={hintsRevealed[activeSlug] || 0}
-                onRevealHint={() => setHintsRevealed((p) => ({ ...p, [activeSlug]: (p[activeSlug] || 0) + 1 }))}
+                hintsRevealed={hintsRevealed[activeSlug] || 0} onRevealHint={() => setHintsRevealed((p) => ({ ...p, [activeSlug]: (p[activeSlug] || 0) + 1 }))}
               />
             </Panel>
             <Separator className="w-[3px] bg-border/60 hover:bg-primary/60 cursor-col-resize relative flex items-center justify-center z-10 select-none" />
@@ -210,6 +212,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
                 provider={provider}
                 apiKey={apiKey}
                 isPlayground={isPlayground}
+                onNextQuestion={onNextQuestion}
+                onNextStage={onNextStage}
                 onSelectTrack={onSwitchTrack}
               />
             </Panel>
