@@ -15,7 +15,8 @@ import {
   Code2,
   Layers,
   HelpCircle,
-  Award
+  Award,
+  Video
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
@@ -31,7 +32,7 @@ interface Props {
 }
 
 export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => {
-  const [activeTab, setActiveTab] = useState<'report' | 'transcript'>('report');
+  const [activeTab, setActiveTab] = useState<'report' | 'transcript' | 'recording'>('report');
   const [transcriptData, setTranscriptData] = useState<SessionMessage[] | {
     totalTurns?: number;
     candidateName?: string;
@@ -287,6 +288,21 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
               <span>Audited Transcript {transcriptList.length > 0 ? `(${transcriptList.length} Turns)` : ''}</span>
             </div>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('recording')}
+            className={`pb-2.5 font-semibold transition-colors cursor-pointer border-b-2 ${
+              activeTab === 'recording'
+                ? 'border-primary text-text'
+                : 'border-transparent text-text-3 hover:text-text'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Video className="w-4 h-4" />
+              <span>Session Recording</span>
+            </div>
+          </button>
         </div>
 
         {activeTab === 'report' ? (
@@ -510,7 +526,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
             )}
 
           </div>
-        ) : (
+        ) : activeTab === 'transcript' ? (
           /* F. FULL AUDITED DIALOGUE TRANSCRIPT */
           <div className="bg-surface border border-border rounded-lg p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
@@ -556,6 +572,56 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                   Loading audited transcript records...
                 </div>
               )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="bg-surface border border-border rounded-lg p-6 space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-3 border-b border-border pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Video className="w-5 h-5 text-text" />
+                    <h2 className="text-base font-bold text-text">Proctored Session Recording</h2>
+                  </div>
+                  <p className="text-xs text-text-3 mt-1">
+                    Continuous video &amp; audio proctor stream recorded across session chunks in MongoDB GridFS (7-day lifecycle retention).
+                  </p>
+                </div>
+                <a
+                  href={`/api/v1/sessions/${report.sessionId}/recordings/download`}
+                  download={`session-${report.sessionId}-recording.webm`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-primary text-on-accent hover:bg-primary/90 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download .webm</span>
+                </a>
+              </div>
+
+              <div className="w-full bg-black rounded-lg overflow-hidden border border-border aspect-video max-h-[500px] flex items-center justify-center">
+                <video
+                  controls
+                  playsInline
+                  className="w-full h-full object-contain"
+                  src={`/api/v1/sessions/${report.sessionId}/recordings/stream`}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="bg-elevated p-3 rounded border border-border space-y-1">
+                  <span className="text-[11px] font-semibold text-text-3 block">Storage Engine</span>
+                  <span className="text-xs font-bold text-text">MongoDB GridFS Chunked</span>
+                </div>
+                <div className="bg-elevated p-3 rounded border border-border space-y-1">
+                  <span className="text-[11px] font-semibold text-text-3 block">Stream Format</span>
+                  <span className="text-xs font-bold text-text">WebM (VP8 / Opus 5000ms chunks)</span>
+                </div>
+                <div className="bg-elevated p-3 rounded border border-border space-y-1">
+                  <span className="text-[11px] font-semibold text-text-3 block">Integrity Status</span>
+                  <Chip variant="success" size="sm">
+                    Verified Stream Available
+                  </Chip>
+                </div>
+              </div>
             </div>
           </div>
         )}

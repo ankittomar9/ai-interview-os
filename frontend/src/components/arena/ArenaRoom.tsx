@@ -5,6 +5,7 @@ import { useExecution } from './hooks/useExecution';
 import { useDialogue } from './hooks/useDialogue';
 import { useProctoring } from './hooks/useProctoring';
 import { useCoachVoice } from './hooks/useCoachVoice';
+import { useSessionRecorder } from '../../hooks/useSessionRecorder';
 import { ArenaShell } from './ArenaShell';
 import { getPersona } from '../../lib/personas';
 import type { InterviewStage } from '../StageStepper';
@@ -97,6 +98,12 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     initialWelcome: persona.welcomeMessage,
     onAiSpeechRequested: voice.speakText,
     getIntegritySignals: proctoring.getIntegritySignals
+  });
+
+  // 7. Session Video Recording Engine
+  const recorder = useSessionRecorder({
+    sessionId,
+    isPlayground
   });
 
   // Handlers
@@ -215,6 +222,9 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       isWindowBlurred={proctoring.isWindowBlurred}
       tabSwitches={proctoring.tabSwitches}
       pasteDumps={proctoring.pasteDumps}
+      isRecording={recorder.isRecording}
+      recordingSeconds={recorder.recordingSeconds}
+      recordingInterrupted={recorder.recordingInterrupted}
     />
   );
 };

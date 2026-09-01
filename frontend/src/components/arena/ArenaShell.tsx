@@ -71,62 +71,24 @@ interface ArenaShellProps {
   isWindowBlurred?: boolean;
   tabSwitches?: number;
   pasteDumps?: number;
+  isRecording?: boolean;
+  recordingSeconds?: number;
+  recordingInterrupted?: boolean;
 }
 
-export const ArenaShell: React.FC<ArenaShellProps> = ({
-  sessionId,
-  track,
-  onSwitchTrack,
-  question,
-  questionsList,
-  activeQuestionIndex,
-  onSelectQuestion,
-  questionStatusMap,
-  code,
-  onChangeCode,
-  language,
-  onChangeLanguage,
-  onRunCode,
-  onSubmitSolution,
-  isExecuting,
-  executionResult,
-  provider,
-  apiKey,
-  sessionMode = 'INTERVIEW',
-  onFinish,
-  messages,
-  chatInput,
-  setChatInput,
-  onSendTurn,
-  isAiResponding,
-  currentStage,
-  onStageClick,
-  providerError,
-  onRetryProvider,
-  onClearProviderError,
-  onOpenProviderSettings,
-  pendingStageSwitch,
-  onConfirmStageSwitch,
-  onCancelStageSwitch,
-  onNextQuestion,
-  onNextStage,
-  isAiPanelOpen,
-  onToggleAiPanel,
-  onCloseAiPanel,
-  isListening,
-  isSpeakingNow,
-  isAiSpeaking,
-  voiceOutputEnabled,
-  onToggleVoice,
-  onMicToggle,
-  interimTranscript = '',
-  micError = null,
-  onClearMicError,
-  hasUnreadAi,
-  isWindowBlurred = false,
-  tabSwitches = 0,
-  pasteDumps = 0
-}) => {
+export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
+  const {
+    sessionId, track, onSwitchTrack, question, questionsList, activeQuestionIndex, onSelectQuestion,
+    questionStatusMap, code, onChangeCode, language, onChangeLanguage, onRunCode, onSubmitSolution,
+    isExecuting, executionResult, provider, apiKey, sessionMode = 'INTERVIEW', onFinish, messages,
+    chatInput, setChatInput, onSendTurn, isAiResponding, currentStage, onStageClick, providerError,
+    onRetryProvider, onClearProviderError, onOpenProviderSettings, pendingStageSwitch,
+    onConfirmStageSwitch, onCancelStageSwitch, onNextQuestion, onNextStage, isAiPanelOpen,
+    onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking, voiceOutputEnabled,
+    onToggleVoice, onMicToggle, interimTranscript = '', micError = null, onClearMicError,
+    hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
+    isRecording, recordingSeconds, recordingInterrupted
+  } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
 
@@ -166,6 +128,13 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
           <Chip variant={isPlayground ? 'success' : 'primary'} size="sm">
             {isPlayground ? 'PLAYGROUND' : 'PROCTORED INTERVIEW'}
           </Chip>
+          {!isPlayground && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-elevated border border-border text-[11px] font-mono">
+              <span className={`w-2 h-2 rounded-full ${recordingInterrupted ? 'bg-danger animate-ping' : isRecording ? 'bg-danger animate-pulse' : 'bg-text-3'}`} />
+              <span className="font-bold text-text-2">{recordingInterrupted ? 'REC INTERRUPTED' : isRecording ? 'REC' : 'STANDBY'}</span>
+              {isRecording && <span className="text-text-3">({Math.floor((recordingSeconds || 0) / 60)}:{String((recordingSeconds || 0) % 60).padStart(2, '0')})</span>}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <SelfTimer />
