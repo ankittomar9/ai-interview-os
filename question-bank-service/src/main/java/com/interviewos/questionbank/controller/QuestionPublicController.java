@@ -28,13 +28,20 @@ public class QuestionPublicController {
             @RequestParam(required = false) String difficulty,
             @RequestParam(required = false) List<String> tags,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String sessionMode
+            @RequestParam(required = false) String sessionMode,
+            @RequestParam(required = false) List<String> slugs,
+            @RequestParam(required = false) Long sessionId
     ) {
-        log.info("Listing public questions [track: {}, difficulty: {}, tags: {}, query: {}, sessionMode: {}]", track, difficulty, tags, q, sessionMode);
+        log.info("Listing public questions [track: {}, difficulty: {}, tags: {}, query: {}, sessionMode: {}, slugs: {}, sessionId: {}]",
+                track, difficulty, tags, q, sessionMode, slugs, sessionId);
         boolean isInterview = "INTERVIEW".equalsIgnoreCase(sessionMode);
 
         List<QuestionDocument> docs;
-        if (track != null && !track.isBlank() && difficulty != null && !difficulty.isBlank()) {
+        if (slugs != null && !slugs.isEmpty()) {
+            docs = questionRepository.findAll().stream()
+                    .filter(d -> "PUBLISHED".equalsIgnoreCase(d.getStatus()) && slugs.contains(d.getSlug()))
+                    .toList();
+        } else if (track != null && !track.isBlank() && difficulty != null && !difficulty.isBlank()) {
             docs = questionRepository.findByTrackAndDifficultyAndStatus(track, difficulty, "PUBLISHED");
         } else if (track != null && !track.isBlank()) {
             docs = questionRepository.findByTrackAndStatus(track, "PUBLISHED");

@@ -16,6 +16,7 @@ interface QuestionRailProps {
   onSelect: (index: number) => void;
   onShuffle?: () => void;
   className?: string;
+  sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
 }
 
 export const QuestionRail: React.FC<QuestionRailProps> = ({
@@ -23,8 +24,11 @@ export const QuestionRail: React.FC<QuestionRailProps> = ({
   selectedIndex,
   onSelect,
   onShuffle,
-  className = ''
+  className = '',
+  sessionMode = 'INTERVIEW'
 }) => {
+  const isPlayground = sessionMode === 'PLAYGROUND';
+
   const getStatusDotColor = (status: QuestionStatus) => {
     switch (status) {
       case 'PASSED':
@@ -43,14 +47,16 @@ export const QuestionRail: React.FC<QuestionRailProps> = ({
     >
       {/* Top Question List */}
       <div className="flex flex-col items-center gap-1.5 w-full overflow-y-auto px-1">
-        {/* All Pill */}
-        <button
-          type="button"
-          title="All Questions"
-          className="w-full py-1 text-[10px] font-bold text-text-3 hover:text-text rounded transition-colors text-center"
-        >
-          All
-        </button>
+        {/* All Pill (Playground only) */}
+        {isPlayground && (
+          <button
+            type="button"
+            title="All Questions"
+            className="w-full py-1 text-[10px] font-bold text-text-3 hover:text-text rounded transition-colors text-center"
+          >
+            All
+          </button>
+        )}
 
         {/* Q1..Qn buttons */}
         {items.map((item, idx) => {
@@ -80,26 +86,28 @@ export const QuestionRail: React.FC<QuestionRailProps> = ({
         })}
       </div>
 
-      {/* Bottom Tool Icons */}
-      <div className="flex flex-col items-center gap-2 w-full pt-2 border-t border-border/50">
-        {onShuffle && (
+      {/* Bottom Tool Icons (Playground only) */}
+      {isPlayground && (
+        <div className="flex flex-col items-center gap-2 w-full pt-2 border-t border-border/50">
+          {onShuffle && (
+            <button
+              type="button"
+              onClick={onShuffle}
+              title="Random / Next Untouched Question"
+              className="w-8 h-8 rounded flex items-center justify-center text-text-3 hover:text-text hover:bg-surface transition-colors cursor-pointer"
+            >
+              <Shuffle className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             type="button"
-            onClick={onShuffle}
-            title="Random / Next Untouched Question"
+            title="Question List View"
             className="w-8 h-8 rounded flex items-center justify-center text-text-3 hover:text-text hover:bg-surface transition-colors cursor-pointer"
           >
-            <Shuffle className="w-3.5 h-3.5" />
+            <ListFilter className="w-3.5 h-3.5" />
           </button>
-        )}
-        <button
-          type="button"
-          title="Question List View"
-          className="w-8 h-8 rounded flex items-center justify-center text-text-3 hover:text-text hover:bg-surface transition-colors cursor-pointer"
-        >
-          <ListFilter className="w-3.5 h-3.5" />
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

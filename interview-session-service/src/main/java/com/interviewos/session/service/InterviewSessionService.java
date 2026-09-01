@@ -34,12 +34,21 @@ public class InterviewSessionService {
     private final SessionMessageRepository messageRepository;
     private final InterviewSessionMongoRepository mongoSessionRepository;
     private final ResumeParsingService resumeParsingService;
+    private final com.interviewos.session.sandbox.client.QuestionBankClient questionBankClient;
 
     @Transactional
     public SessionResponse createSession(CreateSessionRequest request) {
         log.info("Creating new interview session for candidate: {}, role: {}", request.candidateId(), request.roleTitle());
 
         String effectiveMode = request.getEffectiveMode();
+        List<String> plannedSlugs = new ArrayList<>();
+        if ("INTERVIEW".equalsIgnoreCase(effectiveMode)) {
+            long seed = Math.abs((long) (request.candidateId() != null ? request.candidateId().hashCode() : 42) * 31
+                    + (request.track() != null ? request.track().name().hashCode() : 0)
+                    + (request.difficulty() != null ? request.difficulty().name().hashCode() : 0));
+            plannedSlugs = buildPlannedSlugs(request.track(), request.difficulty(), seed);
+        }
+
         InterviewSession session = InterviewSession.builder()
                 .candidateId(request.candidateId())
                 .roleTitle(request.roleTitle())
@@ -49,12 +58,14 @@ public class InterviewSessionService {
                 .jobDescription(request.jobDescription())
                 .status(SessionStatus.INITIALIZED)
                 .sessionMode(effectiveMode)
+                .plannedSlugs(plannedSlugs)
                 .build();
 
         InterviewSession saved = sessionRepository.save(session);
 
         // Sync to MongoDB Document Store (Safe Upsert)
         try {
+            final List<String> finalPlannedSlugs = plannedSlugs;
             InterviewSessionDocument mongoDoc = mongoSessionRepository
                     .findFirstBySessionIdOrderByCreatedAtDesc(saved.getId())
                     .orElseGet(() -> InterviewSessionDocument.builder()
@@ -67,18 +78,111 @@ public class InterviewSessionService {
                             .targetCompany(request.targetCompany())
                             .status(SessionStatus.INITIALIZED.name())
                             .sessionMode(effectiveMode)
+                            .plannedSlugs(finalPlannedSlugs)
                             .transcript(new ArrayList<>())
                             .createdAt(LocalDateTime.now())
                             .build());
 
             mongoDoc.setStatus(SessionStatus.INITIALIZED.name());
             mongoDoc.setSessionMode(effectiveMode);
+            mongoDoc.setPlannedSlugs(plannedSlugs);
             mongoSessionRepository.save(mongoDoc);
         } catch (Exception e) {
             log.warn("⚠️ Failed to mirror session to MongoDB: {}", e.getMessage());
         }
 
         return SessionResponse.fromEntity(saved);
+    }
+
+    public List<String> buildPlannedSlugs(com.interviewos.session.model.InterviewTrack track, com.interviewos.session.model.DifficultyLevel difficulty, long seed) {
+        if (track == null) track = com.interviewos.session.model.InterviewTrack.ALGORITHMS_DATA_STRUCTURES;
+        if (difficulty == null) difficulty = com.interviewos.session.model.DifficultyLevel.MID;
+
+        com.interviewos.session.model.DifficultyLevel low = switch (difficulty) {
+            case JUNIOR -> com.interviewos.session.model.DifficultyLevel.JUNIOR;
+            case MID -> com.interviewos.session.model.DifficultyLevel.JUNIOR;
+            case SENIOR -> com.interviewos.session.model.DifficultyLevel.MID;
+            case STAFF -> com.interviewos.session.model.DifficultyLevel.SENIOR;
+        };
+        com.interviewos.session.model.DifficultyLevel mid = difficulty;
+        com.interviewos.session.model.DifficultyLevel high = switch (difficulty) {
+            case JUNIOR -> com.interviewos.session.model.DifficultyLevel.MID;
+            case MID -> com.interviewos.session.model.DifficultyLevel.SENIOR;
+            case SENIOR, STAFF -> com.interviewos.session.model.DifficultyLevel.STAFF;
+        };
+
+        List<com.interviewos.session.model.DifficultyLevel> ladder = List.of(low, mid, high);
+        List<String> planned = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+
+        Map<String, Map<com.interviewos.session.model.DifficultyLevel, List<String>>> fallbackCatalog = Map.of(
+                "ALGORITHMS_DATA_STRUCTURES", Map.of(
+                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("two-sum", "reverse-a-string"),
+                        com.interviewos.session.model.DifficultyLevel.MID, List.of("search-in-rotated-sorted-array", "lru-cache"),
+                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("trapping-rain-water", "topo-course-schedule"),
+                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("trapping-rain-water", "topo-course-schedule")
+                ),
+                "SQL_DATABASE", Map.of(
+                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("monthly-active-users", "sql-user-cohort-retention"),
+                        com.interviewos.session.model.DifficultyLevel.MID, List.of("sql-user-cohort-retention", "department-top-salaries"),
+                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("department-top-salaries", "complex-financial-rollup"),
+                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("department-top-salaries", "complex-financial-rollup")
+                ),
+                "SYSTEM_DESIGN_LLD", Map.of(
+                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("parking-lot-system"),
+                        com.interviewos.session.model.DifficultyLevel.MID, List.of("rate-limiter-service", "cache-eviction-service"),
+                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("distributed-task-scheduler", "cache-eviction-service"),
+                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("distributed-task-scheduler", "cache-eviction-service")
+                ),
+                "SYSTEM_DESIGN_HLD", Map.of(
+                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("url-shortener"),
+                        com.interviewos.session.model.DifficultyLevel.MID, List.of("distributed-cache", "ride-sharing-dispatch"),
+                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("real-time-chat", "distributed-cache"),
+                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("real-time-chat", "distributed-cache")
+                ),
+                "BEHAVIORAL", Map.of(
+                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("leadership-conflict"),
+                        com.interviewos.session.model.DifficultyLevel.MID, List.of("critical-bug-production", "leadership-conflict"),
+                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("cross-team-collaboration", "critical-bug-production"),
+                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("cross-team-collaboration", "critical-bug-production")
+                )
+        );
+
+        String trackKey = track.name();
+        Map<com.interviewos.session.model.DifficultyLevel, List<String>> trackMap = fallbackCatalog.getOrDefault(trackKey, fallbackCatalog.get("ALGORITHMS_DATA_STRUCTURES"));
+
+        java.util.Random random = new java.util.Random(seed);
+        for (int i = 0; i < ladder.size(); i++) {
+            com.interviewos.session.model.DifficultyLevel rung = ladder.get(i);
+            List<String> candidates = new ArrayList<>();
+            if (questionBankClient != null) {
+                try {
+                    var remote = questionBankClient.listProblems(track.name(), rung.name());
+                    if (remote != null && !remote.isEmpty()) {
+                        remote.forEach(p -> candidates.add(p.getProblemSlug()));
+                    }
+                } catch (Exception e) {
+                    log.debug("Notice on remote question bank lookup for ladder: {}", e.getMessage());
+                }
+            }
+            if (candidates.isEmpty()) {
+                candidates.addAll(trackMap.getOrDefault(rung, List.of("two-sum", "reverse-a-string", "lru-cache")));
+            }
+
+            List<String> unseen = candidates.stream().filter(s -> !seen.contains(s)).toList();
+            String chosen;
+            if (!unseen.isEmpty()) {
+                chosen = unseen.get(random.nextInt(unseen.size()));
+            } else if (!candidates.isEmpty()) {
+                chosen = candidates.get(random.nextInt(candidates.size()));
+            } else {
+                chosen = "q-" + (i + 1);
+            }
+            seen.add(chosen);
+            planned.add(chosen);
+        }
+
+        return planned;
     }
 
     @Transactional

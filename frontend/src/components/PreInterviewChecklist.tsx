@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Camera, Mic, Monitor, Wifi, ArrowRight, ShieldCheck, AlertTriangle, Cpu, Server, Terminal } from 'lucide-react';
+import { Camera, Mic, Wifi, ArrowRight, ShieldCheck, AlertTriangle, Cpu, Server, Terminal } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Chip } from './ui/Chip';
@@ -11,6 +11,7 @@ interface Props {
   sessionId: number;
   candidateId: string;
   roleTitle: string;
+  sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   onProceed: () => void;
 }
 
@@ -29,15 +30,18 @@ interface SystemCapabilities {
 export const PreInterviewChecklist: React.FC<Props> = ({
   sessionId,
   roleTitle,
+  sessionMode = 'INTERVIEW',
   onProceed
 }) => {
+  const isInterview = sessionMode === 'INTERVIEW';
   const [cameraOk, setCameraOk] = useState(false);
   const [micOk, setMicOk] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [screenOk, setScreenOk] = useState(true);
-  const [devBypassScreen, setDevBypassScreen] = useState(false);
   const [networkOk] = useState(true);
-  const [envMode, setEnvMode] = useState<'dev' | 'prod'>('dev');
+  const [secondaryCameraConnected] = useState(false);
+  const [singleCameraAcknowledged, setSingleCameraAcknowledged] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(!isInterview);
+  const [envMode, setEnvMode] = useState<'dev' | 'prod'>('prod');
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.checklist') === 'true');
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
@@ -113,13 +117,6 @@ export const PreInterviewChecklist: React.FC<Props> = ({
       } catch (err) {
         console.warn('Hardware access note:', err);
       }
-
-      // Check for extended / multi displays
-      if ((window.screen as any).isExtended) {
-        setScreenOk(false);
-      } else {
-        setScreenOk(true);
-      }
     };
 
     void setupHardware();
@@ -135,8 +132,8 @@ export const PreInterviewChecklist: React.FC<Props> = ({
     };
   }, [host]);
 
-  const isScreenCheckSatisfied = envMode === 'dev' ? true : (screenOk || devBypassScreen);
-  const allChecksPassed = envMode === 'dev' ? true : (cameraOk && micOk && isScreenCheckSatisfied && networkOk);
+  const isSecondarySatisfied = !isInterview || secondaryCameraConnected || singleCameraAcknowledged;
+  const allChecksPassed = !isInterview || (cameraOk && micOk && isSecondarySatisfied && consentGiven && networkOk);
 
   return (
     <div className="min-h-screen bg-bg text-text py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center select-text">
@@ -264,7 +261,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                   <span>1. Frontal Webcam Video</span>
                 </div>
                 <Chip variant={cameraOk ? 'success' : 'danger'} size="sm">
-                  {cameraOk ? 'Verified' : 'Access Required'}
+                  {cameraOk ? 'Active' : 'Access Required'}
                 </Chip>
               </div>
 
@@ -304,55 +301,44 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Right Column: Monitors, Phone QR & Network */}
+          {/* Right Column: Dual-Camera QR & Network */}
           <div className="space-y-4">
-            <div className="bg-surface border border-border rounded-lg p-4 space-y-2">
+            <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-xs font-bold text-text">
-                  <Monitor className="w-4 h-4 text-text-3" />
-                  <span>3. Single Monitor Check</span>
+                  <Camera className="w-4 h-4 text-text-3" />
+                  <span>3. Dual-Camera Phone Link</span>
                 </div>
-                <Chip variant={isScreenCheckSatisfied ? 'success' : 'danger'} size="sm">
-                  {screenOk ? 'Single Display' : devBypassScreen ? 'Dev Bypass' : 'Multi-Display'}
+                <Chip variant={secondaryCameraConnected ? 'success' : singleCameraAcknowledged ? 'warning' : 'neutral'} size="sm">
+                  {secondaryCameraConnected ? 'Connected' : singleCameraAcknowledged ? 'Single-Camera Acknowledged' : 'Scan QR'}
                 </Chip>
               </div>
 
-              <p className="text-[11px] text-text-3">
-                {screenOk
-                  ? 'No external displays detected.'
-                  : 'External monitor detected. Please disconnect external displays.'}
-              </p>
-
-              {!screenOk && envMode === 'prod' && (
-                <label className="flex items-center gap-2 text-xs text-text-3 cursor-pointer pt-1">
-                  <input
-                    type="checkbox"
-                    checked={devBypassScreen}
-                    onChange={(e) => setDevBypassScreen(e.target.checked)}
-                  />
-                  <span>(Allow Multi-Monitor Testing)</span>
-                </label>
-              )}
-            </div>
-
-            <div className="bg-surface border border-border rounded-lg p-4 flex gap-4 items-center">
-              <div className="bg-white p-1.5 rounded-md shrink-0">
-                <QRCodeSVG value={phoneProctorUrl} size={70} />
-              </div>
-              <div className="space-y-1">
-                <div className="text-xs font-bold text-text">
-                  4. Dual-Camera Phone Link (Optional)
+              <div className="flex gap-4 items-center">
+                <div className="bg-white p-1.5 rounded-md shrink-0">
+                  <QRCodeSVG value={phoneProctorUrl} size={70} />
                 </div>
-                <p className="text-[11px] text-text-3 leading-relaxed">
-                  Scan with your phone on same Wi-Fi to stream 45° angle desk feed.
-                </p>
+                <div className="space-y-1 text-xs">
+                  <p className="text-[11px] text-text-3 leading-relaxed">
+                    Scan with phone on same Wi-Fi to stream 45° angle desk feed.
+                  </p>
+                  <label className="flex items-center gap-2 text-[11px] text-text-2 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={singleCameraAcknowledged}
+                      onChange={(e) => setSingleCameraAcknowledged(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded border-border text-primary cursor-pointer"
+                    />
+                    <span>Proceed with single camera only (flags session)</span>
+                  </label>
+                </div>
               </div>
             </div>
 
             <div className="bg-surface border border-border rounded-lg p-4 flex justify-between items-center">
               <div className="flex items-center gap-2 text-xs font-bold text-text">
                 <Wifi className="w-4 h-4 text-text-3" />
-                <span>5. Network Connection</span>
+                <span>4. Network Connection</span>
               </div>
               <Chip variant="success" size="sm">
                 Localhost / LAN (0 ms)
@@ -360,6 +346,24 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             </div>
           </div>
 
+        </div>
+
+        {/* 5. Proctoring & Recording Consent */}
+        <div className="bg-surface border border-border rounded-lg p-4 flex items-center justify-between flex-wrap gap-3">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={consentGiven}
+              onChange={(e) => setConsentGiven(e.target.checked)}
+              className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+            />
+            <span className="text-xs font-semibold text-text">
+              This session is recorded and proctored. I consent to video/audio recording and AI integrity analysis.
+            </span>
+          </label>
+          <Chip variant={consentGiven ? 'success' : 'danger'} size="sm">
+            {consentGiven ? 'Consent Confirmed' : 'Consent Required'}
+          </Chip>
         </div>
 
         {capabilities?.engines?.dsa && !capabilities.engines.dsa.ready && (
@@ -374,7 +378,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         {!allChecksPassed && envMode === 'prod' && (
           <div className="bg-elevated border border-warning/30 p-3 rounded-lg flex items-center gap-2 text-xs text-warning">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Please satisfy hardware checks (or switch to Dev Mode) to proceed with assessment.</span>
+            <span>Please complete all 4 checklist gates above (Webcam, Mic, Secondary Camera/Acknowledgement, Consent) to proceed.</span>
           </div>
         )}
 
@@ -386,7 +390,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           icon={<ArrowRight className="w-5 h-5" />}
           className="w-full"
         >
-          {allChecksPassed ? 'All Systems Verified ➡️ Start Interview' : 'Hardware Access Required'}
+          {allChecksPassed ? 'All Systems Verified ➡️ Start Interview' : 'Complete Required Checklist Gates Above'}
         </Button>
 
       </Card>

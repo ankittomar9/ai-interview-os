@@ -55,6 +55,7 @@ export interface SessionResponse {
     completedAt?: string;
     durationSeconds?: number;
     sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
+    plannedSlugs?: string[];
     messages: SessionMessage[];
 }
 

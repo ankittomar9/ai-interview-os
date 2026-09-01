@@ -51,6 +51,9 @@ public class InterviewSessionDocument {
     private List<String> questionSlugs = new ArrayList<>();
 
     @Builder.Default
+    private List<String> plannedSlugs = new ArrayList<>();
+
+    @Builder.Default
     private Integer activeQuestionIndex = 0;
 
     @Builder.Default

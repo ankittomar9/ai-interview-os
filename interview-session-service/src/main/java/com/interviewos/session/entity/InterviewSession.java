@@ -61,6 +61,12 @@ public class InterviewSession {
     @Builder.Default
     private List<SessionMessage> messages = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "session_planned_slugs", joinColumns = @JoinColumn(name = "session_id"))
+    @Column(name = "slug")
+    @Builder.Default
+    private List<String> plannedSlugs = new ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();

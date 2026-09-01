@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider } from './types';
-import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, startSession } from './services/api';
+import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession } from './services/api';
 import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
 import { ArenaRoom } from './components/arena/ArenaRoom';
@@ -81,17 +81,37 @@ export function App() {
       setSessionId(session.id);
       await startSession(session.id);
 
-      const q = await generateQuestion({
-        roleTitle: config.roleTitle,
-        track: config.track,
-        difficulty: config.difficulty,
-        jobDescription: config.jobDescription,
-        modelProvider: config.provider,
-        apiKey: config.apiKey
-      });
+      let initialQ: GenerateQuestionResponse;
+      let plannedList: GenerateQuestionResponse[] = [];
 
-      setQuestion(q);
-      setPlaylistQuestions([q]);
+      if (chosenMode === 'INTERVIEW' && session.plannedSlugs && session.plannedSlugs.length > 0) {
+        try {
+          plannedList = await listQuestions({
+            slugs: session.plannedSlugs,
+            sessionMode: 'INTERVIEW',
+            sessionId: session.id
+          });
+        } catch (e) {
+          console.debug('Notice fetching planned questions list:', e);
+        }
+      }
+
+      if (plannedList.length > 0) {
+        initialQ = plannedList[0];
+      } else {
+        initialQ = await generateQuestion({
+          roleTitle: config.roleTitle,
+          track: config.track,
+          difficulty: config.difficulty,
+          jobDescription: config.jobDescription,
+          modelProvider: config.provider,
+          apiKey: config.apiKey
+        });
+        plannedList = [initialQ];
+      }
+
+      setQuestion(initialQ);
+      setPlaylistQuestions(plannedList);
 
       if (chosenMode === 'PLAYGROUND') {
         // Spec: Skip PreInterviewChecklist in Playground mode
@@ -219,6 +239,7 @@ export function App() {
           sessionId={sessionId}
           candidateId={candidateId}
           roleTitle={roleTitle}
+          sessionMode={sessionMode}
           onProceed={() => setView('ROOM')}
         />
       )}

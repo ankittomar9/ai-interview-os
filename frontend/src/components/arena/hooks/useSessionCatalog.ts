@@ -7,13 +7,18 @@ interface UseSessionCatalogProps {
   initialQuestion: GenerateQuestionResponse;
   initialQuestionsList?: GenerateQuestionResponse[];
   track?: InterviewTrack;
+  sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
+  sessionId?: number;
 }
 
 export function useSessionCatalog({
   initialQuestion,
   initialQuestionsList,
-  track
+  track,
+  sessionMode = 'INTERVIEW',
+  sessionId
 }: UseSessionCatalogProps) {
+  const isInterview = sessionMode === 'INTERVIEW';
   const [questionsList, setQuestionsList] = useState<GenerateQuestionResponse[]>(() => {
     if (initialQuestionsList && initialQuestionsList.length > 0) {
       return initialQuestionsList;
@@ -31,12 +36,24 @@ export function useSessionCatalog({
 
   useEffect(() => {
     if (!track) return;
+    // In INTERVIEW mode, if initialQuestionsList is already curated (e.g. 3 planned questions), do not overwrite with public catalog
+    if (isInterview && initialQuestionsList && initialQuestionsList.length > 0) {
+      setQuestionsList(initialQuestionsList);
+      const foundIdx = initialQuestionsList.findIndex((q) => q.slug === initialQuestion.slug);
+      setActiveQuestionIndex(foundIdx >= 0 ? foundIdx : 0);
+      return;
+    }
+
     let isCancelled = false;
 
     const fetchTrackCatalog = async () => {
       setIsLoadingQuestions(true);
       try {
-        const fetched = await listQuestions({ track });
+        const fetched = await listQuestions({
+          track,
+          sessionMode,
+          sessionId
+        });
         if (isCancelled) return;
 
         if (Array.isArray(fetched) && fetched.length > 0) {
@@ -71,7 +88,7 @@ export function useSessionCatalog({
     return () => {
       isCancelled = true;
     };
-  }, [track, initialQuestion]);
+  }, [track, initialQuestion, isInterview, initialQuestionsList, sessionMode, sessionId]);
 
   const selectQuestion = useCallback((index: number) => {
     if (index >= 0 && index < questionsList.length) {

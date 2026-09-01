@@ -180,7 +180,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = ({
       </div>
       <StageStepper currentStage={currentStage} isPlayground={isPlayground} onStageClick={onStageClick} />
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} className="w-12 shrink-0 border-r border-border h-full" />
+        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className="w-12 shrink-0 border-r border-border h-full" />
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           <Group orientation="horizontal" id="arena-shell-group" className="h-full w-full flex-1 min-w-0">
             <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">

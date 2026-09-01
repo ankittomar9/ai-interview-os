@@ -52,7 +52,9 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   } = useSessionCatalog({
     initialQuestion,
     initialQuestionsList,
-    track: activeTrack
+    track: activeTrack,
+    sessionMode,
+    sessionId
   });
 
   // 2. Code State

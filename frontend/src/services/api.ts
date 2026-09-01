@@ -436,13 +436,21 @@ export const listQuestions = async (params?: {
     difficulty?: string;
     tags?: string[];
     q?: string;
+    sessionMode?: string;
+    sessionId?: number;
+    slugs?: string[];
 }): Promise<GenerateQuestionResponse[]> => {
     const query = new URLSearchParams();
     if (params?.track && params.track !== 'ALL') query.append('track', params.track);
     if (params?.difficulty && params.difficulty !== 'ALL') query.append('difficulty', params.difficulty);
     if (params?.q) query.append('q', params.q);
+    if (params?.sessionMode) query.append('sessionMode', params.sessionMode);
+    if (params?.sessionId) query.append('sessionId', String(params.sessionId));
     if (params?.tags && params.tags.length > 0) {
         params.tags.forEach(t => query.append('tags', t));
+    }
+    if (params?.slugs && params.slugs.length > 0) {
+        params.slugs.forEach(s => query.append('slugs', s));
     }
     const queryString = query.toString() ? `?${query.toString()}` : '';
     return fetchJson<GenerateQuestionResponse[]>(`${GATEWAY_BASE}/questions${queryString}`, {

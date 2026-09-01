@@ -25,6 +25,7 @@ public record SessionResponse(
         Instant completedAt,
         Long durationSeconds,
         String sessionMode,
+        List<String> plannedSlugs,
         List<MessageResponse> messages
 ) {
     public SessionResponse(
@@ -42,7 +43,26 @@ public record SessionResponse(
             Long durationSeconds,
             List<MessageResponse> messages
     ) {
-        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, "INTERVIEW", messages);
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, "INTERVIEW", List.of(), messages);
+    }
+
+    public SessionResponse(
+            Long id,
+            String candidateId,
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String targetCompany,
+            String jobDescription,
+            SessionStatus status,
+            Instant createdAt,
+            Instant startedAt,
+            Instant completedAt,
+            Long durationSeconds,
+            String sessionMode,
+            List<MessageResponse> messages
+    ) {
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, List.of(), messages);
     }
     public record MessageResponse(
             Long id,
@@ -109,6 +129,7 @@ public record SessionResponse(
                 session.getCompletedAt(),
                 session.getDurationSeconds(),
                 session.getSessionMode() != null ? session.getSessionMode() : "INTERVIEW",
+                session.getPlannedSlugs() != null ? session.getPlannedSlugs() : List.of(),
                 messageResponses
         );
     }
