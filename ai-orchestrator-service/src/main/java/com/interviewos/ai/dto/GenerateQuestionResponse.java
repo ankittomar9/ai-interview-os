@@ -23,6 +23,7 @@ public record GenerateQuestionResponse(
         List<String> editablePaths,
         List<TestCaseView> sampleTests,
         List<String> hints,
+        List<String> constraints,
         List<String> evaluationCriteria
 ) {
     // Backwards-compatible constructor for testing
@@ -47,6 +48,7 @@ public record GenerateQuestionResponse(
                 List.of(),
                 List.of(),
                 hints,
+                List.of(),
                 evaluationCriteria
         );
     }

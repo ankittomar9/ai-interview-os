@@ -122,6 +122,12 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             "Correct eviction of least recently used item on capacity overflow",
                             "Robust pointer updates in Doubly Linked List without memory leaks"
                     ))
+                    .constraints(List.of(
+                            "1 <= capacity <= 3000",
+                            "0 <= key <= 10000",
+                            "0 <= value <= 10^5",
+                            "At most 2 * 10^5 calls will be made to get and put"
+                    ))
                     .interviewerNotes(new QuestionDocument.InterviewerNotes(
                             List.of("Doubly Linked List + HashMap", "O(1) Get and Put", "Eviction Policy (LRU)"),
                             List.of(

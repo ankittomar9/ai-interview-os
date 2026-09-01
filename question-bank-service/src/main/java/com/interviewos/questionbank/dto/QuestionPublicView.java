@@ -21,6 +21,7 @@ public record QuestionPublicView(
         List<QuestionDocument.TestCase> sampleTests,
         List<QuestionDocument.HiddenTestCase> hiddenTests,
         List<String> evaluationCriteria,
+        List<String> constraints,
         List<String> hints,
         QuestionDocument.CoachingContent coaching,
         String editorialMarkdown,
@@ -53,6 +54,7 @@ public record QuestionPublicView(
                 .sampleTests(doc.getSampleTests())
                 .hiddenTests(isInterviewMode ? List.of() : doc.getHiddenTests())
                 .evaluationCriteria(doc.getEvaluationCriteria())
+                .constraints(doc.getConstraints())
                 .hints(doc.getHints())
                 .coaching(doc.getCoaching())
                 .editorialMarkdown(isInterviewMode ? null : doc.getEditorialMarkdown())

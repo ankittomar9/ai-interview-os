@@ -60,6 +60,7 @@ public class QuestionMarkdownParser {
             List<String> tags = getStringList(yamlMap, "tags");
             List<String> hints = getStringList(yamlMap, "hints");
             List<String> evaluationCriteria = getStringList(yamlMap, "evaluationCriteria");
+            List<String> constraints = getStringList(yamlMap, "constraints");
             List<String> editablePaths = getStringList(yamlMap, "editablePaths");
 
             Map<String, String> starterCodeMap = getStringMap(yamlMap, "starterCodeMap");
@@ -98,6 +99,7 @@ public class QuestionMarkdownParser {
                     .hints(hints)
                     .editorialMarkdown(editorial)
                     .evaluationCriteria(evaluationCriteria.isEmpty() ? List.of("Correctness", "Time Complexity", "Clean Code") : evaluationCriteria)
+                    .constraints(constraints)
                     .coaching(coaching)
                     .limits(limits != null ? limits : new QuestionDocument.ExecutionLimits(256, 3000))
                     .interviewerNotes(interviewerNotes)

@@ -32,6 +32,11 @@ hiddenTests:
 hints:
   - "Use a hash map to store the complement (target - num) and its 0-based index as you iterate."
   - "This allows finding pairs in O(N) time with O(N) space."
+constraints:
+  - "2 <= nums.length <= 10^4"
+  - "-10^9 <= nums[i] <= 10^9"
+  - "-10^9 <= target <= 10^9"
+  - "Only one valid answer exists."
 coaching:
   presentationTips:
     - "Clarify if the array is guaranteed to have exactly one solution."

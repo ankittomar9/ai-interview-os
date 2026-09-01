@@ -99,6 +99,7 @@ public class ProblemCatalogClient {
             Map<String, String> starterFiles,
             List<String> editablePaths,
             List<GenerateQuestionResponse.TestCaseView> sampleTests,
+            List<String> constraints,
             List<String> evaluationCriteria
     ) {}
 

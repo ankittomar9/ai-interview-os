@@ -75,6 +75,7 @@ public class AiOrchestratorService {
                     Map.of(),
                     List.of(),
                     List.of(),
+                    List.of("1 <= capacity <= 3000", "0 <= key <= 10000", "0 <= value <= 10^5", "At most 2 * 10^5 calls to get/put"),
                     List.of("O(1) get and put operations", "Clean eviction mechanics")
             );
         }
@@ -94,6 +95,7 @@ public class AiOrchestratorService {
                         "Think about core data structure mechanics, operational complexity, and invariant guarantees.",
                         "Verify boundary conditions such as capacity limits, empty collections, and duplicate entries."
                 ))
+                .constraints(selectedItem.constraints() != null ? selectedItem.constraints() : List.of())
                 .evaluationCriteria(selectedItem.evaluationCriteria() != null ? selectedItem.evaluationCriteria() : List.of(
                         "Optimal time and space complexity",
                         "Clean exception and boundary condition handling"

@@ -25,6 +25,9 @@ hiddenTests:
     weight: 70
 hints:
   - "Use two pointers left and right, maintaining leftMax and rightMax."
+constraints:
+  - "1 <= height.length <= 2 * 10^4"
+  - "0 <= height[i] <= 10^5"
 editorial: |
   ### Two Pointer Water Trapping
   The water trapped at index `i` is `min(max_left, max_right) - height[i]`. We can process inwards from the smaller boundary.

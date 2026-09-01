@@ -25,6 +25,11 @@ hiddenTests:
     weight: 70
 hints:
   - "At every binary search step, at least one half (left or right) is guaranteed to be normally sorted."
+constraints:
+  - "1 <= nums.length <= 5000"
+  - "-10^4 <= nums[i] <= 10^4"
+  - "All values of nums are unique."
+  - "nums is guaranteed to be rotated at some pivot."
 editorial: |
   ### Partitioned Binary Search
   Identify whether `left..mid` or `mid..right` is sorted. Check if `target` falls within the sorted portion.

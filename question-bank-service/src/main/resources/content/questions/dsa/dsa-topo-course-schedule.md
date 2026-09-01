@@ -29,6 +29,10 @@ hiddenTests:
     weight: 40
 hints:
   - "Track in-degree of all vertices. Enqueue all vertices with in-degree 0."
+constraints:
+  - "1 <= numCourses <= 2000"
+  - "0 <= prerequisites.length <= 5000"
+  - "All prerequisite pairs are unique."
 editorial: |
   ### Kahn's BFS Topological Sort
   1. Build adjacency list and array of in-degrees.

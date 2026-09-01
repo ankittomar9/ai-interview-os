@@ -8,6 +8,9 @@ buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/cohort-retention
 status: PUBLISHED
 dbEngine: postgres-13
+constraints:
+  - "user_events contains valid chronological login event logs."
+  - "All user_id references are positive integers."
 setupSql: |
   CREATE TABLE user_events (
     id SERIAL PRIMARY KEY,

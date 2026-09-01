@@ -31,6 +31,7 @@ public record QuestionFullView(
         String solutionSql,
         QuestionDocument.ExecutionLimits limits,
         List<String> evaluationCriteria,
+        List<String> constraints,
         QuestionDocument.InterviewerNotes interviewerNotes,
         QuestionDocument.CoachingContent coaching,
         String version,
@@ -63,6 +64,7 @@ public record QuestionFullView(
                 .solutionSql(doc.getSolutionSql())
                 .limits(doc.getLimits())
                 .evaluationCriteria(doc.getEvaluationCriteria())
+                .constraints(doc.getConstraints())
                 .interviewerNotes(doc.getInterviewerNotes())
                 .coaching(doc.getCoaching())
                 .version(doc.getVersion())

@@ -80,6 +80,8 @@ public class QuestionDocument {
 
     private List<String> evaluationCriteria;
 
+    private List<String> constraints;
+
     private InterviewerNotes interviewerNotes;
 
     private CoachingContent coaching;
