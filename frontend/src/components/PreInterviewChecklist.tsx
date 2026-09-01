@@ -6,6 +6,7 @@ import { Card } from './ui/Card';
 import { Chip } from './ui/Chip';
 import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
+import { sendTelemetryEvent } from '../services/api';
 
 interface Props {
   sessionId: number;
@@ -386,7 +387,16 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           variant="primary"
           size="lg"
           disabled={!allChecksPassed}
-          onClick={onProceed}
+          onClick={() => {
+            if (!secondaryCameraConnected && singleCameraAcknowledged) {
+              void sendTelemetryEvent({
+                sessionId,
+                eventType: 'TAB_BLUR',
+                metadataDetails: 'SINGLE_CAMERA_ONLY_ACKNOWLEDGED: Candidate completed interview with single front camera; 45-degree angle unmonitored.'
+              });
+            }
+            onProceed();
+          }}
           icon={<ArrowRight className="w-5 h-5" />}
           className="w-full"
         >

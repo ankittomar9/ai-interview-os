@@ -62,6 +62,14 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     return transcriptData.transcript || [];
   }, [transcriptData]);
 
+  const hasSingleCameraFlag = useMemo(() => {
+    return transcriptList.some(
+      (m) =>
+        m.content?.includes('SINGLE_CAMERA_ONLY_ACKNOWLEDGED') ||
+        (m.metadata && JSON.stringify(m.metadata).includes('SINGLE_CAMERA_ONLY_ACKNOWLEDGED'))
+    );
+  }, [transcriptList]);
+
   // Calculate aggregate integrity metrics
   const integrityMetrics = useMemo(() => {
     const candidateMessages = transcriptList.filter(
@@ -326,7 +334,12 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                       {report.candidateId} · {report.track} · {report.difficulty} · Session #{report.sessionId}
                     </div>
                   </div>
-                  <div>
+                  <div className="flex items-center gap-2">
+                    {hasSingleCameraFlag && (
+                      <Chip variant="warning" size="sm">
+                        Single-Camera Assessment
+                      </Chip>
+                    )}
                     {getVerdictChip(report.verdict)}
                   </div>
                 </div>
