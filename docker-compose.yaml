@@ -94,11 +94,12 @@ services:
     networks:
       - ai-interview-net
 
-  # 0.5 Judge0 Sandbox Execution Workers (Unprivileged with minimal cap_add & seccomp)
+  # 0.5 Judge0 Sandbox Execution Workers (Privileged for cgroup isolate namespace creation)
   judge0-workers:
     image: judge0/judge0:1.13.1
     container_name: judge0-workers
     command: ["./scripts/workers"]
+    privileged: true
     cap_add:
       - SYS_PTRACE
     security_opt:
