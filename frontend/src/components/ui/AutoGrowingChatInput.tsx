@@ -91,6 +91,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
       {/* Auto-growing Textarea */}
       <div className="p-2 pb-1">
         <textarea
+          id="chat-input"
           ref={textareaRef}
           value={value}
           rows={1}

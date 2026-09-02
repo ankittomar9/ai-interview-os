@@ -23,6 +23,7 @@ interface UseDialogueProps {
   isPlayground?: boolean;
   questionContext: string;
   problemSlug?: string;
+  candidateName?: string;
   initialWelcome?: string;
   onAiSpeechRequested?: (text: string) => void;
   getIntegritySignals?: () => IntegritySignals | undefined;
@@ -35,6 +36,7 @@ export function useDialogue({
   isPlayground = false,
   questionContext,
   problemSlug,
+  candidateName,
   initialWelcome = "",
   onAiSpeechRequested,
   getIntegritySignals
@@ -90,6 +92,8 @@ export function useDialogue({
         modelProvider: provider,
         apiKey,
         sessionMode: isPlayground ? "PLAYGROUND" : "INTERVIEW",
+        candidateName,
+        currentStage,
         latestExecution: latestExecution ? {
           status: latestExecution.status || 'FAILED',
           passedTests: latestExecution.passedTests || 0,

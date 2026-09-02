@@ -101,6 +101,12 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     return () => clearTimeout(timer);
   }, [providerError, onClearProviderError]);
 
+  useEffect(() => {
+    if (currentStage === 'INTRODUCTION' && !isPlayground) {
+      document.getElementById('chat-input')?.focus();
+    }
+  }, [currentStage, isPlayground]);
+
   const handleTrackSelect = useCallback((trackKey: string) => {
     if (onSwitchTrack && trackKey !== 'ALL') onSwitchTrack(trackKey as InterviewTrack);
   }, [onSwitchTrack]);
