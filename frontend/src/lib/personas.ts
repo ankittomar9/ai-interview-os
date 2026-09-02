@@ -18,10 +18,10 @@ export const PERSONAS = {
     welcomeMessage: `Welcome to your Technical Assessment! 👋\n\nI am Dr. Anya Chen, AI Principal Bar Raiser. Let's begin with a brief introduction. Please tell me about your engineering background and recent systems you've built.`
   },
   PLAYGROUND: {
-    name: 'Coach Alex',
+    name: 'Coach Sam',
     title: 'AI Socratic Coach',
     role: 'Senior Tech Lead & Socratic Coach',
-    welcomeMessage: `Welcome to the Playground Practice Arena! 🧪\n\nI am Coach Alex, your AI Socratic Coach. Feel free to explore solutions, request hints, or ask me for code explanations at any time.`
+    welcomeMessage: `Welcome to the Playground Practice Arena! 🧪\n\nI am Coach Sam, your AI Code & Architecture Coach. Feel free to explore solutions, request hints, or ask me for code explanations at any time.`
   }
 } as const;
 

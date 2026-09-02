@@ -38,6 +38,7 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [candidateId, setCandidateId] = useState('candidate-01');
+  const [candidateName, setCandidateName] = useState('Ankit Singh Tomar');
   const [roleTitle, setRoleTitle] = useState('Senior Java Backend Engineer');
   const [question, setQuestion] = useState<GenerateQuestionResponse | null>(null);
   const [report, setReport] = useState<DiagnosticReportResponse | null>(null);
@@ -51,6 +52,7 @@ export function App() {
 
   const handleStartInterview = async (config: {
     candidateId: string;
+    candidateName?: string;
     roleTitle: string;
     track: InterviewTrack;
     difficulty: DifficultyLevel;
@@ -64,6 +66,7 @@ export function App() {
     const chosenMode = config.mode || 'INTERVIEW';
     setSessionMode(chosenMode);
     setCandidateId(config.candidateId);
+    if (config.candidateName) setCandidateName(config.candidateName);
     setRoleTitle(config.roleTitle);
     setProvider(config.provider);
     setApiKey(config.apiKey);
@@ -71,6 +74,7 @@ export function App() {
     try {
       const session = await createSession({
         candidateId: config.candidateId,
+        candidateName: config.candidateName,
         roleTitle: config.roleTitle,
         track: config.track,
         difficulty: config.difficulty,
@@ -252,6 +256,7 @@ export function App() {
           provider={provider}
           apiKey={apiKey}
           sessionMode={sessionMode}
+          candidateName={candidateName}
           onFinish={handleFinishInterview}
         />
       )}

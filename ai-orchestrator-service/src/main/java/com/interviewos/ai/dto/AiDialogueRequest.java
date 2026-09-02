@@ -37,7 +37,11 @@ public record AiDialogueRequest(
 
         String sessionMode,
 
-        IntegritySignals integritySignals
+        IntegritySignals integritySignals,
+
+        String candidateName,
+
+        String currentStage
 ) {
     public String getEffectiveMode() {
         return (sessionMode != null && !sessionMode.isBlank()) ? sessionMode.trim().toUpperCase() : "INTERVIEW";
@@ -53,7 +57,7 @@ public record AiDialogueRequest(
             String apiKey,
             String modelName
     ) {
-        this(questionContext, null, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null, "INTERVIEW", null);
+        this(questionContext, null, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null, "INTERVIEW", null, null, null);
     }
 
     public AiDialogueRequest(
@@ -67,7 +71,7 @@ public record AiDialogueRequest(
             String modelName,
             ExecutionDto latestExecution
     ) {
-        this(questionContext, null, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null);
+        this(questionContext, null, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null, null, null);
     }
 
     public AiDialogueRequest(
@@ -82,7 +86,7 @@ public record AiDialogueRequest(
             String modelName,
             ExecutionDto latestExecution
     ) {
-        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null);
+        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null, null, null);
     }
 
     public record ChatMessageDto(

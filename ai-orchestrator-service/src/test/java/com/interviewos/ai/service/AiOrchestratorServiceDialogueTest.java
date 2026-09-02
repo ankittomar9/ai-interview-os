@@ -179,4 +179,42 @@ class AiOrchestratorServiceDialogueTest {
         assertFalse(response.isSolutionComplete());
         assertEquals("OFFER_HINT", response.recommendedAction());
     }
+
+    @Test
+    @DisplayName("post-guard sanitizes Mickey name inversion and replaces with candidate name")
+    void testAntiInversionPostGuardSanitizesMickey() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Thanks for sharing your code, Mickey. Let's review it.",
+                  "followUpQuestion": "What is the time complexity?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": "Looks solid.",
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "CODING",
+                  "turnSummary": "Candidate shared code.",
+                  "recommendedAction": "PROBE_DEEPER"
+                }
+                """;
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Reverse a String")
+                .candidateExplanation("Here is my code")
+                .candidateCode("class Solution {}")
+                .candidateName("Ankit Singh Tomar")
+                .chatHistory(List.of())
+                .modelProvider(ModelProvider.OLLAMA)
+                .apiKey("fake-key")
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertFalse(response.interviewerReply().contains("Mickey"));
+        assertTrue(response.interviewerReply().contains("Ankit"));
+    }
 }

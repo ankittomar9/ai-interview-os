@@ -14,6 +14,7 @@ import { AiAssistantPanel } from "./ai/AiAssistantPanel";
 interface SetupScreenProps {
   onStart: (config: {
     candidateId: string;
+    candidateName?: string;
     roleTitle: string;
     track: InterviewTrack;
     difficulty: DifficultyLevel;
@@ -56,6 +57,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
     e.preventDefault();
     onStart({
       candidateId,
+      candidateName,
       roleTitle,
       track,
       difficulty,

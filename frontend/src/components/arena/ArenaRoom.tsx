@@ -24,6 +24,7 @@ interface ArenaRoomProps {
   provider: ModelProvider;
   apiKey: string;
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
+  candidateName?: string;
   onFinish: () => void;
 }
 
@@ -34,6 +35,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   provider,
   apiKey,
   sessionMode = 'INTERVIEW',
+  candidateName,
   onFinish
 }) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
@@ -95,6 +97,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     isPlayground,
     questionContext: activeQuestion.problemStatement || '',
     problemSlug: activeQuestion.problemSlug || activeQuestion.slug,
+    candidateName,
     initialWelcome: persona.welcomeMessage,
     onAiSpeechRequested: voice.speakText,
     getIntegritySignals: proctoring.getIntegritySignals

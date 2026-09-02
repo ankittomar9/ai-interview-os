@@ -205,7 +205,7 @@ public class AiOrchestratorService {
             ));
         } else {
             systemInstructionBuilder.append("""
-                    You are Mickey, a FAANG Principal Software Engineer and Bar Raiser conducting a live, rigorous technical interview assessment.
+                    You are Dr. Anya Chen, AI Principal Bar Raiser conducting a live, rigorous technical interview assessment.
                     Do not state your own name or introduce yourself by name in your responses. The UI displays your persona header separately.
                     Assess the candidate's explanation and code submission against the problem context with high architectural and engineering standards.
                     
@@ -236,6 +236,37 @@ public class AiOrchestratorService {
                     memory.intentHistory().isEmpty() ? "[]" : memory.intentHistory().toString(),
                     memory.adaptiveDirective()
             ));
+        }
+
+        if (request.candidateName() != null && !request.candidateName().isBlank()) {
+            systemInstructionBuilder.append(String.format(
+                    "\nThe candidate's name is %s. Address them by their first name when relevant.\n",
+                    request.candidateName().trim()
+            ));
+        }
+        systemInstructionBuilder.append(String.format("""
+                
+                CRITICAL IDENTITY & ANTI-INVERSION RULES:
+                - NEVER assume the candidate's name is the same as your persona name.
+                - Your persona name is %s. The candidate is interviewing with you.
+                - NEVER address the candidate as Mickey or Dr. Anya Chen or Coach Sam.
+                - If the candidate addresses you as Mickey or anything else, acknowledge it professionally and address them by their own name (%s).
+                """,
+                isPlayground ? "Coach Sam" : "Dr. Anya Chen",
+                (request.candidateName() != null && !request.candidateName().isBlank()) ? request.candidateName().trim() : "the candidate"
+        ));
+
+        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage())) {
+            systemInstructionBuilder.append("""
+                    
+                    STAGE SPECIFICATION - INTRODUCTION:
+                    This is the INTRODUCTION stage. Do NOT present, evaluate, or interrogate coding problems yet.
+                    Welcome the candidate warmly by their first name, ask about their engineering background,
+                    recent systems or projects they have built, and what they are looking for in their next role.
+                    Keep the conversation natural, encouraging, and conversational (2-3 exchanges).
+                    Do NOT jump into algorithmic complexity or code interrogation until the introduction is finished.
+                    Once the introduction exchange is complete, politely guide them: "Great! Let's dive into our first coding challenge." and set "recommendedAction": "ADVANCE_STAGE".
+                    """);
         }
 
         if (!followUpSeeds.isEmpty()) {
@@ -307,22 +338,36 @@ public class AiOrchestratorService {
 
         String systemInstruction = systemInstructionBuilder.toString();
 
-        String userPrompt = """
-                Problem Context:
-                %s
-                
-                Candidate Latest Explanation:
-                %s
-                
-                Candidate Code Snippet:
-                %s
-                
-                Generate realistic, natural interviewer dialogue response in strict JSON format.
-                """.formatted(
-                request.questionContext(),
-                request.candidateExplanation(),
-                request.candidateCode() != null ? request.candidateCode() : "No code written yet"
-        );
+        String userPrompt;
+        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage())) {
+            userPrompt = String.format("""
+                    Current Stage: INTRODUCTION
+                    Candidate Message:
+                    %s
+                    
+                    Generate a warm, conversational introduction response as %s welcoming the candidate.
+                    """,
+                    request.candidateExplanation() != null ? request.candidateExplanation() : "Hi! I am ready for the interview.",
+                    isPlayground ? "Coach Sam" : "Dr. Anya Chen"
+            );
+        } else {
+            userPrompt = String.format("""
+                    Problem Context:
+                    %s
+                    
+                    Candidate Latest Explanation:
+                    %s
+                    
+                    Candidate Code Snippet:
+                    %s
+                    
+                    Generate realistic, natural interviewer dialogue response in strict JSON format.
+                    """,
+                    request.questionContext(),
+                    request.candidateExplanation(),
+                    request.candidateCode() != null ? request.candidateCode() : "No code written yet"
+            );
+        }
 
         try {
             String rawResponse = client.generateCompletion(
@@ -375,6 +420,15 @@ public class AiOrchestratorService {
                 isComplete = false;
                 recommendedAction = "OFFER_HINT";
                 log.info("POST-GUARD: Replaced LLM reply that incorrectly claimed tests passed");
+            }
+
+            // Anti-inversion post-guard: Never let the AI address the candidate as Mickey or Dr. Anya Chen
+            if (reply.matches("(?i).*\\b(mickey|dr\\.? anya chen)\\b.*")) {
+                String properName = (request.candidateName() != null && !request.candidateName().isBlank())
+                        ? request.candidateName().trim().split("\\s+")[0]
+                        : "";
+                reply = reply.replaceAll("(?i)\\b(mickey|dr\\.? anya chen)\\b", properName.isEmpty() ? "there" : properName);
+                log.info("POST-GUARD: Sanitized persona name inversion from reply");
             }
 
             return new AiDialogueResponse(
