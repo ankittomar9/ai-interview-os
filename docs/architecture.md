@@ -1,0 +1,178 @@
+# System Architecture Overview
+
+AI Interview OS is an autonomous multi-track technical assessment and Socratic practice platform built on a distributed microservices architecture. It evaluates candidates across 6 specialized tracks using zero-trust container sandboxes, real-time multimodal AI orchestration, continuous video proctoring, and comprehensive 360° diagnostic reporting.
+
+---
+
+## 1. Executive Summary
+
+- **8-Service Spring Cloud Ecosystem**: Autonomous microservices connected via Netflix Eureka discovery and Spring Cloud Gateway.
+- **6 Evaluation Tracks**:
+  1. **Algorithms & Data Structures (DSA)**: Standard I/O execution via Judge0 CE sandboxes.
+  2. **SQL & Database Engineering**: Multi-tenant relational execution in ephemeral PostgreSQL schemas.
+  3. **Low-Level Design (LLD)**: Multi-file Spring Boot / Maven workspaces with live unit testing.
+  4. **High-Level System Design (HLD)**: Interactive canvas whiteboard with vision multimodal evaluation.
+  5. **Behavioral & Leadership**: STAR-structured dialogue with trade-off and depth probing.
+  6. **Resume-Based Deep Dive**: Contextual interviews grounded in candidate's uploaded resume.
+- **Dual Operating Modes**:
+  - **Proctored Interview**: Hard checklist gates (webcam, mic, companion pairing, consent), curated 1-2-3 question ladders, continuous recording, and anti-cheat telemetry.
+  - **Playground Practice**: Instant unconstrained access, Socratic coaching by Coach Sam, progressive hints, and catalog exploration.
+- **48 Seeded Production Problems**: Curated across tracks and difficulty tiers (Junior, Mid, Senior, Staff) with verified sample test cases and constraint invariants.
+
+---
+
+## 2. Microservice Map & Service Port Topology
+
+```
++---------------------------------------------------------------------------------------------------+
+|                                      FRONTEND (Vite / React 18)                                   |
+|                                         http://localhost:5173                                     |
++-------------------------------------------------+-------------------------------------------------+
+                                                  |
+                                                  v
++---------------------------------------------------------------------------------------------------+
+|                                   API GATEWAY SERVICE (:8080)                                     |
+|                      Spring Cloud Gateway, Global CORS, Eureka Load Balancing                      |
++-------+---------------+---------------+-----------------+-----------------+---------------+-------+
+        |               |               |                 |                 |               |
+        v               v               v                 v                 v               v
++---------------+---------------+---------------+-----------------+-----------------+---------------+
+| cloud-config  | discovery     | session       | ai-orchestrator | proctor         | evaluation    |
+| server        | service       | service       | service         | sentinel        | report        |
+| (:8888)       | (:8761)       | (:8081)       | (:8082)         | (:8083)         | (:8084)       |
++---------------+---------------+---------------+-----------------+-----------------+---------------+
+                                |                                                   |
+                                +-----------------------------------+               v
+                                |                                   |       +---------------+
+                                v                                   v       | question-bank |
+                        +---------------+                   +---------------+ service       |
+                        | PostgreSQL 16 |                   | MongoDB 7     | (:8085)       |
+                        | (Relational)  |                   | (Document +   +---------------+
+                        +---------------+                   |  GridFS)      |
+                                                            +---------------+
+```
+
+### Service Responsibilities
+
+| Service | Internal Port | Primary Responsibilities | Data Store |
+|---|---|---|---|
+| [`api-gateway-service`](file:///D:/ai-interview-os/api-gateway-service) | `8080` | Reverse proxy, global CORS, BYOK header forwarding, request deduplication, Eureka service routing. | None (Stateless) |
+| [`cloud-config-server`](file:///D:/ai-interview-os/cloud-config-server) | `8888` | Centralized external configuration repository for all Spring Boot services. | Git / Local Configs |
+| [`service-discovery-service`](file:///D:/ai-interview-os/service-discovery-service) | `8761` | Netflix Eureka registry; dynamic peer discovery and heartbeat health status. | In-memory registry |
+| [`interview-session-service`](file:///D:/ai-interview-os/interview-session-service) | `8081` | Session lifecycle (create/start/complete), code execution dispatch, MongoDB transcript, GridFS chunk recording pipeline. | PostgreSQL + MongoDB + GridFS |
+| [`ai-orchestrator-service`](file:///D:/ai-interview-os/ai-orchestrator-service) | `8082` | Multimodal AI routing (Groq, Ollama, Gemini), dialogue memory builder, deterministic post-guards, STT Whisper processing. | None (External APIs) |
+| [`proctor-sentinel-service`](file:///D:/ai-interview-os/proctor-sentinel-service) | `8083` | Biometric telemetry, tab switch tracking, keystroke dynamics, copy-paste heuristics. | PostgreSQL |
+| [`evaluation-report-service`](file:///D:/ai-interview-os/evaluation-report-service) | `8084` | 360° competency rubric synthesis, radar dimensions, PDF/JSON export, historical grading. | PostgreSQL |
+| [`question-bank-service`](file:///D:/ai-interview-os/question-bank-service) | `8085` | Question catalog management, markdown parsing, seed ladders, category filtering. | PostgreSQL |
+
+---
+
+## 3. Data Flow Pipelines
+
+### A. Session Creation & Hardware Verification Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate
+    participant UI as Frontend (React 18)
+    participant GW as API Gateway (:8080)
+    participant SS as Session Service (:8081)
+    participant QB as Question Bank (:8085)
+
+    Candidate->>UI: Selects Track, Seniority, Mode (Interview)
+    UI->>GW: POST /api/v1/sessions
+    GW->>SS: Route to InterviewSessionService
+    SS->>QB: GET /api/v1/questions/planned-ladder
+    QB-->>SS: Return 1-2-3 Ladder [Below, Target, Above]
+    SS-->>UI: SessionResponse (id, plannedSlugs, mode)
+    UI->>Candidate: Renders Pre-Interview Checklist
+    Note over Candidate,UI: 4 Hard Gates: Webcam active, Mic tested, Secondary camera/ack, Consent confirmed
+    Candidate->>UI: Clicks "All Systems Verified -> Start Interview"
+    UI->>GW: POST /api/v1/sessions/{id}/start
+    GW->>SS: Set session status to IN_PROGRESS
+    SS-->>UI: 200 OK -> Mounts ArenaRoom
+```
+
+### B. Code Execution Sandbox Pipeline
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate
+    participant UI as Monaco Editor / TestcasePanel
+    participant GW as API Gateway (:8080)
+    participant SS as Session Service (:8081)
+    participant J0 as Judge0 CE Server (:3000)
+    participant Worker as Judge0 Workers (privileged)
+
+    Candidate->>UI: Clicks "Run Tests"
+    UI->>GW: POST /api/v1/sessions/{id}/execute
+    GW->>SS: ExecuteCodeRequest (language, code, slug)
+    SS->>SS: DsaJudge0Runner.normalizeJavaCode()
+    SS->>J0: POST /submissions (source_code, language_id, stdin)
+    J0->>Worker: Enqueue submission to Redis
+    Worker->>Worker: Mounts /box via Linux cgroups (isolate)
+    Worker->>Worker: Compiles & executes against test cases
+    Worker-->>J0: Execution results (stdout, stderr, exit_code)
+    J0-->>SS: SubmissionResponse
+    SS-->>GW: ExecutionResultResponse (status, testResults, rawOutput)
+    GW-->>UI: Response
+    Note over UI: If ENGINE_UNAVAILABLE -> renders honest offline warning card
+```
+
+### C. Continuous Session Recording Pipeline
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as useSessionRecorder.ts
+    participant GW as API Gateway (:8080)
+    participant SS as Session Service (:8081)
+    participant GFS as MongoDB GridFS
+
+    Note over UI: Captures 15fps WebM video in 5000ms timeslices
+    loop Every 5 Seconds
+        UI->>GW: POST /api/v1/sessions/{id}/recordings/chunk?seq={n}
+        GW->>SS: MultipartForm (chunk blob + seq)
+        SS->>GFS: store(chunk, "rec_{id}_chunk_{seq}.webm")
+        GFS-->>SS: Stored metadata
+        SS-->>UI: 200 OK {"status":"STORED", "seq": n}
+    end
+    Note over SS,GFS: StorageHygieneScheduledJob auto-deletes recordings after 7 days
+```
+
+---
+
+## 4. Technology Stack
+
+- **Application Framework**: Spring Boot 3.2.x, Spring Cloud 2023.0.x, Java 21 (Temurin).
+- **Client Presentation**: React 18, Vite 8, TypeScript 5, Tailwind CSS 4, Monaco Editor, Lucide Icons.
+- **Relational Persistence**: PostgreSQL 16 (session metadata, questions, rubric evaluations).
+- **Document & Blob Storage**: MongoDB 7 (full session transcript documents, GridFS audio/video chunks).
+- **Zero-Trust Sandboxes**: Judge0 CE 1.13.1 (DSA), PostgreSQL 13 Ephemeral (SQL), Maven 3.9 Container (LLD).
+- **AI Inference Tier**: Groq Cloud API (LPU hardware: `gpt-oss-120b`, `qwen-2.5-32b`, `whisper-large-v3`), Ollama (local fallback).
+- **Telemetry & Observability**: Prometheus metrics, Grafana dashboards, Grafana Loki log aggregation, OpenTelemetry tracing.
+
+---
+
+## 5. Key Architectural Decisions (ADR References)
+
+For detailed historical context, trade-off analyses, and alternatives considered, reference the formal Architecture Decision Records:
+- [**ADR 001: Monolith to Microservices Split**](ADR/001-monolith-to-microservices.md)
+- [**ADR 002: Code Runner Isolation Strategy**](ADR/002-code-runner-isolation.md)
+- [**ADR 003: AI Evaluation Pipeline & Deterministic Guarding**](ADR/003-ai-evaluation-pipeline.md)
+
+---
+
+## ⚠️ DO NOT (Architectural Constraints)
+
+> [!CAUTION]
+> **STRICT ARCHITECTURAL CONSTRAINTS FOR FUTURE DEVELOPERS AND LLMs:**
+
+1. **Do NOT split into more microservices.** 8 services is the optimal domain granularity. `interview-session-service` intentionally owns session lifecycles, transcripts, and recording storage to eliminate distributed two-phase commit overhead.
+2. **Do NOT replace Judge0 with custom container runners for DSA.** Judge0 CE provides battle-tested memory and CPU isolation using Linux `isolate`. Rebuilding a custom runner exposes the host to sandbox escapes and compiler fork bombs.
+3. **Do NOT bypass the API Gateway.** All client communications must transit `api-gateway-service:8080`. Bypassing the gateway breaks credential redaction, rate limiting, and CORS headers.
+4. **Do NOT consolidate polyglot persistence into a single database.** Relational state requires ACID foreign keys in PostgreSQL; conversational transcripts and binary recording chunks require MongoDB documents and GridFS streaming.
+5. **Do NOT introduce an asynchronous message broker (Kafka/RabbitMQ).** Synchronous REST with non-blocking HTTP and MongoDB outbox patterns avoids distributed messaging complexity for interactive interview sessions.
+6. **Do NOT run candidate code directly on the host.** Every execution MUST take place inside an ephemeral container or chroot jail.
