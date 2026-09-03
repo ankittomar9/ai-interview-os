@@ -19,6 +19,7 @@ export const ResumeSection: React.FC<ResumeSectionProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [parsedSkills, setParsedSkills] = useState<string[]>([]);
+  const [parsedProfile, setParsedProfile] = useState<ResumeDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,6 +31,7 @@ export const ResumeSection: React.FC<ResumeSectionProps> = ({
     try {
       const response = await uploadResumeFile(file, candidateId || 'candidate-01', candidateName || 'Candidate');
       setUploadSuccess(true);
+      setParsedProfile(response);
       if (response.skills && Array.isArray(response.skills)) {
         setParsedSkills(response.skills);
       }
@@ -53,6 +55,7 @@ export const ResumeSection: React.FC<ResumeSectionProps> = ({
         resumeText
       });
       setUploadSuccess(true);
+      setParsedProfile(response);
       if (response.skills && Array.isArray(response.skills)) {
         setParsedSkills(response.skills);
       }
@@ -135,15 +138,34 @@ export const ResumeSection: React.FC<ResumeSectionProps> = ({
       )}
 
       {uploadSuccess && (
-        <div className="p-2.5 rounded-lg bg-success/10 border border-success/30 text-xs text-success flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>Resume parsed &amp; grounded successfully.</span>
+        <div className="p-3 rounded-lg bg-success/10 border border-success/30 text-xs space-y-2">
+          <div className="flex items-center justify-between text-success">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Resume parsed: {parsedProfile?.candidateName || 'Candidate'}</span>
+            </div>
+            {parsedProfile?.inferredRoleLevel && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-primary/20 text-primary border border-primary/30">
+                Level: {parsedProfile.inferredRoleLevel}
+              </span>
+            )}
           </div>
+          {parsedProfile?.email && (
+            <div className="text-[11px] text-text-2">
+              📧 {parsedProfile.email}
+            </div>
+          )}
           {parsedSkills.length > 0 && (
-            <span className="text-[10px] font-mono text-text-3">
-              {parsedSkills.length} skills identified
-            </span>
+            <div className="flex flex-wrap gap-1 pt-1">
+              {parsedSkills.slice(0, 6).map((skill, idx) => (
+                <span key={idx} className="px-1.5 py-0.5 rounded bg-surface border border-border text-[10px] text-text">
+                  {skill}
+                </span>
+              ))}
+              {parsedSkills.length > 6 && (
+                <span className="text-[10px] text-text-3 self-center">+{parsedSkills.length - 6} more</span>
+              )}
+            </div>
           )}
         </div>
       )}

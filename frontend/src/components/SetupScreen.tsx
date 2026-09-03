@@ -122,6 +122,17 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
             <ResumeSection
               candidateId={candidateId}
               candidateName={candidateName}
+              onResumeUploaded={(resume) => {
+                if (resume.candidateName && (!candidateName || candidateName === "Candidate" || candidateName === "Ankit Singh Tomar")) {
+                  setCandidateName(resume.candidateName);
+                }
+                if (resume.inferredRoleLevel) {
+                  const level = resume.inferredRoleLevel.toUpperCase() as DifficultyLevel;
+                  if (['JUNIOR', 'MID', 'SENIOR', 'STAFF'].includes(level)) {
+                    setDifficulty(level);
+                  }
+                }
+              }}
             />
 
             <ProviderSection

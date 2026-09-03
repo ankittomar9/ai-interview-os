@@ -86,14 +86,21 @@ public class ResumeParsingService {
         int charCount = rawText.length();
         int wordCount = rawText.trim().isEmpty() ? 0 : rawText.trim().split("\\s+").length;
 
+        String extractedEmail = extractEmail(rawText);
+        List<String> education = extractEducation(rawText);
+        String inferredRole = inferRoleLevel(expYears);
+
         ResumeDocument document = ResumeDocument.builder()
                 .candidateId(candidateId)
                 .candidateName(candidateName)
                 .resumeTitle(resumeTitle != null && !resumeTitle.isBlank() ? resumeTitle : "Primary Technical Resume")
                 .fileName(fileName)
                 .rawText(rawText)
+                .email(extractedEmail)
+                .inferredRoleLevel(inferredRole)
                 .skills(detectedSkills)
                 .projectExperiences(projectHighlights)
+                .education(education)
                 .yearsOfExperience(expYears)
                 .characterCount(charCount)
                 .wordCount(wordCount)
@@ -179,5 +186,39 @@ public class ResumeParsingService {
                 String.join(", ", skills.subList(0, Math.min(5, skills.size()))),
                 projects.isEmpty() ? "Distributed microservices & backend architecture" : projects.get(0)
         );
+    }
+
+    private String extractEmail(String text) {
+        Pattern pattern = Pattern.compile("(?i)\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return null;
+    }
+
+    private List<String> extractEducation(String text) {
+        List<String> education = new ArrayList<>();
+        String[] lines = text.split("\\r?\\n");
+        for (String line : lines) {
+            String lower = line.toLowerCase();
+            if (lower.contains("bachelor") || lower.contains("b.tech") || lower.contains("b.s.") || lower.contains("b.e.")
+                    || lower.contains("master") || lower.contains("m.tech") || lower.contains("m.s.")
+                    || lower.contains("ph.d") || lower.contains("computer science") || lower.contains("university") || lower.contains("institute of technology")) {
+                String trimmed = line.trim();
+                if (trimmed.length() > 5 && trimmed.length() < 120 && !education.contains(trimmed)) {
+                    education.add(trimmed);
+                    if (education.size() >= 3) break;
+                }
+            }
+        }
+        return education;
+    }
+
+    public static String inferRoleLevel(int years) {
+        if (years < 2) return "JUNIOR";
+        if (years < 5) return "MID";
+        if (years < 10) return "SENIOR";
+        return "STAFF";
     }
 }

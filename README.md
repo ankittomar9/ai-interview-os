@@ -109,6 +109,19 @@ Run entirely on your laptop with zero cloud bills and complete data privacy:
 
 ---
 
+## 🎯 Track-Neutral Rubrics & Local Resume Parsing (SPEC-004)
+
+The platform evaluates candidates across track-specific rubrics so that non-coding assessments are scored objectively:
+
+- **Algorithms & DSA / SQL / LLD**: Evaluated on Algorithmic Reasoning, Code Quality, Requirements Clarification, Communication, and Edge Cases.
+- **Behavioral (STAR)**: Evaluated on Leadership, Conflict Resolution, Teamwork, Adaptability, and STAR Communication.
+- **Resume Deep Dive**: Evaluated on Technical Depth, Project Impact, Problem Solving, Career Narrative, and Intellectual Honesty.
+- **System Design (HLD)**: Evaluated on Architecture Decomposition, Scalability, Trade-Offs, Whiteboard Communication, and Production Rigor.
+
+**Local Resume Ingestion**: Upload a resume PDF (or paste text) during Setup to automatically parse contact info, extract skills, and calibrate the difficulty ladder (Junior $\to$ Mid $\to$ Senior $\to$ Staff) to your background.
+
+---
+
 ## 💻 Minimalist VS Code IDE Workspace (M5.5)
 
 The assessment cockpit delivers a distraction-free, high-density 3-zone VS Code experience:

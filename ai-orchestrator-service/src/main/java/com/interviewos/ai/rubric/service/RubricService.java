@@ -40,59 +40,17 @@ public class RubricService {
                 request.problemSlug(), request.track(), request.difficulty());
 
         ModelProvider provider = resolveProvider(configuredProvider);
+        com.interviewos.ai.rubric.model.RubricSchema schema = com.interviewos.ai.rubric.model.RubricSchema.fromTrack(request.track());
         AiClient client;
         try {
             client = clientFactory.getClient(provider);
         } catch (Exception e) {
             log.warn("⚠️ Failed to resolve AI client for rubric provider '{}': {}. Returning deterministic fallback signal.",
                     provider, e.getMessage());
-            return RubricResponse.emptyFallback();
+            return RubricResponse.emptyFallback(schema);
         }
 
-        String systemInstruction = """
-                You are Mickey, a Principal Software Engineer and Bar Raiser conducting a comprehensive, objective technical assessment evaluation.
-                You must evaluate the candidate across EXACTLY these 5 dimensions in strict order:
-                1. REQUIREMENTS_CLARIFICATION — Did the candidate ask clarifying questions and confirm assumptions before coding?
-                2. ALGORITHMIC_REASONING — Did they accurately analyze Big-O time/space complexity and choose appropriate data structures?
-                3. EDGE_CASE_THOROUGHNESS — Did they identify and handle null, empty, boundary, overflow, or concurrency edge cases?
-                4. COMMUNICATION_CLARITY — Were explanations structured, concise, and professional, or unstructured and rambling?
-                5. CODE_QUALITY — Independent of execution, is the code clean, well-factored, idiomatic, and readable?
-                
-                SCORING ANCHORS:
-                - 0–40 (Weak): Missing, incorrect, or counter-productive.
-                - 40–70 (Adequate): Partially correct or standard with minor gaps.
-                - 70–100 (Strong): Thorough, idiomatic, and rigorously justified.
-                
-                CRITICAL RULES:
-                1. Every dimension score MUST carry an "evidence" field with a VERBATIM quote from the candidate transcript.
-                2. If no observable evidence exists in the transcript for a dimension, the score MUST be <= 50 and evidence MUST be exactly "No observable evidence in transcript.".
-                3. In COMMUNICATION_CLARITY and problem-solving rationales (ALGORITHMIC_REASONING), consider candidate persistence, responsiveness to hints, and recovery from stuck states if present in Coaching Signals.
-                4. "studyPlan" MUST contain exactly 7 high-impact, actionable daily drills specifically addressing the TWO WEAKEST scored dimensions.
-                5. Return ONLY a valid, raw JSON object matching the schema below with NO conversational preamble or markdown backticks:
-                
-                {
-                  "dimensions": [
-                    { "dimension": "REQUIREMENTS_CLARIFICATION", "score": 85, "rationale": "Detailed justification...", "evidence": "verbatim quote..." },
-                    { "dimension": "ALGORITHMIC_REASONING", "score": 75, "rationale": "...", "evidence": "..." },
-                    { "dimension": "EDGE_CASE_THOROUGHNESS", "score": 60, "rationale": "...", "evidence": "..." },
-                    { "dimension": "COMMUNICATION_CLARITY", "score": 90, "rationale": "...", "evidence": "..." },
-                    { "dimension": "CODE_QUALITY", "score": 80, "rationale": "...", "evidence": "..." }
-                  ],
-                  "strengths": ["Strength 1...", "Strength 2...", "Strength 3..."],
-                  "weaknesses": ["Improvement Area 1...", "Improvement Area 2...", "Improvement Area 3..."],
-                  "studyPlan": [
-                    "Day 1: ...",
-                    "Day 2: ...",
-                    "Day 3: ...",
-                    "Day 4: ...",
-                    "Day 5: ...",
-                    "Day 6: ...",
-                    "Day 7: ..."
-                  ],
-                  "executiveSummary": "Comprehensive summary highlighting candidate engineering maturity, algorithmic approach, and final hiring recommendation rationale."
-                }
-                """;
-
+        String systemInstruction = buildSystemInstruction(schema);
         String userPrompt = buildSanitizedUserPrompt(request);
 
         try {
@@ -109,7 +67,7 @@ public class RubricService {
 
             if (parsed == null || parsed.dimensions == null || parsed.dimensions.isEmpty()) {
                 log.warn("⚠️ LLM rubric response parsed to empty structure. Returning deterministic fallback.");
-                return RubricResponse.emptyFallback();
+                return RubricResponse.emptyFallback(schema);
             }
 
             return new RubricResponse(
@@ -245,6 +203,54 @@ public class RubricService {
             sb.append("- Recovery after being stuck (Passed execution later): ").append(recovery ? "true" : "false").append("\n");
         }
         return sb.toString();
+    }
+
+    private String buildSystemInstruction(com.interviewos.ai.rubric.model.RubricSchema schema) {
+        List<com.interviewos.ai.rubric.model.RubricDimension> dimensions = com.interviewos.ai.rubric.model.RubricDimension.getDimensionsForSchema(schema);
+        StringBuilder dimList = new StringBuilder();
+        StringBuilder jsonDims = new StringBuilder();
+
+        for (int i = 0; i < dimensions.size(); i++) {
+            com.interviewos.ai.rubric.model.RubricDimension d = dimensions.get(i);
+            dimList.append(String.format("%d. %s (weight: %.0f%%) — %s\n", (i + 1), d.name(), d.getWeight() * 100, d.getDescription()));
+            jsonDims.append(String.format("    { \"dimension\": \"%s\", \"score\": 80, \"rationale\": \"...\", \"evidence\": \"...\" }%s\n",
+                    d.name(), (i < dimensions.size() - 1 ? "," : "")));
+        }
+
+        return String.format("""
+                You are Mickey, a Principal Software Engineer and Bar Raiser conducting a comprehensive, objective technical assessment evaluation.
+                You must evaluate the candidate across EXACTLY these 5 dimensions in strict order for track %s:
+                %s
+                SCORING ANCHORS:
+                - 0–40 (Weak): Missing, incorrect, or counter-productive.
+                - 40–70 (Adequate): Partially correct or standard with minor gaps.
+                - 70–100 (Strong): Thorough, idiomatic, and rigorously justified.
+
+                CRITICAL RULES:
+                1. Every dimension score MUST carry an "evidence" field with a VERBATIM quote from the candidate transcript.
+                2. If no observable evidence exists in the transcript for a dimension, the score MUST be <= 50 and evidence MUST be exactly "No observable evidence in transcript.".
+                3. In communication and problem-solving rationales, consider candidate persistence, responsiveness to hints, and recovery from stuck states if present in Coaching Signals.
+                4. "studyPlan" MUST contain exactly 7 high-impact, actionable daily drills specifically addressing the TWO WEAKEST scored dimensions.
+                5. Return ONLY a valid, raw JSON object matching the schema below with NO conversational preamble or markdown backticks:
+
+                {
+                  "dimensions": [
+                %s
+                  ],
+                  "strengths": ["Strength 1...", "Strength 2...", "Strength 3..."],
+                  "weaknesses": ["Improvement Area 1...", "Improvement Area 2...", "Improvement Area 3..."],
+                  "studyPlan": [
+                    "Day 1: ...",
+                    "Day 2: ...",
+                    "Day 3: ...",
+                    "Day 4: ...",
+                    "Day 5: ...",
+                    "Day 6: ...",
+                    "Day 7: ..."
+                  ],
+                  "executiveSummary": "Comprehensive summary highlighting candidate engineering maturity, track-specific strengths, and final hiring recommendation rationale."
+                }
+                """, schema.name(), dimList.toString(), jsonDims.toString());
     }
 
     private ModelProvider resolveProvider(String providerStr) {

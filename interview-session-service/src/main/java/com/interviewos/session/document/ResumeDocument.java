@@ -43,6 +43,13 @@ public class ResumeDocument {
     @Builder.Default
     private List<String> projectExperiences = new ArrayList<>();
 
+    @Builder.Default
+    private List<String> education = new ArrayList<>();
+
+    private String email;
+
+    private String inferredRoleLevel;
+
     private Integer yearsOfExperience;
 
     private Integer characterCount;

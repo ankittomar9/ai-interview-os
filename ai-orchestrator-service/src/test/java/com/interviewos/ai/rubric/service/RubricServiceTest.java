@@ -107,4 +107,46 @@ class RubricServiceTest {
         assertThat(response.dimensions().get(0).evidence()).isEqualTo("Does input contain spaces?");
         assertThat(response.studyPlan()).hasSize(7);
     }
+
+    @Test
+    @DisplayName("BEHAVIORAL track evaluates with BEHAVIORAL dimensions")
+    void testBehavioralTrackUsesBehavioralSchema() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+        String behavioralJson = """
+                {
+                  "dimensions": [
+                    { "dimension": "LEADERSHIP", "score": 85, "rationale": "Took initiative", "evidence": "I led the incident call" },
+                    { "dimension": "CONFLICT_RESOLUTION", "score": 80, "rationale": "Resolved dispute", "evidence": "We agreed on metric-based rollout" },
+                    { "dimension": "TEAMWORK", "score": 90, "rationale": "Mentored engineers", "evidence": "Paired with junior dev" },
+                    { "dimension": "ADAPTABILITY", "score": 75, "rationale": "Pivoted strategy", "evidence": "Adjusted timeline" },
+                    { "dimension": "COMMUNICATION_BEHAVIORAL", "score": 88, "rationale": "STAR structure", "evidence": "The situation was..." }
+                  ],
+                  "strengths": ["Strong ownership", "Constructive debate"],
+                  "weaknesses": ["Pacing in early turns"],
+                  "studyPlan": ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"],
+                  "executiveSummary": "Strong behavioral leadership hire."
+                }
+                """;
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenReturn(behavioralJson);
+
+        RubricEvaluationRequest request = new RubricEvaluationRequest(
+                "team-conflict",
+                "Describe a situation where you resolved technical conflict.",
+                "BEHAVIORAL",
+                "SENIOR",
+                List.of(new TurnDto("CANDIDATE", "EXPLANATION", "I led the incident call", null)),
+                List.of(),
+                null,
+                null
+        );
+
+        RubricResponse response = rubricService.evaluateRubric(request);
+
+        assertThat(response.llmGenerated()).isTrue();
+        assertThat(response.dimensions()).hasSize(5);
+        assertThat(response.dimensions().get(0).dimension()).isEqualTo("LEADERSHIP");
+        assertThat(response.dimensions().get(1).dimension()).isEqualTo("CONFLICT_RESOLUTION");
+        assertThat(response.dimensions().get(2).dimension()).isEqualTo("TEAMWORK");
+    }
 }

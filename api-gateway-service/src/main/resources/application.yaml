@@ -38,6 +38,12 @@ spring:
           predicates:
             - Path=/api/v1/problems/**
 
+        # Route 1.2: Resumes (:8081)
+        - id: resumes-route
+          uri: ${SESSION_SERVICE_URL:http://interview-session-service:8081}
+          predicates:
+            - Path=/api/v1/resumes/**
+
         # Route 2: AI Orchestrator Service (:8082)
         - id: ai-orchestrator-route
           uri: ${AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}

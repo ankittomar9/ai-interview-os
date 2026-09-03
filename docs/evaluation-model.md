@@ -78,17 +78,47 @@ if (reply.matches("(?i).*\\b(mickey|dr\\.? anya chen)\\b.*")) {
 
 ---
 
-## 3. Rubric Scoring Model (Evaluation Report)
+## 3. Rubric Scoring Model (Track-Specific Schemas — SPEC-004)
 
-After an interview session finishes, [`evaluation-report-service`](../evaluation-report-service) aggregates the session transcript, test run metrics, and integrity logs to generate a comprehensive assessment across 5 weighted dimensions:
+After an interview session finishes, [`evaluation-report-service`](../evaluation-report-service) and [`ai-orchestrator-service`](../ai-orchestrator-service) evaluate the session transcript across **track-specific rubric schemas**, guaranteeing that non-coding interviews (Behavioral, Resume, System Design) are assessed against track-relevant dimensions rather than mismatched coding criteria.
 
+### Track-Specific Dimensions
+
+#### 1. CODING (`ALGORITHMS_DATA_STRUCTURES`, `JAVA_SPRING_BOOT`, `SPRING_LLD`, `SQL`)
 | Dimension | Weight | Criteria Evaluated |
 |---|---|---|
-| **Problem Solving** | 30% | Approach optimality, edge case coverage, decomposition skills |
-| **Code Quality** | 25% | Readability, naming conventions, modularity, idiomatic syntax |
-| **Communication** | 20% | Clarity of thought, proactive articulation, receptiveness to hints |
-| **Execution Efficiency** | 15% | Big-O time and space complexity, resource efficiency |
-| **Professionalism & Rigor** | 10% | Verification discipline, composure, adherence to instructions |
+| **ALGORITHMIC_REASONING** | 30% | Big-O time and space complexity, optimal data structures |
+| **CODE_QUALITY** | 20% | Idiomatic syntax, clean naming, modularity, readability |
+| **REQUIREMENTS_CLARIFICATION** | 20% | Clarifying questions, boundary definitions, constraint checks |
+| **COMMUNICATION_CLARITY** | 15% | Structured explanations, professional cadence, responsiveness |
+| **EDGE_CASE_THOROUGHNESS** | 15% | Null/empty inputs, boundary values, integer overflow, concurrency |
+
+#### 2. BEHAVIORAL (`BEHAVIORAL_STAR`)
+| Dimension | Weight | Criteria Evaluated |
+|---|---|---|
+| **LEADERSHIP** | 25% | Ownership, initiative, positive influence, technical conviction |
+| **CONFLICT_RESOLUTION** | 20% | Constructive handling of disagreements and stakeholder misalignment |
+| **TEAMWORK** | 20% | Psychological safety, mentorship, cross-functional collaboration |
+| **COMMUNICATION_BEHAVIORAL** | 20% | Structured STAR storytelling (Situation, Task, Action, Result) |
+| **ADAPTABILITY** | 15% | Navigating ambiguity, changing requirements, and shifting priorities |
+
+#### 3. RESUME_BASED (`RESUME_BASED`)
+| Dimension | Weight | Criteria Evaluated |
+|---|---|---|
+| **TECHNICAL_DEPTH** | 30% | Deep mastery of claimed resume technologies and architectures |
+| **PROJECT_IMPACT** | 25% | Quantified business metrics, latency/throughput gains, reliability |
+| **PROBLEM_SOLVING** | 20% | Root-cause analysis, production incident triage, debugging journeys |
+| **COMMUNICATION_RESUME** | 15% | Transparent career narrative without resume exaggeration |
+| **PROFESSIONALISM_RESUME** | 10% | Intellectual honesty, acknowledging past trade-offs and lessons learned |
+
+#### 4. SYSTEM_DESIGN (`SYSTEM_DESIGN`)
+| Dimension | Weight | Criteria Evaluated |
+|---|---|---|
+| **ARCHITECTURE** | 30% | Decomposition, component boundaries, asynchronous flows |
+| **SCALABILITY** | 25% | Horizontal partitioning, caching tiers, backpressure |
+| **TRADE_OFFS** | 20% | CAP theorem, consistency models (strong vs eventual), costs |
+| **COMMUNICATION_DESIGN** | 15% | Whiteboard diagramming, structured presentation |
+| **RIGOR** | 10% | Failover mechanics, monitoring, blast-radius containment |
 
 ### Verdict Determination
 

@@ -127,29 +127,37 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     }
   };
 
-  // Dimensions for Radar Chart
-  const radarDimensions = [
-    {
-      dimension: 'Technical Accuracy',
-      score: report.scorecard?.technicalAccuracy ?? 70
-    },
-    {
-      dimension: 'Problem Solving',
-      score: report.scorecard?.problemSolving ?? 70
-    },
-    {
-      dimension: 'Code Quality',
-      score: report.scorecard?.codeQuality ?? 70
-    },
-    {
-      dimension: 'Communication',
-      score: report.scorecard?.communicationClarity ?? 70
-    },
-    {
-      dimension: 'Requirements',
-      score: report.scorecard?.requirementsClarification ?? report.requirementsClarityScore ?? 70
-    }
-  ];
+  // Track-Specific Dimensions for Radar Chart
+  const radarDimensions = (report.dimensions && report.dimensions.length > 0)
+    ? report.dimensions.map(d => ({
+        dimension: d.dimension
+          .replace(/_/g, ' ')
+          .toLowerCase()
+          .replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        score: d.score
+      }))
+    : [
+        {
+          dimension: 'Technical Accuracy',
+          score: report.scorecard?.technicalAccuracy ?? 70
+        },
+        {
+          dimension: 'Problem Solving',
+          score: report.scorecard?.problemSolving ?? 70
+        },
+        {
+          dimension: 'Code Quality',
+          score: report.scorecard?.codeQuality ?? 70
+        },
+        {
+          dimension: 'Communication',
+          score: report.scorecard?.communicationClarity ?? 70
+        },
+        {
+          dimension: 'Requirements',
+          score: report.scorecard?.requirementsClarification ?? report.requirementsClarityScore ?? 70
+        }
+      ];
 
   // Export Transcript to formatted text file
   const handleDownloadTranscript = () => {

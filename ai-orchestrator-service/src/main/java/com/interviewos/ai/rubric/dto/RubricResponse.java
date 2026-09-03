@@ -20,4 +20,8 @@ public record RubricResponse(
                 false
         );
     }
+
+    public static RubricResponse emptyFallback(com.interviewos.ai.rubric.model.RubricSchema schema) {
+        return emptyFallback();
+    }
 }

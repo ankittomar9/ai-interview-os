@@ -12,8 +12,8 @@
 | **SPEC-001** | Trustworthy Core | Honesty, Durability, Focus Mode, Voice Coach & Progress | P0 | **COMPLETED** (`feature/spec-001`) | R2–R5 + U1–U4 |
 | **SPEC-002** | Architecture | Edge-Service Consolidation (<5GB RAM Capped, 8GB Laptop Target) | P0 | **COMPLETED** (`feature/spec-002`) | Docker DNS, retire config/discovery, mem limits |
 | **SPEC-003** | Local-First | Local-First Purity (Ollama Default, Local STT, Offline Badge) | P1 | **COMPLETED** (`feature/spec-003`) | Ollama default, Whisper.cpp sidecar, EgressTracker, purity badge |
-| **SPEC-004** | Tracks | Track-Neutral Engine (Per-Track Rubric, Local PDF Resume Parsing) | P1 | **NEXT** | Behavioral STAR rubric, PDF resume parser, System Design vision |
-| **SPEC-005** | Growth | Candidate Progress Ledger & Trajectory Tracking | P2 | **PLANNED** | Historical analytics, skill delta radar, progress charts |
+| **SPEC-004** | Tracks | Track-Neutral Engine (Per-Track Rubric, Local PDF Resume Parsing) | P1 | **COMPLETED** (`feature/spec-004`) | Behavioral STAR rubric, PDF resume parser, role calibration |
+| **SPEC-005** | Growth | Candidate Progress Ledger & Trajectory Tracking | P2 | **NEXT** | Historical analytics, skill delta radar, progress charts |
 
 ---
 

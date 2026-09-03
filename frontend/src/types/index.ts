@@ -177,11 +177,14 @@ export interface ResumeDocument {
     id?: string;
     candidateId?: string;
     candidateName?: string;
+    email?: string;
+    inferredRoleLevel?: string;
     resumeTitle?: string;
     fileName?: string;
     rawText?: string;
     skills?: string[];
     projectExperiences?: string[];
+    education?: string[];
     yearsOfExperience?: number;
     characterCount?: number;
     wordCount?: number;

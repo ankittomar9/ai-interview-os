@@ -20,7 +20,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/sessions/resume")
+@RequestMapping({"/api/v1/sessions/resume", "/api/v1/resumes"})
 @RequiredArgsConstructor
 public class ResumeController {
 
@@ -31,7 +31,7 @@ public class ResumeController {
     /**
      * Upload & Ingest Resume from PDF or Text File.
      */
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = {"/upload", "/parse"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResumeDocument> uploadResume(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "candidateId", defaultValue = "candidate-01") String candidateId,

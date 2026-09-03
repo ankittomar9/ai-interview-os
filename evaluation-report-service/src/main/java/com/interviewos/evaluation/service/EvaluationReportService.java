@@ -201,13 +201,41 @@ public class EvaluationReportService {
                 dimScores.put(d.dimension().toUpperCase(), d.score());
             }
 
-            int reqScore = dimScores.getOrDefault("REQUIREMENTS_CLARIFICATION", 40);
-            int algoScore = dimScores.getOrDefault("ALGORITHMIC_REASONING", 40);
-            int edgeScore = dimScores.getOrDefault("EDGE_CASE_THOROUGHNESS", 40);
-            int commScore = dimScores.getOrDefault("COMMUNICATION_CLARITY", 40);
-            int codeScore = dimScores.getOrDefault("CODE_QUALITY", 40);
+            String trackUpper = session.track() != null ? session.track().toUpperCase() : "CODING";
+            int reqScore;
+            int algoScore;
+            int edgeScore;
+            int commScore;
+            int codeScore;
 
-            if (allExecutionsFailedByEngine) {
+            if (trackUpper.contains("BEHAVIORAL") || trackUpper.contains("LEADERSHIP")) {
+                algoScore = dimScores.getOrDefault("LEADERSHIP", 60);
+                codeScore = dimScores.getOrDefault("CONFLICT_RESOLUTION", 60);
+                edgeScore = dimScores.getOrDefault("ADAPTABILITY", 60);
+                commScore = dimScores.getOrDefault("COMMUNICATION_BEHAVIORAL", 60);
+                reqScore = dimScores.getOrDefault("TEAMWORK", 60);
+            } else if (trackUpper.contains("RESUME")) {
+                algoScore = dimScores.getOrDefault("TECHNICAL_DEPTH", 60);
+                codeScore = dimScores.getOrDefault("PROJECT_IMPACT", 60);
+                edgeScore = dimScores.getOrDefault("PROBLEM_SOLVING", 60);
+                commScore = dimScores.getOrDefault("COMMUNICATION_RESUME", 60);
+                reqScore = dimScores.getOrDefault("PROFESSIONALISM_RESUME", 60);
+            } else if (trackUpper.contains("SYSTEM_DESIGN") || trackUpper.contains("ARCHITECTURE") || trackUpper.contains("HLD")) {
+                algoScore = dimScores.getOrDefault("ARCHITECTURE", 60);
+                codeScore = dimScores.getOrDefault("SCALABILITY", 60);
+                edgeScore = dimScores.getOrDefault("TRADE_OFFS", 60);
+                commScore = dimScores.getOrDefault("COMMUNICATION_DESIGN", 60);
+                reqScore = dimScores.getOrDefault("RIGOR", 60);
+            } else {
+                reqScore = dimScores.getOrDefault("REQUIREMENTS_CLARIFICATION", 40);
+                algoScore = dimScores.getOrDefault("ALGORITHMIC_REASONING", 40);
+                edgeScore = dimScores.getOrDefault("EDGE_CASE_THOROUGHNESS", 40);
+                commScore = dimScores.getOrDefault("COMMUNICATION_CLARITY", 40);
+                codeScore = dimScores.getOrDefault("CODE_QUALITY", 40);
+            }
+
+            boolean isCodingTrack = !trackUpper.contains("BEHAVIORAL") && !trackUpper.contains("RESUME") && !trackUpper.contains("SYSTEM_DESIGN");
+            if (!isCodingTrack || allExecutionsFailedByEngine) {
                 technicalScore = algoScore;
                 codeQualityScore = codeScore;
             } else {
