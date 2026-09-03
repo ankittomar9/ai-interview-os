@@ -41,6 +41,12 @@ class EvaluationReportServiceTest {
     @Mock
     private AiRubricClient aiRubricClient;
 
+    @Mock
+    private HumanTranscriptPdfGenerator pdfGenerator;
+
+    @Mock
+    private ProgressLedgerService progressLedgerService;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 

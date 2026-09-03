@@ -24,6 +24,7 @@ public class AiOrchestratorController {
 
     private final AiOrchestratorService orchestratorService;
     private final WhisperTranscriptionService whisperService;
+    private final com.interviewos.ai.service.VoiceCoachService voiceCoachService;
 
     @PostMapping("/generate-question")
     public ResponseEntity<GenerateQuestionResponse> generateQuestion(
@@ -114,5 +115,14 @@ public class AiOrchestratorController {
                 targetFile.getOriginalFilename(), targetFile.getSize());
         Map<String, String> result = whisperService.transcribeAudio(targetFile, effectiveApiKey, model);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/voice-coach/tip")
+    public ResponseEntity<com.interviewos.ai.dto.VoiceCoachTipResponse> getVoiceCoachTip(
+            @RequestBody com.interviewos.ai.dto.VoiceCoachTipRequest request
+    ) {
+        log.info("💡 Generating Voice Coach tip for elapsed={}s, failures={}", request.elapsedSeconds(), request.testFailures());
+        com.interviewos.ai.dto.VoiceCoachTipResponse tip = voiceCoachService.generateTip(request);
+        return ResponseEntity.ok(tip);
     }
 }

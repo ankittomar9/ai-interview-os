@@ -19,6 +19,9 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class DsaJudge0Runner implements TrackRunner {
 
+    private static final int MAX_RETRIES = 3;
+    private static final long BASE_DELAY_MS = 1000;
+
     private final Judge0Client judge0Client;
 
     @Override
@@ -75,9 +78,26 @@ public class DsaJudge0Runner implements TrackRunner {
                     .memory_limit(memoryLimitKb)
                     .build();
 
-            Optional<Judge0Client.Judge0SubmissionResponse> optResp = judge0Client.submitAndAwait(subReq);
+            Optional<Judge0Client.Judge0SubmissionResponse> optResp = Optional.empty();
+            for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+                optResp = judge0Client.submitAndAwait(subReq);
+                if (optResp.isPresent()) {
+                    break;
+                }
+                if (attempt < MAX_RETRIES - 1) {
+                    long delay = BASE_DELAY_MS * (1L << attempt);
+                    log.warn("Judge0 call failed on attempt {}/{}, retrying in {}ms...", attempt + 1, MAX_RETRIES, delay);
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
 
             if (optResp.isEmpty()) {
+                log.error("Judge0 retries exhausted ({}) for session {} test {}. Marking ENGINE_UNAVAILABLE.", MAX_RETRIES, sessionId, test.name());
                 return ExecutionResultResponse.builder()
                         .status("ENGINE_UNAVAILABLE")
                         .totalTests(totalTests)
@@ -85,7 +105,7 @@ public class DsaJudge0Runner implements TrackRunner {
                         .executionTimeMs(0.0)
                         .memoryUsedMb(0.0)
                         .stdout("")
-                        .stderr("Judge0 execution engine is currently unreachable.")
+                        .stderr("Judge0 execution engine is currently unreachable after 3 attempts.")
                         .compilerOutput("")
                         .testResults(List.of())
                         .build();

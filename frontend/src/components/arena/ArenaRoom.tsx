@@ -43,6 +43,17 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
   const [pendingStageSwitch, setPendingStageSwitch] = useState<{ stage: InterviewStage; targetTrack: InterviewTrack } | null>(null);
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('interview-os:focus-mode') === 'true'; } catch { return false; }
+  });
+
+  const toggleFocusMode = useCallback(() => {
+    setIsFocusMode((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('interview-os:focus-mode', String(next)); } catch {}
+      return next;
+    });
+  }, []);
 
   // 1. Session Catalog (Strict track query with zero cross-track bleed)
   const {
@@ -228,6 +239,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       isRecording={recorder.isRecording}
       recordingSeconds={recorder.recordingSeconds}
       recordingInterrupted={recorder.recordingInterrupted}
+      isFocusMode={isFocusMode}
+      onToggleFocusMode={toggleFocusMode}
     />
   );
 };

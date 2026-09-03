@@ -9,16 +9,11 @@
 
 | ID | Stream | Title | Priority | Status | Target Scope |
 |---|---|---|---|---|---|
-| **R1** | Reliability | Engine-Down Honesty in Arena IDE | P0 | **COMPLETED** (`f97d155`) | `useExecution.ts`, `TestcasePanel.tsx` |
-| **R2** | Reliability | Transcript & Report Honesty on Sandbox Outages | P0 | **COMPLETED** (`eff85f0`) | `interview-session-service`, `ai-orchestrator`, `evaluation-report` |
-| **U1** | UX/UI | SubmissionsTab Warning Badge & Honest History | P1 | **COMPLETED** (`eff85f0`) | `SubmissionsTab.tsx`, `submissions.ts` |
+| **SPEC-001** | Trustworthy Core | Honesty, Durability, Focus Mode, Voice Coach & Progress | P0 | **COMPLETED** (`feature/spec-001`) | R2–R5 + U1–U4 |
 | **SPEC-002** | Architecture | Edge-Service Consolidation (<4GB RAM Floor, 8GB Laptop Target) | P0 | **NEXT** ([ADR-004](docs/ADR/004-edge-service-consolidation.md)) | Merge gateway+config+discovery; M0–M4 staging |
 | **SPEC-003** | Local-First | Local-First Purity (Ollama Default, Local STT, Offline Badge) | P1 | **PLANNED** | Client-side Whisper/WebSpeech, Ollama default, zero telemetry leak |
 | **SPEC-004** | Tracks | Track-Neutral Engine (Per-Track Rubric, Local PDF Resume Parsing) | P1 | **PLANNED** | Behavioral STAR rubric, PDF resume parser, System Design vision |
 | **SPEC-005** | Growth | Candidate Progress Ledger & Trajectory Tracking | P2 | **PLANNED** | Historical analytics, skill delta radar, progress charts |
-| **R3** | Reliability | Recording Chunk Re-queue & GridFS Store-Before-Delete | P1 | **PLANNED** | `useSessionRecorder.ts`, `SessionRecordingService.java` |
-| **R4** | Reliability | Container Stability, Memory Limits & Healthchecks | P1 | **PLANNED** | `docker-compose.yaml` |
-| **R5** | Reliability | Groq Whisper Audio Engine Resilience & Buffering | P2 | **PLANNED** | `WhisperTranscriptionService.java` |
 
 ---
 

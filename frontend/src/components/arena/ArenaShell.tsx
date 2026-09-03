@@ -17,6 +17,9 @@ import type { ExecutionResult } from '../ide/TestcasePanel';
 import type { ProviderErrorState } from './hooks/useDialogue';
 import { ProviderToast } from './ProviderToast';
 import { StageSwitchModal } from './StageSwitchModal';
+import { FocusModeToggle } from './FocusModeToggle';
+import { LocalPurityBadge } from '../LocalPurityBadge';
+import { VoiceCoachIndicator } from './VoiceCoachIndicator';
 
 interface ArenaShellProps {
   sessionId: number;
@@ -74,6 +77,8 @@ interface ArenaShellProps {
   isRecording?: boolean;
   recordingSeconds?: number;
   recordingInterrupted?: boolean;
+  isFocusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
@@ -87,7 +92,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking, voiceOutputEnabled,
     onToggleVoice, onMicToggle, interimTranscript = '', micError = null, onClearMicError,
     hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
-    isRecording, recordingSeconds, recordingInterrupted
+    isRecording, recordingSeconds, recordingInterrupted, isFocusMode = false, onToggleFocusMode
   } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
@@ -142,7 +147,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <LocalPurityBadge provider={provider} apiKey={apiKey} />
+          <FocusModeToggle isFocusMode={isFocusMode} onToggle={onToggleFocusMode || (() => {})} />
           <SelfTimer />
           <ThemeToggle />
           <Chip variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'} size="sm">
@@ -153,9 +160,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
           </button>
         </div>
       </div>
-      <StageStepper currentStage={currentStage} isPlayground={isPlayground} onStageClick={onStageClick} />
+      {!isFocusMode && <StageStepper currentStage={currentStage} isPlayground={isPlayground} onStageClick={onStageClick} />}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className="w-12 shrink-0 border-r border-border h-full" />
+        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           <Group orientation="horizontal" id="arena-shell-group" className="h-full w-full flex-1 min-w-0">
             <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
@@ -195,7 +202,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
           </Group>
         </div>
       </div>
-      {!isPlayground && <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />}
+      {!isPlayground && !isFocusMode && <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />}
+      <VoiceCoachIndicator problemTitle={question.title} currentTrack={track} voiceEnabled={voiceOutputEnabled} />
       <FloatingAiOrb isOpen={isAiPanelOpen} onToggle={onToggleAiPanel} isAiSpeaking={isAiSpeaking} isListening={isListening} hasUnread={hasUnreadAi} sessionMode={sessionMode} />
       <AiAssistantPanel
         open={isAiPanelOpen}

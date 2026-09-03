@@ -37,6 +37,9 @@ class AiOrchestratorControllerTest {
     @MockBean
     private com.interviewos.ai.service.WhisperTranscriptionService transcriptionService;
 
+    @MockBean
+    private com.interviewos.ai.service.VoiceCoachService voiceCoachService;
+
     @Test
     @DisplayName("POST /generate-question with valid payload should return 200 OK")
     void testGenerateQuestionSuccess() throws Exception {

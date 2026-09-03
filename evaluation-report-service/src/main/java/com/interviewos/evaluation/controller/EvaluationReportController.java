@@ -18,6 +18,7 @@ import java.util.List;
 public class EvaluationReportController {
 
     private final EvaluationReportService reportService;
+    private final com.interviewos.evaluation.service.ProgressLedgerService progressLedgerService;
 
     @PostMapping("/generate/{sessionId}")
     public ResponseEntity<DiagnosticReportResponse> generateReport(@PathVariable Long sessionId) {
@@ -28,6 +29,39 @@ public class EvaluationReportController {
         log.info("✅ Diagnostic Report Generated: Session={}, Verdict={}, OverallScore={}/100, Tech={}/100, Integrity={}/100 in {}ms",
                 sessionId, report.verdict(), report.overallScore(), report.scorecard().technicalAccuracy(), report.scorecard().integrityScore(), duration);
         return ResponseEntity.status(HttpStatus.CREATED).body(report);
+    }
+
+    @GetMapping(value = "/{sessionId}/human-transcript.pdf", produces = org.springframework.http.MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> getTranscriptPdf(@PathVariable Long sessionId) {
+        try {
+            byte[] pdf = reportService.generateTranscriptPdf(sessionId);
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"transcript-session-" + sessionId + ".pdf\"")
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/candidate/{candidateId}/progress")
+    public ResponseEntity<List<com.interviewos.evaluation.entity.ProgressLedger>> getCandidateProgress(
+            @PathVariable String candidateId,
+            @RequestParam(value = "track", required = false) String track
+    ) {
+        log.info("Fetching progress trajectory for candidate: {}, track: {}", candidateId, track);
+        List<com.interviewos.evaluation.entity.ProgressLedger> progress = progressLedgerService.getCandidateProgress(candidateId, track);
+        return ResponseEntity.ok(progress);
+    }
+
+    @GetMapping("/candidate/{candidateId}/analytics")
+    public ResponseEntity<com.interviewos.evaluation.service.ProgressLedgerService.ProgressAnalytics> getCandidateAnalytics(
+            @PathVariable String candidateId,
+            @RequestParam(value = "track", required = false) String track
+    ) {
+        log.info("Fetching progress analytics for candidate: {}, track: {}", candidateId, track);
+        com.interviewos.evaluation.service.ProgressLedgerService.ProgressAnalytics analytics = progressLedgerService.getCandidateAnalytics(candidateId, track);
+        return ResponseEntity.ok(analytics);
     }
 
     @GetMapping("/{id}")

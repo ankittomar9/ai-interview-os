@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { DiagnosticReportResponse, DimensionScore, SessionMessage } from '../types';
 import { fetchSessionTranscript } from '../services/api';
+import { ProgressChart } from './ProgressChart';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -39,6 +40,8 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     transcript?: SessionMessage[];
   } | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.report') === 'true');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoCurrentTime, setVideoCurrentTime] = useState<number>(0);
 
   const toggleAiPanel = () => {
     setIsAiPanelOpen((prev) => {
@@ -243,6 +246,14 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
               Export .txt
             </Button>
           )}
+          <a
+            href={`/api/v1/reports/${report.sessionId}/human-transcript.pdf`}
+            download={`transcript-session-${report.sessionId}.pdf`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-elevated hover:bg-surface border border-border text-text transition-colors"
+          >
+            <Download className="w-3.5 h-3.5 text-primary" />
+            <span>Download PDF Transcript</span>
+          </a>
           <Button
             variant="ghost"
             size="sm"
@@ -538,6 +549,9 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
               </div>
             )}
 
+            {/* F. HISTORICAL TRAJECTORY & PROGRESS LEDGER */}
+            <ProgressChart candidateId={report.candidateId} track={report.track} />
+
           </div>
         ) : activeTab === 'transcript' ? (
           /* F. FULL AUDITED DIALOGUE TRANSCRIPT */
@@ -612,11 +626,59 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
 
               <div className="w-full bg-black rounded-lg overflow-hidden border border-border aspect-video max-h-[500px] flex items-center justify-center">
                 <video
+                  ref={videoRef}
                   controls
                   playsInline
+                  onTimeUpdate={() => {
+                    if (videoRef.current) setVideoCurrentTime(videoRef.current.currentTime);
+                  }}
                   className="w-full h-full object-contain"
                   src={`/api/v1/sessions/${report.sessionId}/recordings/stream`}
                 />
+              </div>
+
+              {/* U2: SESSION REPLAY WITH SYNCHRONIZED TRANSCRIPT TIMELINE */}
+              <div className="border border-border rounded-lg p-4 bg-surface space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-text">Session Replay Transcript Timeline</h3>
+                  </div>
+                  <span className="text-xs font-mono text-text-3">
+                    Video Position: {Math.floor(videoCurrentTime / 60)}:{String(Math.floor(videoCurrentTime % 60)).padStart(2, '0')}
+                  </span>
+                </div>
+                <div className="max-h-64 overflow-y-auto space-y-2 pr-1 divide-y divide-border/40">
+                  {transcriptList && transcriptList.length > 0 ? (
+                    transcriptList.map((turn, index: number) => {
+                      const estimatedSeconds = index * 15;
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            if (videoRef.current) {
+                              videoRef.current.currentTime = estimatedSeconds;
+                              videoRef.current.play().catch(() => {});
+                            }
+                          }}
+                          className="pt-2 first:pt-0 flex items-start justify-between gap-3 cursor-pointer group hover:bg-elevated/60 p-2 rounded transition-colors text-xs"
+                        >
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-elevated border border-border text-text-2 shrink-0">
+                              {turn.senderRole}
+                            </span>
+                            <p className="text-text-2 line-clamp-2">{turn.content}</p>
+                          </div>
+                          <span className="text-[10px] font-mono text-primary group-hover:underline shrink-0">
+                            Seek to ~{Math.floor(estimatedSeconds / 60)}:{String(estimatedSeconds % 60).padStart(2, '0')}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-xs text-text-3 text-center py-4">No transcript turns available to sync.</div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">

@@ -27,6 +27,9 @@ class EvaluationReportControllerTest {
     @MockBean
     private EvaluationReportService reportService;
 
+    @MockBean
+    private com.interviewos.evaluation.service.ProgressLedgerService progressLedgerService;
+
     @Test
     @DisplayName("POST /api/v1/reports/generate/{sessionId} should return 201 CREATED")
     void testGenerateReport() throws Exception {

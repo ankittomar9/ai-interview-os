@@ -27,6 +27,8 @@ public class EvaluationReportService {
     private final ProctorServiceClient proctorClient;
     private final AiRubricClient aiRubricClient;
     private final ObjectMapper objectMapper;
+    private final HumanTranscriptPdfGenerator pdfGenerator;
+    private final ProgressLedgerService progressLedgerService;
 
     @Transactional
     public DiagnosticReportResponse generateReport(Long sessionId) {
@@ -344,7 +346,19 @@ public class EvaluationReportService {
                 .build();
 
         EvaluationReport saved = reportRepository.save(report);
+        progressLedgerService.recordSession(saved);
         return DiagnosticReportResponse.fromEntity(saved);
+    }
+
+    public byte[] generateTranscriptPdf(Long sessionId) throws java.io.IOException {
+        EvaluationReport report = reportRepository.findBySessionId(sessionId).orElse(null);
+        List<SessionServiceClient.TranscriptMessageDto> transcript = Collections.emptyList();
+        try {
+            transcript = sessionClient.getSessionTranscript(sessionId);
+        } catch (Exception e) {
+            log.warn("Could not fetch transcript turns for PDF: {}", e.getMessage());
+        }
+        return pdfGenerator.generateTranscriptPdf(report, transcript);
     }
 
     @Transactional(readOnly = true)
