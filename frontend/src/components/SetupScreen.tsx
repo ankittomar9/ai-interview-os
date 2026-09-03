@@ -7,9 +7,10 @@ import { TrackGrid } from "./setup/TrackGrid";
 import { ResumeSection } from "./setup/ResumeSection";
 import { ProviderSection } from "./setup/ProviderSection";
 import { Button } from "./ui/Button";
-import { Compass, Play, ShieldAlert } from "lucide-react";
+import { Compass, Play, ShieldAlert, Award, TrendingUp } from "lucide-react";
 import { FloatingAiOrb } from "./ai/FloatingAiOrb";
 import { AiAssistantPanel } from "./ai/AiAssistantPanel";
+import { ProgressChart } from "./ProgressChart";
 
 interface SetupScreenProps {
   onStart: (config: {
@@ -52,6 +53,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   });
 
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,18 +146,30 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
 
             {/* Action Bar */}
             <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/80">
-              {onOpenCatalog && (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {onOpenCatalog && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={onOpenCatalog}
+                    className="text-xs"
+                  >
+                    <Compass className="w-4 h-4 mr-1.5 text-primary" />
+                    <span>Catalog</span>
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="secondary"
                   size="md"
-                  onClick={onOpenCatalog}
-                  className="w-full sm:w-auto text-xs"
+                  onClick={() => setShowProgressModal(true)}
+                  className="text-xs"
                 >
-                  <Compass className="w-4 h-4 mr-1.5 text-primary" />
-                  <span>Browse Problem Catalog</span>
+                  <TrendingUp className="w-4 h-4 mr-1.5 text-success" />
+                  <span>Progress Ledger</span>
                 </Button>
-              )}
+              </div>
 
               <Button
                 type="submit"
@@ -170,6 +184,31 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
           </form>
         </div>
       </div>
+
+      {showProgressModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-primary" />
+                <h2 className="text-sm font-bold text-text">Candidate Trajectory &amp; Growth</h2>
+              </div>
+              <button
+                onClick={() => setShowProgressModal(false)}
+                className="text-text-3 hover:text-text text-sm font-mono cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <ProgressChart candidateId={candidateId} track={track} />
+            <div className="text-right">
+              <Button size="sm" variant="secondary" onClick={() => setShowProgressModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <FloatingAiOrb
         isOpen={isAiPanelOpen}

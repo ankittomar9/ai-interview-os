@@ -23,24 +23,49 @@ public class ProgressLedgerService {
         if (report == null || report.getCandidateId() == null) return;
 
         try {
-            ProgressLedger ledger = ProgressLedger.builder()
+            String trackUpper = report.getTrack() != null ? report.getTrack().toUpperCase() : "CODING";
+            String schema = "CODING";
+            if (trackUpper.contains("BEHAVIORAL") || trackUpper.contains("LEADERSHIP")) schema = "BEHAVIORAL";
+            else if (trackUpper.contains("RESUME")) schema = "RESUME_BASED";
+            else if (trackUpper.contains("SYSTEM_DESIGN") || trackUpper.contains("ARCHITECTURE") || trackUpper.contains("HLD")) schema = "SYSTEM_DESIGN";
+
+            Map<String, Integer> dimScores = new HashMap<>();
+            if (report.getRubricJson() != null && !report.getRubricJson().isBlank()) {
+                try {
+                    List<com.interviewos.evaluation.client.AiRubricClient.DimensionScoreDto> dims = new com.fasterxml.jackson.databind.ObjectMapper()
+                            .readValue(report.getRubricJson(), new com.fasterxml.jackson.core.type.TypeReference<List<com.interviewos.evaluation.client.AiRubricClient.DimensionScoreDto>>() {});
+                    for (com.interviewos.evaluation.client.AiRubricClient.DimensionScoreDto d : dims) {
+                        dimScores.put(d.dimension().toUpperCase(), d.score());
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            ProgressLedger.ProgressLedgerBuilder builder = ProgressLedger.builder()
                     .candidateId(report.getCandidateId())
                     .track(report.getTrack() != null ? report.getTrack() : "GENERAL")
                     .sessionId(report.getSessionId() != null ? report.getSessionId() : 0L)
                     .sessionDate(LocalDate.now())
-                    .rubricSchema("CODING")
+                    .rubricSchema(schema)
                     .overallScore(report.getOverallScore())
                     .dimensionScores(report.getRubricJson())
                     .algorithmicReasoningScore(report.getTechnicalAccuracyScore())
                     .codeQualityScore(report.getCodeQualityScore())
                     .executionEfficiencyScore(report.getProblemSolvingScore())
                     .communicationScore(report.getCommunicationClarityScore())
-                    .professionalismScore(report.getIntegrityScore())
-                    .build();
+                    .professionalismScore(report.getIntegrityScore());
 
+            if ("BEHAVIORAL".equals(schema)) {
+                builder.leadershipScore(dimScores.getOrDefault("LEADERSHIP", report.getTechnicalAccuracyScore()))
+                       .conflictResolutionScore(dimScores.getOrDefault("CONFLICT_RESOLUTION", report.getCodeQualityScore()))
+                       .teamworkScore(dimScores.getOrDefault("TEAMWORK", report.getRequirementsClarificationScore()))
+                       .adaptabilityScore(dimScores.getOrDefault("ADAPTABILITY", report.getProblemSolvingScore()))
+                       .communicationBehavioralScore(dimScores.getOrDefault("COMMUNICATION_BEHAVIORAL", report.getCommunicationClarityScore()));
+            }
+
+            ProgressLedger ledger = builder.build();
             progressLedgerRepository.save(ledger);
-            log.info("📈 Saved session {} to candidate {} progress ledger with overall score {}/100",
-                    report.getSessionId(), report.getCandidateId(), report.getOverallScore());
+            log.info("📈 Saved session {} to candidate {} progress ledger ({}) with score {}/100",
+                    report.getSessionId(), report.getCandidateId(), schema, report.getOverallScore());
         } catch (Exception e) {
             log.warn("⚠️ Failed to record progress ledger for session {}: {}", report.getSessionId(), e.getMessage());
         }

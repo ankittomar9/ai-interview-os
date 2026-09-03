@@ -62,6 +62,12 @@ spring:
           predicates:
             - Path=/api/v1/reports/**
 
+        # Route 4.1: Progress Ledger (:8084)
+        - id: progress-ledger-route
+          uri: ${EVALUATION_REPORT_URL:http://evaluation-report-service:8084}
+          predicates:
+            - Path=/api/v1/progress/**
+
         # Route 5: Question Bank Service (:8086)
         - id: question-bank-route
           uri: ${QUESTION_BANK_URL:http://question-bank-service:8086}

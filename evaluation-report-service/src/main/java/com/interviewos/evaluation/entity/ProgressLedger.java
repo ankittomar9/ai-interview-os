@@ -56,6 +56,21 @@ public class ProgressLedger {
     @Column(name = "professionalism_score")
     private Integer professionalismScore;
 
+    @Column(name = "leadership_score")
+    private Integer leadershipScore;
+
+    @Column(name = "conflict_resolution_score")
+    private Integer conflictResolutionScore;
+
+    @Column(name = "teamwork_score")
+    private Integer teamworkScore;
+
+    @Column(name = "adaptability_score")
+    private Integer adaptabilityScore;
+
+    @Column(name = "communication_behavioral_score")
+    private Integer communicationBehavioralScore;
+
     @Builder.Default
     @Column(name = "created_at")
     private Instant createdAt = Instant.now();

@@ -122,6 +122,17 @@ The platform evaluates candidates across track-specific rubrics so that non-codi
 
 ---
 
+## 📈 Progress Ledger & Trajectory Analytics (SPEC-005)
+
+Practice interviews are tracked across time in a dedicated historical ledger:
+
+- **Trajectory Tracking**: View score progression across consecutive attempts on each track (`GET /api/v1/progress/{candidateId}/{track}`).
+- **Improvement Analytics**: Automatic detection of score deltas (+/- points) and 3-session moving averages.
+- **Weak Dimension Alerts**: Automatically highlights focus areas where scores fell below 70 across multiple attempts, recommending specific targeted drills.
+- **Integrated Cockpit**: Access your Progress Ledger directly from the Setup Screen or review it alongside your Diagnostic Report post-session.
+
+---
+
 ## 💻 Minimalist VS Code IDE Workspace (M5.5)
 
 The assessment cockpit delivers a distraction-free, high-density 3-zone VS Code experience:
