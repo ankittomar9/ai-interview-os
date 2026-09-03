@@ -33,7 +33,43 @@ export function useExecution({
         problemSlug: slug
       });
 
+      if (response.status === 'ENGINE_UNAVAILABLE') {
+        const unavailableResult: ExecutionResult = {
+          status: 'error',
+          verdictTitle: 'Engine Unavailable',
+          executionTimeMs: 0,
+          memoryUsedMb: 0,
+          passedTests: 0,
+          totalTests: response.totalTests || 0,
+          cases: [],
+          rawOutput: response.stderr || 'The code execution engine is temporarily offline. Your code is not marked wrong — the platform cannot verify it right now. Please try again in a moment.'
+        };
+        setExecutionResult(unavailableResult);
+        if (onCodeRunRecorded) onCodeRunRecorded();
+        return unavailableResult;
+      }
+
       const passed = response.status === 'PASSED' || response.status === 'ACCEPTED';
+      let status: 'passed' | 'failed' | 'error' = 'failed';
+      let verdictTitle = 'Wrong Answer';
+
+      if (passed) {
+        status = 'passed';
+        verdictTitle = 'Accepted';
+      } else if (response.status === 'COMPILE_ERROR' || response.status === 'SYNTAX_ERROR') {
+        status = 'error';
+        verdictTitle = 'Compile Error';
+      } else if (response.status === 'RUNTIME_ERROR') {
+        status = 'error';
+        verdictTitle = 'Runtime Error';
+      } else if (response.status === 'TIMEOUT') {
+        status = 'failed';
+        verdictTitle = 'Time Limit Exceeded';
+      } else if (response.status === 'MEMORY_EXCEEDED') {
+        status = 'failed';
+        verdictTitle = 'Memory Limit Exceeded';
+      }
+
       const cases: TestCaseItem[] = (response.testResults || []).map((t, i) => ({
         id: i + 1,
         input: t.input || '',
@@ -45,7 +81,8 @@ export function useExecution({
       }));
 
       const result: ExecutionResult = {
-        status: passed ? 'passed' : 'failed',
+        status,
+        verdictTitle,
         executionTimeMs: response.executionTimeMs || 0,
         memoryUsedMb: response.memoryUsedMb || 0,
         passedTests: response.passedTests || 0,
@@ -84,6 +121,7 @@ export function useExecution({
       const passed = response.status === 'PASSED' || response.status === 'ACCEPTED';
       let subStatus: SubmissionStatus = 'Wrong Answer';
       if (passed) subStatus = 'Accepted';
+      else if (response.status === 'ENGINE_UNAVAILABLE') subStatus = 'Engine Unavailable';
       else if (response.status === 'COMPILE_ERROR' || response.status === 'SYNTAX_ERROR') subStatus = 'Compile Error';
       else if (response.status === 'RUNTIME_ERROR') subStatus = 'Runtime Error';
       else if (response.status === 'TIMEOUT') subStatus = 'Time Limit Exceeded';

@@ -279,27 +279,41 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                 </div>
               ) : isExecutionError ? (
                 <div className="space-y-3">
-                  {/* Explicit Execution / Compile / Runtime Error Card */}
-                  <div className="rounded-lg border border-danger/30 bg-danger/10 p-3.5 space-y-2">
+                  {/* Explicit Execution / Compile / Runtime / Engine Error Card */}
+                  <div className={`rounded-lg border p-3.5 space-y-2 ${
+                    executionResult.verdictTitle === 'Engine Unavailable'
+                      ? 'border-warning/30 bg-warning/10'
+                      : 'border-danger/30 bg-danger/10'
+                  }`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-danger font-bold text-sm">
+                      <div className={`flex items-center gap-2 font-bold text-sm ${
+                        executionResult.verdictTitle === 'Engine Unavailable' ? 'text-warning' : 'text-danger'
+                      }`}>
                         <AlertTriangle className="w-4 h-4" />
                         <span>{executionResult.verdictTitle || 'Execution Error'}</span>
                       </div>
                       <span className="text-xs text-text-3 font-mono">
-                        {executionResult.passedTests ?? 0} / {executionResult.totalTests ?? testCases.length} Passed
+                        {executionResult.verdictTitle === 'Engine Unavailable'
+                          ? 'Sandbox Offline'
+                          : `${executionResult.passedTests ?? 0} / ${executionResult.totalTests ?? testCases.length} Passed`}
                       </span>
                     </div>
 
                     <p className="text-xs text-text-2">
-                      {executionResult.verdictTitle === 'Compile Error' || executionResult.verdictTitle === 'Compilation Error'
+                      {executionResult.verdictTitle === 'Engine Unavailable'
+                        ? 'The code execution engine is temporarily offline. Your code is not marked wrong — the platform cannot verify it right now. Please try again in a moment.'
+                        : executionResult.verdictTitle === 'Compile Error' || executionResult.verdictTitle === 'Compilation Error'
                         ? 'Compilation failed. See diagnostic output below:'
                         : executionResult.verdictTitle === 'Runtime Error'
                         ? 'A runtime exception or signal occurred during execution:'
                         : 'Execution failed in the sandbox runner:'}
                     </p>
 
-                    <pre className="p-3 bg-surface/90 rounded border border-danger/20 text-xs font-mono text-danger whitespace-pre-wrap overflow-x-auto max-h-56 leading-relaxed">
+                    <pre className={`p-3 bg-surface/90 rounded border text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-56 leading-relaxed ${
+                      executionResult.verdictTitle === 'Engine Unavailable'
+                        ? 'border-warning/20 text-warning'
+                        : 'border-danger/20 text-danger'
+                    }`}>
                       {executionResult.rawOutput || 'No diagnostic output was returned by the sandbox.'}
                     </pre>
                   </div>
