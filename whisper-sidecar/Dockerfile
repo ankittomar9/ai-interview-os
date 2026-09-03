@@ -21,7 +21,8 @@ WORKDIR /app
 RUN git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git .
 
 # Build with whisper server support
-RUN make server
+RUN cmake -B build -DWHISPER_BUILD_SERVER=ON && \
+    cmake --build build --config Release -j --target whisper-server
 
 # Download the lightweight English model (~140MB)
 RUN mkdir -p models && \
@@ -32,5 +33,5 @@ EXPOSE 8178
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
   CMD curl -f http://localhost:8178/health || exit 1
 
-ENTRYPOINT ["./server"]
+ENTRYPOINT ["./build/bin/whisper-server"]
 CMD ["-m", "models/ggml-base.en.bin", "--host", "0.0.0.0", "--port", "8178"]
