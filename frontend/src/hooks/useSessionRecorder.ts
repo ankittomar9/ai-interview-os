@@ -20,27 +20,63 @@ export function useSessionRecorder({
   const streamRef = useRef<MediaStream | null>(null);
   const seqRef = useRef(0);
   const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const failedChunksRef = useRef<Array<{ blob: Blob; seq: number; retries: number }>>([]);
 
-  const uploadChunk = useCallback(async (blob: Blob, seq: number) => {
-    if (blob.size === 0) return;
+  const createFormData = (blob: Blob, seq: number) => {
     const formData = new FormData();
     formData.append('chunk', blob, `chunk_${seq}.webm`);
     formData.append('seq', String(seq));
+    return formData;
+  };
 
+  const uploadChunk = useCallback(async (blob: Blob, seq: number) => {
+    if (blob.size === 0) return;
     try {
       const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${seq}`, {
         method: 'POST',
-        body: formData
+        body: createFormData(blob, seq)
       });
       if (res.ok) {
         setUploadedChunks((prev) => prev + 1);
       } else {
-        console.warn(`Recording chunk ${seq} upload failed with status ${res.status}`);
+        console.warn(`Recording chunk ${seq} upload failed with status ${res.status}, queuing for retry`);
+        failedChunksRef.current.push({ blob, seq, retries: 0 });
       }
     } catch (err) {
-      console.warn(`Recording chunk ${seq} network notice:`, err);
+      console.warn(`Recording chunk ${seq} network notice, queuing for retry:`, err);
+      failedChunksRef.current.push({ blob, seq, retries: 0 });
     }
   }, [sessionId]);
+
+  const retryFailedChunks = useCallback(async () => {
+    if (failedChunksRef.current.length === 0) return;
+    const candidates = [...failedChunksRef.current];
+    for (const chunk of candidates) {
+      if (chunk.retries >= 3) continue;
+      try {
+        const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${chunk.seq}`, {
+          method: 'POST',
+          body: createFormData(chunk.blob, chunk.seq)
+        });
+        if (res.ok) {
+          setUploadedChunks((prev) => prev + 1);
+          failedChunksRef.current = failedChunksRef.current.filter((c) => c.seq !== chunk.seq);
+        } else {
+          chunk.retries++;
+        }
+      } catch {
+        chunk.retries++;
+      }
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (isPlayground || !sessionId) return;
+    const retryInterval = setInterval(() => {
+      void retryFailedChunks();
+    }, 8000);
+    return () => clearInterval(retryInterval);
+  }, [sessionId, isPlayground, retryFailedChunks]);
 
   useEffect(() => {
     if (isPlayground || !sessionId) return;
