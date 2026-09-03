@@ -19,7 +19,7 @@ Decompose the platform into 8 specialized, autonomous Spring Boot microservices 
 5. **`ai-orchestrator-service` (:8082)**: Low-latency AI dialogue routing (Groq LPU, Ollama), STT, and deterministic post-guards.
 6. **`proctor-sentinel-service` (:8083)**: Biometric telemetry, tab-switch monitoring, keystroke dynamics.
 7. **`evaluation-report-service` (:8084)**: 360° rubric synthesis, radar charts, PDF/JSON reporting.
-8. **`question-bank-service` (:8085)**: Problem catalog, curated 1-2-3 ladders, markdown problem parser.
+8. **`question-bank-service` (:8086)**: Problem catalog, curated 1-2-3 ladders, markdown problem parser.
 
 ## Consequences
 
@@ -39,5 +39,5 @@ Decompose the platform into 8 specialized, autonomous Spring Boot microservices 
 3. **Serverless Functions (AWS Lambda / Cloud Functions)**: Rejected. Cold starts (1–3 seconds) violate the sub-500ms conversational turnaround requirement for voice dialogue.
 
 ## References
-- Code: [`api-gateway-service`](file:///D:/ai-interview-os/api-gateway-service), [`interview-session-service`](file:///D:/ai-interview-os/interview-session-service)
+- Code: [`api-gateway-service`](../../api-gateway-service), [`interview-session-service`](../../interview-session-service)
 - Commit: `d128343` (M13: Modularize arena components and extract hooks)

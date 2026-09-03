@@ -37,3 +37,10 @@
 ## Docker hygiene
 - After `docker compose build`, run `docker image prune -f`.
 - Build only changed services: `docker compose build <service>`, never `--no-cache` unless necessary.
+
+## Architecture Governance & Contracts (Mandatory for AI Agents)
+- **Read `docs/` first**: Before proposing or implementing cross-service changes, read [docs/README.md](docs/README.md) and the relevant topic documents.
+- **Single Source of Truth**: Active task priorities and acceptance criteria are governed by [docs/SPEC.md](docs/SPEC.md).
+- **One spec → One commit**: Keep commits atomic and scoped to a single milestone or spec task.
+- **Never rebuild working subsystems**: Honor the hard constraints in `docs/architecture.md` (e.g. do not replace Judge0, do not consolidate polyglot persistence without an accepted ADR, do not bypass the API gateway).
+- **Topology changes**: Any service split or merge requires an accepted Architectural Decision Record (see [docs/ADR/](docs/ADR/)).

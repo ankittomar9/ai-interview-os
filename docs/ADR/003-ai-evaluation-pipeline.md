@@ -17,7 +17,7 @@ Key challenges encountered during user testing:
 ## Decision
 1. **Groq LPU Inference Tier**: Standardize on Groq Cloud LPU acceleration (`llama-3.3-70b-versatile`, `whisper-large-v3`) for sub-500ms voice/dialogue turns.
 2. **Local Ollama Failover**: Support local models (`qwen2.5-coder:7b`) when running offline or without external API keys.
-3. **Deterministic Post-Guards**: Enforce hard rule-based post-guards in [`AiOrchestratorService.java`](file:///D:/ai-interview-os/ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java) that execute after LLM generation:
+3. **Deterministic Post-Guards**: Enforce hard rule-based post-guards in [`AiOrchestratorService.java`](../../ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java) that execute after LLM generation:
    - **Verdict Grounding Guard**: If code execution failed, any model claim that "tests passed" is deterministically rewritten to a failure-aware debugging prompt, and `isSolutionComplete` is forced to `false`.
    - **Anti-Inversion Name Guard**: If the model refers to the candidate using the interviewer persona name, the token is deterministically replaced with the candidate's actual first name.
 4. **Independent Scoring Dimensions**: Keep proctoring integrity scores and algorithmic rubric scores strictly decoupled to avoid cognitive bias.
@@ -39,7 +39,7 @@ Key challenges encountered during user testing:
 3. **Local-Only Model Deployment**: Rejected. 7B local models lack sufficient reasoning depth for complex architectural trade-offs, and 70B models require expensive GPU hardware.
 
 ## References
-- Code: [`AiOrchestratorService.java`](file:///D:/ai-interview-os/ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java), [`AiOrchestratorServiceDialogueTest.java`](file:///D:/ai-interview-os/ai-orchestrator-service/src/test/java/com/interviewos/ai/service/AiOrchestratorServiceDialogueTest.java)
+- Code: [`AiOrchestratorService.java`](../../ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java), [`AiOrchestratorServiceDialogueTest.java`](../../ai-orchestrator-service/src/test/java/com/interviewos/ai/service/AiOrchestratorServiceDialogueTest.java)
 - Commits:
   - `b59626a` (M16-A-fix: deterministic post-guard for verdict grounding)
   - `1e1552c` (M18-B: fix persona name inversion and inject candidate name across dialogue pipeline)

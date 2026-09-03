@@ -46,7 +46,7 @@ AI Interview OS is an autonomous multi-track technical assessment and Socratic p
                                 |                                   |       +---------------+
                                 v                                   v       | question-bank |
                         +---------------+                   +---------------+ service       |
-                        | PostgreSQL 16 |                   | MongoDB 7     | (:8085)       |
+                        | PostgreSQL 16 |                   | MongoDB 7     | (:8086)       |
                         | (Relational)  |                   | (Document +   +---------------+
                         +---------------+                   |  GridFS)      |
                                                             +---------------+
@@ -56,14 +56,14 @@ AI Interview OS is an autonomous multi-track technical assessment and Socratic p
 
 | Service | Internal Port | Primary Responsibilities | Data Store |
 |---|---|---|---|
-| [`api-gateway-service`](file:///D:/ai-interview-os/api-gateway-service) | `8080` | Reverse proxy, global CORS, BYOK header forwarding, request deduplication, Eureka service routing. | None (Stateless) |
-| [`cloud-config-server`](file:///D:/ai-interview-os/cloud-config-server) | `8888` | Centralized external configuration repository for all Spring Boot services. | Git / Local Configs |
-| [`service-discovery-service`](file:///D:/ai-interview-os/service-discovery-service) | `8761` | Netflix Eureka registry; dynamic peer discovery and heartbeat health status. | In-memory registry |
-| [`interview-session-service`](file:///D:/ai-interview-os/interview-session-service) | `8081` | Session lifecycle (create/start/complete), code execution dispatch, MongoDB transcript, GridFS chunk recording pipeline. | PostgreSQL + MongoDB + GridFS |
-| [`ai-orchestrator-service`](file:///D:/ai-interview-os/ai-orchestrator-service) | `8082` | Multimodal AI routing (Groq, Ollama, Gemini), dialogue memory builder, deterministic post-guards, STT Whisper processing. | None (External APIs) |
-| [`proctor-sentinel-service`](file:///D:/ai-interview-os/proctor-sentinel-service) | `8083` | Biometric telemetry, tab switch tracking, keystroke dynamics, copy-paste heuristics. | PostgreSQL |
-| [`evaluation-report-service`](file:///D:/ai-interview-os/evaluation-report-service) | `8084` | 360° competency rubric synthesis, radar dimensions, PDF/JSON export, historical grading. | PostgreSQL |
-| [`question-bank-service`](file:///D:/ai-interview-os/question-bank-service) | `8085` | Question catalog management, markdown parsing, seed ladders, category filtering. | PostgreSQL |
+| [`api-gateway-service`](../api-gateway-service) | `8080` | Reverse proxy, global CORS, BYOK header forwarding, request deduplication, Eureka service routing. | None (Stateless) |
+| [`cloud-config-server`](../cloud-config-server) | `8888` | Centralized external configuration repository for all Spring Boot services. | Git / Local Configs |
+| [`service-discovery-service`](../service-discovery-service) | `8761` | Netflix Eureka registry; dynamic peer discovery and heartbeat health status. | In-memory registry |
+| [`interview-session-service`](../interview-session-service) | `8081` | Session lifecycle (create/start/complete), code execution dispatch, MongoDB transcript, GridFS chunk recording pipeline. | PostgreSQL + MongoDB + GridFS |
+| [`ai-orchestrator-service`](../ai-orchestrator-service) | `8082` | Multimodal AI routing (Groq, Ollama, Gemini), dialogue memory builder, deterministic post-guards, STT Whisper processing. | None (External APIs) |
+| [`proctor-sentinel-service`](../proctor-sentinel-service) | `8083` | Biometric telemetry, tab switch tracking, keystroke dynamics, copy-paste heuristics. | PostgreSQL |
+| [`evaluation-report-service`](../evaluation-report-service) | `8084` | 360° competency rubric synthesis, radar dimensions, PDF/JSON export, historical grading. | PostgreSQL |
+| [`question-bank-service`](../question-bank-service) | `8086` | Question catalog management, markdown parsing, seed ladders, category filtering. | PostgreSQL |
 
 ---
 
@@ -78,7 +78,7 @@ sequenceDiagram
     participant UI as Frontend (React 18)
     participant GW as API Gateway (:8080)
     participant SS as Session Service (:8081)
-    participant QB as Question Bank (:8085)
+    participant QB as Question Bank (:8086)
 
     Candidate->>UI: Selects Track, Seniority, Mode (Interview)
     UI->>GW: POST /api/v1/sessions
@@ -162,6 +162,7 @@ For detailed historical context, trade-off analyses, and alternatives considered
 - [**ADR 001: Monolith to Microservices Split**](ADR/001-monolith-to-microservices.md)
 - [**ADR 002: Code Runner Isolation Strategy**](ADR/002-code-runner-isolation.md)
 - [**ADR 003: AI Evaluation Pipeline & Deterministic Guarding**](ADR/003-ai-evaluation-pipeline.md)
+- [**ADR 004: Edge Service Consolidation & Execution Engine Extraction Seam**](ADR/004-edge-service-consolidation.md) *(Status: Proposed)*
 
 ---
 
@@ -170,7 +171,7 @@ For detailed historical context, trade-off analyses, and alternatives considered
 > [!CAUTION]
 > **STRICT ARCHITECTURAL CONSTRAINTS FOR FUTURE DEVELOPERS AND LLMs:**
 
-1. **Do NOT split into more microservices.** 8 services is the optimal domain granularity. `interview-session-service` intentionally owns session lifecycles, transcripts, and recording storage to eliminate distributed two-phase commit overhead.
+1. **Topology changes (splits OR merges) require an Accepted ADR.** The current 8-service boundary is intentionally balanced between build velocity, domain autonomy, and operational simplicity. Any consolidation (such as proposed [ADR-004](ADR/004-edge-service-consolidation.md)) or extraction (such as the M14 execution engine seam) requires a formal ADR and staged migration.
 2. **Do NOT replace Judge0 with custom container runners for DSA.** Judge0 CE provides battle-tested memory and CPU isolation using Linux `isolate`. Rebuilding a custom runner exposes the host to sandbox escapes and compiler fork bombs.
 3. **Do NOT bypass the API Gateway.** All client communications must transit `api-gateway-service:8080`. Bypassing the gateway breaks credential redaction, rate limiting, and CORS headers.
 4. **Do NOT consolidate polyglot persistence into a single database.** Relational state requires ACID foreign keys in PostgreSQL; conversational transcripts and binary recording chunks require MongoDB documents and GridFS streaming.

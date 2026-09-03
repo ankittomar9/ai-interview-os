@@ -66,10 +66,10 @@ The **Groq Whisper Neural Audio Engine** provides ultra-fast, human-level Speech
 - **Response Format**: `json`
 
 ### C. Source Code References
-- **Service**: [WhisperTranscriptionService.java](file:///D:/ai-interview-os/ai-orchestrator-service/src/main/java/com/interviewos/ai/service/WhisperTranscriptionService.java)
-- **Controller**: [AiOrchestratorController.java](file:///D:/ai-interview-os/ai-orchestrator-service/src/main/java/com/interviewos/ai/controller/AiOrchestratorController.java)
-- **Frontend Service**: [api.ts](file:///D:/ai-interview-os/frontend/src/services/api.ts)
-- **Audio Recorder Hook**: [InterviewRoom.tsx](file:///D:/ai-interview-os/frontend/src/components/InterviewRoom.tsx)
+- **Service**: [WhisperTranscriptionService.java](../ai-orchestrator-service/src/main/java/com/interviewos/ai/service/WhisperTranscriptionService.java)
+- **Controller**: [AiOrchestratorController.java](../ai-orchestrator-service/src/main/java/com/interviewos/ai/controller/AiOrchestratorController.java)
+- **Frontend Service**: [api.ts](../frontend/src/services/api.ts)
+- **Audio Recorder Hook**: [InterviewRoom.tsx](../frontend/src/components/InterviewRoom.tsx)
 
 ---
 

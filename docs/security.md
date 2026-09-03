@@ -49,7 +49,7 @@ To protect the host system from arbitrary code execution attacks:
 
 ## 3. Proctoring & Integrity Telemetry
 
-Interview sessions enforce four mandatory pre-flight checklist gates in [`PreInterviewChecklist.tsx`](file:///D:/ai-interview-os/frontend/src/components/PreInterviewChecklist.tsx):
+Interview sessions enforce four mandatory pre-flight checklist gates in [`PreInterviewChecklist.tsx`](../frontend/src/components/PreInterviewChecklist.tsx):
 
 1. **Primary Camera Gate**: Live WebRTC video feed must be initialized with face centered.
 2. **Microphone Gate**: Web Audio API analyser must detect ambient audio levels $>10\%$ before enabling proceed.
@@ -83,7 +83,7 @@ Interview sessions enforce four mandatory pre-flight checklist gates in [`PreInt
 
 ### Automated 7-Day Storage Hygiene
 
-To maintain GDPR compliance and prevent storage bloat, [`StorageHygieneScheduledJob.java`](file:///D:/ai-interview-os/interview-session-service/src/main/java/com/interviewos/session/job/StorageHygieneScheduledJob.java) runs a daily cleanup cron:
+To maintain GDPR compliance and prevent storage bloat, [`StorageHygieneScheduledJob.java`](../interview-session-service/src/main/java/com/interviewos/session/job/StorageHygieneScheduledJob.java) runs a daily cleanup cron:
 
 ```java
 @Scheduled(cron = "0 0 2 * * ?") // 02:00 AM daily

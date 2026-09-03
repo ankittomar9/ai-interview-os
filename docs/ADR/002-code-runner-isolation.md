@@ -46,7 +46,7 @@ Implement a multi-tier sandbox architecture tailored to the execution paradigm o
 3. **AWS Lambda / Cloud Run Sandboxing**: Rejected. Variable cold starts (1.5–4s) degrade the fast-feedback IDE loop.
 
 ## References
-- Code: [`DsaJudge0Runner.java`](file:///D:/ai-interview-os/interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/DsaJudge0Runner.java), [`SqlRunner.java`](file:///D:/ai-interview-os/interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/SqlRunner.java)
+- Code: [`DsaJudge0Runner.java`](../../interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/DsaJudge0Runner.java), [`SqlRunner.java`](../../interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/SqlRunner.java)
 - Commits:
   - `275d773` (M18-A: add privileged flag to judge0-workers for cgroup namespace isolation)
   - `f97d155` (M19: map ENGINE_UNAVAILABLE to Engine Unavailable verdict and render honest offline card)

@@ -52,7 +52,7 @@ AI Interview OS adopts a tiered inference architecture prioritizing sub-500ms co
 
 ### Deterministic Post-Guards Implementation
 
-To guarantee platform honesty and persona discipline, [`AiOrchestratorService.java`](file:///D:/ai-interview-os/ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java) executes two deterministic post-guards after LLM completion:
+To guarantee platform honesty and persona discipline, [`AiOrchestratorService.java`](../ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java) executes two deterministic post-guards after LLM completion:
 
 ```java
 // POST-GUARD 1: Verdict Grounding
@@ -80,7 +80,7 @@ if (reply.matches("(?i).*\\b(mickey|dr\\.? anya chen)\\b.*")) {
 
 ## 3. Rubric Scoring Model (Evaluation Report)
 
-After an interview session finishes, [`evaluation-report-service`](file:///D:/ai-interview-os/evaluation-report-service) aggregates the session transcript, test run metrics, and integrity logs to generate a comprehensive assessment across 5 weighted dimensions:
+After an interview session finishes, [`evaluation-report-service`](../evaluation-report-service) aggregates the session transcript, test run metrics, and integrity logs to generate a comprehensive assessment across 5 weighted dimensions:
 
 | Dimension | Weight | Criteria Evaluated |
 |---|---|---|
@@ -103,7 +103,7 @@ $$\text{Overall Score} = \sum (\text{Dimension Score} \times \text{Weight})$$
 
 ## 4. Anti-Cheat Integrity Telemetry
 
-[`proctor-sentinel-service`](file:///D:/ai-interview-os/proctor-sentinel-service) continuously samples proctoring telemetry:
+[`proctor-sentinel-service`](../proctor-sentinel-service) continuously samples proctoring telemetry:
 - **Keystroke Cadence**: Tracks typing intervals; an average inter-key latency below 50ms signals external text pasting or automated injection.
 - **Copy/Paste Tracking**: Increments per-turn copy and paste event counters.
 - **Tab & Window Focus**: Listens to browser `visibilitychange` events; logs total unfocused duration.

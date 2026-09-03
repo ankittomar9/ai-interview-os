@@ -8,11 +8,11 @@ This document describes the sandboxed code execution pipeline across all tracks 
 
 | Track | Runner Implementation | Isolation Environment | Wall-Clock Timeout | Languages Supported |
 |---|---|---|---|---|
-| **Algorithms & Data Structures (DSA)** | [`DsaJudge0Runner.java`](file:///D:/ai-interview-os/interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/DsaJudge0Runner.java) | Judge0 CE Container via Linux `isolate` | 15s | Java 21, Python 3, JavaScript (Node), C++17 |
-| **SQL & Database Engineering** | [`SqlRunner.java`](file:///D:/ai-interview-os/interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/SqlRunner.java) | Dedicated ephemeral schema in PostgreSQL 13 | 10s | PostgreSQL Dialect |
-| **Low-Level Design (LLD)** | [`LldRunner.java`](file:///D:/ai-interview-os/interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/LldRunner.java) | Embedded VS Code container (`code-server`) + volume mount | 120s | Java 21 (Maven multi-file) |
+| **Algorithms & Data Structures (DSA)** | [`DsaJudge0Runner.java`](../interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/DsaJudge0Runner.java) | Judge0 CE Container via Linux `isolate` | 15s | Java 21, Python 3, JavaScript (Node), C++17 |
+| **SQL & Database Engineering** | [`SqlRunner.java`](../interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/SqlRunner.java) | Dedicated ephemeral schema in PostgreSQL 13 | 10s | PostgreSQL Dialect |
+| **Low-Level Design (LLD)** | [`LldRunner.java`](../interview-session-service/src/main/java/com/interviewos/session/sandbox/runner/LldRunner.java) | Embedded VS Code container (`code-server`) + volume mount | 120s | Java 21 (Maven multi-file) |
 | **High-Level System Design (HLD)** | `WhiteboardRunner.tsx` / `DesignEvaluationController.java` | Interactive Canvas SVG/PNG export + Vision AI | N/A | Excalidraw / Diagram JSON |
-| **Behavioral & Leadership** | `DialogueRunner` / [`AiOrchestratorService.java`](file:///D:/ai-interview-os/ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java) | AI conversational state machine | N/A | Natural Language (Audio / Text) |
+| **Behavioral & Leadership** | `DialogueRunner` / [`AiOrchestratorService.java`](../ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java) | AI conversational state machine | N/A | Natural Language (Audio / Text) |
 | **Resume Deep Dive** | `DialogueRunner` (Resume Context Ingestion) | AI conversational state machine grounded on PDF embeddings | N/A | Natural Language (Audio / Text) |
 
 ---
