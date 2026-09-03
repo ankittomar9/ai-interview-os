@@ -32,38 +32,38 @@ AI Interview OS is an autonomous multi-track technical assessment and Socratic p
                                                   v
 +---------------------------------------------------------------------------------------------------+
 |                                   API GATEWAY SERVICE (:8080)                                     |
-|                      Spring Cloud Gateway, Global CORS, Eureka Load Balancing                      |
-+-------+---------------+---------------+-----------------+-----------------+---------------+-------+
-        |               |               |                 |                 |               |
-        v               v               v                 v                 v               v
-+---------------+---------------+---------------+-----------------+-----------------+---------------+
-| cloud-config  | discovery     | session       | ai-orchestrator | proctor         | evaluation    |
-| server        | service       | service       | service         | sentinel        | report        |
-| (:8888)       | (:8761)       | (:8081)       | (:8082)         | (:8083)         | (:8084)       |
-+---------------+---------------+---------------+-----------------+-----------------+---------------+
-                                |                                                   |
-                                +-----------------------------------+               v
-                                |                                   |       +---------------+
-                                v                                   v       | question-bank |
-                        +---------------+                   +---------------+ service       |
-                        | PostgreSQL 16 |                   | MongoDB 7     | (:8086)       |
-                        | (Relational)  |                   | (Document +   +---------------+
-                        +---------------+                   |  GridFS)      |
-                                                            +---------------+
+|              Spring Cloud Gateway, Global CORS, Docker DNS Routing (ADR-004)                      |
++-------+-----------------------+-----------------+-----------------+---------------+---------------+
+        |                       |                 |                 |               |
+        v                       v                 v                 v               v
++---------------+       +-----------------+-----------------+---------------+---------------+
+| session       |       | ai-orchestrator | proctor         | evaluation    | question-bank |
+| service       |       | service         | sentinel        | report        | service       |
+| (:8081)       |       | (:8082)         | (:8083)         | (:8084)       | (:8086)       |
++---------------+       +-----------------+-----------------+---------------+---------------+
+        |                                                                           |
+        +-----------------------------------+                                       |
+        |                                   |                                       v
+        v                                   v                               +---------------+
++---------------+                   +---------------+                       | MongoDB 7     |
+| PostgreSQL 16 |                   | MongoDB 7     |                       | (Questions)   |
+| (Relational)  |                   | (Document +   |                       +---------------+
++---------------+                   |  GridFS)      |
+                                    +---------------+
 ```
+
+> **Edge Consolidation & RAM Reduction (ADR-004 / SPEC-002)**: In single-node laptop deployments, `cloud-config-server` (:8888) and `service-discovery-service` (:8761) are retired in favor of Docker internal DNS and embedded profile inlining, reducing JVM memory consumption by ~750MB and guaranteeing a total platform footprint **<5GB** (capped at ~4.7GB).
 
 ### Service Responsibilities
 
-| Service | Internal Port | Primary Responsibilities | Data Store |
-|---|---|---|---|
-| [`api-gateway-service`](../api-gateway-service) | `8080` | Reverse proxy, global CORS, BYOK header forwarding, request deduplication, Eureka service routing. | None (Stateless) |
-| [`cloud-config-server`](../cloud-config-server) | `8888` | Centralized external configuration repository for all Spring Boot services. | Git / Local Configs |
-| [`service-discovery-service`](../service-discovery-service) | `8761` | Netflix Eureka registry; dynamic peer discovery and heartbeat health status. | In-memory registry |
-| [`interview-session-service`](../interview-session-service) | `8081` | Session lifecycle (create/start/complete), code execution dispatch, MongoDB transcript, GridFS chunk recording pipeline. | PostgreSQL + MongoDB + GridFS |
-| [`ai-orchestrator-service`](../ai-orchestrator-service) | `8082` | Multimodal AI routing (Groq, Ollama, Gemini), dialogue memory builder, deterministic post-guards, STT Whisper processing. | None (External APIs) |
-| [`proctor-sentinel-service`](../proctor-sentinel-service) | `8083` | Biometric telemetry, tab switch tracking, keystroke dynamics, copy-paste heuristics. | PostgreSQL |
-| [`evaluation-report-service`](../evaluation-report-service) | `8084` | 360° competency rubric synthesis, radar dimensions, PDF/JSON export, historical grading. | PostgreSQL |
-| [`question-bank-service`](../question-bank-service) | `8086` | Question catalog management, markdown parsing, seed ladders, category filtering. | PostgreSQL |
+| Service | Internal Port | Primary Responsibilities | Data Store | Memory Limit |
+|---|---|---|---|---|
+| [`api-gateway-service`](../api-gateway-service) | `8080` | Reverse proxy, global CORS, BYOK header forwarding, Docker DNS routing. | None (Stateless) | 256MB |
+| [`interview-session-service`](../interview-session-service) | `8081` | Session lifecycle, code execution dispatch, MongoDB transcript, GridFS chunk recording. | PostgreSQL + MongoDB + GridFS | 512MB |
+| [`ai-orchestrator-service`](../ai-orchestrator-service) | `8082` | Multimodal AI routing (Ollama, Groq, Gemini), dialogue memory builder, deterministic post-guards, STT. | None (External APIs) | 512MB |
+| [`proctor-sentinel-service`](../proctor-sentinel-service) | `8083` | Biometric telemetry, tab switch tracking, keystroke dynamics, copy-paste heuristics. | PostgreSQL | 384MB |
+| [`evaluation-report-service`](../evaluation-report-service) | `8084` | 360° competency rubric synthesis, radar dimensions, PDF transcript generation, progress ledger. | PostgreSQL | 512MB |
+| [`question-bank-service`](../question-bank-service) | `8086` | Question catalog management, markdown parsing, seed ladders, category filtering. | MongoDB | 384MB |
 
 ---
 

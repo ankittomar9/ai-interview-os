@@ -1,7 +1,13 @@
 # ADR 004: Edge Service Consolidation & Execution Engine Extraction Seam
 
 ## Status
-Proposed (2026-09-03)
+Accepted (2026-09-03)
+
+## Outcome (SPEC-002 Completed)
+- Retired `service-discovery-service` (:8761) and `cloud-config-server` (:8888) from `docker-compose.yaml`.
+- Configured direct Docker internal DNS routing with environment fallbacks (`SESSION_SERVICE_URL`, etc.) in `api-gateway-service:8080`.
+- Configured direct URL bindings in OpenFeign clients (`SessionServiceClient`, `ProctorServiceClient`).
+- Enforced hard memory limits (`mem_limit`) and JVM heap caps (`JAVA_TOOL_OPTIONS: -Xms128m -Xmx256m -XX:+UseSerialGC`) across all containers, capping total platform RAM at ~4.7GB (<5GB floor).
 
 ## Context
 The platform currently operates 8 backend Spring Boot microservices coordinated via Spring Cloud Gateway (`api-gateway-service:8080`), Netflix Eureka (`service-discovery-service:8761`), and Spring Cloud Config Server (`cloud-config-server:8888`), as established in [ADR 001](001-monolith-to-microservices.md).

@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "interview-session-service")
+@FeignClient(name = "interview-session-service", url = "${SESSION_SERVICE_URL:http://interview-session-service:8081}")
 public interface SessionServiceClient {
 
     @GetMapping("/api/v1/sessions/{id}")

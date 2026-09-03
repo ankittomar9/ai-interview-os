@@ -18,6 +18,7 @@ services:
       - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
     networks:
       - ai-interview-net
+    mem_limit: 384m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -35,6 +36,7 @@ services:
       - mongodb_data:/data/db
     networks:
       - ai-interview-net
+    mem_limit: 384m
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -54,6 +56,7 @@ services:
       - judge0_db_data:/var/lib/postgresql/data
     networks:
       - ai-interview-net
+    mem_limit: 256m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${JUDGE0_DB_USER:-judge0}"]
       interval: 5s
@@ -66,6 +69,7 @@ services:
     container_name: judge0-redis
     networks:
       - ai-interview-net
+    mem_limit: 128m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -93,6 +97,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-interview-net
+    mem_limit: 768m
 
   # 0.5 Judge0 Sandbox Execution Workers (Privileged for cgroup isolate namespace creation)
   judge0-workers:
@@ -121,6 +126,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-interview-net
+    mem_limit: 512m
 
   # 0.6 Docker Socket Proxy (Fine-grained permission proxy for M9/M11 Docker container lifecycle)
   docker-socket-proxy:
@@ -156,6 +162,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - ai-interview-net
+    mem_limit: 64m
     restart: unless-stopped
 
   # 0.7 Pre-warmed LLD Maven Runner Image Builder
@@ -176,41 +183,9 @@ services:
     entrypoint: ["true"]
     profiles: ["engines"]
 
-  # 1. Eureka Service Discovery (Internal Network Only)
-  service-discovery-service:
-    build:
-      context: .
-      dockerfile: ./service-discovery-service/Dockerfile
-    container_name: service-discovery-service
-    networks:
-      - ai-interview-net
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 15s
-
-  # 2. Centralized Config Server (Internal Network Only)
-  cloud-config-server:
-    build:
-      context: .
-      dockerfile: ./cloud-config-server/Dockerfile
-    container_name: cloud-config-server
-    networks:
-      - ai-interview-net
-    environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
-    depends_on:
-      service-discovery-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 20s
+  # NOTE (ADR-004 / SPEC-002): Standalone service-discovery-service (:8761) and
+  # cloud-config-server (:8888) have been retired in favor of Docker internal DNS
+  # (ai-interview-net bridge) and profile inlining, reducing host RAM by ~750MB.
 
   # 3. Interview Session Service (Protected via Gateway & Socket Proxy)
   interview-session-service:
@@ -220,10 +195,10 @@ services:
     container_name: interview-session-service
     networks:
       - ai-interview-net
+    mem_limit: 512m
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+      - EUREKA_ENABLED=false
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/interview_session_db
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
@@ -234,8 +209,6 @@ services:
       - WORKSPACE_HOST=localhost
       - RUNNER_MAVEN_IMAGE=ai-interview-os/lld-runner:latest
     depends_on:
-      cloud-config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       mongodb:
@@ -251,10 +224,10 @@ services:
     container_name: ai-orchestrator-service
     networks:
       - ai-interview-net
+    mem_limit: 512m
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+      - EUREKA_ENABLED=false
       - OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate
       - OLLAMA_MODEL=qwen2.5-coder:7b
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -265,9 +238,6 @@ services:
       - GROQ_MODEL_STT=${GROQ_MODEL_STT:-whisper-large-v3-turbo}
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on:
-      cloud-config-server:
-        condition: service_healthy
 
   # 5. Proctor Sentinel Service (Connected to PostgreSQL)
   proctor-sentinel-service:
@@ -277,16 +247,14 @@ services:
     container_name: proctor-sentinel-service
     networks:
       - ai-interview-net
+    mem_limit: 384m
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+      - EUREKA_ENABLED=false
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/proctor_sentinel_db
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     depends_on:
-      cloud-config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
@@ -298,20 +266,20 @@ services:
     container_name: evaluation-report-service
     networks:
       - ai-interview-net
+    mem_limit: 512m
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+      - EUREKA_ENABLED=false
+      - SESSION_SERVICE_URL=http://interview-session-service:8081
+      - PROCTOR_SERVICE_URL=http://proctor-sentinel-service:8083
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/evaluation_report_db
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     depends_on:
-      cloud-config-server:
-        condition: service_healthy
       postgres:
         condition: service_healthy
 
-  # 6.5 Question Bank Service (Connected to MongoDB & Eureka)
+  # 6.5 Question Bank Service (Connected to MongoDB & Direct DNS)
   question-bank-service:
     build:
       context: .
@@ -319,18 +287,16 @@ services:
     container_name: question-bank-service
     networks:
       - ai-interview-net
+    mem_limit: 384m
     environment:
-      - SPRING_CONFIG_IMPORT=optional:configserver:http://cloud-config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+      - EUREKA_ENABLED=false
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/questionbank
     depends_on:
-      cloud-config-server:
-        condition: service_healthy
       mongodb:
         condition: service_healthy
 
-  # 7. Spring Cloud API Gateway (Public Ingress Entrypoint :8080)
+  # 7. Spring Cloud API Gateway (Public Ingress Entrypoint :8080 with Docker DNS)
   api-gateway-service:
     build:
       context: .
@@ -340,13 +306,16 @@ services:
       - "8080:8080"
     networks:
       - ai-interview-net
+    mem_limit: 256m
     environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-service:8761/eureka/
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
+      - EUREKA_ENABLED=false
+      - SESSION_SERVICE_URL=http://interview-session-service:8081
+      - AI_ORCHESTRATOR_URL=http://ai-orchestrator-service:8082
+      - PROCTOR_SENTINEL_URL=http://proctor-sentinel-service:8083
+      - EVALUATION_REPORT_URL=http://evaluation-report-service:8084
+      - QUESTION_BANK_URL=http://question-bank-service:8086
       - FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-http://localhost:5173}
-    depends_on:
-      service-discovery-service:
-        condition: service_healthy
 
   # 8. Frontend React Cockpit (:5173)
   frontend:
@@ -358,6 +327,7 @@ services:
       - "5173:80"
     networks:
       - ai-interview-net
+    mem_limit: 128m
     depends_on:
       - api-gateway-service
 

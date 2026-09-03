@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
-@FeignClient(name = "proctor-sentinel-service")
+@FeignClient(name = "proctor-sentinel-service", url = "${PROCTOR_SERVICE_URL:http://proctor-sentinel-service:8083}")
 public interface ProctorServiceClient {
 
     @GetMapping("/api/v1/proctor/session/{sessionId}/summary")
