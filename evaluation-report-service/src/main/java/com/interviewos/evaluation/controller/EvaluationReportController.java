@@ -18,7 +18,6 @@ import java.util.List;
 public class EvaluationReportController {
 
     private final EvaluationReportService reportService;
-    private final com.interviewos.evaluation.service.ProgressLedgerService progressLedgerService;
 
     @PostMapping("/generate/{sessionId}")
     public ResponseEntity<DiagnosticReportResponse> generateReport(@PathVariable Long sessionId) {
@@ -42,26 +41,6 @@ public class EvaluationReportController {
             log.error("Failed to generate PDF for session {}: {}", sessionId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-
-    @GetMapping("/candidate/{candidateId}/progress")
-    public ResponseEntity<List<com.interviewos.evaluation.entity.ProgressLedger>> getCandidateProgress(
-            @PathVariable String candidateId,
-            @RequestParam(value = "track", required = false) String track
-    ) {
-        log.info("Fetching progress trajectory for candidate: {}, track: {}", candidateId, track);
-        List<com.interviewos.evaluation.entity.ProgressLedger> progress = progressLedgerService.getCandidateProgress(candidateId, track);
-        return ResponseEntity.ok(progress);
-    }
-
-    @GetMapping("/candidate/{candidateId}/analytics")
-    public ResponseEntity<com.interviewos.evaluation.service.ProgressLedgerService.ProgressAnalytics> getCandidateAnalytics(
-            @PathVariable String candidateId,
-            @RequestParam(value = "track", required = false) String track
-    ) {
-        log.info("Fetching progress analytics for candidate: {}, track: {}", candidateId, track);
-        com.interviewos.evaluation.service.ProgressLedgerService.ProgressAnalytics analytics = progressLedgerService.getCandidateAnalytics(candidateId, track);
-        return ResponseEntity.ok(analytics);
     }
 
     @GetMapping("/{id}")

@@ -1,8 +1,9 @@
 spring:
   application:
     name: interview-session-service
-  config:
-    import: "optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    config:
+      enabled: false
 
 eureka:
   client:

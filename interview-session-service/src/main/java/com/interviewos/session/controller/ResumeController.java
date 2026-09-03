@@ -20,7 +20,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping({"/api/v1/sessions/resume", "/api/v1/resumes"})
+@RequestMapping("/api/v1/sessions/resume")
 @RequiredArgsConstructor
 public class ResumeController {
 

@@ -43,6 +43,8 @@ spring:
           uri: ${SESSION_SERVICE_URL:http://interview-session-service:8081}
           predicates:
             - Path=/api/v1/resumes/**
+          filters:
+            - RewritePath=/api/v1/resumes(?<segment>/?.*), /api/v1/sessions/resume$\{segment}
 
         # Route 2: AI Orchestrator Service (:8082)
         - id: ai-orchestrator-route

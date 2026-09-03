@@ -45,8 +45,8 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({
       try {
         setLoading(true);
         const [progRes, analRes] = await Promise.all([
-          fetch(`/api/v1/reports/candidate/${encodeURIComponent(candidateId)}/progress?track=${encodeURIComponent(track)}`),
-          fetch(`/api/v1/reports/candidate/${encodeURIComponent(candidateId)}/analytics?track=${encodeURIComponent(track)}`)
+          fetch(`/api/v1/progress/${encodeURIComponent(candidateId)}?track=${encodeURIComponent(track)}`),
+          fetch(`/api/v1/progress/${encodeURIComponent(candidateId)}/analytics?track=${encodeURIComponent(track)}`)
         ]);
 
         if (progRes.ok && isMounted) {
