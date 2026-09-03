@@ -1,9 +1,15 @@
+server:
+  port: ${SERVER_PORT:8086}
+
 spring:
   application:
     name: question-bank-service
   cloud:
     config:
       enabled: false
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://mongodb:27017/questionbank}
 
 eureka:
   client:

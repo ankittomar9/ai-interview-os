@@ -1,9 +1,35 @@
+server:
+  port: ${SERVER_PORT:8083}
+
 spring:
   application:
     name: proctor-sentinel-service
   cloud:
     config:
       enabled: false
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/proctor_sentinel_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+proctor:
+  scoring:
+    initial-integrity-score: 100
+    tab-blur-penalty: 5
+    paste-dump-penalty: 8
+    paste-character-threshold: 200
+    keystroke-burst-penalty: 10
+    keystroke-burst-cpm-threshold: 800
 
 eureka:
   client:

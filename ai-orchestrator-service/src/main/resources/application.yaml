@@ -1,13 +1,12 @@
+server:
+  port: ${SERVER_PORT:8082}
+
 spring:
   application:
     name: ai-orchestrator-service
   cloud:
     config:
       enabled: false
-
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
 
 ai:
   providers:
@@ -26,3 +25,16 @@ ai:
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
       default-model: ${OLLAMA_MODEL:qwen2.5-coder:7b}
+
+rubric:
+  provider: ${RUBRIC_PROVIDER:ollama}
+  api-key: ${RUBRIC_API_KEY:}
+  timeout-seconds: 60
+
+question:
+  bank:
+    url: ${QUESTION_BANK_URL:http://question-bank-service:8086}
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}

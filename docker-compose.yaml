@@ -197,6 +197,7 @@ services:
       - ai-interview-net
     mem_limit: 512m
     environment:
+      - SERVER_PORT=8081
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
       - EUREKA_ENABLED=false
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/interview_session_db
@@ -226,6 +227,7 @@ services:
       - ai-interview-net
     mem_limit: 512m
     environment:
+      - SERVER_PORT=8082
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
       - EUREKA_ENABLED=false
       - OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate
@@ -264,6 +266,7 @@ services:
       - ai-interview-net
     mem_limit: 384m
     environment:
+      - SERVER_PORT=8083
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
       - EUREKA_ENABLED=false
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/proctor_sentinel_db
@@ -283,6 +286,7 @@ services:
       - ai-interview-net
     mem_limit: 512m
     environment:
+      - SERVER_PORT=8084
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
       - EUREKA_ENABLED=false
       - SESSION_SERVICE_URL=http://interview-session-service:8081
@@ -304,6 +308,7 @@ services:
       - ai-interview-net
     mem_limit: 384m
     environment:
+      - SERVER_PORT=8086
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
       - EUREKA_ENABLED=false
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/questionbank

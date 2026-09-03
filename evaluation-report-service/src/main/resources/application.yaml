@@ -1,9 +1,35 @@
+server:
+  port: ${SERVER_PORT:8084}
+
 spring:
   application:
     name: evaluation-report-service
   cloud:
     config:
       enabled: false
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/evaluation_report_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+services:
+  session-service:
+    url: ${SERVICES_SESSION_SERVICE_URL:http://interview-session-service:8081}
+  proctor-service:
+    url: ${SERVICES_PROCTOR_SERVICE_URL:http://proctor-sentinel-service:8083}
+  ai-orchestrator:
+    url: ${SERVICES_AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}
+    timeout-seconds: ${AI_ORCHESTRATOR_TIMEOUT_SECONDS:65}
 
 eureka:
   client:
