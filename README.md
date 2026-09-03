@@ -1,3 +1,11 @@
+# AI Interview OS
+
+> **Run your interview prep entirely on your laptop, with your own keys, forever free of cloud bills — so no learner is ever priced out of feeling confident.**
+
+Your resume never leaves your machine. Your failures are never uploaded. $0/month, forever.
+
+---
+
 # 🎯 AI Interview OS — Autonomous Technical Assessment & Learning Engine
 
 An enterprise-grade, autonomous technical interview and developer coaching platform. It pairs a **voice-driven AI bar-raiser** with **real sandboxed code execution** (Judge0 for DSA, an isolated Docker Maven runner for Spring Boot LLD), an **interactive HLD whiteboard** with multimodal vision evaluation, a **minimalist VS Code IDE workspace**, and a **structured 5-dimension rubric** backed by verbatim transcript evidence — with zero canned metrics.
