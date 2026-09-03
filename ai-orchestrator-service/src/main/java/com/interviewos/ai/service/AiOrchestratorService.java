@@ -270,11 +270,9 @@ public class AiOrchestratorService {
         }
 
         boolean isExecutionAvailable = request.latestExecution() != null && request.latestExecution().totalTests() > 0;
-        boolean isEngineError = (request.latestExecution() != null &&
+        boolean isEngineError = request.latestExecution() != null &&
                 ("ENGINE_UNAVAILABLE".equalsIgnoreCase(request.latestExecution().status()) ||
-                 "ENGINE_ERROR".equalsIgnoreCase(request.latestExecution().status()))) ||
-                (request.chatHistory() != null && request.chatHistory().stream().anyMatch(m ->
-                        m.content() != null && (m.content().contains("ENGINE_UNAVAILABLE") || m.content().contains("ENGINE_ERROR"))));
+                 "ENGINE_ERROR".equalsIgnoreCase(request.latestExecution().status()));
         boolean isAllTestsPassed = !isEngineError && isExecutionAvailable &&
                 request.latestExecution().passedTests() == request.latestExecution().totalTests() &&
                 ("PASSED".equalsIgnoreCase(request.latestExecution().status()) || "ACCEPTED".equalsIgnoreCase(request.latestExecution().status()));

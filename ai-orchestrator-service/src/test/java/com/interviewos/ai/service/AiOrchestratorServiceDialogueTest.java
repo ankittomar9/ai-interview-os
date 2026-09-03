@@ -265,4 +265,54 @@ class AiOrchestratorServiceDialogueTest {
         assertFalse(response.isSolutionComplete());
         assertEquals("PROBE_DEEPER", response.recommendedAction());
     }
+
+    @Test
+    @DisplayName("Engine recovery: prior ENGINE_ERROR in chatHistory does not stick when latest execution passes")
+    void testRecoveredEngineAfterPriorEngineErrorInChatHistoryAcknowledgesPass() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Great job! All test cases passed successfully.",
+                  "followUpQuestion": "Can you explain the space complexity?",
+                  "isSolutionComplete": true,
+                  "codeAnalysis": "Optimal solution.",
+                  "keyStrengths": ["Correctness"],
+                  "areasToImprove": [],
+                  "detectedIntent": "CODING",
+                  "turnSummary": "Candidate code passed all test cases.",
+                  "recommendedAction": "WRAP_UP"
+                }
+                """;
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Two Sum")
+                .candidateExplanation("Here is my optimal solution")
+                .candidateCode("class Solution {}")
+                .candidateName("Alice")
+                .chatHistory(List.of(
+                        new com.interviewos.ai.dto.AiDialogueRequest.ChatMessageDto("assistant", "The execution engine encountered an error: ENGINE_ERROR"),
+                        new com.interviewos.ai.dto.AiDialogueRequest.ChatMessageDto("user", "Let me retry submitting.")
+                ))
+                .modelProvider(ModelProvider.OLLAMA)
+                .apiKey("fake-key")
+                .latestExecution(new com.interviewos.ai.rubric.dto.ExecutionDto(
+                        "PASSED",
+                        10,
+                        10,
+                        25.0,
+                        12.5
+                ))
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertTrue(response.isSolutionComplete());
+        assertFalse(response.interviewerReply().contains("engine is temporarily offline"),
+                "AI should acknowledge pass and not revert to engine offline post-guard");
+        assertEquals("WRAP_UP", response.recommendedAction());
+    }
 }
