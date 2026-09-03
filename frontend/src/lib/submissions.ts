@@ -4,6 +4,7 @@ export type SubmissionStatus =
   | 'Compile Error'
   | 'Runtime Error'
   | 'Time Limit Exceeded'
+  | 'Memory Limit Exceeded'
   | 'Engine Unavailable'
   | 'Execution Error';
 

@@ -125,6 +125,7 @@ export function useExecution({
       else if (response.status === 'COMPILE_ERROR' || response.status === 'SYNTAX_ERROR') subStatus = 'Compile Error';
       else if (response.status === 'RUNTIME_ERROR') subStatus = 'Runtime Error';
       else if (response.status === 'TIMEOUT') subStatus = 'Time Limit Exceeded';
+      else if (response.status === 'MEMORY_EXCEEDED') subStatus = 'Memory Limit Exceeded';
 
       const cases = (response.testResults || []).map((t) => ({
         name: t.name,

@@ -36,12 +36,16 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({ submissions }) =
         {submissions.map((sub) => {
           const isExpanded = expandedSubmissionId === sub.id;
           const isAccepted = sub.status === 'Accepted';
-          const isCompileError = sub.status === 'Compile Error';
-          const isTimeout = sub.status === 'Time Limit Exceeded';
+          const isWarning =
+            sub.status === 'Compile Error' ||
+            sub.status === 'Time Limit Exceeded' ||
+            sub.status === 'Memory Limit Exceeded' ||
+            sub.status === 'Engine Unavailable' ||
+            sub.status === 'Execution Error';
 
           const badgeVariantClass = isAccepted
             ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-            : isCompileError || isTimeout
+            : isWarning
             ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
             : 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30';
 

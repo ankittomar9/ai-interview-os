@@ -277,12 +277,27 @@ public class AiOrchestratorService {
         }
 
         boolean isExecutionAvailable = request.latestExecution() != null && request.latestExecution().totalTests() > 0;
-        boolean isAllTestsPassed = isExecutionAvailable &&
+        boolean isEngineError = (request.latestExecution() != null &&
+                ("ENGINE_UNAVAILABLE".equalsIgnoreCase(request.latestExecution().status()) ||
+                 "ENGINE_ERROR".equalsIgnoreCase(request.latestExecution().status()))) ||
+                (request.chatHistory() != null && request.chatHistory().stream().anyMatch(m ->
+                        m.content() != null && (m.content().contains("ENGINE_UNAVAILABLE") || m.content().contains("ENGINE_ERROR"))));
+        boolean isAllTestsPassed = !isEngineError && isExecutionAvailable &&
                 request.latestExecution().passedTests() == request.latestExecution().totalTests() &&
                 ("PASSED".equalsIgnoreCase(request.latestExecution().status()) || "ACCEPTED".equalsIgnoreCase(request.latestExecution().status()));
-        boolean isExecutionFailed = isExecutionAvailable && !isAllTestsPassed;
+        boolean isExecutionFailed = !isEngineError && isExecutionAvailable && !isAllTestsPassed;
 
-        if (isAllTestsPassed) {
+        if (isEngineError) {
+            systemInstructionBuilder.append("""
+                    
+                    CRITICAL - CODE EXECUTION ENGINE OFFLINE (ENGINE_UNAVAILABLE / ENGINE_ERROR):
+                    The platform could not verify this run; do not penalize the candidate for it.
+                    The code execution engine is temporarily unavailable.
+                    NEVER claim tests failed, and NEVER claim tests passed. Do NOT criticize the candidate's implementation for an infrastructure outage.
+                    Reassure the candidate that their code is not marked wrong. Encourage them to explain their logic, approach, or time complexity while the sandbox connects.
+                    Set "isSolutionComplete": false and "recommendedAction": "PROBE_DEEPER".
+                    """);
+        } else if (isAllTestsPassed) {
             if (isPlayground) {
                 systemInstructionBuilder.append(String.format("""
                         
@@ -409,7 +424,15 @@ public class AiOrchestratorService {
                     : "PROBE_DEEPER";
 
             // POST-GUARD: Never trust the model on verdicts
-            if (isExecutionFailed && reply.toLowerCase().matches(".*(all (test cases? )?(passed|pass|correct|solved)|passes all|passed all|passed successfully).*")) {
+            if (isEngineError) {
+                if (reply.toLowerCase().matches(".*(all (test cases? )?(passed|pass|correct|solved)|passes all|passed all|passed successfully|your (code|solution) failed|failing test case).*")) {
+                    reply = "The platform could not verify this run because the execution engine is temporarily offline; your code is not marked wrong. Can you walk me through your algorithmic approach and time complexity while the sandbox reconnects?";
+                    followUp = "What is the expected time and space complexity of your implementation?";
+                    isComplete = false;
+                    recommendedAction = "PROBE_DEEPER";
+                    log.info("POST-GUARD: Replaced LLM reply during ENGINE_ERROR to protect candidate from penalty");
+                }
+            } else if (isExecutionFailed && reply.toLowerCase().matches(".*(all (test cases? )?(passed|pass|correct|solved)|passes all|passed all|passed successfully).*")) {
                 reply = String.format(
                     "I see your submission resulted in %d/%d test cases passing. Let's debug this together. " +
                     "Can you walk me through your approach and where you think the logic might be breaking down?",
@@ -445,7 +468,19 @@ public class AiOrchestratorService {
         } catch (Exception e) {
             log.warn("⚠️ LLM dialogue extraction notice: {}. Using completion-aware structured fallback dialogue.", e.getMessage());
 
-            if (isAllTestsPassed) {
+            if (isEngineError) {
+                return new AiDialogueResponse(
+                        "The platform could not verify this run because the code execution engine is temporarily offline; your code has not been marked wrong.",
+                        "While the sandbox reconnects, could you walk me through your algorithmic approach and time complexity?",
+                        false,
+                        "Execution sandbox offline. Continuing with conversational code evaluation without penalty.",
+                        List.of("Proactive code implementation attempt"),
+                        List.of("Walk through edge cases and Big-O complexity conceptually"),
+                        "EXPLAINING_APPROACH",
+                        "Candidate code execution could not be verified due to engine downtime. No penalty applied.",
+                        "PROBE_DEEPER"
+                );
+            } else if (isAllTestsPassed) {
                 int passed = request.latestExecution().passedTests();
                 int total = request.latestExecution().totalTests();
                 return new AiDialogueResponse(

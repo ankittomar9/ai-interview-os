@@ -63,10 +63,17 @@ public class EvaluationReportService {
                 .filter(m -> "CODE_EXECUTION".equalsIgnoreCase(m.messageType()))
                 .toList();
 
+        List<SessionServiceClient.TranscriptMessageDto> engineErrorTurns = transcript.stream()
+                .filter(m -> "ENGINE_ERROR".equalsIgnoreCase(m.messageType()) ||
+                        (m.content() != null && m.content().contains("ENGINE_UNAVAILABLE")))
+                .toList();
+
         double bestRatio = 0.0;
         int compileErrorCount = 0;
         boolean hasTimeout = false;
         int totalExecutionRuns = executionTurns.size();
+        int totalEngineErrors = engineErrorTurns.size();
+        boolean allExecutionsFailedByEngine = totalExecutionRuns == 0 && totalEngineErrors > 0;
         List<AiRubricClient.ExecutionDto> executionDtos = new ArrayList<>();
         String latestCodeSnippet = "";
         String extractedProblemSlug = null;
@@ -198,16 +205,24 @@ public class EvaluationReportService {
             int commScore = dimScores.getOrDefault("COMMUNICATION_CLARITY", 40);
             int codeScore = dimScores.getOrDefault("CODE_QUALITY", 40);
 
-            technicalScore = (int) Math.round(0.5 * executionScore + 0.5 * algoScore);
+            if (allExecutionsFailedByEngine) {
+                technicalScore = algoScore;
+                codeQualityScore = codeScore;
+            } else {
+                technicalScore = (int) Math.round(0.5 * executionScore + 0.5 * algoScore);
+                codeQualityScore = (int) Math.round(0.5 * executionScore + 0.5 * codeScore);
+            }
             problemSolvingScore = edgeScore;
             communicationScore = commScore;
-            codeQualityScore = (int) Math.round(0.5 * executionScore + 0.5 * codeScore);
             requirementsClarityScore = reqScore;
 
             strengths.addAll(rubric.strengths());
             weaknesses.addAll(rubric.weaknesses());
             studyPlan.addAll(rubric.studyPlan());
             executiveSummary = rubric.executiveSummary();
+            if (allExecutionsFailedByEngine) {
+                executiveSummary = String.format("Execution not verifiable (engine offline ×%d). %s", totalEngineErrors, executiveSummary);
+            }
 
             try {
                 rubricJson = objectMapper.writeValueAsString(rubric.dimensions());
@@ -216,14 +231,21 @@ public class EvaluationReportService {
             }
         } else {
             // Deterministic Fallback Score Math
-            technicalScore = Math.min(executionScore, 60);
-            codeQualityScore = Math.min(executionScore, (int) Math.round(40 + 0.2 * executionScore));
+            if (allExecutionsFailedByEngine) {
+                technicalScore = Math.min(80, 50 + (int) candidateTurns * 5);
+                codeQualityScore = Math.min(80, 55 + (int) candidateTurns * 3);
+            } else {
+                technicalScore = Math.min(executionScore, 60);
+                codeQualityScore = Math.min(executionScore, (int) Math.round(40 + 0.2 * executionScore));
+            }
             problemSolvingScore = Math.min(70, 30 + executionScore / 2);
             communicationScore = Math.min(75, 30 + (int) candidateTurns * 5);
             requirementsClarityScore = Math.min(60, 40);
 
             // Dynamic Fallback Narratives based on lowest dimensions & execution stats
-            if (verifiedPasses > 0) {
+            if (allExecutionsFailedByEngine) {
+                strengths.add(String.format("Demonstrated technical composure during sandbox offline notice (%d attempt(s)).", totalEngineErrors));
+            } else if (verifiedPasses > 0) {
                 strengths.add(String.format("Verified %d sandbox execution runs with passing test suites in the IDE.", verifiedPasses));
             }
             if (candidateTurns >= 4) {
@@ -233,28 +255,34 @@ public class EvaluationReportService {
                 strengths.add(String.format("Demonstrated high exam integrity (%d%%) with focused browser environment.", integrityScore));
             }
 
-            if (verifiedPasses == 0) {
+            if (verifiedPasses == 0 && totalExecutionRuns > 0) {
                 weaknesses.add(String.format("Weak ALGORITHMIC_REASONING: 0 verified test suites passed (Execution Score: %d/100).", executionScore));
             }
             if (candidateTurns < 4) {
                 weaknesses.add(String.format("Low COMMUNICATION_CLARITY: Only %d candidate responses recorded before session completion.", candidateTurns));
             }
-            weaknesses.add(String.format("EDGE_CASE_THOROUGHNESS: Gaps identified in boundary condition handling (Score: %d/100).", problemSolvingScore));
 
-            studyPlan.add(String.format("Day 1: Algorithmic Drill: Master time/space complexity analysis for %s.", session.track() != null ? session.track() : "Core Data Structures"));
-            studyPlan.add("Day 2: Edge Case Analysis: Implement boundary validation for empty, single-element, and maximum bounds.");
-            studyPlan.add("Day 3: Clean Code & Architecture: Refactor solutions for optimal modularity and idiomatic syntax.");
-            studyPlan.add("Day 4: Live Code Verification: Practice timed standard I/O problems under 30-minute sandbox constraints.");
-            studyPlan.add("Day 5: Behavioral Articulation: Structure technical explanations using top-down design thinking.");
-            studyPlan.add("Day 6: Concurrency & Scaling: Explore thread safety, cache eviction, and memory overheads.");
+            studyPlan.add("Day 1: Core algorithmic complexity and Big-O trade-offs.");
+            studyPlan.add("Day 2: Edge-case boundary conditions and invariants.");
+            studyPlan.add("Day 3: Idiomatic structure and modular decomposition.");
+            studyPlan.add("Day 4: Socratic problem clarification under ambiguity.");
+            studyPlan.add("Day 5: Production error handling and defensive coding.");
+            studyPlan.add("Day 6: Live code explanation and architectural reasoning.");
             studyPlan.add("Day 7: Mock Diagnostic Review: Re-attempt failed assessment tracks with comprehensive verification.");
 
-            executiveSummary = String.format(
-                    "Candidate completed %d minutes of technical assessment for %s (%s) across %d interactive turns. Execution Score: %d/100. Deterministic evaluation generated.",
-                    durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, executionScore
-            );
-            if (verifiedPasses == 0) {
-                executiveSummary += " No verified code execution passed during this session.";
+            if (allExecutionsFailedByEngine) {
+                executiveSummary = String.format(
+                        "Candidate completed %d minutes of technical assessment for %s (%s) across %d interactive turns. Execution not verifiable (engine offline ×%d). Technical Accuracy scored from code structure and dialogue evidence.",
+                        durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, totalEngineErrors
+                );
+            } else {
+                executiveSummary = String.format(
+                        "Candidate completed %d minutes of technical assessment for %s (%s) across %d interactive turns. Execution Score: %d/100. Deterministic evaluation generated.",
+                        durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, executionScore
+                );
+                if (verifiedPasses == 0) {
+                    executiveSummary += " No verified code execution passed during this session.";
+                }
             }
         }
 
@@ -267,9 +295,17 @@ public class EvaluationReportService {
 
         int overallScore = (technicalScore + problemSolvingScore + communicationScore + codeQualityScore + integrityScore) / 5;
 
-        // Hiring Verdict Thresholds (M1.5 Rule: verifiedPasses >= 1 required for HIRE / STRONG_HIRE)
+        // Hiring Verdict Thresholds (M1.5 Rule: verifiedPasses >= 1 required for HIRE / STRONG_HIRE, unless all runs were engine errors)
         HiringVerdict verdict;
-        if (overallScore >= 85 && integrityScore >= 80 && verifiedPasses >= 1) {
+        if (allExecutionsFailedByEngine) {
+            if (overallScore >= 70 && integrityScore >= 70) {
+                verdict = HiringVerdict.HIRE;
+            } else if (overallScore >= 55) {
+                verdict = HiringVerdict.LEAN_HIRE;
+            } else {
+                verdict = HiringVerdict.NO_HIRE;
+            }
+        } else if (overallScore >= 85 && integrityScore >= 80 && verifiedPasses >= 1) {
             verdict = HiringVerdict.STRONG_HIRE;
         } else if (overallScore >= 70 && integrityScore >= 70 && verifiedPasses >= 1) {
             verdict = HiringVerdict.HIRE;

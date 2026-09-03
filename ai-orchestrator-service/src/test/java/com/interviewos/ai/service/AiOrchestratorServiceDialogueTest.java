@@ -217,4 +217,52 @@ class AiOrchestratorServiceDialogueTest {
         assertFalse(response.interviewerReply().contains("Mickey"));
         assertTrue(response.interviewerReply().contains("Ankit"));
     }
+
+    @Test
+    @DisplayName("post-guard protects candidate during ENGINE_UNAVAILABLE and replaces hallucinated failure or pass")
+    void testEngineErrorPostGuardProtectsCandidate() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Unfortunately your code failed the test cases.",
+                  "followUpQuestion": "Can you fix the failing test case?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": "Fails tests.",
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "CODING",
+                  "turnSummary": "Candidate code failed.",
+                  "recommendedAction": "OFFER_HINT"
+                }
+                """;
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Two Sum")
+                .candidateExplanation("Here is my hash map solution")
+                .candidateCode("class Solution {}")
+                .candidateName("Alice")
+                .chatHistory(List.of())
+                .modelProvider(ModelProvider.OLLAMA)
+                .apiKey("fake-key")
+                .latestExecution(new com.interviewos.ai.rubric.dto.ExecutionDto(
+                        "ENGINE_UNAVAILABLE",
+                        0,
+                        0,
+                        0.0,
+                        0.0
+                ))
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertFalse(response.interviewerReply().contains("your code failed"));
+        assertTrue(response.interviewerReply().contains("engine is temporarily offline"));
+        assertTrue(response.interviewerReply().contains("not marked wrong"));
+        assertFalse(response.isSolutionComplete());
+        assertEquals("PROBE_DEEPER", response.recommendedAction());
+    }
 }

@@ -193,4 +193,42 @@ class EvaluationReportServiceTest {
         assertThat(captor.getValue().problemSlug()).isEqualTo("reverse-a-string");
         assertThat(captor.getValue().problemStatement()).isEqualTo("Write a standard I/O program to reverse characters.");
     }
+
+    @Test
+    @DisplayName("session with only engine-error executions -> report shows not-verifiable and technical score is not zeroed")
+    void testSessionWithOnlyEngineErrorsShowsNotVerifiable() {
+        List<SessionServiceClient.TranscriptMessageDto> transcript = List.of(
+                new SessionServiceClient.TranscriptMessageDto(1L, "CANDIDATE", "MESSAGE", "I plan to implement reverse string using two pointers.", null, Instant.now()),
+                new SessionServiceClient.TranscriptMessageDto(2L, "SYSTEM", "ENGINE_ERROR", "SYSTEM NOTICE: Code execution sandbox offline (ENGINE_UNAVAILABLE) for problem 'reverse-a-string'. Run was not executed; candidate is not penalized.", "class Main {}", Instant.now()),
+                new SessionServiceClient.TranscriptMessageDto(3L, "CANDIDATE", "MESSAGE", "Since the engine is offline, I'll explain my code: left pointer at 0, right at length - 1, swapping characters until they meet.", null, Instant.now()),
+                new SessionServiceClient.TranscriptMessageDto(4L, "INTERVIEWER", "MESSAGE", "That makes sense. What is the Big-O complexity?", null, Instant.now()),
+                new SessionServiceClient.TranscriptMessageDto(5L, "CANDIDATE", "MESSAGE", "Time complexity is O(N) and space complexity is O(1).", null, Instant.now())
+        );
+        when(sessionClient.getSessionTranscript(1L)).thenReturn(transcript);
+
+        AiRubricClient.RubricResponseDto mockRubric = new AiRubricClient.RubricResponseDto(
+                List.of(
+                        new AiRubricClient.DimensionScoreDto("REQUIREMENTS_CLARIFICATION", 80, "Understood requirements", "I plan to implement"),
+                        new AiRubricClient.DimensionScoreDto("ALGORITHMIC_REASONING", 85, "Correct two-pointer reasoning", "Time complexity is O(N)"),
+                        new AiRubricClient.DimensionScoreDto("EDGE_CASE_THOROUGHNESS", 75, "Considered boundaries", "until they meet"),
+                        new AiRubricClient.DimensionScoreDto("COMMUNICATION_CLARITY", 85, "Clear explanation", "Since the engine is offline"),
+                        new AiRubricClient.DimensionScoreDto("CODE_QUALITY", 80, "Clean Java structure", "class Main {}")
+                ),
+                List.of("Clear two-pointer conceptual grasp"),
+                List.of("Practice concurrency"),
+                List.of("Day 1: Concurrency"),
+                "Candidate articulated an optimal two-pointer solution.",
+                true
+        );
+        when(aiRubricClient.evaluateRubric(any())).thenReturn(Optional.of(mockRubric));
+
+        DiagnosticReportResponse report = evaluationReportService.generateReport(1L);
+
+        assertThat(report.llmGenerated()).isTrue();
+        // Technical accuracy must NOT be zeroed (0.5 * 0 + 0.5 * 85 = 42), it should be scored from algorithmic reasoning (85)!
+        assertThat(report.scorecard().technicalAccuracy()).isEqualTo(85);
+        assertThat(report.scorecard().codeQuality()).isEqualTo(80);
+        assertThat(report.executiveSummary()).contains("Execution not verifiable (engine offline ×1)");
+        assertThat(report.verdict()).isNotEqualTo(HiringVerdict.NO_HIRE);
+    }
 }

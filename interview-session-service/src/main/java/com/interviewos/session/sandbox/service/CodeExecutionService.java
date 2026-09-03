@@ -96,19 +96,31 @@ public class CodeExecutionService {
                 if (doc.getTranscript() == null) {
                     doc.setTranscript(new ArrayList<>());
                 }
+
+                boolean isEngineUnavailable = "ENGINE_UNAVAILABLE".equalsIgnoreCase(result.status());
+                String messageType = isEngineUnavailable ? "ENGINE_ERROR" : "CODE_EXECUTION";
+                String senderRole = isEngineUnavailable ? "SYSTEM" : "CANDIDATE";
+                String content = isEngineUnavailable
+                        ? String.format("SYSTEM NOTICE: Code execution sandbox offline (ENGINE_UNAVAILABLE) for problem '%s'. Run was not executed; candidate is not penalized.", slug)
+                        : String.format("Candidate executed project tests: %d/%d tests passed (%s) in %.1fms. [problem:%s]",
+                                result.passedTests(), result.totalTests(), result.status(), result.executionTimeMs(), slug);
+
                 InterviewSessionDocument.TranscriptTurn turn = InterviewSessionDocument.TranscriptTurn.builder()
                         .turnNumber(doc.getTranscript().size() + 1)
-                        .senderRole("CANDIDATE")
-                        .messageType("CODE_EXECUTION")
-                        .content(String.format("Candidate executed project tests: %d/%d tests passed (%s) in %.1fms. [problem:%s]",
-                                result.passedTests(), result.totalTests(), result.status(), result.executionTimeMs(), slug))
+                        .senderRole(senderRole)
+                        .messageType(messageType)
+                        .content(content)
                         .codeSnippet(codeSnippet)
                         .timestamp(LocalDateTime.now())
                         .build();
 
                 doc.getTranscript().add(turn);
                 sessionMongoRepository.save(doc);
-                log.info("Recorded CODE_EXECUTION turn for session {}: {}/{} passed ({})", sessionId, result.passedTests(), result.totalTests(), result.status());
+                if (isEngineUnavailable) {
+                    log.warn("Recorded ENGINE_ERROR turn for session {} due to sandbox downtime ({})", sessionId, result.status());
+                } else {
+                    log.info("Recorded CODE_EXECUTION turn for session {}: {}/{} passed ({})", sessionId, result.passedTests(), result.totalTests(), result.status());
+                }
             });
         } catch (Exception e) {
             log.warn("⚠️ Failed to record execution turn in Mongo transcript: {}", e.getMessage());
