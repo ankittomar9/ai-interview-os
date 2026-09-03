@@ -216,6 +216,17 @@ export const transcribeAudio = async (
     return res.json();
 };
 
+export interface BackendPurityStatus {
+    isLocal: boolean;
+    cloudCallCount: number;
+    destinations: string[];
+    description: string;
+}
+
+export const fetchPurityStatus = async (): Promise<BackendPurityStatus> => {
+    return fetchJson<BackendPurityStatus>(`${AI_API}/purity`);
+};
+
 // --- Proctor Sentinel Service (Routed via Gateway -> :8083) ---
 export const sendProctorTelemetry = async (payload: {
     sessionId: number;

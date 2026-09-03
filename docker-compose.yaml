@@ -236,8 +236,23 @@ services:
       - GROQ_MODEL_FAST=${GROQ_MODEL_FAST:-openai/gpt-oss-20b}
       - GROQ_MODEL_EVAL=${GROQ_MODEL_EVAL:-qwen/qwen3.8-27b}
       - GROQ_MODEL_STT=${GROQ_MODEL_STT:-whisper-large-v3-turbo}
+      - WHISPER_ENDPOINT=${WHISPER_ENDPOINT:-http://whisper-sidecar:8178/inference}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # 4.5 Local Whisper.cpp Speech-to-Text Sidecar (SPEC-003, profile: local-stt)
+  whisper-sidecar:
+    build:
+      context: ./whisper-sidecar
+      dockerfile: Dockerfile
+    container_name: whisper-sidecar
+    networks:
+      - ai-interview-net
+    ports:
+      - "8178:8178"
+    mem_limit: 512m
+    profiles: ["local-stt", "engines"]
+    restart: unless-stopped
 
   # 5. Proctor Sentinel Service (Connected to PostgreSQL)
   proctor-sentinel-service:

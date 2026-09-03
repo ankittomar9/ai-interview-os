@@ -27,6 +27,7 @@ public class OpenAiCompatibleClient implements AiClient {
     private final RestClient.Builder restClientBuilder;
     private final AiProviderProperties providerProperties;
     private final ObjectMapper objectMapper;
+    private final com.interviewos.ai.service.EgressTracker egressTracker;
 
     private static final Set<ModelProvider> SUPPORTED_PROVIDERS = Set.of(
             ModelProvider.GROQ,
@@ -126,6 +127,7 @@ public class OpenAiCompatibleClient implements AiClient {
                         "temperature", 0.3
                 );
 
+                egressTracker.recordCloudCall(provider.name());
                 String rawResponse = restClient.post()
                         .uri(endpoint)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + effectiveKey)

@@ -107,15 +107,8 @@ public class AiOrchestratorService {
      * Handles live conversational dialogue, memory construction, adaptive directives, and single-pass intent extraction.
      */
     public AiDialogueResponse processDialogue(AiDialogueRequest request) {
-        ModelProvider effectiveProvider = request.modelProvider() != null ? request.modelProvider() : ModelProvider.GROQ;
+        ModelProvider effectiveProvider = resolveEffectiveProvider(request.modelProvider(), request.apiKey());
         String effectiveApiKey = request.apiKey();
-
-        if (effectiveProvider == ModelProvider.GEMINI && (effectiveApiKey == null || effectiveApiKey.isBlank()) && !isGeminiConfigured()) {
-            if (isGroqConfigured()) {
-                log.info("⚡ Auto-routing dialogue from unconfigured GEMINI to configured GROQ provider");
-                effectiveProvider = ModelProvider.GROQ;
-            }
-        }
 
         AiClient client = clientFactory.getClient(effectiveProvider);
 
@@ -541,6 +534,62 @@ public class AiOrchestratorService {
         } catch (Exception ignored) {}
         String envKey = System.getenv("GEMINI_API_KEY");
         return envKey != null && !envKey.isBlank();
+    }
+
+    public boolean isOllamaRunning() {
+        try {
+            var cfg = providerProperties.getConfigFor(ModelProvider.OLLAMA);
+            String endpoint = (cfg != null && cfg.endpoint() != null) ? cfg.endpoint() : "http://host.docker.internal:11434/api/generate";
+            String base = endpoint.replace("/api/generate", "");
+            if (base.contains("host.docker.internal") && !isRunningInsideDocker()) {
+                base = base.replace("host.docker.internal", "localhost");
+            }
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) java.net.URI.create(base + "/api/tags").toURL().openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(800);
+            conn.setReadTimeout(800);
+            return conn.getResponseCode() == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isRunningInsideDocker() {
+        return new java.io.File("/.dockerenv").exists();
+    }
+
+    public ModelProvider resolveEffectiveProvider(ModelProvider requested, String apiKey) {
+        if (requested != null) {
+            if (requested == ModelProvider.GEMINI && (apiKey == null || apiKey.isBlank()) && !isGeminiConfigured()) {
+                if (isOllamaRunning()) {
+                    log.info("⚡ Auto-routing from unconfigured GEMINI to local OLLAMA");
+                    return ModelProvider.OLLAMA;
+                } else if (isGroqConfigured()) {
+                    log.info("⚡ Auto-routing from unconfigured GEMINI to configured GROQ");
+                    return ModelProvider.GROQ;
+                }
+            }
+            if (requested == ModelProvider.GROQ && (apiKey == null || apiKey.isBlank()) && !isGroqConfigured()) {
+                if (isOllamaRunning()) {
+                    log.info("⚡ Auto-routing from unconfigured GROQ to local OLLAMA");
+                    return ModelProvider.OLLAMA;
+                }
+            }
+            return requested;
+        }
+
+        // Local-First Purity default hierarchy:
+        if (isOllamaRunning()) {
+            log.info("🔒 Defaulting to local OLLAMA instance for dialogue (100% local purity)");
+            return ModelProvider.OLLAMA;
+        }
+        if (isGroqConfigured()) {
+            return ModelProvider.GROQ;
+        }
+        if (isGeminiConfigured()) {
+            return ModelProvider.GEMINI;
+        }
+        return ModelProvider.OLLAMA;
     }
 
     private String resolveProblemSlug(AiDialogueRequest req) {

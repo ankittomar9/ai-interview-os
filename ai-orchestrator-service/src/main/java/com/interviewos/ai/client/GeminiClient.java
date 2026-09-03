@@ -25,6 +25,7 @@ public class GeminiClient implements AiClient {
     private final RestClient.Builder restClientBuilder;
     private final AiProviderProperties providerProperties;
     private final ObjectMapper objectMapper;
+    private final com.interviewos.ai.service.EgressTracker egressTracker;
 
     @Override
     public boolean supports(ModelProvider provider) {
@@ -101,6 +102,7 @@ public class GeminiClient implements AiClient {
         );
 
         RestClient restClient = restClientBuilder.build();
+        egressTracker.recordCloudCall("GEMINI");
 
         String rawResponse = restClient.post()
                 .uri(requestUrl)

@@ -40,6 +40,9 @@ class AiOrchestratorControllerTest {
     @MockBean
     private com.interviewos.ai.service.VoiceCoachService voiceCoachService;
 
+    @MockBean
+    private com.interviewos.ai.service.EgressTracker egressTracker;
+
     @Test
     @DisplayName("POST /generate-question with valid payload should return 200 OK")
     void testGenerateQuestionSuccess() throws Exception {
@@ -96,5 +99,31 @@ class AiOrchestratorControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.validationErrors.roleTitle").exists());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/ai/purity should return 200 OK with purity status")
+    void testGetPurityStatus() throws Exception {
+        when(egressTracker.getStatus()).thenReturn(
+                new com.interviewos.ai.service.EgressTracker.PurityStatus(
+                        true, 0, List.of(), "100% Local"
+                )
+        );
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/ai/purity"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.local").value(true))
+                .andExpect(jsonPath("$.cloudCallCount").value(0));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/ai/ollama/status should return 200 OK with running state")
+    void testGetOllamaStatus() throws Exception {
+        when(orchestratorService.isOllamaRunning()).thenReturn(true);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/ai/ollama/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.provider").value("OLLAMA"))
+                .andExpect(jsonPath("$.running").value(true));
     }
 }

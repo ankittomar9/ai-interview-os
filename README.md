@@ -26,8 +26,9 @@ Spring Cloud microservices (Eureka + Config Server + Gateway) with a React 19 + 
 | `proctor-sentinel-service` | 8083 | Telemetry (tab blur, paste dumps, focus), proctor audit summary |
 | `evaluation-report-service` | 8084 | 360° diagnostic scorecard, hiring verdict, 7-day actionable study plan |
 | `question-bank-service` | 8086 | Centralized problem catalog, resume-aware matching, coaching curricula & rubric checkpoints |
-| `service-discovery-service` | 8761 | Netflix Eureka Service Registry |
-| `cloud-config-server` | 8888 | Centralized Git/Native Config Server (`config-repo/`) |
+| `whisper-sidecar` | 8178 | Local Whisper.cpp speech-to-text inference (profile: `local-stt`) |
+
+*(Note: `service-discovery-service` and `cloud-config-server` were retired per ADR-004 to cap host RAM footprint under 5GB).*
 
 **Data stores:** PostgreSQL (sessions, reports) · MongoDB (`interviewos` + `questionbank` DBs, GridFS attachments).
 
@@ -82,7 +83,29 @@ Keys are stored **only in your browser localStorage** — never on any server. C
 - **OpenAI** (GPT-4o / GPT-4o mini)
 - **Ollama** (local `qwen2.5-coder:7b`, zero keys, 100% offline)
 
-Groq is also used for high-accuracy Whisper speech-to-text when available.
+---
+
+## 🔒 Local Mode (No Cloud Keys Required — SPEC-003)
+
+Run entirely on your laptop with zero cloud bills and complete data privacy:
+
+1. **Start Ollama** locally (`ollama run qwen2.5-coder:7b` or `ollama run llama3.2:3b`).
+2. **Start InterviewOS**:
+   ```bash
+   docker compose up -d
+   ```
+3. **Optional Local STT**: Start the Whisper.cpp sidecar for offline neural speech-to-text:
+   ```bash
+   docker compose --profile local-stt up -d
+   ```
+4. **Verify Local Purity**: The UI displays the green **`🔒 100% Local`** badge confirming that zero external requests leave your machine. If cloud fallback is activated, the badge automatically reflects cloud egress count.
+
+**What stays 100% local**:
+- All AI dialogue & question personalized generation (Ollama)
+- All speech-to-text (Whisper.cpp / Web Speech API)
+- All rubric scoring & feedback analysis (Ollama)
+- All code compilation & sandboxed execution (Judge0 CE / Postgres / Maven)
+- All databases & file attachments (Local Postgres & MongoDB)
 
 ---
 

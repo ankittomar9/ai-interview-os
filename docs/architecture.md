@@ -162,7 +162,17 @@ For detailed historical context, trade-off analyses, and alternatives considered
 - [**ADR 001: Monolith to Microservices Split**](ADR/001-monolith-to-microservices.md)
 - [**ADR 002: Code Runner Isolation Strategy**](ADR/002-code-runner-isolation.md)
 - [**ADR 003: AI Evaluation Pipeline & Deterministic Guarding**](ADR/003-ai-evaluation-pipeline.md)
-- [**ADR 004: Edge Service Consolidation & Execution Engine Extraction Seam**](ADR/004-edge-service-consolidation.md) *(Status: Proposed)*
+- [**ADR 004: Edge Service Consolidation & Execution Engine Extraction Seam**](ADR/004-edge-service-consolidation.md) *(Status: Accepted)*
+
+---
+
+## 6. Local-First Architecture & Privacy Purity (SPEC-003)
+
+The platform defaults to local AI providers when available:
+- **LLM Dialogue & Rubrics**: Local Ollama (`qwen2.5-coder:7b`, `llama3.2:3b`) with automatic fallback to Groq / Gemini.
+- **STT (Speech-to-Text)**: Local Whisper.cpp sidecar (:8178) or browser Web Speech API with fallback to Groq Whisper.
+- **Cloud Egress Detection**: `EgressTracker` instruments all outgoing AI requests. The UI displays `"🔒 100% Local"` when zero cloud requests have been made, or `"☁️ X Cloud Calls"` if cloud fallback is activated.
+- **Zero API Key Requirement**: The platform boots and runs DSA, LLD, SQL, and Architecture interviews entirely offline without requiring any cloud API keys.
 
 ---
 

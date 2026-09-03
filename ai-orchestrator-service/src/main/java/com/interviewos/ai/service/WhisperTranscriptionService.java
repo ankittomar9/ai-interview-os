@@ -23,17 +23,26 @@ public class WhisperTranscriptionService {
 
     private final RestClient.Builder restClientBuilder;
     private final ObjectMapper objectMapper;
+    private final EgressTracker egressTracker;
 
     @Value("${ai.providers.groq.api-key:${GROQ_API_KEY:}}")
     private String defaultGroqApiKey;
+
+    @Value("${ai.whisper.local-endpoint:${WHISPER_ENDPOINT:http://localhost:8178/inference}}")
+    private String localWhisperEndpoint;
 
     private static final String GROQ_WHISPER_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions";
     private static final String DEFAULT_WHISPER_MODEL = "whisper-large-v3-turbo";
 
     /**
-     * Transcribes candidate audio into high-fidelity text using Groq Whisper LPU.
+     * Transcribes candidate audio using local Whisper.cpp if available, falling back to Groq Whisper LPU.
      */
     public Map<String, String> transcribeAudio(MultipartFile audioFile, String customApiKey, String customModel) {
+        if (isWhisperSidecarRunning()) {
+            log.info("🔒 Transcribing speech via 100% Local Whisper.cpp sidecar at {}", localWhisperEndpoint);
+            return transcribeLocal(audioFile);
+        }
+
         String apiKey = (customApiKey != null && !customApiKey.isBlank()) ? customApiKey : defaultGroqApiKey;
         if (apiKey == null || apiKey.isBlank()) {
             String envKey = System.getenv("GROQ_API_KEY");
@@ -44,9 +53,11 @@ public class WhisperTranscriptionService {
         String model = (customModel != null && !customModel.isBlank()) ? customModel : DEFAULT_WHISPER_MODEL;
 
         if (apiKey == null || apiKey.isBlank()) {
-            log.warn("⚠️ No Groq API Key provided for Whisper transcription. Provide key via BYOK, header, or GROQ_API_KEY env.");
-            return Map.of("text", "", "status", "MISSING_API_KEY");
+            log.warn("⚠️ No local Whisper.cpp running and no Groq API Key provided for Whisper transcription.");
+            return Map.of("text", "", "status", "MISSING_API_KEY", "message", "No STT provider available. Start Whisper sidecar or provide GROQ_API_KEY.");
         }
+
+        egressTracker.recordCloudCall("GROQ_WHISPER");
 
         try {
             long startTime = System.currentTimeMillis();
@@ -86,6 +97,55 @@ public class WhisperTranscriptionService {
         } catch (Exception e) {
             log.error("⚠️ Groq Whisper transcription error: {}", e.getMessage(), e);
             return Map.of("text", "", "status", "ERROR", "message", e.getMessage());
+        }
+    }
+
+    public boolean isWhisperSidecarRunning() {
+        if (localWhisperEndpoint == null || localWhisperEndpoint.isBlank()) {
+            return false;
+        }
+        try {
+            String healthUrl = localWhisperEndpoint.replace("/inference", "") + "/health";
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) java.net.URI.create(healthUrl).toURL().openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(800);
+            conn.setReadTimeout(800);
+            return conn.getResponseCode() == 200;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Map<String, String> transcribeLocal(MultipartFile audioFile) {
+        long startTime = System.currentTimeMillis();
+        try {
+            ByteArrayResource audioResource = new ByteArrayResource(audioFile.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return "speech.wav";
+                }
+            };
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", audioResource);
+
+            RestClient restClient = restClientBuilder.build();
+            String rawResponse = restClient.post()
+                    .uri(localWhisperEndpoint)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+
+            JsonNode root = objectMapper.readTree(rawResponse);
+            String text = root.has("text") ? root.path("text").asText("") : "";
+            long duration = System.currentTimeMillis() - startTime;
+
+            log.info("🔒 Local Whisper.cpp Transcribed ({}ms): \"{}\"", duration, text);
+            return Map.of("text", text, "status", "SUCCESS", "latencyMs", String.valueOf(duration), "provider", "WHISPER_CPP_LOCAL");
+        } catch (Exception e) {
+            log.error("⚠️ Local Whisper.cpp transcription error: {}", e.getMessage(), e);
+            return Map.of("text", "", "status", "LOCAL_STT_ERROR", "message", e.getMessage());
         }
     }
 }

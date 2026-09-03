@@ -25,6 +25,7 @@ public class AiOrchestratorController {
     private final AiOrchestratorService orchestratorService;
     private final WhisperTranscriptionService whisperService;
     private final com.interviewos.ai.service.VoiceCoachService voiceCoachService;
+    private final com.interviewos.ai.service.EgressTracker egressTracker;
 
     @PostMapping("/generate-question")
     public ResponseEntity<GenerateQuestionResponse> generateQuestion(
@@ -124,5 +125,19 @@ public class AiOrchestratorController {
         log.info("💡 Generating Voice Coach tip for elapsed={}s, failures={}", request.elapsedSeconds(), request.testFailures());
         com.interviewos.ai.dto.VoiceCoachTipResponse tip = voiceCoachService.generateTip(request);
         return ResponseEntity.ok(tip);
+    }
+
+    @GetMapping("/purity")
+    public ResponseEntity<com.interviewos.ai.service.EgressTracker.PurityStatus> getPurityStatus() {
+        return ResponseEntity.ok(egressTracker.getStatus());
+    }
+
+    @GetMapping("/ollama/status")
+    public ResponseEntity<Map<String, Object>> getOllamaStatus() {
+        boolean running = orchestratorService.isOllamaRunning();
+        return ResponseEntity.ok(Map.of(
+                "running", running,
+                "provider", "OLLAMA"
+        ));
     }
 }
