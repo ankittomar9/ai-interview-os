@@ -38,16 +38,9 @@ scrape_configs:
         labels:
           application: 'evaluation-report-service'
 
-  - job_name: 'service-discovery-service'
+  - job_name: 'question-bank-service'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['service-discovery-service:8761']
+      - targets: ['question-bank-service:8086']
         labels:
-          application: 'service-discovery-service'
-
-  - job_name: 'cloud-config-server'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets: ['cloud-config-server:8888']
-        labels:
-          application: 'cloud-config-server'
+          application: 'question-bank-service'

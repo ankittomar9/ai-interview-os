@@ -34,3 +34,14 @@ services:
 eureka:
   client:
     enabled: ${EUREKA_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
