@@ -76,10 +76,17 @@ services:
       timeout: 3s
       retries: 12
 
-  # 0.4 Judge0 CE Zero-Trust Code Sandbox API Server (Privilege Dropped, Internal Network Only)
+  # 0.4 Judge0 CE Zero-Trust Code Sandbox API Server (Privileged for cgroup isolate namespace)
   judge0:
     image: judge0/judge0:1.13.1
     container_name: judge0-server
+    privileged: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
     environment:
       - REDIS_HOST=judge0-redis
       - REDIS_PORT=6379
@@ -109,7 +116,10 @@ services:
       - SYS_PTRACE
     security_opt:
       - seccomp=unconfined
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
     environment:
+      - COUNT=2
       - REDIS_HOST=judge0-redis
       - REDIS_PORT=6379
       - POSTGRES_HOST=judge0-db
@@ -126,7 +136,7 @@ services:
     restart: unless-stopped
     networks:
       - ai-interview-net
-    mem_limit: 512m
+    mem_limit: 768m
 
   # 0.6 Docker Socket Proxy (Fine-grained permission proxy for M9/M11 Docker container lifecycle)
   docker-socket-proxy:
@@ -326,7 +336,7 @@ services:
       - "8080:8080"
     networks:
       - ai-interview-net
-    mem_limit: 256m
+    mem_limit: 384m
     environment:
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
       - EUREKA_ENABLED=false

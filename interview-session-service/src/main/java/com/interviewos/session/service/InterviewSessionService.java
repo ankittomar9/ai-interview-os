@@ -298,7 +298,7 @@ public class InterviewSessionService {
                         .map(t -> new SessionResponse.MessageResponse(
                                 (long) t.getTurnNumber(),
                                 t.getSenderRole(),
-                                t.getMessageType() != null ? com.interviewos.session.model.MessageType.valueOf(t.getMessageType()) : com.interviewos.session.model.MessageType.EXPLANATION,
+                                t.getMessageType() != null ? com.interviewos.session.model.MessageType.fromString(t.getMessageType()) : com.interviewos.session.model.MessageType.EXPLANATION,
                                 t.getContent(),
                                 t.getCodeSnippet(),
                                 t.getTimestamp() != null ? t.getTimestamp().atZone(java.time.ZoneId.systemDefault()).toInstant() : Instant.now(),

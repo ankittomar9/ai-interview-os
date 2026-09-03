@@ -39,7 +39,7 @@ public class OllamaClient implements AiClient {
     ) {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(ModelProvider.OLLAMA);
         String endpoint = config.endpoint();
-        String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
+        String model = (config != null) ? config.getEffectiveModelFor(customModel) : ((customModel != null && !customModel.isBlank()) ? customModel : "qwen2.5-coder:7b");
 
         log.info("Connecting to Local Ollama at: {} | Model: {} | Prompt length: {} chars",
                 endpoint, model, (systemInstruction.length() + userPrompt.length()));

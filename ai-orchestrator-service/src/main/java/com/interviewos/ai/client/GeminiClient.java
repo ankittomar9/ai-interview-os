@@ -54,7 +54,7 @@ public class GeminiClient implements AiClient {
             String customModel
     ) {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(ModelProvider.GEMINI);
-        String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
+        String model = (config != null) ? config.getEffectiveModelFor(customModel) : ((customModel != null && !customModel.isBlank()) ? customModel : "gemini-2.0-flash");
 
         String effectiveKey = (apiKey != null && !apiKey.isBlank()) ? apiKey : (config != null && config.apiKey() != null && !config.apiKey().isBlank() ? config.apiKey().trim() : null);
         if (effectiveKey == null || effectiveKey.isBlank()) {

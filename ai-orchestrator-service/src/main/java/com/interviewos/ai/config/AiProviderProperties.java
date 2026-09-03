@@ -30,7 +30,7 @@ public record AiProviderProperties(Map<String, ProviderConfig> providers) {
             if ("eval".equalsIgnoreCase(task) || "rubric".equalsIgnoreCase(task) || "report".equalsIgnoreCase(task)) {
                 return (modelEval != null && !modelEval.isBlank()) ? modelEval : defaultModel;
             }
-            return defaultModel;
+            return (task != null && !task.isBlank()) ? task : defaultModel;
         }
     }
 
