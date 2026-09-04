@@ -63,6 +63,9 @@ public class InterviewSessionDocument {
     private List<SubmissionEntry> submissionsLedger = new ArrayList<>();
 
     @Builder.Default
+    private List<SectionProgress> sectionProgress = new ArrayList<>();
+
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime startedAt;
@@ -110,5 +113,18 @@ public class InterviewSessionDocument {
         private double memoryUsedMb;
         private String codeSnippet;
         private LocalDateTime timestamp;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SectionProgress {
+        private String sectionType;
+        private Integer index;
+        private String reason; // CONSENTED | MANUAL_JUMP | SESSION_ENDED | SKIPPED_BY_USER
+        private LocalDateTime startedAt;
+        private LocalDateTime endedAt;
+        private int turnCount;
     }
 }

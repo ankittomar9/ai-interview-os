@@ -122,6 +122,33 @@ export const getAttachmentUrl = (sessionId: number, attachmentId: string): strin
     return `${SESSION_API}/${sessionId}/attachments/${attachmentId}`;
 };
 
+export interface SectionTransitionPayload {
+    fromSectionType: string;
+    toSectionType?: string;
+    sectionIndex: number;
+    reason: 'CONSENTED' | 'MANUAL_JUMP' | 'SESSION_ENDED' | 'SKIPPED_BY_USER';
+    turnCount?: number;
+}
+
+export const recordSectionTransition = async (
+    sessionId: number,
+    payload: SectionTransitionPayload
+) => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/section-transitions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to record section transition');
+    return res.json();
+};
+
+export const getSectionProgress = async (sessionId: number) => {
+    const res = await fetch(`${SESSION_API}/${sessionId}/section-transitions`);
+    if (!res.ok) throw new Error('Failed to fetch section progress');
+    return res.json();
+};
+
 // --- AI Orchestrator Service (Routed via Gateway -> :8082) ---
 export const generateQuestion = async (payload: {
     roleTitle?: string;

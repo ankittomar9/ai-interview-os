@@ -3,6 +3,7 @@ package com.interviewos.session.service;
 import com.interviewos.session.document.InterviewSessionDocument;
 import com.interviewos.session.dto.AddMessageRequest;
 import com.interviewos.session.dto.CreateSessionRequest;
+import com.interviewos.session.dto.SectionTransitionRequest;
 import com.interviewos.session.dto.SessionResponse;
 import com.interviewos.session.entity.InterviewSession;
 import com.interviewos.session.entity.SessionMessage;
@@ -501,6 +502,118 @@ public class InterviewSessionService {
         return sessionRepository.findByCandidateId(candidateId).stream()
                 .map(SessionResponse::fromEntity)
                 .toList();
+    }
+
+    private static final List<String> DEFAULT_SECTION_SEQUENCE = List.of("INTRODUCTION", "CORE_TECH", "CODING_DSA", "SYSTEM_DESIGN");
+
+    @Transactional
+    public List<InterviewSessionDocument.SectionProgress> recordSectionTransition(Long sessionId, SectionTransitionRequest request) {
+        findSessionOrThrow(sessionId);
+        log.info("Recording section transition for session {}: from='{}' to='{}' idx={} reason='{}'",
+                sessionId, request.fromSectionType(), request.toSectionType(), request.sectionIndex(), request.reason());
+
+        InterviewSessionDocument doc = mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)
+                .orElseThrow(() -> new NoSuchElementException("Mongo document not found for session: " + sessionId));
+
+        if (doc.getSectionProgress() == null) {
+            doc.setSectionProgress(new ArrayList<>());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        int sectionIdx = request.sectionIndex() != null ? request.sectionIndex() : doc.getSectionProgress().size();
+
+        // Calculate startedAt
+        LocalDateTime startedAt = doc.getStartedAt() != null ? doc.getStartedAt() : doc.getCreatedAt();
+        if (sectionIdx > 0 && !doc.getSectionProgress().isEmpty()) {
+            startedAt = doc.getSectionProgress().get(doc.getSectionProgress().size() - 1).getEndedAt();
+        }
+
+        // Calculate turn count server-side from transcript candidate turns
+        int serverCandidateTurns = 0;
+        if (doc.getTranscript() != null) {
+            for (InterviewSessionDocument.TranscriptTurn turn : doc.getTranscript()) {
+                if ("CANDIDATE".equalsIgnoreCase(turn.getSenderRole())) {
+                    if (turn.getMetadata() != null) {
+                        String sType = turn.getMetadata().get("sectionType");
+                        String stage = turn.getMetadata().get("stage");
+                        if (request.fromSectionType().equalsIgnoreCase(sType) || request.fromSectionType().equalsIgnoreCase(stage)) {
+                            serverCandidateTurns++;
+                        }
+                    }
+                }
+            }
+        }
+        int effectiveTurns = serverCandidateTurns;
+        if (request.turnCount() != null && request.turnCount() > effectiveTurns) {
+            effectiveTurns = request.turnCount();
+        }
+        if ("MANUAL_JUMP".equalsIgnoreCase(request.reason()) && request.turnCount() != null && request.turnCount() == 0) {
+            effectiveTurns = 0;
+        }
+
+        InterviewSessionDocument.SectionProgress progress = InterviewSessionDocument.SectionProgress.builder()
+                .sectionType(request.fromSectionType())
+                .index(sectionIdx)
+                .reason(request.reason())
+                .startedAt(startedAt)
+                .endedAt(now)
+                .turnCount(effectiveTurns)
+                .build();
+
+        // Idempotency: update existing progress entry if same index or sectionType already exists
+        boolean updated = false;
+        for (int i = 0; i < doc.getSectionProgress().size(); i++) {
+            InterviewSessionDocument.SectionProgress existing = doc.getSectionProgress().get(i);
+            if (existing.getIndex() != null && existing.getIndex().equals(sectionIdx)) {
+                doc.getSectionProgress().set(i, progress);
+                updated = true;
+                break;
+            } else if (existing.getSectionType() != null && existing.getSectionType().equalsIgnoreCase(request.fromSectionType())) {
+                doc.getSectionProgress().set(i, progress);
+                updated = true;
+                break;
+            }
+        }
+        if (!updated) {
+            doc.getSectionProgress().add(progress);
+        }
+
+        // If this transition jumped forward across intermediate sections (e.g. 1 -> 3), record intermediate sections as MANUAL_JUMP with turnCount=0
+        if (request.toSectionType() != null) {
+            int fromSeqIdx = DEFAULT_SECTION_SEQUENCE.indexOf(request.fromSectionType());
+            int toSeqIdx = DEFAULT_SECTION_SEQUENCE.indexOf(request.toSectionType());
+            if (fromSeqIdx >= 0 && toSeqIdx > fromSeqIdx + 1) {
+                for (int skipped = fromSeqIdx + 1; skipped < toSeqIdx; skipped++) {
+                    String skippedSection = DEFAULT_SECTION_SEQUENCE.get(skipped);
+                    int skippedIdx = skipped;
+                    boolean alreadyPresent = doc.getSectionProgress().stream()
+                            .anyMatch(p -> skippedSection.equalsIgnoreCase(p.getSectionType()) || (p.getIndex() != null && p.getIndex().equals(skippedIdx)));
+                    if (!alreadyPresent) {
+                        doc.getSectionProgress().add(InterviewSessionDocument.SectionProgress.builder()
+                                .sectionType(skippedSection)
+                                .index(skippedIdx)
+                                .reason("MANUAL_JUMP")
+                                .startedAt(now)
+                                .endedAt(now)
+                                .turnCount(0)
+                                .build());
+                        log.info("Recorded intermediate skipped section '{}' as MANUAL_JUMP with 0 turns for session {}", skippedSection, sessionId);
+                    }
+                }
+            }
+        }
+
+        mongoSessionRepository.save(doc);
+        log.info("Saved section transition for session {}. Total sections recorded: {}", sessionId, doc.getSectionProgress().size());
+        return doc.getSectionProgress();
+    }
+
+    @Transactional(readOnly = true)
+    public List<InterviewSessionDocument.SectionProgress> getSectionProgress(Long sessionId) {
+        findSessionOrThrow(sessionId);
+        return mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)
+                .map(InterviewSessionDocument::getSectionProgress)
+                .orElse(List.of());
     }
 
     private InterviewSession findSessionOrThrow(Long sessionId) {

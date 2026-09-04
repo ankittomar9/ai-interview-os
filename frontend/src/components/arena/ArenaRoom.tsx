@@ -144,7 +144,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     if (mappedTrack && mappedTrack !== activeTrack) {
       setPendingStageSwitch({ stage: targetStage, targetTrack: mappedTrack });
     } else {
-      dialogue.setCurrentStage(targetStage);
+      dialogue.transitionStage(targetStage, 'MANUAL_JUMP');
     }
   }, [activeTrack, dialogue]);
 
@@ -165,7 +165,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const handleConfirmStageSwitch = useCallback(() => {
     if (pendingStageSwitch) {
       setActiveTrack(pendingStageSwitch.targetTrack);
-      dialogue.setCurrentStage(pendingStageSwitch.stage);
+      dialogue.transitionStage(pendingStageSwitch.stage, 'MANUAL_JUMP');
       setPendingStageSwitch(null);
     }
   }, [pendingStageSwitch, dialogue]);
@@ -184,13 +184,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       onNextStage={handleNextStage}
       questionsList={questionsList}
       activeQuestionIndex={activeQuestionIndex}
-      onSelectQuestion={(idx) => {
-        selectQuestion(idx);
-        const nextQ = questionsList[idx];
-        if (nextQ && nextQ.starterCode) {
-          setCode(nextQ.starterCode);
-        }
-      }}
+      onSelectQuestion={(idx) => { selectQuestion(idx); const nextQ = questionsList[idx]; if (nextQ?.starterCode) setCode(nextQ.starterCode); }}
       questionStatusMap={questionStatusMap}
       code={code}
       onChangeCode={setCode}
@@ -210,6 +204,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       onSendTurn={(text) => dialogue.triggerCandidateTurn(text, code)}
       isAiResponding={dialogue.isAiResponding}
       currentStage={dialogue.currentStage}
+      stageTurnCounts={dialogue.stageTurnCounts}
+      stageTransitionReasons={dialogue.stageTransitionReasons}
       onStageClick={handleStageClick}
       providerError={dialogue.providerError}
       onRetryProvider={dialogue.retryLastTurn}

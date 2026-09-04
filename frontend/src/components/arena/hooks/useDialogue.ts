@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { ModelProvider, IntegritySignals } from "../../../types";
-import { processDialogueTurn, addMessageToSession } from "../../../services/api";
-import type { InterviewStage } from "../../StageStepper";
+import { processDialogueTurn, addMessageToSession, recordSectionTransition } from "../../../services/api";
+import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
 import { isEchoOverlap } from "../../../lib/echo-overlap-filter";
 import { toast } from "../../../hooks/useToast";
 
@@ -53,11 +53,70 @@ export function useDialogue({
   const [chatInput, setChatInput] = useState("");
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [currentStage, setCurrentStage] = useState<InterviewStage>("INTRODUCTION");
+  const [stageTurnCounts, setStageTurnCounts] = useState<Record<InterviewStage, number>>({
+    INTRODUCTION: 0,
+    CORE_TECH: 0,
+    CODING_DSA: 0,
+    SYSTEM_DESIGN: 0
+  });
+  const [stageTransitionReasons, setStageTransitionReasons] = useState<Record<InterviewStage, StageTransitionReason>>({} as any);
   const [hasUnread, setHasUnread] = useState(false);
   const [providerError, setProviderError] = useState<ProviderErrorState | null>(null);
 
   const lastTurnRef = useRef<{ textToSend: string; codeSnapshot: string } | null>(null);
   const echoFilteredCountRef = useRef<number>(0);
+
+  const transitionStage = useCallback(async (targetStage: InterviewStage, reason: StageTransitionReason = 'MANUAL_JUMP') => {
+    const STAGES: InterviewStage[] = ['INTRODUCTION', 'CORE_TECH', 'CODING_DSA', 'SYSTEM_DESIGN'];
+    const fromIdx = STAGES.indexOf(currentStage);
+    const toIdx = STAGES.indexOf(targetStage);
+    if (fromIdx === toIdx) return;
+
+    if (toIdx > fromIdx) {
+      for (let i = fromIdx; i < toIdx; i++) {
+        const s = STAGES[i];
+        const isIntermediateSkipped = i > fromIdx;
+        const turnCountForStage = isIntermediateSkipped ? 0 : (stageTurnCounts[s] || 0);
+        const stageReason = isIntermediateSkipped ? 'MANUAL_JUMP' : reason;
+
+        setStageTransitionReasons((prev) => ({ ...prev, [s]: stageReason }));
+        if (isIntermediateSkipped) {
+          setStageTurnCounts((prev) => ({ ...prev, [s]: 0 }));
+        }
+
+        if (sessionId) {
+          try {
+            await recordSectionTransition(sessionId, {
+              fromSectionType: s,
+              toSectionType: STAGES[i + 1],
+              sectionIndex: i,
+              reason: stageReason,
+              turnCount: turnCountForStage
+            });
+          } catch (e) {
+            console.warn('[useDialogue] Failed to record section transition:', e);
+          }
+        }
+      }
+    } else {
+      setStageTransitionReasons((prev) => ({ ...prev, [currentStage]: reason }));
+      if (sessionId) {
+        try {
+          await recordSectionTransition(sessionId, {
+            fromSectionType: currentStage,
+            toSectionType: targetStage,
+            sectionIndex: fromIdx,
+            reason,
+            turnCount: stageTurnCounts[currentStage] || 0
+          });
+        } catch (e) {
+          console.warn('[useDialogue] Failed to record section transition:', e);
+        }
+      }
+    }
+
+    setCurrentStage(targetStage);
+  }, [currentStage, stageTurnCounts, sessionId]);
 
   const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any) => {
     const textToSend = (forcedText !== undefined ? forcedText : chatInput).trim();
@@ -73,6 +132,7 @@ export function useDialogue({
 
     if (forcedText === undefined) setChatInput("");
     lastTurnRef.current = { textToSend, codeSnapshot };
+    setStageTurnCounts((prev) => ({ ...prev, [currentStage]: (prev[currentStage] || 0) + 1 }));
 
     const candidateMsg: DialogueMessage = {
       role: "candidate",
@@ -95,6 +155,7 @@ export function useDialogue({
         content: textToSend,
         codeSnippet: codeSnapshot,
         messageType: "EXPLANATION",
+        metadata: { stage: currentStage, sectionType: currentStage },
         integritySignals: integrity
       });
 
@@ -138,11 +199,11 @@ export function useDialogue({
       setHasUnread(true);
 
       if (aiResponse.recommendedAction === "ADVANCE_STAGE") {
-        setCurrentStage((prev) => {
-          if (prev === "INTRODUCTION") return "CORE_TECH";
-          if (prev === "CORE_TECH") return "CODING_DSA";
-          return "SYSTEM_DESIGN";
-        });
+        const STAGES: InterviewStage[] = ['INTRODUCTION', 'CORE_TECH', 'CODING_DSA', 'SYSTEM_DESIGN'];
+        const currentIdx = STAGES.indexOf(currentStage);
+        if (currentIdx < STAGES.length - 1) {
+          await transitionStage(STAGES[currentIdx + 1], 'CONSENTED');
+        }
       }
 
       if (onAiSpeechRequested) {
@@ -188,7 +249,7 @@ export function useDialogue({
     } finally {
       setIsAiResponding(false);
     }
-  }, [chatInput, messages, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals]);
+  }, [chatInput, messages, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals, currentStage, transitionStage]);
 
   const retryLastTurn = useCallback(async () => {
     if (lastTurnRef.current) {
@@ -209,6 +270,9 @@ export function useDialogue({
     isAiResponding,
     currentStage,
     setCurrentStage,
+    stageTurnCounts,
+    stageTransitionReasons,
+    transitionStage,
     hasUnread,
     setHasUnread,
     providerError,

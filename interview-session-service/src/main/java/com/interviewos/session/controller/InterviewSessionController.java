@@ -134,4 +134,28 @@ public class InterviewSessionController {
         }
         return ResponseEntity.ok(doc);
     }
+
+    /**
+     * Record a section transition.
+     */
+    @PostMapping("/{id}/section-transitions")
+    public ResponseEntity<List<com.interviewos.session.document.InterviewSessionDocument.SectionProgress>> recordSectionTransition(
+            @PathVariable Long id,
+            @RequestBody com.interviewos.session.dto.SectionTransitionRequest request
+    ) {
+        log.info("Recording section transition for session {}: from={} to={} idx={} reason={}",
+                id, request.fromSectionType(), request.toSectionType(), request.sectionIndex(), request.reason());
+        List<com.interviewos.session.document.InterviewSessionDocument.SectionProgress> progress = sessionService.recordSectionTransition(id, request);
+        return ResponseEntity.ok(progress);
+    }
+
+    /**
+     * Get section progress history for a session.
+     */
+    @GetMapping("/{id}/section-transitions")
+    public ResponseEntity<List<com.interviewos.session.document.InterviewSessionDocument.SectionProgress>> getSectionProgress(@PathVariable Long id) {
+        log.info("Fetching section progress for session ID: {}", id);
+        List<com.interviewos.session.document.InterviewSessionDocument.SectionProgress> progress = sessionService.getSectionProgress(id);
+        return ResponseEntity.ok(progress);
+    }
 }
