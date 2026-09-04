@@ -257,12 +257,14 @@ services:
     build:
       context: ./whisper-sidecar
       dockerfile: Dockerfile
+      args:
+        - WHISPER_MODEL=${WHISPER_MODEL:-ggml-large-v3-turbo-q5_0.bin}
     container_name: whisper-sidecar
     networks:
       - ai-interview-net
     ports:
       - "8178:8178"
-    mem_limit: 512m
+    mem_limit: 2g
     profiles: ["local-stt", "engines"]
     restart: unless-stopped
 
