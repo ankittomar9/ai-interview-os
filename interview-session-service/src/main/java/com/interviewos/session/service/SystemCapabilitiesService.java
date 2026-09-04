@@ -48,7 +48,26 @@ public class SystemCapabilitiesService {
     private String questionBankUrl;
 
     private final AtomicReference<CachedCapabilities> cache = new AtomicReference<>();
-    private static final Duration CACHE_TTL = Duration.ofSeconds(30);
+    private static final Duration CACHE_TTL = Duration.ofSeconds(5);
+
+    private Instant serviceStartupTime = Instant.now();
+    private final Map<String, Instant> engineLastReadyAt = new java.util.concurrent.ConcurrentHashMap<>();
+
+    void setServiceStartupTime(Instant startupTime) {
+        this.serviceStartupTime = startupTime;
+    }
+
+    void setEngineLastReadyAt(String engineKey, Instant instant) {
+        if (instant != null) {
+            this.engineLastReadyAt.put(engineKey, instant);
+        } else {
+            this.engineLastReadyAt.remove(engineKey);
+        }
+    }
+
+    void clearCache() {
+        this.cache.set(null);
+    }
 
     public SystemCapabilitiesResponse getCapabilities() {
         CachedCapabilities current = cache.get();
@@ -63,40 +82,80 @@ public class SystemCapabilitiesService {
         return fresh;
     }
 
+    EngineStatus resolveEngineStatus(String engineKey, boolean probeSuccess, String onlineDetail, String offlineDetail) {
+        Instant now = Instant.now();
+        if (probeSuccess) {
+            engineLastReadyAt.put(engineKey, now);
+            return new EngineStatus(true, "ONLINE", onlineDetail, now.toString());
+        }
+
+        Instant lastReady = engineLastReadyAt.get(engineKey);
+        boolean inColdBoot = Duration.between(serviceStartupTime, now).getSeconds() < 90;
+
+        if (lastReady == null && inColdBoot) {
+            return new EngineStatus(false, "STARTING", "Starting… engines warming up", null);
+        } else {
+            return new EngineStatus(false, "DOWN", offlineDetail, lastReady != null ? lastReady.toString() : null);
+        }
+    }
+
     private SystemCapabilitiesResponse probeCapabilities() {
         log.debug("Probing system capabilities across engines, microservices, and storage...");
 
         // 1. Engines
         boolean dsaReady = false;
-        String dsaDetail = "Judge0 sandbox is offline";
         try {
             dsaReady = judge0Client.ping();
-            dsaDetail = dsaReady ? "Judge0 CE execution engine is online and responsive"
-                    : "Judge0 is unreachable — start engines with 'docker compose --profile engines up -d'";
         } catch (Exception ignored) {}
+        EngineStatus dsaStatus = resolveEngineStatus(
+                "dsa",
+                dsaReady,
+                "Judge0 CE execution engine is online and responsive",
+                "Judge0 is unreachable — start engines with 'docker compose --profile engines up -d'"
+        );
 
         boolean lldReady = false;
-        String lldDetail = "Docker daemon socket is not accessible";
         try {
             lldReady = lldMavenRunner.isDockerReady();
-            lldDetail = lldReady ? "Docker daemon is accessible with pre-warmed Maven image"
-                    : "Docker socket unavailable — LLD sandbox requires Docker socket access";
         } catch (Exception ignored) {}
+        EngineStatus lldStatus = resolveEngineStatus(
+                "lld",
+                lldReady,
+                "Docker daemon is accessible with pre-warmed Maven image",
+                "Docker socket unavailable — LLD sandbox requires Docker socket access"
+        );
 
         boolean sqlReady = false;
-        String sqlDetail = "Docker daemon socket is not accessible";
         try {
             sqlReady = sqlPostgresRunner.isDockerReady();
-            sqlDetail = sqlReady ? "PostgreSQL 13 isolated container sandbox runner is online"
-                    : "Docker socket unavailable — SQL sandbox requires Docker socket access";
         } catch (Exception ignored) {}
+        EngineStatus sqlStatus = resolveEngineStatus(
+                "sql",
+                sqlReady,
+                "PostgreSQL 13 isolated container sandbox runner is online",
+                "Docker socket unavailable — SQL sandbox requires Docker socket access"
+        );
+
+        EngineStatus hldStatus = resolveEngineStatus(
+                "hld",
+                true,
+                "Client-side React Flow + multimodal vision evaluator",
+                "HLD engine unavailable"
+        );
+
+        EngineStatus behavioralStatus = resolveEngineStatus(
+                "behavioral",
+                true,
+                "Audio & transcript dialogue engine",
+                "Behavioral engine unavailable"
+        );
 
         Map<String, EngineStatus> engines = Map.of(
-                "dsa", new EngineStatus(dsaReady, dsaDetail),
-                "lld", new EngineStatus(lldReady, lldDetail),
-                "sql", new EngineStatus(sqlReady, sqlDetail),
-                "hld", new EngineStatus(true, "Client-side React Flow + multimodal vision evaluator"),
-                "behavioral", new EngineStatus(true, "Audio & transcript dialogue engine")
+                "dsa", dsaStatus,
+                "lld", lldStatus,
+                "sql", sqlStatus,
+                "hld", hldStatus,
+                "behavioral", behavioralStatus
         );
 
         // 2. Microservices
@@ -146,16 +205,29 @@ public class SystemCapabilitiesService {
     }
 
     private boolean probeHttp(String url) {
-        try {
-            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-            factory.setConnectTimeout(Duration.ofSeconds(2));
-            factory.setReadTimeout(Duration.ofSeconds(2));
-            RestClient client = RestClient.builder().requestFactory(factory).build();
-            String res = client.get().uri(url).retrieve().body(String.class);
-            return res != null && res.contains("UP");
-        } catch (Exception e) {
-            return false;
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(5));
+        RestClient client = RestClient.builder().requestFactory(factory).build();
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            if (attempt > 0) {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+            try {
+                String res = client.get().uri(url).retrieve().body(String.class);
+                if (res != null && res.contains("UP")) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+            }
         }
+        return false;
     }
 
     private StorageMetrics probeStorage() {
@@ -181,7 +253,11 @@ public class SystemCapabilitiesService {
             String checkedAt
     ) {}
 
-    public record EngineStatus(boolean ready, String detail) {}
+    public record EngineStatus(boolean ready, String state, String detail, String lastReadyAt) {
+        public EngineStatus(boolean ready, String detail) {
+            this(ready, ready ? "ONLINE" : "DOWN", detail, ready ? Instant.now().toString() : null);
+        }
+    }
     public record StorageMetrics(long gridFsAttachmentCount, long gridFsBytes) {}
     private record CachedCapabilities(Instant timestamp, SystemCapabilitiesResponse response) {}
 }
