@@ -89,5 +89,6 @@ public class InterviewSessionDocument {
         private Integer copyCount;
         private Integer pasteCount;
         private Integer tabSwitchCount;
+        private Integer echoFilteredCount;
     }
 }

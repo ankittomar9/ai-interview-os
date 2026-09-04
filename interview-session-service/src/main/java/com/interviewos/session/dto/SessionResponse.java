@@ -79,14 +79,22 @@ public record SessionResponse(
             Boolean suspiciousTyping,
             Integer copyCount,
             Integer pasteCount,
-            Integer tabSwitchCount
+            Integer tabSwitchCount,
+            Integer echoFilteredCount
     ) {
         public MessageResponse(Long id, String senderRole, MessageType messageType, String content, String codeSnippet, Instant timestamp, Map<String, String> metadata) {
-            this(id, senderRole, messageType, content, codeSnippet, timestamp, metadata, null, null, null, null, null, null, null, null);
+            this(id, senderRole, messageType, content, codeSnippet, timestamp, metadata, null, null, null, null, null, null, null, null, null);
         }
 
         public MessageResponse(Long id, String senderRole, MessageType messageType, String content, String codeSnippet, Instant timestamp) {
-            this(id, senderRole, messageType, content, codeSnippet, timestamp, null, null, null, null, null, null, null, null, null);
+            this(id, senderRole, messageType, content, codeSnippet, timestamp, null, null, null, null, null, null, null, null, null, null);
+        }
+
+        public MessageResponse(Long id, String senderRole, MessageType messageType, String content, String codeSnippet, Instant timestamp, Map<String, String> metadata,
+                               Integer keystrokeCount, Integer avgKeystrokeIntervalMs, Integer keystrokeVariance, Integer estimatedWpm,
+                               Boolean suspiciousTyping, Integer copyCount, Integer pasteCount, Integer tabSwitchCount) {
+            this(id, senderRole, messageType, content, codeSnippet, timestamp, metadata, keystrokeCount, avgKeystrokeIntervalMs, keystrokeVariance, estimatedWpm,
+                 suspiciousTyping, copyCount, pasteCount, tabSwitchCount, null);
         }
 
         public static MessageResponse fromEntity(SessionMessage entity) {
@@ -105,7 +113,8 @@ public record SessionResponse(
                     entity.getSuspiciousTyping(),
                     entity.getCopyCount(),
                     entity.getPasteCount(),
-                    entity.getTabSwitchCount()
+                    entity.getTabSwitchCount(),
+                    entity.getEchoFilteredCount()
             );
         }
     }

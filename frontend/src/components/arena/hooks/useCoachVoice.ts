@@ -56,6 +56,7 @@ async function convertBlobTo16kHzWav(blob: Blob): Promise<Blob> {
 
 interface UseCoachVoiceProps {
   onCandidateSpeechFinal?: (text: string) => void;
+  onCandidateSpeechPartialSalvage?: (text: string) => void;
   apiKey?: string;
   promptContext?: string;
   sessionId?: number;
@@ -63,6 +64,7 @@ interface UseCoachVoiceProps {
 
 export function useCoachVoice({
   onCandidateSpeechFinal,
+  onCandidateSpeechPartialSalvage,
   apiKey,
   promptContext,
   sessionId
@@ -80,6 +82,8 @@ export function useCoachVoice({
   const audioChunksRef = useRef<Blob[]>([]);
   const onCandidateSpeechFinalRef = useRef(onCandidateSpeechFinal);
   onCandidateSpeechFinalRef.current = onCandidateSpeechFinal;
+  const onCandidateSpeechPartialSalvageRef = useRef(onCandidateSpeechPartialSalvage);
+  onCandidateSpeechPartialSalvageRef.current = onCandidateSpeechPartialSalvage;
   const apiKeyRef = useRef(apiKey);
   apiKeyRef.current = apiKey;
   const promptContextRef = useRef(promptContext);
@@ -88,6 +92,9 @@ export function useCoachVoice({
   sessionIdRef.current = sessionId;
   const shouldListenRef = useRef(false);
   const isAiSpeakingRef = useRef(false);
+  const ttsEndedAtRef = useRef<number>(0);
+  const sessionOverlappedAiRef = useRef<boolean>(false);
+  const interimTranscriptRef = useRef<string>('');
 
   const toggleAiPanel = useCallback(() => setIsAiPanelOpen((prev) => !prev), []);
   const clearMicError = useCallback(() => setMicError(null), []);
@@ -104,21 +111,49 @@ export function useCoachVoice({
       setIsSpeakingNow(true);
       setIsAiSpeaking(true);
       isAiSpeakingRef.current = true;
+      sessionOverlappedAiRef.current = true;
+
+      // Salvage pre-TTS captured interim speech
+      if (interimTranscriptRef.current && interimTranscriptRef.current.trim()) {
+        onCandidateSpeechPartialSalvageRef.current?.(interimTranscriptRef.current.trim());
+        interimTranscriptRef.current = '';
+        setInterimTranscript('');
+      }
+
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch {}
         recognitionRef.current = null;
       }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch {}
+        const preChunks = [...audioChunksRef.current];
         audioChunksRef.current = [];
+        try { mediaRecorderRef.current.stop(); } catch {}
+        if (preChunks.length > 0) {
+          void (async () => {
+            try {
+              const rawBlob = new Blob(preChunks, { type: 'audio/webm' });
+              let uploadBlob: Blob = rawBlob;
+              try { uploadBlob = await convertBlobTo16kHzWav(rawBlob); } catch {}
+              const result = await transcribeAudio(uploadBlob, apiKeyRef.current, promptContextRef.current, sessionIdRef.current);
+              const salvagedText = (result as any).transcript || (result as any).text;
+              if (salvagedText && salvagedText.trim()) {
+                onCandidateSpeechPartialSalvageRef.current?.(salvagedText.trim());
+              }
+            } catch (err) {
+              console.warn('[useCoachVoice] Pre-TTS salvage transcription notice:', err);
+            }
+          })();
+        }
       }
     };
     utterance.onend = () => {
+      ttsEndedAtRef.current = Date.now();
       setIsSpeakingNow(false);
       setIsAiSpeaking(false);
       isAiSpeakingRef.current = false;
     };
     utterance.onerror = () => {
+      ttsEndedAtRef.current = Date.now();
       setIsSpeakingNow(false);
       setIsAiSpeaking(false);
       isAiSpeakingRef.current = false;
@@ -145,7 +180,7 @@ export function useCoachVoice({
     setMicError(null);
     setInterimTranscript('');
 
-    if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+    if (window.speechSynthesis?.speaking || isAiSpeakingRef.current || (Date.now() - ttsEndedAtRef.current < 750)) {
       return;
     }
 
@@ -156,9 +191,14 @@ export function useCoachVoice({
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
-        recognition.onstart = () => { setIsListening(true); setMicError(null); };
+        recognition.onstart = () => {
+          sessionOverlappedAiRef.current = false;
+          setIsListening(true);
+          setMicError(null);
+        };
         recognition.onresult = (event: any) => {
-          if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+          if (window.speechSynthesis?.speaking || isAiSpeakingRef.current || sessionOverlappedAiRef.current) {
+            interimTranscriptRef.current = '';
             setInterimTranscript('');
             return;
           }
@@ -169,8 +209,10 @@ export function useCoachVoice({
             if (event.results[i].isFinal) finalStr += tr + ' ';
             else interim += tr + ' ';
           }
+          interimTranscriptRef.current = interim.trim();
           if (interim) setInterimTranscript(interim.trim());
           if (finalStr.trim()) {
+            interimTranscriptRef.current = '';
             setInterimTranscript('');
             onCandidateSpeechFinalRef.current?.(finalStr.trim());
           }
@@ -285,7 +327,13 @@ export function useCoachVoice({
           try { mediaRecorderRef.current.stop(); } catch {}
           audioChunksRef.current = [];
         }
-      } else if (shouldListenRef.current && !isListening && !recognitionRef.current && (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive')) {
+      } else if (
+        shouldListenRef.current &&
+        !isListening &&
+        !recognitionRef.current &&
+        (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') &&
+        (Date.now() - ttsEndedAtRef.current >= 750)
+      ) {
         void startListening();
       }
     };

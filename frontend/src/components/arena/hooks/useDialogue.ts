@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from "react";
 import type { ModelProvider, IntegritySignals } from "../../../types";
 import { processDialogueTurn, addMessageToSession } from "../../../services/api";
 import type { InterviewStage } from "../../StageStepper";
+import { isEchoOverlap } from "../../../lib/echo-overlap-filter";
+import { toast } from "../../../hooks/useToast";
 
 export interface DialogueMessage {
   role: "interviewer" | "candidate";
@@ -55,10 +57,19 @@ export function useDialogue({
   const [providerError, setProviderError] = useState<ProviderErrorState | null>(null);
 
   const lastTurnRef = useRef<{ textToSend: string; codeSnapshot: string } | null>(null);
+  const echoFilteredCountRef = useRef<number>(0);
 
   const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any) => {
     const textToSend = (forcedText !== undefined ? forcedText : chatInput).trim();
     if (!textToSend && !codeSnapshot) return;
+
+    // SPEC-008: Acoustic Echo Overlap Filter (Candidate turn choke point)
+    const lastAiMsg = [...messages].reverse().find((m) => m.role === "interviewer");
+    if (lastAiMsg && isEchoOverlap(textToSend, lastAiMsg.content, 8, 0.60)) {
+      echoFilteredCountRef.current += 1;
+      toast.warning("Echo filtered — please continue.");
+      return;
+    }
 
     if (forcedText === undefined) setChatInput("");
     lastTurnRef.current = { textToSend, codeSnapshot };
@@ -73,7 +84,11 @@ export function useDialogue({
     setIsAiResponding(true);
 
     try {
-      const integrity = getIntegritySignals ? getIntegritySignals() : undefined;
+      const baseIntegrity = getIntegritySignals ? getIntegritySignals() : undefined;
+      const integrity: IntegritySignals = {
+        ...(baseIntegrity || {}),
+        echoFilteredCount: echoFilteredCountRef.current
+      };
 
       await addMessageToSession(sessionId, {
         senderRole: "CANDIDATE",
@@ -173,7 +188,7 @@ export function useDialogue({
     } finally {
       setIsAiResponding(false);
     }
-  }, [chatInput, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals]);
+  }, [chatInput, messages, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals]);
 
   const retryLastTurn = useCallback(async () => {
     if (lastTurnRef.current) {
@@ -199,6 +214,7 @@ export function useDialogue({
     providerError,
     retryLastTurn,
     clearProviderError,
-    triggerCandidateTurn
+    triggerCandidateTurn,
+    echoFilteredCount: echoFilteredCountRef.current
   };
 }

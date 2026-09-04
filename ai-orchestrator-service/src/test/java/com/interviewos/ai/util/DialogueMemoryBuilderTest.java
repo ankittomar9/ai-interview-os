@@ -123,4 +123,38 @@ class DialogueMemoryBuilderTest {
         DialogueMemoryBuilder.MemoryView memory = DialogueMemoryBuilder.buildMemory(turns, "Can I assume the input array contains only positive numbers?", null);
         assertTrue(memory.adaptiveDirective().startsWith("ANSWER_CLARIFICATION:"));
     }
+
+    @Test
+    @DisplayName("AC-1.2: Echo contaminated candidate turn is excluded from verbatim dialogue memory")
+    void testEchoContaminatedCandidateTurnExcludedFromMemory() {
+        String aiUtterance = "Thanks for sharing your implementation, Ankit. It correctly uses a stack to match parentheses with linear time complexity.";
+        String verbatimEcho = "Thanks for sharing your implementation, Ankit. It correctly uses a stack to match parentheses with linear time complexity.";
+        String honestCandidateFollowUp = "I also considered using two pointers but determined a stack is necessary for nesting.";
+
+        List<TranscriptTurnDto> turns = List.of(
+                new TranscriptTurnDto(1L, "INTERVIEWER", "FEEDBACK", aiUtterance, null, null),
+                new TranscriptTurnDto(2L, "CANDIDATE", "EXPLANATION", verbatimEcho, null, null),
+                new TranscriptTurnDto(3L, "CANDIDATE", "EXPLANATION", honestCandidateFollowUp, null, null)
+        );
+
+        DialogueMemoryBuilder.MemoryView memory = DialogueMemoryBuilder.buildMemory(turns, "What about memory?", null);
+
+        // Turn 2 (echo) MUST be excluded from verbatim memory
+        assertFalse(memory.recentVerbatim().contains("Turn 2"));
+        assertTrue(memory.recentVerbatim().contains(aiUtterance));
+        assertTrue(memory.recentVerbatim().contains(honestCandidateFollowUp));
+    }
+
+    @Test
+    @DisplayName("AC-1.2: 5-gram overlap accurately differentiates echo vs legitimate candidate speech")
+    void testIsEchoContaminatedDetection() {
+        String aiText = "We can evaluate this using an asynchronous queue with backpressure handling.";
+        String pureCandidate = "I prefer to use a synchronous channel with bounded capacity instead of an unbound buffer.";
+        String echoText = "We can evaluate this using an asynchronous queue with backpressure handling.";
+        String partialText = "You mentioned using an asynchronous queue with backpressure handling, but what about latency?";
+
+        assertFalse(DialogueMemoryBuilder.isEchoContaminated(pureCandidate, aiText, 8, 0.80));
+        assertTrue(DialogueMemoryBuilder.isEchoContaminated(echoText, aiText, 8, 0.80));
+        assertFalse(DialogueMemoryBuilder.isEchoContaminated(partialText, aiText, 8, 0.80));
+    }
 }

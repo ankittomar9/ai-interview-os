@@ -240,6 +240,7 @@ public class InterviewSessionService {
             message.setCopyCount(signals.copyCount());
             message.setPasteCount(signals.pasteCount());
             message.setTabSwitchCount(signals.tabSwitchCount());
+            message.setEchoFilteredCount(signals.echoFilteredCount());
         }
 
         SessionMessage saved = messageRepository.save(message);
@@ -269,7 +270,8 @@ public class InterviewSessionService {
                             .suspiciousTyping(signals.suspiciousTyping())
                             .copyCount(signals.copyCount())
                             .pasteCount(signals.pasteCount())
-                            .tabSwitchCount(signals.tabSwitchCount());
+                            .tabSwitchCount(signals.tabSwitchCount())
+                            .echoFilteredCount(signals.echoFilteredCount());
                 }
 
                 doc.getTranscript().add(turnBuilder.build());
@@ -310,7 +312,8 @@ public class InterviewSessionService {
                                 t.getSuspiciousTyping(),
                                 t.getCopyCount(),
                                 t.getPasteCount(),
-                                t.getTabSwitchCount()
+                                t.getTabSwitchCount(),
+                                t.getEchoFilteredCount()
                         ))
                         .toList();
             }

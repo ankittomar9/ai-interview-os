@@ -11,5 +11,6 @@ public record IntegritySignals(
         Boolean suspiciousTyping,
         Integer copyCount,
         Integer pasteCount,
-        Integer tabSwitchCount
+        Integer tabSwitchCount,
+        Integer echoFilteredCount
 ) {}

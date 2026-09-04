@@ -21,6 +21,7 @@ export interface IntegritySignals {
     copyCount?: number;
     pasteCount?: number;
     tabSwitchCount?: number;
+    echoFilteredCount?: number;
 }
 
 export interface SessionMessage {
@@ -39,6 +40,7 @@ export interface SessionMessage {
     copyCount?: number;
     pasteCount?: number;
     tabSwitchCount?: number;
+    echoFilteredCount?: number;
 }
 
 export interface SessionResponse {

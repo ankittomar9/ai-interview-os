@@ -68,6 +68,9 @@ public class SessionMessage {
     @Column
     private Integer tabSwitchCount;
 
+    @Column
+    private Integer echoFilteredCount;
+
     @PrePersist
     protected void onCreate() {
         if (this.timestamp == null) {

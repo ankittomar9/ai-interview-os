@@ -26,11 +26,33 @@ public class DialogueMemoryBuilder {
             turns = List.of();
         }
 
-        // 1. Recent Verbatim: last 3 turns (candidate + AI) verbatim, truncated to 400 chars each
+        // 1. Recent Verbatim: last 3 non-echo turns (candidate + AI) verbatim, truncated to 400 chars each
+        List<TranscriptTurnDto> nonEchoTurns = new ArrayList<>();
+        String lastInterviewerContent = null;
+        for (TranscriptTurnDto t : turns) {
+            String role = t.senderRole() != null ? t.senderRole().toUpperCase() : "UNKNOWN";
+            if ("INTERVIEWER".equals(role) || "AI".equals(role)) {
+                lastInterviewerContent = t.content();
+                nonEchoTurns.add(t);
+            } else if ("CANDIDATE".equals(role)) {
+                boolean isEcho = false;
+                if (t.metadata() != null && "true".equalsIgnoreCase(t.metadata().get("echoFiltered"))) {
+                    isEcho = true;
+                } else if (lastInterviewerContent != null && isEchoContaminated(t.content(), lastInterviewerContent, 8, 0.80)) {
+                    isEcho = true;
+                }
+                if (!isEcho) {
+                    nonEchoTurns.add(t);
+                }
+            } else {
+                nonEchoTurns.add(t);
+            }
+        }
+
         StringBuilder verbatimSb = new StringBuilder();
-        int startIdx = Math.max(0, turns.size() - 3);
-        for (int i = startIdx; i < turns.size(); i++) {
-            TranscriptTurnDto t = turns.get(i);
+        int startIdx = Math.max(0, nonEchoTurns.size() - 3);
+        for (int i = startIdx; i < nonEchoTurns.size(); i++) {
+            TranscriptTurnDto t = nonEchoTurns.get(i);
             String role = t.senderRole() != null ? t.senderRole() : "UNKNOWN";
             String msgType = t.messageType() != null ? t.messageType() : "MESSAGE";
             String content = t.content() != null ? t.content() : "";
@@ -116,5 +138,42 @@ public class DialogueMemoryBuilder {
                 currentIntentHint,
                 adaptiveDirective
         );
+    }
+
+    public static List<String> extractWords(String text) {
+        if (text == null || text.isBlank()) return List.of();
+        String[] tokens = text.toLowerCase().replaceAll("[^a-z0-9\\s]", " ").trim().split("\\s+");
+        List<String> list = new ArrayList<>();
+        for (String t : tokens) {
+            if (!t.isBlank()) list.add(t);
+        }
+        return list;
+    }
+
+    public static List<String> extract5Grams(List<String> words) {
+        if (words == null || words.size() < 5) return List.of();
+        List<String> grams = new ArrayList<>();
+        for (int i = 0; i <= words.size() - 5; i++) {
+            grams.add(String.join(" ", words.subList(i, i + 5)));
+        }
+        return grams;
+    }
+
+    public static boolean isEchoContaminated(String candidateText, String lastAiText, int minWords, double threshold) {
+        if (candidateText == null || lastAiText == null) return false;
+        List<String> candidateWords = extractWords(candidateText);
+        if (candidateWords.size() < minWords) return false;
+        List<String> candidate5Grams = extract5Grams(candidateWords);
+        if (candidate5Grams.isEmpty()) return false;
+
+        List<String> aiWords = extractWords(lastAiText);
+        if (aiWords.size() < 5) return false;
+        java.util.Set<String> ai5Grams = new java.util.HashSet<>(extract5Grams(aiWords));
+
+        int matched = 0;
+        for (String g : candidate5Grams) {
+            if (ai5Grams.contains(g)) matched++;
+        }
+        return ((double) matched / candidate5Grams.size()) >= threshold;
     }
 }

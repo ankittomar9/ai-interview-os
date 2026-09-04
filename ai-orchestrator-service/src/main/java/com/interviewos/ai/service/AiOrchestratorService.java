@@ -118,6 +118,43 @@ public class AiOrchestratorService {
             transcript = sessionTranscriptClient.fetchSessionTranscript(request.sessionId());
         }
 
+        // SPEC-008: Defense-in-depth echo contamination check against previous interviewer turn
+        String lastInterviewerText = null;
+        if (transcript != null) {
+            for (int i = transcript.size() - 1; i >= 0; i--) {
+                String role = transcript.get(i).senderRole();
+                if ("INTERVIEWER".equalsIgnoreCase(role) || "AI".equalsIgnoreCase(role)) {
+                    lastInterviewerText = transcript.get(i).content();
+                    break;
+                }
+            }
+        }
+        if (lastInterviewerText == null && request.chatHistory() != null) {
+            for (int i = request.chatHistory().size() - 1; i >= 0; i--) {
+                var msg = request.chatHistory().get(i);
+                if ("interviewer".equalsIgnoreCase(msg.role()) || "ai".equalsIgnoreCase(msg.role())) {
+                    lastInterviewerText = msg.content();
+                    break;
+                }
+            }
+        }
+
+        if (request.candidateExplanation() != null && lastInterviewerText != null &&
+                DialogueMemoryBuilder.isEchoContaminated(request.candidateExplanation(), lastInterviewerText, 8, 0.80)) {
+            log.warn("🚨 Echo contamination detected in candidate turn for session {}. Excluding from memory and providing honest prompt.", request.sessionId());
+            return new AiDialogueResponse(
+                    "My audio may have bled into your mic — please continue from where you stopped.",
+                    null,
+                    false,
+                    null,
+                    List.of(),
+                    List.of(),
+                    "EXPLAINING_APPROACH",
+                    "Echo filtered from mic input.",
+                    "PROBE_DEEPER"
+            );
+        }
+
         // 2. Fetch full question details for followUpSeeds & coaching hints
         String resolvedSlug = resolveProblemSlug(request);
         String coachingHint = null;
