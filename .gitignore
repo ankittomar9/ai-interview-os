@@ -28,3 +28,6 @@ Thumbs.db
 .env
 .env.local
 *.pem
+
+# Scratch & temporary workspace files
+scratch/
