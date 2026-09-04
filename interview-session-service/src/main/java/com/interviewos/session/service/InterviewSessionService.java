@@ -77,7 +77,7 @@ public class InterviewSessionService {
             long seed = Math.abs((long) (request.candidateId() != null ? request.candidateId().hashCode() : 42) * 31
                     + (request.track() != null ? request.track().name().hashCode() : 0)
                     + (request.difficulty() != null ? request.difficulty().name().hashCode() : 0));
-            plan = sessionPlanService.buildPlan(request.track(), request.difficulty(), seed);
+            plan = sessionPlanService.buildPlan(request.track(), request.difficulty(), seed, request.getEffectivePlanSource());
             try {
                 planJson = objectMapper.writeValueAsString(plan);
             } catch (Exception e) {

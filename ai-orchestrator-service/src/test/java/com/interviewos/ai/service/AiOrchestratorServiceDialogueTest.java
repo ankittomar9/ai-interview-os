@@ -519,5 +519,7 @@ class AiOrchestratorServiceDialogueTest {
                 "Prompt must reflect section position 1 of 4");
         assertTrue(capturedPrompt.contains("Soft Time Budget: 5 minutes"),
                 "Prompt must reflect soft time budget");
+        assertTrue(capturedPrompt.toLowerCase().contains("level fixed; do not adjust difficulty from performance"),
+                "Prompt must assert level fixed policy verbatim");
     }
 }

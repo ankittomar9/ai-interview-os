@@ -206,6 +206,7 @@ export interface ResumeDocument {
     candidateName?: string;
     email?: string;
     inferredRoleLevel?: string;
+    suggestedDifficulty?: DifficultyLevel;
     resumeTitle?: string;
     fileName?: string;
     rawText?: string;

@@ -362,4 +362,56 @@ class InterviewSessionServiceTest {
         assertThat(response.plan()).isNull();
         assertThat(response.plannedSlugs()).isEmpty();
     }
+
+    @Test
+    @DisplayName("C3: createSession respects planSource from request (RESUME_INFERRED_CONFIRMED vs SETUP_SELECTION)")
+    void testCreateSession_PlanSourcePropagation() {
+        // Request with RESUME_INFERRED_CONFIRMED
+        CreateSessionRequest reqInferred = new CreateSessionRequest(
+                "cand-inferred",
+                "Alice Inferred",
+                "Backend Engineer",
+                InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
+                DifficultyLevel.MID,
+                "Acme",
+                "Desc",
+                "INTERVIEW",
+                "RESUME_INFERRED_CONFIRMED"
+        );
+
+        when(sessionRepository.save(any(InterviewSession.class))).thenAnswer(inv -> {
+            InterviewSession s = inv.getArgument(0);
+            s.setId(202L);
+            return s;
+        });
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(202L)).thenReturn(Optional.empty());
+
+        SessionResponse resInferred = serviceWithFallbackOnly.createSession(reqInferred);
+        assertThat(resInferred.plan()).isNotNull();
+        assertThat(resInferred.plan().source()).isEqualTo("RESUME_INFERRED_CONFIRMED");
+
+        // Request with manual override / default
+        CreateSessionRequest reqManual = new CreateSessionRequest(
+                "cand-manual",
+                "Alice Manual",
+                "Backend Engineer",
+                InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
+                DifficultyLevel.JUNIOR,
+                "Acme",
+                "Desc",
+                "INTERVIEW",
+                "SETUP_SELECTION"
+        );
+
+        when(sessionRepository.save(any(InterviewSession.class))).thenAnswer(inv -> {
+            InterviewSession s = inv.getArgument(0);
+            s.setId(203L);
+            return s;
+        });
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(203L)).thenReturn(Optional.empty());
+
+        SessionResponse resManual = serviceWithFallbackOnly.createSession(reqManual);
+        assertThat(resManual.plan()).isNotNull();
+        assertThat(resManual.plan().source()).isEqualTo("SETUP_SELECTION");
+    }
 }

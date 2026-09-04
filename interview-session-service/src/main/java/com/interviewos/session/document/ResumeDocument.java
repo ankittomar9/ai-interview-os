@@ -8,6 +8,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.interviewos.session.model.DifficultyLevel;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +50,7 @@ public class ResumeDocument {
     private String email;
 
     private String inferredRoleLevel;
-
+    private DifficultyLevel suggestedDifficulty;
     private Integer yearsOfExperience;
 
     private Integer characterCount;

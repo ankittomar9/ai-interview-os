@@ -22,8 +22,22 @@ public record CreateSessionRequest(
 
         String targetCompany,
         String jobDescription,
-        String mode
+        String mode,
+        String planSource
 ) {
+    public CreateSessionRequest(
+            String candidateId,
+            String candidateName,
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String targetCompany,
+            String jobDescription,
+            String mode
+    ) {
+        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, mode, "SETUP_SELECTION");
+    }
+
     public CreateSessionRequest(
             String candidateId,
             String candidateName,
@@ -33,10 +47,14 @@ public record CreateSessionRequest(
             String targetCompany,
             String jobDescription
     ) {
-        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, "INTERVIEW");
+        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, "INTERVIEW", "SETUP_SELECTION");
     }
 
     public String getEffectiveMode() {
         return (mode != null && !mode.isBlank()) ? mode.trim().toUpperCase() : "INTERVIEW";
+    }
+
+    public String getEffectivePlanSource() {
+        return (planSource != null && !planSource.isBlank()) ? planSource.trim() : "SETUP_SELECTION";
     }
 }
