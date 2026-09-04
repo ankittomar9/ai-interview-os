@@ -126,4 +126,32 @@ class AiOrchestratorControllerTest {
                 .andExpect(jsonPath("$.provider").value("OLLAMA"))
                 .andExpect(jsonPath("$.running").value(true));
     }
+
+    @Test
+    @DisplayName("POST /transcribe with audio file and prompt biasing params should return 200 OK")
+    void testTranscribeAudioWithPromptBiasing() throws Exception {
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file", "speech.wav", "audio/wav", "sample audio content".getBytes()
+        );
+
+        when(transcriptionService.transcribeAudio(
+                any(), any(), any(), org.mockito.ArgumentMatchers.eq("Kafka; React"),
+                org.mockito.ArgumentMatchers.eq(123L), org.mockito.ArgumentMatchers.eq("en")
+        )).thenReturn(java.util.Map.of(
+                "text", "We use Kafka and React",
+                "status", "SUCCESS",
+                "provider", "WHISPER_CPP_LOCAL",
+                "promptUsed", "true"
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/v1/ai/transcribe")
+                        .file(file)
+                        .param("promptContext", "Kafka; React")
+                        .param("sessionId", "123")
+                        .param("lang", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value("We use Kafka and React"))
+                .andExpect(jsonPath("$.provider").value("WHISPER_CPP_LOCAL"))
+                .andExpect(jsonPath("$.promptUsed").value("true"));
+    }
 }

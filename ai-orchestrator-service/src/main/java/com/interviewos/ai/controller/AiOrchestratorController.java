@@ -105,16 +105,19 @@ public class AiOrchestratorController {
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "audio", required = false) MultipartFile audio,
             @RequestParam(value = "apiKey", required = false) String apiKey,
-            @RequestParam(value = "model", required = false) String model
+            @RequestParam(value = "model", required = false) String model,
+            @RequestParam(value = "promptContext", required = false) String promptContext,
+            @RequestParam(value = "sessionId", required = false) Long sessionId,
+            @RequestParam(value = "lang", required = false, defaultValue = "en") String lang
     ) {
         MultipartFile targetFile = file != null ? file : audio;
         if (targetFile == null || targetFile.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "No audio file provided in request"));
         }
         String effectiveApiKey = (headerApiKey != null && !headerApiKey.isBlank()) ? headerApiKey : apiKey;
-        log.info("🎙️ Transcribe Audio Request Received: File='{}', Size={} bytes",
-                targetFile.getOriginalFilename(), targetFile.getSize());
-        Map<String, String> result = whisperService.transcribeAudio(targetFile, effectiveApiKey, model);
+        log.info("🎙️ Transcribe Audio Request Received: File='{}', Size={} bytes, sessionId={}, hasPromptContext={}",
+                targetFile.getOriginalFilename(), targetFile.getSize(), sessionId, (promptContext != null && !promptContext.isBlank()));
+        Map<String, String> result = whisperService.transcribeAudio(targetFile, effectiveApiKey, model, promptContext, sessionId, lang);
         return ResponseEntity.ok(result);
     }
 

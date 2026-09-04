@@ -80,20 +80,16 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   );
 
   // 3. Execution Engine
-  const {
-    isExecuting,
-    executionResult,
-    runCode,
-    submitSolution
-  } = useExecution({
-    sessionId,
-    activeQuestion
+  const { isExecuting, executionResult, runCode, submitSolution } = useExecution({
+    sessionId, activeQuestion
   });
 
   // 4. Voice Management
   const voice = useCoachVoice({
     onCandidateSpeechFinal: (text) => dialogue.triggerCandidateTurn(text, code),
-    apiKey
+    apiKey,
+    promptContext: [activeTrack, activeQuestion?.title, activeQuestion?.difficulty].filter(Boolean).join(', '),
+    sessionId
   });
 
   // 5. Proctoring Sentinel
