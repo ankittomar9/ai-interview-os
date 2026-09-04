@@ -7,5 +7,6 @@ public enum InterviewTrack {
     BEHAVIORAL_STAR,
     SPRING_LLD,
     SQL,
-    RESUME_BASED
+    RESUME_BASED,
+    FULL_LOOP
 }

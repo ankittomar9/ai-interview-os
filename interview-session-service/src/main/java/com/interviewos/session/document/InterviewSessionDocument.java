@@ -66,6 +66,9 @@ public class InterviewSessionDocument {
     private List<SectionProgress> sectionProgress = new ArrayList<>();
 
     @Builder.Default
+    private List<PlannedSectionDocument> planSections = new ArrayList<>();
+
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime startedAt;
@@ -126,5 +129,30 @@ public class InterviewSessionDocument {
         private LocalDateTime startedAt;
         private LocalDateTime endedAt;
         private int turnCount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PlannedSectionDocument {
+        private String sectionType;
+        private String track;
+        private int itemCount;
+        private int softTimeBudgetMinutes;
+        private String note;
+        private List<String> problemSlugs;
+
+        public static PlannedSectionDocument fromRecord(com.interviewos.session.model.PlannedSection s) {
+            if (s == null) return null;
+            return PlannedSectionDocument.builder()
+                    .sectionType(s.sectionType() != null ? s.sectionType().name() : null)
+                    .track(s.track() != null ? s.track().name() : null)
+                    .itemCount(s.itemCount())
+                    .softTimeBudgetMinutes(s.softTimeBudgetMinutes())
+                    .note(s.note())
+                    .problemSlugs(s.problemSlugs())
+                    .build();
+        }
     }
 }

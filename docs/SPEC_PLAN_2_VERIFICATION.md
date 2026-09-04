@@ -479,6 +479,55 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 13: [C1] — SessionPlan Model + Multi-Stage Preset Resolver
+
+- **Branch**: `feature/spec-plan-2-c1`
+- **Scope**:
+  - **C1 SessionPlan Model & Schema**:
+    - Created `SectionType.java` enum (`INTRODUCTION, CORE_TECH, DSA, LLD, SYSTEM_DESIGN, SQL, BEHAVIORAL, RESUME`).
+    - Created `PlannedSection.java` record (`sectionType, track, itemCount, softTimeBudgetMinutes, note, problemSlugs`).
+    - Created `SessionPlan.java` record (`source, level, sections, plannedTotalMinutes`).
+    - Added Flyway migration `V6__add_session_plan.sql` adding `plan_json TEXT` column to `interview_sessions`.
+    - Extended `InterviewSession.java` entity with `@Column(name = "plan_json", columnDefinition = "TEXT") private String planJson;`.
+    - Extended `InterviewSessionDocument.java` with `planSections` list and `PlannedSectionDocument` inner record.
+    - Extended `InterviewTrack.java` with `FULL_LOOP`.
+    - Added `plan` to `SessionResponse.java` and deserialization logic in `fromEntity`.
+  - **C1 Deterministic Plan Resolver & Zero DSA Bleed**:
+    - Created `SessionPlanService.java` implementing the full 28-combo focused preset matrix and 4 FULL_LOOP presets:
+      - JUNIOR: INTRO (5m) + DSA x 2 (30m) + LLD x 1 (15m) -> 52 min
+      - MID: INTRO (5m) + DSA x 2 (30m) + LLD x 2 (20m) -> 58 min
+      - SENIOR: INTRO (5m) + DSA x 1 (15m) + LLD x 1 (15m) + SD x 1 (18m) -> 55 min
+      - STAFF: INTRO (5m) + LLD x 1 (15m) + SD x 1 (18m) + RESUME x 1 (12m) -> 52 min
+    - Introduced `RESUME_MAP` in `FALLBACK_CATALOG` (`resume-technical-deep-dive`, `resume-scale-challenge`, `resume-system-architecture`, `resume-project-impact`, `resume-past-impact`), eliminating DSA bleed for resume-based interviews.
+    - Wired `SessionPlanService` into `InterviewSessionService.createSession`: persists `planJson` for `INTERVIEW` mode and leaves `null` for `PLAYGROUND` mode.
+    - Updated frontend `types/index.ts` with `FULL_LOOP` track, `SectionType`, `PlannedSection`, `SessionPlan`, and `plan` on `SessionResponse`.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 223 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Tests run: 89, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 147, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `InterviewSessionServiceTest.testSessionPlan_All28Combinations`: validated all 28 track x difficulty combinations (2 sections: INTRO + domain, soft budget matches, 0 DSA bleed for non-DSA tracks).
+  - `InterviewSessionServiceTest.testSessionPlan_FullLoop_Presets`: validated all 4 FULL_LOOP presets (JUNIOR 52m, MID 58m, SENIOR 55m, STAFF 52m).
+  - `InterviewSessionServiceTest.testCreateSession_InterviewMode_PersistsPlan`: verified plan persistence in entity, Mongo doc, and DTO.
+  - `InterviewSessionServiceTest.testCreateSession_PlaygroundMode_LeavesPlanNull`: verified null plan and empty slugs in PLAYGROUND mode.
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 884ms
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
 
 
 

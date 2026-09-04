@@ -1,8 +1,26 @@
 export type ModelProvider = 'GEMINI' | 'GROQ' | 'OPENAI' | 'ANTHROPIC' | 'QWEN' | 'GLM' | 'KIMI' | 'DEEPSEEK' | 'OLLAMA';
 
-export type InterviewTrack = 'JAVA_SPRING_BOOT' | 'ALGORITHMS_DATA_STRUCTURES' | 'SYSTEM_DESIGN' | 'BEHAVIORAL_STAR' | 'SPRING_LLD' | 'SQL' | 'RESUME_BASED';
+export type InterviewTrack = 'JAVA_SPRING_BOOT' | 'ALGORITHMS_DATA_STRUCTURES' | 'SYSTEM_DESIGN' | 'BEHAVIORAL_STAR' | 'SPRING_LLD' | 'SQL' | 'RESUME_BASED' | 'FULL_LOOP';
 
 export type DifficultyLevel = 'JUNIOR' | 'MID' | 'SENIOR' | 'STAFF';
+
+export type SectionType = 'INTRODUCTION' | 'CORE_TECH' | 'DSA' | 'LLD' | 'SYSTEM_DESIGN' | 'SQL' | 'BEHAVIORAL' | 'RESUME';
+
+export interface PlannedSection {
+    sectionType: SectionType;
+    track: InterviewTrack;
+    itemCount: number;
+    softTimeBudgetMinutes: number;
+    note?: string;
+    problemSlugs?: string[];
+}
+
+export interface SessionPlan {
+    source: 'SETUP_SELECTION' | 'RESUME_INFERRED_CONFIRMED';
+    level: DifficultyLevel;
+    sections: PlannedSection[];
+    plannedTotalMinutes: number;
+}
 
 export type SessionStatus = 'INITIALIZED' | 'IN_PROGRESS' | 'PAUSED' | 'COMPLETED' | 'EVALUATED';
 
@@ -59,6 +77,7 @@ export interface SessionResponse {
     sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
     plannedSlugs?: string[];
     messages: SessionMessage[];
+    plan?: SessionPlan;
 }
 
 export interface GenerateQuestionResponse {

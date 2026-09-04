@@ -67,6 +67,10 @@ public class InterviewSession {
     @Builder.Default
     private List<String> plannedSlugs = new ArrayList<>();
 
+    @Lob
+    @Column(name = "plan_json", columnDefinition = "TEXT")
+    private String planJson;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = Instant.now();
