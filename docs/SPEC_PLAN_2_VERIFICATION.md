@@ -441,6 +441,45 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 12: [C0] — Deterministic Affirmative Consent Guard & Dead Config Purge
+
+- **Branch**: `feature/spec-plan-2-c0`
+- **Scope**:
+  - **C0 Affirmative Consent Guard**:
+    - Introduced deterministic affirmative consent patterns (`yes|yeah|yep|yup|sure|ok|okay|ready|let's go|lets go|go ahead|sounds good|move on`) and negation guard patterns (`not yet|not ready|don't|dont|do not|later`) via `AiOrchestratorService.hasAffirmativeConsent(candidateText)`.
+    - Added post-guard interception: when the LLM returns `ADVANCE_STAGE` (or fallback completion returns `ADVANCE_STAGE`), verifies candidate text from `request.candidateExplanation()` (or latest candidate turn from `chatHistory`). If affirmative consent is missing or negated, downgrades `recommendedAction` to `PROPOSE_STAGE_ADVANCE` and records diagnostic log `CONSENT-GUARD: Downgraded recommendedAction from ADVANCE_STAGE to PROPOSE_STAGE_ADVANCE...`.
+    - Prevents premature stage progression without explicit candidate affirmation.
+  - **Dead YAML Config Purge**:
+    - Removed unused `rubric-model: ${GROQ_MODEL_EVAL:qwen/qwen3.8-27b}` from `ai.providers.groq`.
+    - Removed unused `rubric-model: ${OPENAI_MODEL_EVAL:gpt-4o}` from `ai.providers.openai`.
+    - Removed dead `timeout-seconds: ${RUBRIC_TIMEOUT_SECONDS:25}` from `ai.rubric` (superseded by `rubric.timeout-seconds`).
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 223 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl ai-orchestrator-service`:
+    ```
+    [INFO] Running com.interviewos.ai.service.AiOrchestratorServiceDialogueTest
+    [INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.ai.service.AiOrchestratorServiceDialogueTest
+    [INFO] Results:
+    [INFO] Tests run: 51, Failures: 0, Errors: 0, Skipped: 0
+    [INFO] BUILD SUCCESS
+    ```
+  - `AiOrchestratorServiceDialogueTest.testConsentGuardDowngradesWithoutAffirmative`: verified downgrade to `PROPOSE_STAGE_ADVANCE` when candidate explanation lacks affirmative consent.
+  - `AiOrchestratorServiceDialogueTest.testConsentGuardDowngradesOnNegation`: verified downgrade when candidate explanation contains negation guard ("Sure, but not yet...").
+  - `AiOrchestratorServiceDialogueTest.testHasAffirmativeConsentExhaustive`: verified all 16 positive affirmative variations, 10 negation guard variations, and mixed edge cases.
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 836ms
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 
 
 

@@ -21,7 +21,6 @@ ai:
       model-fast: ${GROQ_MODEL_FAST:openai/gpt-oss-20b}
       model-eval: ${GROQ_MODEL_EVAL:qwen/qwen3.8-27b}
       model-stt: ${GROQ_MODEL_STT:whisper-large-v3-turbo}
-      rubric-model: ${GROQ_MODEL_EVAL:qwen/qwen3.8-27b}
       api-key: ${GROQ_API_KEY:}
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
@@ -32,10 +31,8 @@ ai:
       model-dialogue: ${OPENAI_MODEL_DIALOGUE:gpt-4o}
       model-fast: ${OPENAI_MODEL_FAST:gpt-4o-mini}
       model-eval: ${OPENAI_MODEL_EVAL:gpt-4o}
-      rubric-model: ${OPENAI_MODEL_EVAL:gpt-4o}
       api-key: ${OPENAI_API_KEY:}
   rubric:
-    timeout-seconds: ${RUBRIC_TIMEOUT_SECONDS:25}
     allow-cloud-fallback: ${AI_RUBRIC_ALLOW_CLOUD_FALLBACK:${RUBRIC_ALLOW_CLOUD_FALLBACK:true}}
 
 rubric:
