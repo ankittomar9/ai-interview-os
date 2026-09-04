@@ -238,6 +238,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       recordingInterrupted={recorder.recordingInterrupted}
       cameraActive={recorder.cameraActive}
       screenActive={recorder.screenActive}
+      recordScreen={recordScreen}
+      onStartScreenShare={recorder.startScreenShare}
       isFocusMode={isFocusMode}
       onToggleFocusMode={toggleFocusMode}
     />

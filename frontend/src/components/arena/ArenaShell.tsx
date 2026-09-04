@@ -79,6 +79,8 @@ interface ArenaShellProps {
   recordingInterrupted?: boolean;
   cameraActive?: boolean;
   screenActive?: boolean;
+  recordScreen?: boolean;
+  onStartScreenShare?: () => void;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
 }
@@ -95,7 +97,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     onToggleVoice, onMicToggle, interimTranscript = '', micError = null, onClearMicError,
     hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
     isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive,
-    isFocusMode = false, onToggleFocusMode
+    recordScreen, onStartScreenShare, isFocusMode = false, onToggleFocusMode
   } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
@@ -151,6 +153,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
                 <span className="text-text-3 border-l border-border pl-1.5 ml-0.5">
                   {cameraActive && '🎥 Cam'} {screenActive && '· 🖥️ Screen'}
                 </span>
+              )}
+              {isRecording && recordScreen && !screenActive && onStartScreenShare && (
+                <button type="button" onClick={onStartScreenShare} className="ml-1 px-1.5 py-0.5 text-[10px] rounded bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30 transition-colors cursor-pointer" title="Share Screen">Share Screen</button>
               )}
             </div>
           )}

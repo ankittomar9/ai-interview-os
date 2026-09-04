@@ -105,6 +105,45 @@ export function useSessionRecorder({
       : 'video/webm';
   };
 
+  const startScreenShare = useCallback(async () => {
+    if (!recordScreen || screenRecorderRef.current || screenActive) return;
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 8 },
+        audio: false
+      });
+      screenStreamRef.current = screenStream;
+      const screenRec = new MediaRecorder(screenStream, {
+        mimeType: pickMime(),
+        videoBitsPerSecond: 400000
+      });
+      screenRecorderRef.current = screenRec;
+
+      screenRec.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          const seq = screenSeqRef.current++;
+          const blob = event.data;
+          uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunk(blob, seq, 'screen'));
+        }
+      };
+
+      screenStream.getVideoTracks()[0].onended = () => {
+        if (screenRec.state !== 'inactive') {
+          try { screenRec.stop(); } catch {}
+        }
+        screenRecorderRef.current = null;
+        screenStreamRef.current = null;
+        setScreenActive(false);
+      };
+
+      screenRec.start(5000);
+      setScreenActive(true);
+    } catch (err) {
+      console.warn('Screen recording consent denied or cancelled:', err);
+      setScreenActive(false);
+    }
+  }, [recordScreen, screenActive, uploadChunk]);
+
   useEffect(() => {
     if (isPlayground || !sessionId) return;
 
@@ -160,48 +199,6 @@ export function useSessionRecorder({
         setRecordingInterrupted(true);
         if (onInterrupted) onInterrupted(err.message || 'Webcam feed unavailable for recording');
       }
-
-      if (recordScreen && !isCancelled) {
-        try {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { frameRate: 8 },
-            audio: false
-          });
-
-          if (isCancelled) {
-            screenStream.getTracks().forEach((t) => t.stop());
-            return;
-          }
-
-          screenStreamRef.current = screenStream;
-          const screenRec = new MediaRecorder(screenStream, {
-            mimeType: pickMime(),
-            videoBitsPerSecond: 400000
-          });
-          screenRecorderRef.current = screenRec;
-
-          screenRec.ondataavailable = (event) => {
-            if (event.data && event.data.size > 0) {
-              const seq = screenSeqRef.current++;
-              const blob = event.data;
-              uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunk(blob, seq, 'screen'));
-            }
-          };
-
-          screenStream.getVideoTracks()[0].onended = () => {
-            if (screenRec.state !== 'inactive') {
-              try { screenRec.stop(); } catch {}
-            }
-            setScreenActive(false);
-          };
-
-          screenRec.start(5000);
-          setScreenActive(true);
-        } catch (err) {
-          console.warn('Screen recording consent denied or cancelled, continuing camera-only:', err);
-          setScreenActive(false);
-        }
-      }
     };
 
     void startRecording();
@@ -219,11 +216,13 @@ export function useSessionRecorder({
           ref.current.getTracks().forEach((t) => t.stop());
         }
       });
+      screenRecorderRef.current = null;
+      screenStreamRef.current = null;
       setIsRecording(false);
       setCameraActive(false);
       setScreenActive(false);
     };
-  }, [sessionId, isPlayground, onInterrupted, recordScreen, uploadChunk]);
+  }, [sessionId, isPlayground, onInterrupted, uploadChunk]);
 
   return {
     isRecording,
@@ -231,6 +230,7 @@ export function useSessionRecorder({
     uploadedChunks,
     recordingInterrupted,
     cameraActive,
-    screenActive
+    screenActive,
+    startScreenShare
   };
 }
