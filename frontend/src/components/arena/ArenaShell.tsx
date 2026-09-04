@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider } from '../../types';
+import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, PlannedSection } from '../../types';
 import { TrackNavMenu } from '../ui/TrackNavMenu';
 import { StageStepper, type InterviewStage } from '../StageStepper';
 import { QuestionRail, type QuestionRailItem, type QuestionStatus } from '../ide/QuestionRail';
@@ -79,9 +79,8 @@ interface ArenaShellProps {
   isRecording?: boolean;
   recordingSeconds?: number;
   recordingInterrupted?: boolean;
-  cameraActive?: boolean;
-  screenActive?: boolean;
-  recordScreen?: boolean;
+  cameraActive?: boolean; screenActive?: boolean; recordScreen?: boolean;
+  sections?: PlannedSection[]; activeSectionIndex?: number; onSectionClick?: (index: number, stage: InterviewStage) => void;
   salvageHint?: string | null;
   onStartScreenShare?: () => void;
   isFocusMode?: boolean;
@@ -175,7 +174,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
           </button>
         </div>
       </div>
-      {!isFocusMode && <StageStepper currentStage={currentStage} isPlayground={isPlayground} onStageClick={onStageClick} stageTurnCounts={stageTurnCounts} stageTransitionReasons={stageTransitionReasons} />}
+      {!isFocusMode && <StageStepper currentStage={currentStage} currentSectionIndex={props.activeSectionIndex} sections={props.sections} isPlayground={isPlayground} onStageClick={onStageClick} onSectionClick={props.onSectionClick} stageTurnCounts={stageTurnCounts} stageTransitionReasons={stageTransitionReasons} />}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
         <div className="flex-1 min-w-0 h-full overflow-hidden">

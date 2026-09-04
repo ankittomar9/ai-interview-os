@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
-import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider } from './types';
+import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan } from './types';
 import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession } from './services/api';
 import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
@@ -32,6 +32,7 @@ export function App() {
   });
 
   const [sessionMode, setSessionMode] = useState<'INTERVIEW' | 'PLAYGROUND'>('INTERVIEW');
+  const [sessionPlan, setSessionPlan] = useState<SessionPlan | undefined>(undefined);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [playlistQuestions, setPlaylistQuestions] = useState<GenerateQuestionResponse[]>([]);
 
@@ -87,6 +88,7 @@ export function App() {
         mode: chosenMode
       });
       setSessionId(session.id);
+      setSessionPlan(session.plan);
       await startSession(session.id);
 
       let initialQ: GenerateQuestionResponse;
@@ -158,6 +160,7 @@ export function App() {
         mode: 'PLAYGROUND'
       });
       setSessionId(session.id);
+      setSessionPlan(undefined);
       await startSession(session.id);
 
       setQuestion(firstQ);
@@ -262,6 +265,7 @@ export function App() {
           sessionMode={sessionMode}
           candidateName={candidateName}
           recordScreen={recordScreen}
+          plan={sessionPlan}
           onFinish={handleFinishInterview}
         />
       )}

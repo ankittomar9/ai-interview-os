@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef } from "react";
-import type { ModelProvider, IntegritySignals } from "../../../types";
+import type { ModelProvider, IntegritySignals, PlannedSection } from "../../../types";
 import { processDialogueTurn, addMessageToSession, recordSectionTransition } from "../../../services/api";
 import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
+import { buildNavSections, type StageNavInfo } from "../../../lib/plan-navigation";
 import { isEchoOverlap } from "../../../lib/echo-overlap-filter";
 import { toast } from "../../../hooks/useToast";
 
@@ -27,8 +28,10 @@ interface UseDialogueProps {
   problemSlug?: string;
   candidateName?: string;
   initialWelcome?: string;
+  sections?: PlannedSection[];
   onAiSpeechRequested?: (text: string) => void;
   getIntegritySignals?: () => IntegritySignals | undefined;
+  onSectionChanged?: (sectionIndex: number, section: StageNavInfo) => void;
 }
 
 export function useDialogue({
@@ -40,8 +43,10 @@ export function useDialogue({
   problemSlug,
   candidateName,
   initialWelcome = "",
+  sections,
   onAiSpeechRequested,
-  getIntegritySignals
+  getIntegritySignals,
+  onSectionChanged
 }: UseDialogueProps) {
   const [messages, setMessages] = useState<DialogueMessage[]>(() => [
     {
@@ -52,43 +57,48 @@ export function useDialogue({
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isAiResponding, setIsAiResponding] = useState(false);
-  const [currentStage, setCurrentStage] = useState<InterviewStage>("INTRODUCTION");
-  const [stageTurnCounts, setStageTurnCounts] = useState<Record<InterviewStage, number>>({
+
+  const navSections = buildNavSections(sections);
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const currentNavSection = navSections[activeSectionIndex] || navSections[0];
+  const [currentStage, setCurrentStage] = useState<InterviewStage>(() => currentNavSection.stage);
+
+  const [stageTurnCounts, setStageTurnCounts] = useState<Record<string, number>>({
     INTRODUCTION: 0,
     CORE_TECH: 0,
     CODING_DSA: 0,
     SYSTEM_DESIGN: 0
   });
-  const [stageTransitionReasons, setStageTransitionReasons] = useState<Record<InterviewStage, StageTransitionReason>>({} as any);
+  const [stageTransitionReasons, setStageTransitionReasons] = useState<Record<string, StageTransitionReason>>({} as any);
   const [hasUnread, setHasUnread] = useState(false);
   const [providerError, setProviderError] = useState<ProviderErrorState | null>(null);
 
   const lastTurnRef = useRef<{ textToSend: string; codeSnapshot: string } | null>(null);
   const echoFilteredCountRef = useRef<number>(0);
 
-  const transitionStage = useCallback(async (targetStage: InterviewStage, reason: StageTransitionReason = 'MANUAL_JUMP') => {
-    const STAGES: InterviewStage[] = ['INTRODUCTION', 'CORE_TECH', 'CODING_DSA', 'SYSTEM_DESIGN'];
-    const fromIdx = STAGES.indexOf(currentStage);
-    const toIdx = STAGES.indexOf(targetStage);
+  const transitionSection = useCallback(async (targetIndex: number, reason: StageTransitionReason = 'MANUAL_JUMP') => {
+    if (targetIndex < 0 || targetIndex >= navSections.length) return;
+    const fromIdx = activeSectionIndex;
+    const toIdx = targetIndex;
     if (fromIdx === toIdx) return;
 
     if (toIdx > fromIdx) {
       for (let i = fromIdx; i < toIdx; i++) {
-        const s = STAGES[i];
+        const sec = navSections[i];
         const isIntermediateSkipped = i > fromIdx;
-        const turnCountForStage = isIntermediateSkipped ? 0 : (stageTurnCounts[s] || 0);
+        const turnCountForStage = isIntermediateSkipped ? 0 : (stageTurnCounts[sec.key] ?? stageTurnCounts[sec.stage] ?? 0);
         const stageReason = isIntermediateSkipped ? 'MANUAL_JUMP' : reason;
 
-        setStageTransitionReasons((prev) => ({ ...prev, [s]: stageReason }));
+        setStageTransitionReasons((prev) => ({ ...prev, [sec.key]: stageReason, [sec.stage]: stageReason }));
         if (isIntermediateSkipped) {
-          setStageTurnCounts((prev) => ({ ...prev, [s]: 0 }));
+          setStageTurnCounts((prev) => ({ ...prev, [sec.key]: 0, [sec.stage]: 0 }));
         }
 
         if (sessionId) {
           try {
             await recordSectionTransition(sessionId, {
-              fromSectionType: s,
-              toSectionType: STAGES[i + 1],
+              fromSectionType: String(sec.sectionType),
+              toSectionType: String(navSections[i + 1]?.sectionType),
               sectionIndex: i,
               reason: stageReason,
               turnCount: turnCountForStage
@@ -99,15 +109,16 @@ export function useDialogue({
         }
       }
     } else {
-      setStageTransitionReasons((prev) => ({ ...prev, [currentStage]: reason }));
+      const curSec = navSections[fromIdx];
+      setStageTransitionReasons((prev) => ({ ...prev, [curSec.key]: reason, [curSec.stage]: reason }));
       if (sessionId) {
         try {
           await recordSectionTransition(sessionId, {
-            fromSectionType: currentStage,
-            toSectionType: targetStage,
+            fromSectionType: String(curSec.sectionType),
+            toSectionType: String(navSections[toIdx]?.sectionType),
             sectionIndex: fromIdx,
             reason,
-            turnCount: stageTurnCounts[currentStage] || 0
+            turnCount: stageTurnCounts[curSec.key] ?? stageTurnCounts[curSec.stage] ?? 0
           });
         } catch (e) {
           console.warn('[useDialogue] Failed to record section transition:', e);
@@ -115,8 +126,22 @@ export function useDialogue({
       }
     }
 
-    setCurrentStage(targetStage);
-  }, [currentStage, stageTurnCounts, sessionId]);
+    const targetSec = navSections[toIdx];
+    setActiveSectionIndex(toIdx);
+    setCurrentStage(targetSec.stage);
+    if (onSectionChanged) {
+      onSectionChanged(toIdx, targetSec);
+    }
+  }, [activeSectionIndex, navSections, stageTurnCounts, sessionId, onSectionChanged]);
+
+  const transitionStage = useCallback(async (targetStage: InterviewStage, reason: StageTransitionReason = 'MANUAL_JUMP') => {
+    const targetIdx = navSections.findIndex((s) => s.stage === targetStage);
+    if (targetIdx !== -1) {
+      await transitionSection(targetIdx, reason);
+    } else {
+      setCurrentStage(targetStage);
+    }
+  }, [navSections, transitionSection]);
 
   const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any) => {
     const textToSend = (forcedText !== undefined ? forcedText : chatInput).trim();
@@ -132,7 +157,13 @@ export function useDialogue({
 
     if (forcedText === undefined) setChatInput("");
     lastTurnRef.current = { textToSend, codeSnapshot };
-    setStageTurnCounts((prev) => ({ ...prev, [currentStage]: (prev[currentStage] || 0) + 1 }));
+    const curKey = currentNavSection.key;
+    const curStageKey = currentNavSection.stage;
+    setStageTurnCounts((prev) => ({
+      ...prev,
+      [curKey]: (prev[curKey] || 0) + 1,
+      [curStageKey]: (prev[curStageKey] || 0) + 1
+    }));
 
     const candidateMsg: DialogueMessage = {
       role: "candidate",
@@ -155,7 +186,7 @@ export function useDialogue({
         content: textToSend,
         codeSnippet: codeSnapshot,
         messageType: "EXPLANATION",
-        metadata: { stage: currentStage, sectionType: currentStage },
+        metadata: { stage: currentStage, sectionType: String(currentNavSection.sectionType) },
         integritySignals: integrity
       });
 
@@ -170,6 +201,11 @@ export function useDialogue({
         sessionMode: isPlayground ? "PLAYGROUND" : "INTERVIEW",
         candidateName,
         currentStage,
+        sectionType: String(currentNavSection.sectionType),
+        sectionIndex: activeSectionIndex,
+        totalSections: navSections.length,
+        softTimeBudgetMinutes: currentNavSection.softTimeBudgetMinutes,
+        sectionNote: currentNavSection.note,
         latestExecution: latestExecution ? {
           status: latestExecution.status || 'FAILED',
           passedTests: latestExecution.passedTests || 0,
@@ -199,10 +235,8 @@ export function useDialogue({
       setHasUnread(true);
 
       if (aiResponse.recommendedAction === "ADVANCE_STAGE") {
-        const STAGES: InterviewStage[] = ['INTRODUCTION', 'CORE_TECH', 'CODING_DSA', 'SYSTEM_DESIGN'];
-        const currentIdx = STAGES.indexOf(currentStage);
-        if (currentIdx < STAGES.length - 1) {
-          await transitionStage(STAGES[currentIdx + 1], 'CONSENTED');
+        if (activeSectionIndex < navSections.length - 1) {
+          await transitionSection(activeSectionIndex + 1, 'CONSENTED');
         }
       }
 
@@ -249,7 +283,7 @@ export function useDialogue({
     } finally {
       setIsAiResponding(false);
     }
-  }, [chatInput, messages, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals, currentStage, transitionStage]);
+  }, [chatInput, messages, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals, currentStage, currentNavSection, activeSectionIndex, navSections, transitionSection]);
 
   const retryLastTurn = useCallback(async () => {
     if (lastTurnRef.current) {
@@ -270,9 +304,12 @@ export function useDialogue({
     isAiResponding,
     currentStage,
     setCurrentStage,
+    activeSectionIndex,
+    navSections,
+    transitionSection,
+    transitionStage,
     stageTurnCounts,
     stageTransitionReasons,
-    transitionStage,
     hasUnread,
     setHasUnread,
     providerError,

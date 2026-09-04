@@ -184,6 +184,11 @@ export const processDialogueTurn = async (payload: {
     sessionMode?: 'INTERVIEW' | 'PLAYGROUND' | string;
     candidateName?: string;
     currentStage?: string;
+    sectionType?: string;
+    sectionIndex?: number;
+    totalSections?: number;
+    softTimeBudgetMinutes?: number;
+    sectionNote?: string;
     latestExecution?: {
         status: string;
         passedTests: number;

@@ -528,6 +528,48 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 14: [C2] — Plan-Driven Stage Stepper & Orchestrator Section Awareness
+
+- **Branch**: `feature/spec-plan-2-c2`
+- **Scope**:
+  - **Plan Navigation Utilities**:
+    - Created `frontend/src/lib/plan-navigation.ts` exporting `formatSectionTypeTitle`, `mapSectionTypeToStage`, and `buildNavSections`.
+    - Handles dynamic section counts, active section index mapping, track mappings, and seamless label formatting.
+  - **Dynamic Stage Stepper**:
+    - Generalized `frontend/src/components/StageStepper.tsx` to optionally consume dynamic sections `sections?: PlannedSection[]`.
+    - Preserved A12 hollow circle `(advanced)` skip state when `turnCount === 0`.
+  - **Arena Hook & Component Wiring**:
+    - Updated `frontend/src/components/arena/hooks/useDialogue.ts` to accept `sections: PlannedSection[]`, manage `activeSectionIndex`, advance dynamically along the plan, expose `transitionSection(index, targetStage)`, and pass `sectionType, sectionIndex, totalSections, softTimeBudgetMinutes, sectionNote` to `processDialogueTurn`.
+    - Updated `frontend/src/components/arena/ArenaShell.tsx` to forward `sections`, `activeSectionIndex`, and `onSectionClick` to `StageStepper`.
+    - Refactored `frontend/src/components/arena/ArenaRoom.tsx`: eliminated static `STAGE_TRACK_MAP` lookup, wired `buildNavSections`, handles section jumps, question switches, and track transitions cleanly.
+    - Updated `frontend/src/App.tsx` to store `session.plan` in state and forward to `ArenaRoom`.
+  - **AI Orchestrator Section Awareness**:
+    - Extended `AiDialogueRequest` with `sectionType`, `sectionIndex`, `totalSections`, `softTimeBudgetMinutes`, and `sectionNote`.
+    - Updated `AiOrchestratorService.java`: injects `SECTION CONTEXT:` prompt block into system instruction and formats candidate prompt with `Current Stage: INTRODUCTION` when `sectionType` is `"INTRODUCTION"`.
+    - Added unit test `testSectionAwarenessAndIntroductionGuidanceInjected` in `AiOrchestratorServiceDialogueTest.java`.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 239 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 235 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl ai-orchestrator-service`:
+    ```
+    [INFO] Running com.interviewos.ai.service.AiOrchestratorServiceDialogueTest
+    [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.ai.service.AiOrchestratorServiceDialogueTest
+    [INFO] Results:
+    [INFO] Tests run: 52, Failures: 0, Errors: 0, Skipped: 0
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2606 modules transformed.
+    ✓ built in 811ms
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
 
 
 

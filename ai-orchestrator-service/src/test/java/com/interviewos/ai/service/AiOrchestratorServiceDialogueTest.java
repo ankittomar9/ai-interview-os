@@ -471,4 +471,53 @@ class AiOrchestratorServiceDialogueTest {
         assertFalse(AiOrchestratorService.hasAffirmativeConsent(""));
         assertFalse(AiOrchestratorService.hasAffirmativeConsent(null));
     }
+
+    @Test
+    @DisplayName("C2: processDialogue injects section awareness and introduction time limit guidance into system instructions")
+    void testSectionAwarenessAndIntroductionGuidanceInjected() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        org.mockito.ArgumentCaptor<String> promptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(aiClient.generateCompletion(any(), promptCaptor.capture(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Welcome to the interview.",
+                          "followUpQuestion": "Could you introduce yourself?",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": "",
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "CLARIFYING",
+                          "turnSummary": "Candidate started introduction.",
+                          "recommendedAction": "PROBE_DEEPER"
+                        }
+                        """);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("System Introduction")
+                .candidateExplanation("Hi, I am ready to start.")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("INTRODUCTION")
+                .sectionIndex(0)
+                .totalSections(4)
+                .softTimeBudgetMinutes(5)
+                .sectionNote("Candidate background and role calibration")
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        String capturedPrompt = promptCaptor.getValue();
+        assertNotNull(capturedPrompt);
+        assertTrue(capturedPrompt.contains("There is NO time limit on the introduction"),
+                "Prompt must contain verbatim: 'There is NO time limit on the introduction'");
+        assertTrue(capturedPrompt.contains("SECTION CONTEXT:"),
+                "Prompt must contain 'SECTION CONTEXT:' block");
+        assertTrue(capturedPrompt.contains("Current Section Type: INTRODUCTION"),
+                "Prompt must reflect section type");
+        assertTrue(capturedPrompt.contains("Section Position: 1 of 4"),
+                "Prompt must reflect section position 1 of 4");
+        assertTrue(capturedPrompt.contains("Soft Time Budget: 5 minutes"),
+                "Prompt must reflect soft time budget");
+    }
 }

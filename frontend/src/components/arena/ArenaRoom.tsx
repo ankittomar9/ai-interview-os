@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider } from '../../types';
+import React, { useState, useCallback, useMemo } from 'react';
+import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan } from '../../types';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
 import { useExecution } from './hooks/useExecution';
 import { useDialogue } from './hooks/useDialogue';
@@ -10,11 +10,7 @@ import { ArenaShell } from './ArenaShell';
 import { getPersona } from '../../lib/personas';
 import { mergeSalvageText } from '../../lib/salvage-dedup';
 import type { InterviewStage } from '../StageStepper';
-
-const STAGE_TRACK_MAP: Record<InterviewStage, InterviewTrack> = {
-  INTRODUCTION: 'BEHAVIORAL_STAR', CORE_TECH: 'SPRING_LLD',
-  CODING_DSA: 'ALGORITHMS_DATA_STRUCTURES', SYSTEM_DESIGN: 'SYSTEM_DESIGN'
-};
+import { buildNavSections } from '../../lib/plan-navigation';
 
 interface ArenaRoomProps {
   sessionId: number;
@@ -25,6 +21,7 @@ interface ArenaRoomProps {
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   candidateName?: string;
   recordScreen?: boolean;
+  plan?: SessionPlan;
   onFinish: () => void;
 }
 
@@ -37,13 +34,15 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   sessionMode = 'INTERVIEW',
   candidateName,
   recordScreen = false,
+  plan,
   onFinish
 }) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
 
+  const navSections = useMemo(() => buildNavSections(plan?.sections, initialQuestion.track), [plan?.sections, initialQuestion.track]);
   const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
-  const [pendingStageSwitch, setPendingStageSwitch] = useState<{ stage: InterviewStage; targetTrack: InterviewTrack } | null>(null);
+  const [pendingStageSwitch, setPendingStageSwitch] = useState<{ stage: InterviewStage; targetTrack: InterviewTrack; targetIndex?: number } | null>(null);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
     try { return localStorage.getItem('interview-os:focus-mode') === 'true'; } catch { return false; }
   });
@@ -113,8 +112,12 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     problemSlug: activeQuestion.problemSlug || activeQuestion.slug,
     candidateName,
     initialWelcome: persona.welcomeMessage,
+    sections: plan?.sections,
     onAiSpeechRequested: voice.speakText,
-    getIntegritySignals: proctoring.getIntegritySignals
+    getIntegritySignals: proctoring.getIntegritySignals,
+    onSectionChanged: (_idx, sec) => {
+      if (sec.track && sec.track !== activeTrack) setActiveTrack(sec.track);
+    }
   });
 
   // 7. Session Video Recording Engine
@@ -126,11 +129,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const handleSubmitSolution = async () => {
     const result = await submitSolution(code, language);
     const isPassed = result && (result.status === 'Accepted' || (result.passedTests > 0 && result.passedTests === result.totalTests));
-    if (isPassed) {
-      markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, 'PASSED');
-    } else {
-      markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, 'ATTEMPTED');
-    }
+    markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, isPassed ? 'PASSED' : 'ATTEMPTED');
 
     await dialogue.triggerCandidateTurn(
       `I have submitted my solution for ${activeQuestion.title || 'the problem'}.`,
@@ -139,14 +138,21 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     );
   };
 
-  const handleStageClick = useCallback((targetStage: InterviewStage) => {
-    const mappedTrack = STAGE_TRACK_MAP[targetStage];
-    if (mappedTrack && mappedTrack !== activeTrack) {
-      setPendingStageSwitch({ stage: targetStage, targetTrack: mappedTrack });
+  const handleSectionClick = useCallback((targetIndex: number, targetStage: InterviewStage) => {
+    const sec = navSections[targetIndex];
+    if (!sec) return;
+    if (sec.track && sec.track !== activeTrack) {
+      setPendingStageSwitch({ stage: targetStage, targetTrack: sec.track, targetIndex });
     } else {
-      dialogue.transitionStage(targetStage, 'MANUAL_JUMP');
+      dialogue.transitionSection(targetIndex, 'MANUAL_JUMP');
     }
-  }, [activeTrack, dialogue]);
+  }, [activeTrack, dialogue, navSections]);
+
+  const handleStageClick = useCallback((targetStage: InterviewStage) => {
+    const targetIdx = navSections.findIndex((s) => s.stage === targetStage);
+    if (targetIdx !== -1) handleSectionClick(targetIdx, targetStage);
+    else dialogue.transitionStage(targetStage, 'MANUAL_JUMP');
+  }, [handleSectionClick, navSections, dialogue]);
 
   const handleNextQuestion = useCallback(() => {
     if (activeQuestionIndex < questionsList.length - 1) {
@@ -155,17 +161,20 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   }, [activeQuestionIndex, questionsList.length, selectQuestion]);
 
   const handleNextStage = useCallback(() => {
-    const STAGES: InterviewStage[] = ['INTRODUCTION', 'CORE_TECH', 'CODING_DSA', 'SYSTEM_DESIGN'];
-    const currentIdx = STAGES.indexOf(dialogue.currentStage);
-    if (currentIdx < STAGES.length - 1) {
-      handleStageClick(STAGES[currentIdx + 1]);
+    if (dialogue.activeSectionIndex < navSections.length - 1) {
+      const nextSec = navSections[dialogue.activeSectionIndex + 1];
+      handleSectionClick(dialogue.activeSectionIndex + 1, nextSec.stage);
     }
-  }, [dialogue.currentStage, handleStageClick]);
+  }, [dialogue.activeSectionIndex, navSections, handleSectionClick]);
 
   const handleConfirmStageSwitch = useCallback(() => {
     if (pendingStageSwitch) {
       setActiveTrack(pendingStageSwitch.targetTrack);
-      dialogue.transitionStage(pendingStageSwitch.stage, 'MANUAL_JUMP');
+      if (pendingStageSwitch.targetIndex !== undefined) {
+        dialogue.transitionSection(pendingStageSwitch.targetIndex, 'MANUAL_JUMP');
+      } else {
+        dialogue.transitionStage(pendingStageSwitch.stage, 'MANUAL_JUMP');
+      }
       setPendingStageSwitch(null);
     }
   }, [pendingStageSwitch, dialogue]);
@@ -178,6 +187,9 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     <ArenaShell
       sessionId={sessionId}
       track={activeTrack}
+      sections={plan?.sections}
+      activeSectionIndex={dialogue.activeSectionIndex}
+      onSectionClick={handleSectionClick}
       onSwitchTrack={setActiveTrack}
       question={activeQuestion}
       onNextQuestion={handleNextQuestion}

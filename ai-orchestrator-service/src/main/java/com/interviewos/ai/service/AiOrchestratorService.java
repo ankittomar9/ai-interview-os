@@ -304,7 +304,7 @@ public class AiOrchestratorService {
                 (request.candidateName() != null && !request.candidateName().isBlank()) ? request.candidateName().trim() : "the candidate"
         ));
 
-        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage())) {
+        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType())) {
             systemInstructionBuilder.append("""
                     
                     STAGE SPECIFICATION - INTRODUCTION:
@@ -318,6 +318,23 @@ public class AiOrchestratorService {
                     You MUST NOT set "recommendedAction": "ADVANCE_STAGE" during introduction unless the candidate has explicitly agreed or affirmed moving on ("yes", "sure", "let's go", "ready").
                     If the candidate says "not yet", has more to say, or asks a question, acknowledge warmly, keep listening, and do NOT advance stage.
                     """);
+        }
+
+        if (request.sectionType() != null && !request.sectionType().isBlank()) {
+            systemInstructionBuilder.append(String.format("""
+                    
+                    SECTION CONTEXT:
+                    - Current Section Type: %s
+                    - Section Position: %d of %d
+                    - Soft Time Budget: %d minutes
+                    - Section Guidance: %s
+                    """,
+                    request.sectionType(),
+                    request.sectionIndex() != null ? request.sectionIndex() + 1 : 1,
+                    request.totalSections() != null ? request.totalSections() : 1,
+                    request.softTimeBudgetMinutes() != null ? request.softTimeBudgetMinutes() : 15,
+                    (request.sectionNote() != null && !request.sectionNote().isBlank()) ? request.sectionNote() : "Execute section objectives"
+            ));
         }
 
         if (!followUpSeeds.isEmpty()) {
@@ -403,7 +420,7 @@ public class AiOrchestratorService {
         String systemInstruction = systemInstructionBuilder.toString();
 
         String userPrompt;
-        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage())) {
+        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType())) {
             userPrompt = String.format("""
                     Current Stage: INTRODUCTION
                     Candidate Message:
