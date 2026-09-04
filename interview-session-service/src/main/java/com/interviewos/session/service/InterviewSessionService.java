@@ -94,6 +94,53 @@ public class InterviewSessionService {
         return SessionResponse.fromEntity(saved);
     }
 
+    public String resolveCatalogTrackKey(com.interviewos.session.model.InterviewTrack track) {
+        if (track == null) return "ALGORITHMS_DATA_STRUCTURES";
+        return switch (track) {
+            case SQL -> "SQL";
+            case SPRING_LLD, JAVA_SPRING_BOOT -> "SPRING_LLD";
+            case SYSTEM_DESIGN -> "SYSTEM_DESIGN";
+            case BEHAVIORAL_STAR -> "BEHAVIORAL_STAR";
+            case RESUME_BASED, ALGORITHMS_DATA_STRUCTURES -> "ALGORITHMS_DATA_STRUCTURES";
+        };
+    }
+
+    private List<String> findAdjacentRungCandidates(
+            Map<com.interviewos.session.model.DifficultyLevel, List<String>> trackMap,
+            com.interviewos.session.model.DifficultyLevel rung
+    ) {
+        com.interviewos.session.model.DifficultyLevel[] order = switch (rung) {
+            case STAFF -> new com.interviewos.session.model.DifficultyLevel[]{
+                    com.interviewos.session.model.DifficultyLevel.SENIOR,
+                    com.interviewos.session.model.DifficultyLevel.MID,
+                    com.interviewos.session.model.DifficultyLevel.JUNIOR
+            };
+            case SENIOR -> new com.interviewos.session.model.DifficultyLevel[]{
+                    com.interviewos.session.model.DifficultyLevel.MID,
+                    com.interviewos.session.model.DifficultyLevel.STAFF,
+                    com.interviewos.session.model.DifficultyLevel.JUNIOR
+            };
+            case MID -> new com.interviewos.session.model.DifficultyLevel[]{
+                    com.interviewos.session.model.DifficultyLevel.SENIOR,
+                    com.interviewos.session.model.DifficultyLevel.JUNIOR,
+                    com.interviewos.session.model.DifficultyLevel.STAFF
+            };
+            case JUNIOR -> new com.interviewos.session.model.DifficultyLevel[]{
+                    com.interviewos.session.model.DifficultyLevel.MID,
+                    com.interviewos.session.model.DifficultyLevel.SENIOR,
+                    com.interviewos.session.model.DifficultyLevel.STAFF
+            };
+        };
+
+        for (com.interviewos.session.model.DifficultyLevel alt : order) {
+            List<String> found = trackMap.get(alt);
+            if (found != null && !found.isEmpty()) {
+                return found;
+            }
+        }
+        return List.of();
+    }
+
     public List<String> buildPlannedSlugs(com.interviewos.session.model.InterviewTrack track, com.interviewos.session.model.DifficultyLevel difficulty, long seed) {
         if (track == null) track = com.interviewos.session.model.InterviewTrack.ALGORITHMS_DATA_STRUCTURES;
         if (difficulty == null) difficulty = com.interviewos.session.model.DifficultyLevel.MID;
@@ -115,58 +162,90 @@ public class InterviewSessionService {
         List<String> planned = new ArrayList<>();
         java.util.Set<String> seen = new java.util.HashSet<>();
 
-        Map<String, Map<com.interviewos.session.model.DifficultyLevel, List<String>>> fallbackCatalog = Map.of(
-                "ALGORITHMS_DATA_STRUCTURES", Map.of(
-                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("two-sum", "reverse-a-string"),
-                        com.interviewos.session.model.DifficultyLevel.MID, List.of("search-in-rotated-sorted-array", "lru-cache"),
-                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("trapping-rain-water", "topo-course-schedule"),
-                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("trapping-rain-water", "topo-course-schedule")
-                ),
-                "SQL_DATABASE", Map.of(
-                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("monthly-active-users", "sql-user-cohort-retention"),
-                        com.interviewos.session.model.DifficultyLevel.MID, List.of("sql-user-cohort-retention", "department-top-salaries"),
-                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("department-top-salaries", "complex-financial-rollup"),
-                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("department-top-salaries", "complex-financial-rollup")
-                ),
-                "SYSTEM_DESIGN_LLD", Map.of(
-                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("parking-lot-system"),
-                        com.interviewos.session.model.DifficultyLevel.MID, List.of("rate-limiter-service", "cache-eviction-service"),
-                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("distributed-task-scheduler", "cache-eviction-service"),
-                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("distributed-task-scheduler", "cache-eviction-service")
-                ),
-                "SYSTEM_DESIGN_HLD", Map.of(
-                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("url-shortener"),
-                        com.interviewos.session.model.DifficultyLevel.MID, List.of("distributed-cache", "ride-sharing-dispatch"),
-                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("real-time-chat", "distributed-cache"),
-                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("real-time-chat", "distributed-cache")
-                ),
-                "BEHAVIORAL", Map.of(
-                        com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("leadership-conflict"),
-                        com.interviewos.session.model.DifficultyLevel.MID, List.of("critical-bug-production", "leadership-conflict"),
-                        com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("cross-team-collaboration", "critical-bug-production"),
-                        com.interviewos.session.model.DifficultyLevel.STAFF, List.of("cross-team-collaboration", "critical-bug-production")
-                )
+        Map<com.interviewos.session.model.DifficultyLevel, List<String>> dsaMap = Map.of(
+                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("two-sum", "reverse-a-string", "valid-parentheses"),
+                com.interviewos.session.model.DifficultyLevel.MID, List.of("longest-substring-without-repeating-characters", "search-in-rotated-sorted-array", "lru-cache"),
+                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("lru-cache", "merge-k-sorted-lists", "trapping-rain-water"),
+                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("trapping-rain-water", "topo-course-schedule", "merge-k-sorted-lists")
         );
 
-        String trackKey = track.name();
-        Map<com.interviewos.session.model.DifficultyLevel, List<String>> trackMap = fallbackCatalog.getOrDefault(trackKey, fallbackCatalog.get("ALGORITHMS_DATA_STRUCTURES"));
+        Map<com.interviewos.session.model.DifficultyLevel, List<String>> sqlMap = Map.of(
+                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("monthly-active-users", "sql-user-cohort-retention", "sql-running-revenue"),
+                com.interviewos.session.model.DifficultyLevel.MID, List.of("sql-running-revenue", "sql-funnel-ratios", "sql-dedup-keep-latest", "department-top-salaries"),
+                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("sql-top-n-per-group", "sql-sessionization", "sql-7d-moving-average", "sql-month-over-month"),
+                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("sql-top-n-per-group", "sql-spend-quartiles", "complex-financial-rollup")
+        );
+
+        Map<com.interviewos.session.model.DifficultyLevel, List<String>> lldMap = Map.of(
+                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("parking-lot-system", "lld-order-service"),
+                com.interviewos.session.model.DifficultyLevel.MID, List.of("lld-order-service", "rate-limiter-service", "cache-eviction-service"),
+                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("distributed-task-scheduler", "cache-eviction-service"),
+                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("distributed-task-scheduler", "cache-eviction-service")
+        );
+
+        Map<com.interviewos.session.model.DifficultyLevel, List<String>> hldMap = Map.of(
+                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("url-shortener", "url-shortener-system-design"),
+                com.interviewos.session.model.DifficultyLevel.MID, List.of("url-shortener-system-design", "distributed-cache", "ride-sharing-dispatch"),
+                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("distributed-rate-limiter", "real-time-chat", "distributed-cache"),
+                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("distributed-rate-limiter", "real-time-chat")
+        );
+
+        Map<com.interviewos.session.model.DifficultyLevel, List<String>> behavioralMap = Map.of(
+                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("leadership-conflict", "behavioral-technical-conflict"),
+                com.interviewos.session.model.DifficultyLevel.MID, List.of("critical-bug-production", "leadership-conflict", "behavioral-technical-conflict"),
+                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("behavioral-technical-conflict", "cross-team-collaboration", "critical-bug-production"),
+                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("behavioral-technical-conflict", "cross-team-collaboration")
+        );
+
+        Map<String, Map<com.interviewos.session.model.DifficultyLevel, List<String>>> fallbackCatalog = Map.ofEntries(
+                Map.entry("ALGORITHMS_DATA_STRUCTURES", dsaMap),
+                Map.entry("SQL", sqlMap),
+                Map.entry("SQL_DATABASE", sqlMap),
+                Map.entry("SPRING_LLD", lldMap),
+                Map.entry("JAVA_SPRING_BOOT", lldMap),
+                Map.entry("SYSTEM_DESIGN_LLD", lldMap),
+                Map.entry("SYSTEM_DESIGN", hldMap),
+                Map.entry("SYSTEM_DESIGN_HLD", hldMap),
+                Map.entry("BEHAVIORAL_STAR", behavioralMap),
+                Map.entry("BEHAVIORAL", behavioralMap),
+                Map.entry("RESUME_BASED", dsaMap)
+        );
+
+        String canonicalKey = resolveCatalogTrackKey(track);
+        Map<com.interviewos.session.model.DifficultyLevel, List<String>> trackMap = fallbackCatalog.getOrDefault(
+                canonicalKey,
+                fallbackCatalog.get("ALGORITHMS_DATA_STRUCTURES")
+        );
 
         java.util.Random random = new java.util.Random(seed);
         for (int i = 0; i < ladder.size(); i++) {
             com.interviewos.session.model.DifficultyLevel rung = ladder.get(i);
             List<String> candidates = new ArrayList<>();
+            String source = "FALLBACK";
+            com.interviewos.session.model.DifficultyLevel chosenDifficulty = rung;
+
             if (questionBankClient != null) {
                 try {
-                    var remote = questionBankClient.listProblems(track.name(), rung.name());
+                    var remote = questionBankClient.listProblems(canonicalKey, rung.name());
                     if (remote != null && !remote.isEmpty()) {
                         remote.forEach(p -> candidates.add(p.getProblemSlug()));
+                        if (!candidates.isEmpty()) {
+                            source = "REMOTE";
+                        }
                     }
                 } catch (Exception e) {
                     log.debug("Notice on remote question bank lookup for ladder: {}", e.getMessage());
                 }
             }
+
             if (candidates.isEmpty()) {
-                candidates.addAll(trackMap.getOrDefault(rung, List.of("two-sum", "reverse-a-string", "lru-cache")));
+                source = "FALLBACK";
+                List<String> rungCandidates = trackMap.get(rung);
+                if (rungCandidates != null && !rungCandidates.isEmpty()) {
+                    candidates.addAll(rungCandidates);
+                } else {
+                    candidates.addAll(findAdjacentRungCandidates(trackMap, rung));
+                }
             }
 
             List<String> unseen = candidates.stream().filter(s -> !seen.contains(s)).toList();
@@ -180,6 +259,8 @@ public class InterviewSessionService {
             }
             seen.add(chosen);
             planned.add(chosen);
+
+            log.info("Ladder pick: {}|{}|{}|source={}", chosen, rung, chosenDifficulty, source);
         }
 
         return planned;
