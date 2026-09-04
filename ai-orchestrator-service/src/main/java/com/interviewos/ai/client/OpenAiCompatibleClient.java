@@ -65,8 +65,13 @@ public class OpenAiCompatibleClient implements AiClient {
             String customModel
     ) {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(provider);
-        String endpoint = config.endpoint();
-        String model = (customModel != null && !customModel.isBlank()) ? customModel : config.defaultModel();
+        String endpoint = (config != null && config.endpoint() != null && !config.endpoint().isBlank())
+                ? config.endpoint()
+                : (provider == ModelProvider.OPENAI ? "https://api.openai.com/v1/chat/completions" : "https://api.groq.com/openai/v1/chat/completions");
+
+        if (!endpoint.endsWith("/chat/completions")) {
+            endpoint = endpoint.endsWith("/") ? endpoint + "chat/completions" : endpoint + "/chat/completions";
+        }
 
         String effectiveKey = (apiKey != null && !apiKey.isBlank()) ? apiKey : resolveEnvApiKey(provider);
 
@@ -79,7 +84,7 @@ public class OpenAiCompatibleClient implements AiClient {
             String resolvedFromConfig = config != null ? config.getEffectiveModelFor(customModel) : null;
             String requested = (resolvedFromConfig != null && !resolvedFromConfig.isBlank())
                     ? resolvedFromConfig
-                    : ((customModel != null && !customModel.isBlank()) ? customModel : (model != null && !model.isBlank() ? model : "openai/gpt-oss-120b"));
+                    : ((customModel != null && !customModel.isBlank()) ? customModel : (config != null && config.defaultModel() != null ? config.defaultModel() : "openai/gpt-oss-120b"));
 
             List<String> fallbacks = List.of("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b", "groq/compound-mini");
             List<String> list = new java.util.ArrayList<>();
@@ -93,7 +98,13 @@ public class OpenAiCompatibleClient implements AiClient {
             log.info("🎯 GROQ Model Routing — Task/Requested: '{}', Effective Model: '{}', Fallback Chain: {}",
                     customModel != null ? customModel : "default", requested, modelCandidates);
         } else {
-            modelCandidates = List.of(model);
+            String resolvedFromConfig = config != null ? config.getEffectiveModelFor(customModel) : null;
+            String requested = (resolvedFromConfig != null && !resolvedFromConfig.isBlank())
+                    ? resolvedFromConfig
+                    : ((customModel != null && !customModel.isBlank()) ? customModel : (config != null && config.defaultModel() != null ? config.defaultModel() : "gpt-4o"));
+            modelCandidates = List.of(requested);
+            log.info("🎯 {} Model Routing — Task/Requested: '{}', Effective Model: '{}'",
+                    provider, customModel != null ? customModel : "default", requested);
         }
 
         Object userContent;
