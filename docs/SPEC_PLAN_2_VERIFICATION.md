@@ -223,6 +223,40 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 7: [A7] — Groq Primary Rubric Egress Tracking & Purity Gate Enforcement
+
+- **Branch**: `fix/ledger-a7`
+- **Scope**:
+  - **A7**:
+    - In `RubricService.java`, enforced strict purity gate check (`allowCloudFallback == false`) when primary configured provider is non-local (`provider != ModelProvider.OLLAMA`). Replaced silent external cloud dispatch with deterministic scoring fallback and honest structured log (`"Cloud fallback disabled (strict-purity mode). Primary provider 'GROQ' is external cloud. Using deterministic scoring."`).
+    - In permissive mode (`allowCloudFallback == true`), recorded cloud egress call explicitly via `egressTracker.recordCloudCall(provider.name() + "_RUBRIC_PRIMARY")` before dispatching to `client.generateCompletion(...)`.
+    - Added comprehensive unit test coverage in `RubricServiceTest.java`:
+      - `testEvaluateRubric_GroqPrimary_StrictPurity_SkipsCloudCall`: verifies zero cloud calls made when `allowCloudFallback=false`.
+      - `testEvaluateRubric_GroqPrimary_PermissiveMode_RecordsEgressAndDispatches`: verifies `GROQ_RUBRIC_PRIMARY` recorded and Groq completion invoked when `allowCloudFallback=true`.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 227 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl ai-orchestrator-service -Dtest=RubricServiceTest`:
+    ```
+    [INFO] Running com.interviewos.ai.rubric.service.RubricServiceTest
+    [INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.ai.rubric.service.RubricServiceTest
+    [INFO] Results:
+    [INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 1.05s
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 
 
 
