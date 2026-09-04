@@ -66,4 +66,29 @@ class HumanTranscriptPdfGeneratorTest {
         assertEquals('D', (char) pdfBytes[2]);
         assertEquals('F', (char) pdfBytes[3]);
     }
+
+    @Test
+    @DisplayName("A13: generates PDF with integrity summary block explicitly rendering zeros")
+    void testVerifyingIntegritySummaryRenderedWithZeros() throws IOException {
+        TranscriptPdfMeta meta = new TranscriptPdfMeta("zero-candidate", 200L, "DSA", 85, "HIRE", 0, 0, 0, "LOCAL_SANDBOX");
+
+        List<com.interviewos.evaluation.client.SessionServiceClient.TranscriptMessageDto> turns = List.of(
+                new com.interviewos.evaluation.client.SessionServiceClient.TranscriptMessageDto(
+                        1L, "CANDIDATE", "DIALOGUE", "Testing integrity block.", null, java.time.Instant.now()
+                )
+        );
+
+        byte[] pdfBytes = pdfGenerator.generateTranscriptPdf(meta, turns);
+        assertNotNull(pdfBytes);
+
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(pdfBytes)) {
+            org.apache.pdfbox.text.PDFTextStripper stripper = new org.apache.pdfbox.text.PDFTextStripper();
+            String text = stripper.getText(doc);
+            assertTrue(text.contains("Integrity Summary:"), "PDF must contain Integrity Summary section");
+            assertTrue(text.contains("Echo Filtered: 0 filtered"), "PDF must explicitly render 0 filtered");
+            assertTrue(text.contains("Dropped Chunks: 0"), "PDF must explicitly render 0 dropped chunks");
+            assertTrue(text.contains("Consent Downgrades: 0"), "PDF must explicitly render 0 consent downgrades");
+            assertTrue(text.contains("Workspace: LOCAL_SANDBOX"), "PDF must render workspace provenance");
+        }
+    }
 }

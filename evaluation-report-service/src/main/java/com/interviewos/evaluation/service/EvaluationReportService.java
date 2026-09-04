@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,7 +57,66 @@ public class EvaluationReportService {
             log.warn("Proctor service unreachable for session {}, defaulting integrity to NEUTRAL 70: {}", sessionId, e.getMessage());
         }
 
-        long durationSeconds = session.durationSeconds() != null ? session.durationSeconds() : 0;
+        // A18: Calculate elapsed duration honestly from first to last transcript turn timestamp
+        long durationSeconds = 0;
+        if (transcript.size() >= 2) {
+            Instant firstTurnTime = null;
+            Instant lastTurnTime = null;
+            for (SessionServiceClient.TranscriptMessageDto turn : transcript) {
+                if (turn.timestamp() != null) {
+                    if (firstTurnTime == null || turn.timestamp().isBefore(firstTurnTime)) {
+                        firstTurnTime = turn.timestamp();
+                    }
+                    if (lastTurnTime == null || turn.timestamp().isAfter(lastTurnTime)) {
+                        lastTurnTime = turn.timestamp();
+                    }
+                }
+            }
+            if (firstTurnTime != null && lastTurnTime != null && !firstTurnTime.equals(lastTurnTime)) {
+                durationSeconds = Duration.between(firstTurnTime, lastTurnTime).toSeconds();
+            }
+        }
+        if (durationSeconds <= 0 && session.durationSeconds() != null) {
+            durationSeconds = session.durationSeconds();
+        }
+        int executedMinutes = transcript.size() >= 2 ? Math.max(1, (int) Math.round(durationSeconds / 60.0)) : (int) (durationSeconds / 60);
+
+        // A13: Gather Integrity Signals
+        int echoFilteredCount = transcript.stream()
+                .mapToInt(t -> t.echoFilteredCount() != null ? t.echoFilteredCount() : 0)
+                .max()
+                .orElse(0);
+
+        int droppedChunks = 0;
+        try {
+            SessionServiceClient.RecordingManifestDto manifest = sessionClient.getRecordingManifest(sessionId);
+            if (manifest != null && manifest.droppedChunks() != null) {
+                droppedChunks = manifest.droppedChunks().size();
+            }
+        } catch (Exception e) {
+            log.debug("No recording manifest found for session {}: {}", sessionId, e.getMessage());
+        }
+
+        int consentDowngrades = (int) transcript.stream()
+                .filter(t -> t.metadata() != null && ("true".equalsIgnoreCase(t.metadata().get("consentDowngrade")) || "CONSENT_DOWNGRADE".equalsIgnoreCase(t.metadata().get("action"))))
+                .count();
+
+        String workspaceProvenance = transcript.stream()
+                .filter(t -> t.metadata() != null && t.metadata().containsKey("workspaceProvenance"))
+                .map(t -> t.metadata().get("workspaceProvenance"))
+                .findFirst()
+                .orElse("LOCAL_SANDBOX");
+
+        int plannedMinutes = 45;
+        String touchedSections = transcript.stream()
+                .filter(t -> t.metadata() != null && (t.metadata().containsKey("sectionType") || t.metadata().containsKey("stage")))
+                .map(t -> t.metadata().containsKey("sectionType") ? t.metadata().get("sectionType") : t.metadata().get("stage"))
+                .distinct()
+                .collect(java.util.stream.Collectors.joining(", "));
+        if (touchedSections.isBlank()) {
+            touchedSections = session.track() != null ? session.track() : "CORE";
+        }
+
         long candidateTurns = transcript.stream()
                 .filter(m -> "CANDIDATE".equalsIgnoreCase(m.senderRole()))
                 .count();
@@ -249,9 +310,13 @@ public class EvaluationReportService {
             strengths.addAll(rubric.strengths());
             weaknesses.addAll(rubric.weaknesses());
             studyPlan.addAll(rubric.studyPlan());
+            String headline = String.format("Candidate executed %d of %d planned minutes across %d interactive turns in [%s]. Sandbox Execution Sub-Score: %d/100.",
+                    executedMinutes, plannedMinutes, candidateTurns, touchedSections, executionScore);
             executiveSummary = rubric.executiveSummary();
             if (allExecutionsFailedByEngine) {
-                executiveSummary = String.format("Execution not verifiable (engine offline ×%d). %s", totalEngineErrors, executiveSummary);
+                executiveSummary = String.format("%s Execution not verifiable (engine offline ×%d). %s", headline, totalEngineErrors, executiveSummary);
+            } else {
+                executiveSummary = headline + " " + executiveSummary;
             }
 
             try {
@@ -286,7 +351,7 @@ public class EvaluationReportService {
             }
 
             if (verifiedPasses == 0 && totalExecutionRuns > 0) {
-                weaknesses.add(String.format("Weak ALGORITHMIC_REASONING: 0 verified test suites passed (Execution Score: %d/100).", executionScore));
+                weaknesses.add(String.format("Weak ALGORITHMIC_REASONING: 0 verified test suites passed (Sandbox Execution Sub-Score: %d/100).", executionScore));
             }
             if (candidateTurns < 4) {
                 weaknesses.add(String.format("Low COMMUNICATION_CLARITY: Only %d candidate responses recorded before session completion.", candidateTurns));
@@ -300,21 +365,25 @@ public class EvaluationReportService {
             studyPlan.add("Day 6: Live code explanation and architectural reasoning.");
             studyPlan.add("Day 7: Mock Diagnostic Review: Re-attempt failed assessment tracks with comprehensive verification.");
 
+            String headline = String.format("Candidate executed %d of %d planned minutes across %d interactive turns in [%s]. Sandbox Execution Sub-Score: %d/100.",
+                    executedMinutes, plannedMinutes, candidateTurns, touchedSections, executionScore);
             if (allExecutionsFailedByEngine) {
                 executiveSummary = String.format(
-                        "Candidate completed %d minutes of technical assessment for %s (%s) across %d interactive turns. Execution not verifiable (engine offline ×%d). Technical Accuracy scored from code structure and dialogue evidence.",
-                        durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, totalEngineErrors
+                        "%s Execution not verifiable (engine offline ×%d). Technical Accuracy scored from code structure and dialogue evidence.",
+                        headline, totalEngineErrors
                 );
             } else {
                 executiveSummary = String.format(
-                        "Candidate completed %d minutes of technical assessment for %s (%s) across %d interactive turns. Execution Score: %d/100. Deterministic evaluation generated.",
-                        durationSeconds / 60, session.roleTitle(), session.difficulty(), candidateTurns, executionScore
+                        "%s Deterministic evaluation generated.",
+                        headline
                 );
                 if (verifiedPasses == 0) {
                     executiveSummary += " No verified code execution passed during this session.";
                 }
             }
         }
+
+        executiveSummary += " Disclosure: Scorecard reflects executed assessment sections only; unreached sections are not penalized.";
 
         // Clamp Scores to 0..100
         technicalScore = Math.max(0, Math.min(100, technicalScore));
@@ -348,7 +417,7 @@ public class EvaluationReportService {
         // P2 Fix: Premature / Abandoned Session Guard (< 180 seconds or < 3 candidate turns)
         if (durationSeconds < 180 || candidateTurns < 3) {
             verdict = HiringVerdict.NO_HIRE;
-            executiveSummary += String.format(" Assessment ended prematurely (%ds, %d turns); minimum viable interview not reached.", durationSeconds, candidateTurns);
+            executiveSummary += String.format(" Assessment ended prematurely (%d min, %d turns); minimum viable interview threshold (minimum 3 minutes and at least 3 candidate turns) was not reached.", executedMinutes, candidateTurns);
         }
 
         EvaluationReport report = EvaluationReport.builder()
@@ -371,6 +440,10 @@ public class EvaluationReportService {
                 .keyStrengths(strengths)
                 .areasForImprovement(weaknesses)
                 .sevenDayStudyPlan(studyPlan)
+                .echoFilteredCount(echoFilteredCount)
+                .droppedChunks(droppedChunks)
+                .consentDowngrades(consentDowngrades)
+                .workspaceProvenance(workspaceProvenance)
                 .build();
 
         EvaluationReport saved = reportRepository.save(report);

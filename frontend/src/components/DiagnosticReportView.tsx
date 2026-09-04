@@ -564,6 +564,29 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                   <span>Low integrity score suggests potential academic dishonesty. Review candidate behavior and code similarity.</span>
                 </div>
               )}
+
+              {/* Report Integrity Signals (A13) */}
+              <div className="pt-4 border-t border-border">
+                <div className="text-xs font-semibold text-text-3 uppercase tracking-wider mb-2">Session Integrity Audit Signals</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-elevated/50 p-3 rounded-lg border border-border/50 text-xs">
+                  <div>
+                    <span className="text-text-3 block">Echo Filtered:</span>
+                    <span className="font-semibold text-text">{report.integrity?.echoFilteredCount ?? 0} filtered</span>
+                  </div>
+                  <div>
+                    <span className="text-text-3 block">Dropped Chunks:</span>
+                    <span className="font-semibold text-text">{report.integrity?.droppedChunks ?? 0} dropped</span>
+                  </div>
+                  <div>
+                    <span className="text-text-3 block">Consent Downgrades:</span>
+                    <span className="font-semibold text-text">{report.integrity?.consentDowngrades ?? 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-3 block">Workspace:</span>
+                    <span className="font-semibold text-text">{report.integrity?.workspaceProvenance ?? 'LOCAL_SANDBOX'}</span>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* E. 7-DAY TARGETED MASTERY PLAN */}

@@ -146,6 +146,12 @@ export interface DiagnosticReportResponse {
     llmGenerated?: boolean;
     requirementsClarityScore?: number;
     generatedAt: string;
+    integrity?: {
+        echoFilteredCount: number;
+        droppedChunks: number;
+        consentDowngrades: number;
+        workspaceProvenance: string;
+    };
 }
 
 export interface AttachmentUploadResponse {

@@ -237,4 +237,87 @@ class EvaluationReportServiceTest {
         assertThat(report.executiveSummary()).contains("Execution not verifiable (engine offline ×1)");
         assertThat(report.verdict()).isNotEqualTo(HiringVerdict.NO_HIRE);
     }
+
+    @Test
+    @DisplayName("A13 + A18: Report gathers integrity signals and renders honest headline with disclosure")
+    void testReportIntegritySignalsAndHonestHeadline() {
+        Instant t0 = Instant.parse("2026-09-01T10:00:00Z");
+        Instant t1 = t0.plusSeconds(300);
+        Instant t2 = t0.plusSeconds(600); // 10 minutes total
+
+        List<SessionServiceClient.TranscriptMessageDto> transcript = List.of(
+                new SessionServiceClient.TranscriptMessageDto(
+                        1L, "CANDIDATE", "EXPLANATION", "Starting DSA section", null, t0,
+                        java.util.Map.of("sectionType", "DSA_PROBLEM_SOLVING", "workspaceProvenance", "ISOLATED_CONTAINER"), 2
+                ),
+                new SessionServiceClient.TranscriptMessageDto(
+                        2L, "AI", "FEEDBACK", "Understood. Please continue.", null, t1,
+                        java.util.Map.of("sectionType", "DSA_PROBLEM_SOLVING"), 3
+                ),
+                new SessionServiceClient.TranscriptMessageDto(
+                        3L, "CANDIDATE", "EXPLANATION", "Candidate explanation with consent downgrade", null, t1.plusSeconds(60),
+                        java.util.Map.of("sectionType", "DSA_PROBLEM_SOLVING", "consentDowngrade", "true"), 1
+                ),
+                new SessionServiceClient.TranscriptMessageDto(
+                        4L, "CANDIDATE", "CODE_EXECUTION", "Candidate executed code: 4/4 tests passed (PASSED) in 15.0ms. [problem:two-sum]", "class Main {}", t2,
+                        java.util.Map.of("sectionType", "DSA_PROBLEM_SOLVING"), 0
+                )
+        );
+
+        when(sessionClient.getSessionTranscript(1L)).thenReturn(transcript);
+        when(sessionClient.getRecordingManifest(1L)).thenReturn(new SessionServiceClient.RecordingManifestDto(
+                1L, 10, List.of(
+                        new SessionServiceClient.RecordingManifestDto.DroppedChunkDto(2, "screen", "PAYLOAD_TOO_LARGE_413"),
+                        new SessionServiceClient.RecordingManifestDto.DroppedChunkDto(5, "camera", "PAYLOAD_TOO_LARGE_413")
+                )
+        ));
+
+        DiagnosticReportResponse report = evaluationReportService.generateReport(1L);
+
+        // A13 Integrity verification
+        assertThat(report.integrity()).isNotNull();
+        assertThat(report.integrity().echoFilteredCount()).isEqualTo(3);
+        assertThat(report.integrity().droppedChunks()).isEqualTo(2);
+        assertThat(report.integrity().consentDowngrades()).isEqualTo(1);
+        assertThat(report.integrity().workspaceProvenance()).isEqualTo("ISOLATED_CONTAINER");
+
+        // A18 Headline & Disclosure verification
+        assertThat(report.executiveSummary())
+                .startsWith("Candidate executed 10 of 45 planned minutes across 3 interactive turns in [DSA_PROBLEM_SOLVING]. Sandbox Execution Sub-Score: 100/100.")
+                .contains("Disclosure: Scorecard reflects executed assessment sections only; unreached sections are not penalized.");
+
+        // Verify entity persisted with integrity values
+        ArgumentCaptor<EvaluationReport> captor = ArgumentCaptor.forClass(EvaluationReport.class);
+        verify(reportRepository).save(captor.capture());
+        EvaluationReport saved = captor.getValue();
+        assertThat(saved.getEchoFilteredCount()).isEqualTo(3);
+        assertThat(saved.getDroppedChunks()).isEqualTo(2);
+        assertThat(saved.getConsentDowngrades()).isEqualTo(1);
+        assertThat(saved.getWorkspaceProvenance()).isEqualTo("ISOLATED_CONTAINER");
+    }
+
+    @Test
+    @DisplayName("A18: Premature session explicitly discloses 3 min and 3 candidate turns threshold")
+    void testPrematureSessionDisclosesThreshold() {
+        Instant t0 = Instant.parse("2026-09-01T10:00:00Z");
+        Instant t1 = t0.plusSeconds(75); // 75 seconds (< 180s)
+
+        SessionServiceClient.SessionDetailsDto shortSession = new SessionServiceClient.SessionDetailsDto(
+                1L, "candidate-01", "Senior Java Developer", "JAVA_SPRING_BOOT", "SENIOR",
+                "Acme Corp", "COMPLETED", 75L
+        );
+        when(sessionClient.getSessionById(1L)).thenReturn(shortSession);
+
+        List<SessionServiceClient.TranscriptMessageDto> transcript = List.of(
+                new SessionServiceClient.TranscriptMessageDto(1L, "CANDIDATE", "EXPLANATION", "Hi", null, t0),
+                new SessionServiceClient.TranscriptMessageDto(2L, "AI", "FEEDBACK", "Hello", null, t1)
+        );
+        when(sessionClient.getSessionTranscript(1L)).thenReturn(transcript);
+
+        DiagnosticReportResponse report = evaluationReportService.generateReport(1L);
+
+        assertThat(report.verdict()).isEqualTo(HiringVerdict.NO_HIRE);
+        assertThat(report.executiveSummary())
+                .contains("Assessment ended prematurely (1 min, 1 turns); minimum viable interview threshold (minimum 3 minutes and at least 3 candidate turns) was not reached.");
+    }
 }

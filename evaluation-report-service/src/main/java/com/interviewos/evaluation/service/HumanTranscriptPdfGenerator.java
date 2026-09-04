@@ -65,7 +65,23 @@ public class HumanTranscriptPdfGenerator {
                     meta != null && meta.verdict() != null ? meta.verdict() : "PENDING");
             contentStream.showText(scoreInfo);
             contentStream.endText();
-            y -= 35f;
+            y -= 25f;
+
+            // 2b. Section: Integrity Summary (A13 - explicit zeros rendered)
+            contentStream.beginText();
+            contentStream.setFont(fontBold, FONT_SIZE_BODY);
+            contentStream.newLineAtOffset(MARGIN, y);
+            contentStream.showText("Integrity Summary: ");
+            contentStream.setFont(fontRegular, FONT_SIZE_BODY);
+            int echo = meta != null && meta.echoFilteredCount() != null ? meta.echoFilteredCount() : 0;
+            int dropped = meta != null && meta.droppedChunks() != null ? meta.droppedChunks() : 0;
+            int downgrades = meta != null && meta.consentDowngrades() != null ? meta.consentDowngrades() : 0;
+            String prov = meta != null && meta.workspaceProvenance() != null ? meta.workspaceProvenance() : "LOCAL_SANDBOX";
+            String integrityLine = String.format("Echo Filtered: %d filtered  |  Dropped Chunks: %d  |  Consent Downgrades: %d  |  Workspace: %s",
+                    echo, dropped, downgrades, prov);
+            contentStream.showText(integrityLine);
+            contentStream.endText();
+            y -= 30f;
 
             // 3. Section Header: Transcript Turns
             contentStream.beginText();
