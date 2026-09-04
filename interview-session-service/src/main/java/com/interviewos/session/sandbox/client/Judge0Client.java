@@ -50,8 +50,8 @@ public class Judge0Client {
         this.restClient = builder.build();
 
         SimpleClientHttpRequestFactory pingFactory = new SimpleClientHttpRequestFactory();
-        pingFactory.setConnectTimeout(Duration.ofSeconds(2));
-        pingFactory.setReadTimeout(Duration.ofSeconds(2));
+        pingFactory.setConnectTimeout(Duration.ofSeconds(5));
+        pingFactory.setReadTimeout(Duration.ofSeconds(5));
 
         this.pingClient = RestClient.builder()
                 .requestFactory(pingFactory)
@@ -60,24 +60,38 @@ public class Judge0Client {
     }
 
     public boolean ping() {
-        try {
-            String resp = pingClient.get()
-                    .uri("/system_info")
-                    .retrieve()
-                    .body(String.class);
-            return resp != null && !resp.isBlank();
-        } catch (Exception e) {
+        for (int attempt = 0; attempt < 2; attempt++) {
+            if (attempt > 0) {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
             try {
-                // Fallback probe to /about or /
                 String resp = pingClient.get()
-                        .uri("/about")
+                        .uri("/system_info")
                         .retrieve()
                         .body(String.class);
-                return resp != null && !resp.isBlank();
-            } catch (Exception ex) {
-                return false;
+                if (resp != null && !resp.isBlank()) {
+                    return true;
+                }
+            } catch (Exception e) {
+                try {
+                    // Fallback probe to /about or /
+                    String resp = pingClient.get()
+                            .uri("/about")
+                            .retrieve()
+                            .body(String.class);
+                    if (resp != null && !resp.isBlank()) {
+                        return true;
+                    }
+                } catch (Exception ignored) {
+                }
             }
         }
+        return false;
     }
 
     public Optional<Judge0SubmissionResponse> submitAndAwait(Judge0SubmissionRequest request) {

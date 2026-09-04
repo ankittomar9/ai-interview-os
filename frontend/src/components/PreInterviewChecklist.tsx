@@ -16,12 +16,20 @@ interface Props {
   onProceed: () => void;
 }
 
+interface EngineCapability {
+  ready: boolean;
+  state?: 'ONLINE' | 'STARTING' | 'DOWN';
+  detail?: string;
+  lastReadyAt?: string | null;
+}
+
 interface SystemCapabilities {
   engines?: {
-    dsa?: { ready: boolean; detail: string };
-    lld?: { ready: boolean; detail: string };
-    hld?: { ready: boolean; detail: string };
-    behavioral?: { ready: boolean; detail: string };
+    dsa?: EngineCapability;
+    lld?: EngineCapability;
+    hld?: EngineCapability;
+    behavioral?: EngineCapability;
+    sql?: EngineCapability;
   };
   services?: Record<string, boolean>;
   storage?: { gridFsAttachmentCount: number; gridFsBytes: number };
@@ -73,6 +81,9 @@ export const PreInterviewChecklist: React.FC<Props> = ({
       }
     };
     void fetchCapabilities();
+    const pollInterval = setInterval(() => {
+      void fetchCapabilities();
+    }, 5000);
 
     // 2. Hardware setup
     let mediaStream: MediaStream | null = null;
@@ -123,6 +134,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
     void setupHardware();
 
     return () => {
+      clearInterval(pollInterval);
       if (mediaStream) {
         mediaStream.getTracks().forEach((t) => t.stop());
       }
@@ -191,47 +203,98 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
-              <span className="text-[11px] font-semibold text-text-2">DSA Track</span>
-              <Chip variant={capabilities?.engines?.dsa?.ready ? 'success' : 'neutral'} size="sm">
-                {capabilities?.engines?.dsa?.ready ? 'Judge0 Online' : 'Sandbox Offline'}
-              </Chip>
-            </div>
+          {(() => {
+            const isStarting =
+              capabilities?.engines?.dsa?.state === 'STARTING' ||
+              capabilities?.engines?.lld?.state === 'STARTING' ||
+              capabilities?.engines?.sql?.state === 'STARTING';
+            const startingDetails = [
+              capabilities?.engines?.dsa?.state === 'STARTING' ? `DSA (${capabilities?.engines?.dsa?.detail || 'warming up'})` : null,
+              capabilities?.engines?.lld?.state === 'STARTING' ? `Spring Boot LLD (${capabilities?.engines?.lld?.detail || 'warming up'})` : null,
+              capabilities?.engines?.sql?.state === 'STARTING' ? `SQL (${capabilities?.engines?.sql?.detail || 'warming up'})` : null,
+            ].filter(Boolean).join(' • ');
 
-            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
-              <span className="text-[11px] font-semibold text-text-2">Spring Boot LLD</span>
-              <Chip variant={capabilities?.engines?.lld?.ready ? 'success' : 'neutral'} size="sm">
-                {capabilities?.engines?.lld?.ready ? 'Docker Maven Online' : 'Docker Offline'}
-              </Chip>
-            </div>
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                  <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
+                    <span className="text-[11px] font-semibold text-text-2">DSA Track</span>
+                    <Chip
+                      variant={
+                        capabilities?.engines?.dsa?.ready
+                          ? 'success'
+                          : capabilities?.engines?.dsa?.state === 'STARTING'
+                            ? 'warning'
+                            : 'neutral'
+                      }
+                      size="sm"
+                    >
+                      {capabilities?.engines?.dsa?.ready
+                        ? 'Judge0 Online'
+                        : capabilities?.engines?.dsa?.state === 'STARTING'
+                          ? 'Starting…'
+                          : 'Sandbox Offline'}
+                    </Chip>
+                  </div>
 
-            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
-              <span className="text-[11px] font-semibold text-text-2">System Design</span>
-              <Chip variant="neutral" size="sm">
-                Canvas &amp; Vision Ready
-              </Chip>
-            </div>
+                  <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
+                    <span className="text-[11px] font-semibold text-text-2">Spring Boot LLD</span>
+                    <Chip
+                      variant={
+                        capabilities?.engines?.lld?.ready
+                          ? 'success'
+                          : capabilities?.engines?.lld?.state === 'STARTING'
+                            ? 'warning'
+                            : 'neutral'
+                      }
+                      size="sm"
+                    >
+                      {capabilities?.engines?.lld?.ready
+                        ? 'Docker Maven Online'
+                        : capabilities?.engines?.lld?.state === 'STARTING'
+                          ? 'Starting…'
+                          : 'Docker Offline'}
+                    </Chip>
+                  </div>
 
-            <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
-              <span className="text-[11px] font-semibold text-text-2">Behavioral STAR</span>
-              <Chip variant="neutral" size="sm">
-                Neural Dialogue Ready
-              </Chip>
-            </div>
-          </div>
+                  <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
+                    <span className="text-[11px] font-semibold text-text-2">System Design</span>
+                    <Chip variant="neutral" size="sm">
+                      Canvas &amp; Vision Ready
+                    </Chip>
+                  </div>
 
-          {capabilities && (!capabilities.engines?.dsa?.ready || !capabilities.engines?.lld?.ready) && (
-            <div className="bg-elevated border border-border rounded p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-text-3">
-              <div className="flex items-center gap-1.5">
-                <Terminal className="w-3.5 h-3.5 text-text-3 shrink-0" />
-                <span>To spin up local Judge0 and Docker Maven execution sandboxes:</span>
-              </div>
-              <code className="bg-surface px-2 py-1 rounded text-text font-mono text-[11px] border border-border">
-                docker compose --profile engines up -d
-              </code>
-            </div>
-          )}
+                  <div className="bg-elevated p-2.5 rounded border border-border flex flex-col justify-between space-y-1">
+                    <span className="text-[11px] font-semibold text-text-2">Behavioral STAR</span>
+                    <Chip variant="neutral" size="sm">
+                      Neural Dialogue Ready
+                    </Chip>
+                  </div>
+                </div>
+
+                {capabilities && isStarting && (
+                  <div className="bg-elevated border border-warning/30 rounded p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-warning">
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
+                      <span>Starting… (engines warming up): {startingDetails || 'Initial probe in progress — auto re-polling every 5s'}</span>
+                    </div>
+                  </div>
+                )}
+
+                {capabilities && !isStarting && (!capabilities.engines?.dsa?.ready || !capabilities.engines?.lld?.ready) && (
+                  <div className="bg-elevated border border-border rounded p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-text-3">
+                    <div className="flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-text-3 shrink-0" />
+                      <span>To spin up local Judge0 and Docker Maven execution sandboxes:</span>
+                    </div>
+                    <code className="bg-surface px-2 py-1 rounded text-text font-mono text-[11px] border border-border">
+                      docker compose --profile engines up -d
+                    </code>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {envMode === 'dev' && (

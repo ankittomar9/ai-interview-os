@@ -49,10 +49,36 @@ class SystemCapabilitiesControllerTest {
         mockMvc.perform(get("/api/v1/system/capabilities"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.engines.dsa.ready").value(true))
+                .andExpect(jsonPath("$.engines.dsa.state").value("ONLINE"))
                 .andExpect(jsonPath("$.engines.lld.ready").value(false))
+                .andExpect(jsonPath("$.engines.lld.state").value("DOWN"))
                 .andExpect(jsonPath("$.engines.hld.ready").value(true))
                 .andExpect(jsonPath("$.engines.behavioral.ready").value(true))
                 .andExpect(jsonPath("$.storage.gridFsAttachmentCount").value(10))
                 .andExpect(jsonPath("$.checkedAt").exists());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/system/capabilities should return STARTING state for warming engines")
+    void testGetCapabilitiesStartingState() throws Exception {
+        SystemCapabilitiesService.SystemCapabilitiesResponse mockResponse = SystemCapabilitiesService.SystemCapabilitiesResponse.builder()
+                .engines(Map.of(
+                        "dsa", new SystemCapabilitiesService.EngineStatus(false, "STARTING", "Starting… engines warming up", null),
+                        "lld", new SystemCapabilitiesService.EngineStatus(false, "STARTING", "Starting… engines warming up", null)
+                ))
+                .services(Map.of("postgres", true))
+                .storage(new SystemCapabilitiesService.StorageMetrics(0, 0))
+                .checkedAt(Instant.now().toString())
+                .build();
+
+        when(systemCapabilitiesService.getCapabilities()).thenReturn(mockResponse);
+
+        mockMvc.perform(get("/api/v1/system/capabilities"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.engines.dsa.ready").value(false))
+                .andExpect(jsonPath("$.engines.dsa.state").value("STARTING"))
+                .andExpect(jsonPath("$.engines.dsa.detail").value("Starting… engines warming up"))
+                .andExpect(jsonPath("$.engines.lld.ready").value(false))
+                .andExpect(jsonPath("$.engines.lld.state").value("STARTING"));
     }
 }

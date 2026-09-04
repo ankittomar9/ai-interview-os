@@ -256,6 +256,51 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 8: [A8] — Readiness Probe Lies, Tri-State Engines & Honest Warm-Up
+
+- **Branch**: `fix/ledger-a8`
+- **Scope**:
+  - **A8**:
+    - `Judge0Client.java`: Increased `pingFactory` connectTimeout and readTimeout from 2s to 5s. Added 1 retry with a 200ms backoff on ping failure before declaring unreachable.
+    - `SystemCapabilitiesService.java`:
+      - Increased `probeHttp` connectTimeout and readTimeout from 2s to 5s with 1 retry (200ms backoff).
+      - Reduced `CACHE_TTL` from 30s to 5s.
+      - Introduced tri-state `ONLINE | STARTING | DOWN` in `EngineStatus` (`ready`, `state`, `detail`, `lastReadyAt`), mapping boolean `ready = "ONLINE".equals(state)`.
+      - Maintained service startup timestamp and `lastReadyAt` per engine. During initial cold boot (< 90s), engine probe failures return `STARTING` ("Starting… engines warming up", `ready=false`, `lastReadyAt=null`) instead of false `DOWN`.
+      - Probes succeeding record `lastReadyAt` timestamp with `ONLINE`. Probes failing after being online or after cold boot return `DOWN`.
+    - `PreInterviewChecklist.tsx`:
+      - Added 5s interval re-poll (`fetchCapabilities`) in `useEffect` (cleared on unmount).
+      - Updated sandbox cards to reflect tri-state status (warning chip for `STARTING`, success for `ONLINE`, neutral for `DOWN`).
+      - Added honest warm-up banner when engines are starting: `"Starting… (engines warming up): ..."` with detail string.
+  - Automated Tests:
+    - Added `SystemCapabilitiesServiceTest.java` verifying cold boot initial probe failure (`STARTING`), successful probe (`ONLINE` with `lastReadyAt`), probe failure after online (`DOWN` with retained `lastReadyAt`), cold boot window expiration (>90s → `DOWN`), and 5s cache TTL.
+    - Updated `SystemCapabilitiesControllerTest.java` asserting `state` (`ONLINE`, `DOWN`, and `STARTING`).
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 227 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.controller.SystemCapabilitiesControllerTest
+    [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.244 s -- in com.interviewos.session.controller.SystemCapabilitiesControllerTest
+    [INFO] Running com.interviewos.session.service.SystemCapabilitiesServiceTest
+    [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.503 s -- in com.interviewos.session.service.SystemCapabilitiesServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 56, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 924ms
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 
 
 
