@@ -106,6 +106,11 @@ export function useCoachVoice({
       isAiSpeakingRef.current = true;
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch {}
+        recognitionRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch {}
+        audioChunksRef.current = [];
       }
     };
     utterance.onend = () => {
@@ -192,6 +197,9 @@ export function useCoachVoice({
     }
 
     try {
+      if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -200,11 +208,26 @@ export function useCoachVoice({
           channelCount: 1
         }
       });
+      if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       audioChunksRef.current = [];
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mediaRecorder.ondataavailable = (e) => {
+        if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+          return; // Discard audio chunk if AI is speaking
+        }
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
+        if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+          audioChunksRef.current = [];
+          setIsListening(false);
+          setInterimTranscript('');
+          return; // Discard recording if AI is speaking
+        }
         if (audioChunksRef.current.length > 0) {
           const rawBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           if (rawBlob.size > 50 * 1024 * 1024) {
@@ -258,7 +281,11 @@ export function useCoachVoice({
           try { recognitionRef.current.stop(); } catch {}
           recognitionRef.current = null;
         }
-      } else if (shouldListenRef.current && !isListening && !recognitionRef.current) {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          try { mediaRecorderRef.current.stop(); } catch {}
+          audioChunksRef.current = [];
+        }
+      } else if (shouldListenRef.current && !isListening && !recognitionRef.current && (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive')) {
         void startListening();
       }
     };

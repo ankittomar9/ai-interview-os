@@ -22,16 +22,19 @@ ai:
       model-eval: ${GROQ_MODEL_EVAL:qwen/qwen3.8-27b}
       model-stt: ${GROQ_MODEL_STT:whisper-large-v3-turbo}
       rubric-model: ${GROQ_MODEL_EVAL:qwen/qwen3.8-27b}
-      rubric-timeout-seconds: 10
       api-key: ${GROQ_API_KEY:}
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
       default-model: ${OLLAMA_MODEL:qwen2.5-coder:7b}
+  rubric:
+    timeout-seconds: ${RUBRIC_TIMEOUT_SECONDS:25}
+    allow-cloud-fallback: ${AI_RUBRIC_ALLOW_CLOUD_FALLBACK:${RUBRIC_ALLOW_CLOUD_FALLBACK:true}}
 
 rubric:
   provider: ${RUBRIC_PROVIDER:ollama}
   api-key: ${RUBRIC_API_KEY:}
   timeout-seconds: ${RUBRIC_TIMEOUT_SECONDS:25}
+  allow-cloud-fallback: ${AI_RUBRIC_ALLOW_CLOUD_FALLBACK:${RUBRIC_ALLOW_CLOUD_FALLBACK:true}}
 
 question:
   bank:

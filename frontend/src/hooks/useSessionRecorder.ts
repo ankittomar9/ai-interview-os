@@ -57,6 +57,8 @@ export function useSessionRecorder({
       });
       if (res.ok) {
         setUploadedChunks((prev) => prev + 1);
+      } else if (res.status === 413) {
+        console.error(`Recording ${kind} chunk ${seq} exceeds 16MB limit. Terminal error, discarding without retry.`);
       } else {
         console.warn(`Recording ${kind} chunk ${seq} upload failed with status ${res.status}, queuing for retry`);
         failedChunksRef.current.push({ blob, seq, kind, retries: 0 });
@@ -79,6 +81,11 @@ export function useSessionRecorder({
         });
         if (res.ok) {
           setUploadedChunks((prev) => prev + 1);
+          failedChunksRef.current = failedChunksRef.current.filter(
+            (c) => !(c.seq === chunk.seq && c.kind === chunk.kind)
+          );
+        } else if (res.status === 413) {
+          console.error(`Retried chunk ${chunk.seq} (${chunk.kind}) returned 413 limit. Dropping from retry queue.`);
           failedChunksRef.current = failedChunksRef.current.filter(
             (c) => !(c.seq === chunk.seq && c.kind === chunk.kind)
           );

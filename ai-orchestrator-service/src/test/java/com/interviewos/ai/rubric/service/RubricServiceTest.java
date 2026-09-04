@@ -32,6 +32,9 @@ class RubricServiceTest {
     @Mock
     private AiClient aiClient;
 
+    @Mock
+    private com.interviewos.ai.service.EgressTracker egressTracker;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -204,5 +207,36 @@ class RubricServiceTest {
         assertThat(response.executiveSummary()).contains("Strong Hire");
         org.mockito.Mockito.verify(mockGroq, org.mockito.Mockito.times(1))
                 .generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("eval"));
+        org.mockito.Mockito.verify(egressTracker, org.mockito.Mockito.times(1))
+                .recordCloudCall("GROQ_RUBRIC_FALLBACK");
+    }
+
+    @Test
+    @DisplayName("evaluateRubric skips Groq when allow-cloud-fallback is false (strict-purity mode)")
+    void testEvaluateRubricSkipsGroqWhenCloudFallbackDisabled() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rubricService, "allowCloudFallback", false);
+
+        AiClient mockOllama = org.mockito.Mockito.mock(AiClient.class);
+        when(clientFactory.getClient(ModelProvider.OLLAMA)).thenReturn(mockOllama);
+        when(mockOllama.generateCompletion(any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Ollama read timeout"));
+
+        RubricEvaluationRequest request = new RubricEvaluationRequest(
+                "reverse-a-string",
+                "Reverse a string",
+                "ALGORITHMS_DATA_STRUCTURES",
+                "SENIOR",
+                List.of(new TurnDto("CANDIDATE", "EXPLANATION", "O(N) time and O(1) space", null)),
+                List.of(new ExecutionDto("PASSED", 5, 5, 80.0, 18.0)),
+                "class Main {}",
+                "java"
+        );
+
+        RubricResponse response = rubricService.evaluateRubric(request);
+
+        assertThat(response.llmGenerated()).isFalse();
+        assertThat(response.dimensions()).isEmpty();
+        org.mockito.Mockito.verify(clientFactory, org.mockito.Mockito.never()).getClient(ModelProvider.GROQ);
+        org.mockito.Mockito.verify(egressTracker, org.mockito.Mockito.never()).recordCloudCall(any());
     }
 }

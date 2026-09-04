@@ -30,6 +30,7 @@ public class RubricService {
     private final AiClientFactory clientFactory;
     private final ProblemCatalogClient problemCatalogClient;
     private final ObjectMapper objectMapper;
+    private final com.interviewos.ai.service.EgressTracker egressTracker;
 
     @Value("${rubric.provider:ollama}")
     private String configuredProvider = "ollama";
@@ -43,6 +44,9 @@ public class RubricService {
     @Value("${ai.providers.groq.api-key:${GROQ_API_KEY:}}")
     private String groqApiKey = "";
 
+    @Value("${ai.rubric.allow-cloud-fallback:${rubric.allow-cloud-fallback:true}}")
+    private boolean allowCloudFallback = true;
+
     public RubricResponse evaluateRubric(RubricEvaluationRequest request) {
         log.info("Starting qualitative rubric evaluation for problem: '{}', track: '{}', difficulty: '{}'",
                 request.problemSlug(), request.track(), request.difficulty());
@@ -54,11 +58,16 @@ public class RubricService {
         try {
             resolvedClient = clientFactory.getClient(provider);
         } catch (Exception e) {
-            log.warn("⚠️ Failed to resolve AI client for rubric provider '{}': {}. Attempting Groq fallback.",
+            log.warn("⚠️ Failed to resolve AI client for rubric provider '{}': {}. Checking cloud fallback policy.",
                     provider, e.getMessage());
+            if (!allowCloudFallback) {
+                log.info("☁️ Cloud fallback disabled (strict-purity mode). Using deterministic scoring.");
+                return RubricResponse.emptyFallback(schema);
+            }
             try {
                 resolvedClient = clientFactory.getClient(ModelProvider.GROQ);
                 effectiveProvider = ModelProvider.GROQ;
+                egressTracker.recordCloudCall("GROQ_RUBRIC_FALLBACK");
             } catch (Exception groqResolveErr) {
                 return RubricResponse.emptyFallback(schema);
             }
@@ -82,16 +91,27 @@ public class RubricService {
                             "eval"
                     )).get(rubricTimeoutSeconds, TimeUnit.SECONDS);
                 } catch (Exception e) {
-                    log.warn("⚠️ Ollama rubric timeout or failure ({}). Falling back to Groq LPU...", e.getMessage());
-                    AiClient groqClient = clientFactory.getClient(ModelProvider.GROQ);
-                    String effectiveGroqKey = (groqApiKey != null && !groqApiKey.isBlank()) ? groqApiKey : configuredApiKey;
-                    rawResponse = groqClient.generateCompletion(
-                            ModelProvider.GROQ,
-                            systemInstruction,
-                            userPrompt,
-                            effectiveGroqKey,
-                            "eval"
-                    );
+                    log.warn("⚠️ Ollama rubric timeout or failure ({}), checking cloud fallback policy", e.getMessage());
+                    if (!allowCloudFallback) {
+                        log.info("☁️ Cloud fallback disabled (strict-purity mode). Using deterministic scoring.");
+                        return RubricResponse.emptyFallback(schema);
+                    }
+                    try {
+                        log.info("☁️ Rubric degraded to cloud (Groq fallback). Recording egress.");
+                        egressTracker.recordCloudCall("GROQ_RUBRIC_FALLBACK");
+                        AiClient groqClient = clientFactory.getClient(ModelProvider.GROQ);
+                        String effectiveGroqKey = (groqApiKey != null && !groqApiKey.isBlank()) ? groqApiKey : configuredApiKey;
+                        rawResponse = groqClient.generateCompletion(
+                                ModelProvider.GROQ,
+                                systemInstruction,
+                                userPrompt,
+                                effectiveGroqKey,
+                                "eval"
+                        );
+                    } catch (Exception groqErr) {
+                        log.error("Groq fallback also failed: {}", groqErr.getMessage());
+                        return RubricResponse.emptyFallback(schema);
+                    }
                 }
             } else {
                 rawResponse = client.generateCompletion(

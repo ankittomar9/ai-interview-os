@@ -26,11 +26,14 @@ class RubricServiceCoachingSignalsTest {
     @Mock
     private ProblemCatalogClient problemCatalogClient;
 
+    @Mock
+    private com.interviewos.ai.service.EgressTracker egressTracker;
+
     private RubricService rubricService;
 
     @BeforeEach
     void setUp() {
-        rubricService = new RubricService(clientFactory, problemCatalogClient, new ObjectMapper());
+        rubricService = new RubricService(clientFactory, problemCatalogClient, new ObjectMapper(), egressTracker);
     }
 
     @Test
