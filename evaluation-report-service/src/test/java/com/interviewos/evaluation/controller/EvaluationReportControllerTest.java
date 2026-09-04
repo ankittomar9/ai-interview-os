@@ -50,4 +50,30 @@ class EvaluationReportControllerTest {
                 .andExpect(jsonPath("$.verdict").value("STRONG_HIRE"))
                 .andExpect(jsonPath("$.overallScore").value(87));
     }
+
+    @Test
+    @DisplayName("GET /api/v1/reports/{sessionId}/human-transcript.pdf should return 200 and PDF when report exists")
+    void testGetTranscriptPdf_Success() throws Exception {
+        byte[] mockPdfBytes = "%PDF-1.4 mock pdf content".getBytes();
+        when(reportService.generateTranscriptPdf(1L)).thenReturn(mockPdfBytes);
+
+        mockMvc.perform(get("/api/v1/reports/1/human-transcript.pdf"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"transcript-session-1.pdf\""))
+                .andExpect(content().contentType(org.springframework.http.MediaType.APPLICATION_PDF))
+                .andExpect(content().bytes(mockPdfBytes));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/reports/{sessionId}/human-transcript.pdf should return 404 JSON when report missing")
+    void testGetTranscriptPdf_NotFound() throws Exception {
+        when(reportService.generateTranscriptPdf(999L))
+                .thenThrow(new java.util.NoSuchElementException("Evaluation report not found for session ID: 999"));
+
+        mockMvc.perform(get("/api/v1/reports/999/human-transcript.pdf"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(org.springframework.http.MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("Evaluation report not found for session ID: 999"))
+                .andExpect(jsonPath("$.sessionId").value(999));
+    }
 }

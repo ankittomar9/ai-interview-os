@@ -30,16 +30,24 @@ public class EvaluationReportController {
         return ResponseEntity.status(HttpStatus.CREATED).body(report);
     }
 
-    @GetMapping(value = "/{sessionId}/human-transcript.pdf", produces = org.springframework.http.MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> getTranscriptPdf(@PathVariable Long sessionId) {
+    @GetMapping(value = "/{sessionId}/human-transcript.pdf")
+    public ResponseEntity<?> getTranscriptPdf(@PathVariable Long sessionId) {
         try {
             byte[] pdf = reportService.generateTranscriptPdf(sessionId);
             return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                     .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"transcript-session-" + sessionId + ".pdf\"")
                     .body(pdf);
+        } catch (java.util.NoSuchElementException e) {
+            log.warn("Transcript PDF requested for non-existent session {}: {}", sessionId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(java.util.Map.of("error", e.getMessage(), "sessionId", sessionId));
         } catch (Exception e) {
             log.error("Failed to generate PDF for session {}: {}", sessionId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(java.util.Map.of("error", e.getMessage(), "sessionId", sessionId));
         }
     }
 
