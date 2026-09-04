@@ -25,18 +25,23 @@ public class SessionRecordingController {
     public ResponseEntity<Map<String, Object>> uploadChunk(
             @PathVariable Long id,
             @RequestParam("seq") int seq,
+            @RequestParam(value = "kind", defaultValue = "camera") String kind,
             @RequestParam("chunk") MultipartFile chunk
     ) {
+        if (!"camera".equals(kind) && !"screen".equals(kind)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "kind must be camera|screen"));
+        }
         try {
-            recordingService.saveChunk(id, seq, chunk);
+            recordingService.saveChunk(id, seq, kind, chunk);
             return ResponseEntity.ok(Map.of(
                     "sessionId", id,
                     "seq", seq,
+                    "kind", kind,
                     "receivedBytes", chunk.getSize(),
                     "status", "SAVED"
             ));
         } catch (Exception e) {
-            log.error("Failed to store chunk {} for session {}: {}", seq, id, e.getMessage(), e);
+            log.error("Failed to store {} chunk {} for session {}: {}", kind, seq, id, e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
@@ -48,12 +53,15 @@ public class SessionRecordingController {
     }
 
     @GetMapping("/{id}/recordings/stream")
-    public ResponseEntity<StreamingResponseBody> streamRecording(@PathVariable Long id) {
+    public ResponseEntity<StreamingResponseBody> streamRecording(
+            @PathVariable Long id,
+            @RequestParam(value = "kind", defaultValue = "camera") String kind
+    ) {
         StreamingResponseBody responseBody = outputStream -> {
             try {
-                recordingService.streamRecording(id, outputStream);
+                recordingService.streamRecording(id, kind, outputStream);
             } catch (Exception e) {
-                log.warn("Streaming recording notice for session {}: {}", id, e.getMessage());
+                log.warn("Streaming {} recording notice for session {}: {}", kind, id, e.getMessage());
             }
         };
 
@@ -66,19 +74,22 @@ public class SessionRecordingController {
     }
 
     @GetMapping("/{id}/recordings/download")
-    public ResponseEntity<byte[]> downloadRecording(@PathVariable Long id) {
+    public ResponseEntity<byte[]> downloadRecording(
+            @PathVariable Long id,
+            @RequestParam(value = "kind", defaultValue = "camera") String kind
+    ) {
         try {
-            byte[] bytes = recordingService.getFullRecordingBytes(id);
+            byte[] bytes = recordingService.getFullRecordingBytes(id, kind);
             if (bytes.length == 0) {
                 return ResponseEntity.notFound().build();
             }
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, "video/webm")
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"session-" + id + "-recording.webm\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"session-" + id + "-" + kind + "-recording.webm\"")
                     .body(bytes);
         } catch (Exception e) {
-            log.error("Download failed for session {}: {}", id, e.getMessage(), e);
+            log.error("Download failed for session {} kind {}: {}", id, kind, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
