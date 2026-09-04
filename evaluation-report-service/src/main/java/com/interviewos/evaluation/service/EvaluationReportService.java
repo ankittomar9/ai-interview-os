@@ -378,15 +378,18 @@ public class EvaluationReportService {
         return DiagnosticReportResponse.fromEntity(saved);
     }
 
+    @Transactional(readOnly = true)
     public byte[] generateTranscriptPdf(Long sessionId) throws java.io.IOException {
-        EvaluationReport report = reportRepository.findBySessionId(sessionId).orElse(null);
+        EvaluationReport report = reportRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new NoSuchElementException("Evaluation report not found for session ID: " + sessionId));
+        TranscriptPdfMeta meta = TranscriptPdfMeta.fromEntity(report);
         List<SessionServiceClient.TranscriptMessageDto> transcript = Collections.emptyList();
         try {
             transcript = sessionClient.getSessionTranscript(sessionId);
         } catch (Exception e) {
             log.warn("Could not fetch transcript turns for PDF: {}", e.getMessage());
         }
-        return pdfGenerator.generateTranscriptPdf(report, transcript);
+        return pdfGenerator.generateTranscriptPdf(meta, transcript);
     }
 
     @Transactional(readOnly = true)

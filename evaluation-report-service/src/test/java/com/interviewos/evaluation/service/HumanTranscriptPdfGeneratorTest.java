@@ -45,4 +45,25 @@ class HumanTranscriptPdfGeneratorTest {
         assertEquals('D', (char) pdfBytes[2]);
         assertEquals('F', (char) pdfBytes[3]);
     }
+
+    @Test
+    @DisplayName("generates valid PDF byte array when invoked directly with TranscriptPdfMeta")
+    void testPdfGenerationWithMeta() throws IOException {
+        TranscriptPdfMeta meta = new TranscriptPdfMeta("bob-jones", 101L, "SYSTEM_DESIGN", 92, "STRONG_HIRE");
+
+        List<com.interviewos.evaluation.client.SessionServiceClient.TranscriptMessageDto> turns = List.of(
+                new com.interviewos.evaluation.client.SessionServiceClient.TranscriptMessageDto(
+                        1L, "CANDIDATE", "DIALOGUE", "Designing rate limiter.", null, java.time.Instant.now()
+                )
+        );
+
+        byte[] pdfBytes = pdfGenerator.generateTranscriptPdf(meta, turns);
+
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 500);
+        assertEquals('%', (char) pdfBytes[0]);
+        assertEquals('P', (char) pdfBytes[1]);
+        assertEquals('D', (char) pdfBytes[2]);
+        assertEquals('F', (char) pdfBytes[3]);
+    }
 }

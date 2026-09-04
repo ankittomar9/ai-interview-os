@@ -27,6 +27,10 @@ public class HumanTranscriptPdfGenerator {
     private static final float LEADING = 13f;
 
     public byte[] generateTranscriptPdf(EvaluationReport report, List<?> transcriptTurns) throws IOException {
+        return generateTranscriptPdf(TranscriptPdfMeta.fromEntity(report), transcriptTurns);
+    }
+
+    public byte[] generateTranscriptPdf(TranscriptPdfMeta meta, List<?> transcriptTurns) throws IOException {
         try (PDDocument doc = new PDDocument()) {
             PDType1Font fontBold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
             PDType1Font fontRegular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
@@ -51,14 +55,14 @@ public class HumanTranscriptPdfGenerator {
             contentStream.setFont(fontRegular, FONT_SIZE_BODY);
             contentStream.newLineAtOffset(MARGIN, y);
             String candidateInfo = String.format("Candidate ID: %s   |   Session #%s   |   Track: %s",
-                    report != null && report.getCandidateId() != null ? report.getCandidateId() : "N/A",
-                    report != null && report.getSessionId() != null ? report.getSessionId() : "N/A",
-                    report != null && report.getTrack() != null ? report.getTrack() : "N/A");
+                    meta != null && meta.candidateId() != null ? meta.candidateId() : "N/A",
+                    meta != null && meta.sessionId() != null ? meta.sessionId() : "N/A",
+                    meta != null && meta.track() != null ? meta.track() : "N/A");
             contentStream.showText(candidateInfo);
             contentStream.newLineAtOffset(0, -LEADING);
             String scoreInfo = String.format("Overall Score: %d/100   |   Verdict: %s",
-                    report != null ? report.getOverallScore() : 0,
-                    report != null && report.getVerdict() != null ? report.getVerdict().name() : "PENDING");
+                    meta != null ? meta.overallScore() : 0,
+                    meta != null && meta.verdict() != null ? meta.verdict() : "PENDING");
             contentStream.showText(scoreInfo);
             contentStream.endText();
             y -= 35f;
