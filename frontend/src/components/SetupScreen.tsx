@@ -26,6 +26,7 @@ interface SetupScreenProps {
     apiKey: string;
     mode?: "INTERVIEW" | "PLAYGROUND";
     recordScreen?: boolean;
+    planSource?: "SETUP_SELECTION" | "RESUME_INFERRED_CONFIRMED";
   }) => void;
   isLoading: boolean;
   onOpenCatalog?: () => void;
@@ -43,6 +44,10 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   const [jobDescription, setJobDescription] = useState("");
   const [track, setTrack] = useState<InterviewTrack>("ALGORITHMS_DATA_STRUCTURES");
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("SENIOR");
+  const [suggestedDifficulty, setSuggestedDifficulty] = useState<DifficultyLevel | null>(null);
+  const [suggestedExperienceYears, setSuggestedExperienceYears] = useState<number | null>(null);
+  const [isDifficultyOverridden, setIsDifficultyOverridden] = useState(false);
+  const [planSource, setPlanSource] = useState<"SETUP_SELECTION" | "RESUME_INFERRED_CONFIRMED">("SETUP_SELECTION");
   const [sessionMode, setSessionMode] = useState<"INTERVIEW" | "PLAYGROUND">("INTERVIEW");
   const [recordScreen, setRecordScreen] = useState(false);
 
@@ -58,6 +63,12 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
 
+  const handleSelectDifficulty = (diff: DifficultyLevel) => {
+    setDifficulty(diff);
+    setIsDifficultyOverridden(true);
+    setPlanSource("SETUP_SELECTION");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onStart({
@@ -71,7 +82,8 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
       provider,
       apiKey,
       mode: sessionMode,
-      recordScreen
+      recordScreen,
+      planSource
     });
   };
 
@@ -125,7 +137,10 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               selectedTrack={track}
               onSelectTrack={setTrack}
               selectedDifficulty={difficulty}
-              onSelectDifficulty={setDifficulty}
+              onSelectDifficulty={handleSelectDifficulty}
+              suggestedDifficulty={suggestedDifficulty}
+              suggestedExperienceYears={suggestedExperienceYears}
+              isDifficultyOverridden={isDifficultyOverridden}
             />
 
             <ResumeSection
@@ -135,11 +150,14 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
                 if (resume.candidateName && (!candidateName || candidateName === "Candidate" || candidateName === "Ankit Singh Tomar")) {
                   setCandidateName(resume.candidateName);
                 }
-                if (resume.inferredRoleLevel) {
-                  const level = resume.inferredRoleLevel.toUpperCase() as DifficultyLevel;
-                  if (['JUNIOR', 'MID', 'SENIOR', 'STAFF'].includes(level)) {
-                    setDifficulty(level);
-                  }
+                const rawLevel = (resume.suggestedDifficulty || resume.inferredRoleLevel || "").toUpperCase();
+                if (['JUNIOR', 'MID', 'SENIOR', 'STAFF'].includes(rawLevel)) {
+                  const level = rawLevel as DifficultyLevel;
+                  setSuggestedDifficulty(level);
+                  setSuggestedExperienceYears(resume.yearsOfExperience ?? 4);
+                  setDifficulty(level);
+                  setIsDifficultyOverridden(false);
+                  setPlanSource("RESUME_INFERRED_CONFIRMED");
                 }
               }}
             />

@@ -328,6 +328,7 @@ public class AiOrchestratorService {
                     - Section Position: %d of %d
                     - Soft Time Budget: %d minutes
                     - Section Guidance: %s
+                    - Calibration Policy: Level fixed; do not adjust difficulty from performance.
                     """,
                     request.sectionType(),
                     request.sectionIndex() != null ? request.sectionIndex() + 1 : 1,

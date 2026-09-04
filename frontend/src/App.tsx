@@ -65,6 +65,7 @@ export function App() {
     apiKey: string;
     mode?: 'INTERVIEW' | 'PLAYGROUND';
     recordScreen?: boolean;
+    planSource?: 'SETUP_SELECTION' | 'RESUME_INFERRED_CONFIRMED';
   }) => {
     setIsLoading(true);
     const chosenMode = config.mode || 'INTERVIEW';
@@ -85,7 +86,8 @@ export function App() {
         difficulty: config.difficulty,
         targetCompany: config.targetCompany,
         jobDescription: config.jobDescription,
-        mode: chosenMode
+        mode: chosenMode,
+        planSource: config.planSource
       });
       setSessionId(session.id);
       setSessionPlan(session.plan);

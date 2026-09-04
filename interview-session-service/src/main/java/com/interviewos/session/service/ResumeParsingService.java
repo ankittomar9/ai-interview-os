@@ -3,6 +3,7 @@ package com.interviewos.session.service;
 import com.interviewos.session.document.ResumeDocument;
 import com.interviewos.session.repository.ResumeMongoRepository;
 import lombok.RequiredArgsConstructor;
+import com.interviewos.session.model.DifficultyLevel;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -20,11 +21,20 @@ import java.util.regex.Pattern;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ResumeParsingService {
 
     private final ResumeMongoRepository resumeRepository;
+    private final RoleCalibrationService roleCalibrationService;
     private final Map<String, ResumeDocument> inMemoryResumes = new ConcurrentHashMap<>();
+
+    public ResumeParsingService(ResumeMongoRepository resumeRepository) {
+        this(resumeRepository, new RoleCalibrationService());
+    }
+
+    public ResumeParsingService(ResumeMongoRepository resumeRepository, RoleCalibrationService roleCalibrationService) {
+        this.resumeRepository = resumeRepository;
+        this.roleCalibrationService = roleCalibrationService != null ? roleCalibrationService : new RoleCalibrationService();
+    }
 
     private static final Set<String> TECH_DICTIONARY = Set.of(
             "Java", "Java 21", "Spring Boot", "Spring Cloud", "Microservices", "Kafka", "Redis",
@@ -89,6 +99,9 @@ public class ResumeParsingService {
         String extractedEmail = extractEmail(rawText);
         List<String> education = extractEducation(rawText);
         String inferredRole = inferRoleLevel(expYears);
+        DifficultyLevel suggestedDiff = roleCalibrationService != null
+                ? roleCalibrationService.inferDifficulty(ResumeDocument.builder().yearsOfExperience(expYears).build())
+                : DifficultyLevel.valueOf(inferredRole);
 
         ResumeDocument document = ResumeDocument.builder()
                 .candidateId(candidateId)
@@ -98,6 +111,7 @@ public class ResumeParsingService {
                 .rawText(rawText)
                 .email(extractedEmail)
                 .inferredRoleLevel(inferredRole)
+                .suggestedDifficulty(suggestedDiff)
                 .skills(detectedSkills)
                 .projectExperiences(projectHighlights)
                 .education(education)

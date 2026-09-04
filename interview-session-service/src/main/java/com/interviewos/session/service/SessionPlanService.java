@@ -94,8 +94,13 @@ public class SessionPlanService {
     }
 
     public SessionPlan buildPlan(InterviewTrack track, DifficultyLevel difficulty, long seed) {
+        return buildPlan(track, difficulty, seed, "SETUP_SELECTION");
+    }
+
+    public SessionPlan buildPlan(InterviewTrack track, DifficultyLevel difficulty, long seed, String source) {
         if (track == null) track = InterviewTrack.ALGORITHMS_DATA_STRUCTURES;
         if (difficulty == null) difficulty = DifficultyLevel.MID;
+        if (source == null || source.isBlank()) source = "SETUP_SELECTION";
 
         List<PlannedSection> sections;
         int plannedTotalMinutes;
@@ -113,7 +118,7 @@ public class SessionPlanService {
             plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
         }
 
-        return new SessionPlan("SETUP_SELECTION", difficulty, sections, plannedTotalMinutes);
+        return new SessionPlan(source, difficulty, sections, plannedTotalMinutes);
     }
 
     private List<PlannedSection> buildFullLoopSections(DifficultyLevel difficulty, long seed) {

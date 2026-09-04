@@ -1,6 +1,7 @@
 import React from 'react';
-import { Binary, Database, Code2, Layers, Users2, FileText, CheckCircle2 } from 'lucide-react';
+import { Binary, Database, Code2, Layers, Users2, FileText, CheckCircle2, Sparkles } from 'lucide-react';
 import type { DifficultyLevel, InterviewTrack } from '../../types';
+import { getPlanPresetPreview } from '../../lib/plan-presets';
 
 export interface TrackOption {
   track: InterviewTrack;
@@ -10,6 +11,12 @@ export interface TrackOption {
 }
 
 export const TRACK_OPTIONS: TrackOption[] = [
+  {
+    track: 'FULL_LOOP',
+    title: 'Complete Interview',
+    description: 'Complete multi-stage interview loop calibrated to your seniority (45–60 min).',
+    icon: <Sparkles className="w-4 h-4" />
+  },
   {
     track: 'ALGORITHMS_DATA_STRUCTURES',
     title: 'Algorithms & Data Structures',
@@ -55,13 +62,19 @@ interface TrackGridProps {
   onSelectTrack: (track: InterviewTrack) => void;
   selectedDifficulty: DifficultyLevel;
   onSelectDifficulty: (difficulty: DifficultyLevel) => void;
+  suggestedDifficulty?: DifficultyLevel | null;
+  suggestedExperienceYears?: number | null;
+  isDifficultyOverridden?: boolean;
 }
 
 export const TrackGrid: React.FC<TrackGridProps> = ({
   selectedTrack,
   onSelectTrack,
   selectedDifficulty,
-  onSelectDifficulty
+  onSelectDifficulty,
+  suggestedDifficulty,
+  suggestedExperienceYears,
+  isDifficultyOverridden
 }) => {
   return (
     <div className="space-y-4">
@@ -86,6 +99,16 @@ export const TrackGrid: React.FC<TrackGridProps> = ({
         </div>
       </div>
 
+      {suggestedDifficulty && (
+        <div className="flex items-center justify-between text-[11px] px-0.5">
+          <span className="text-primary font-medium">
+            {!isDifficultyOverridden
+              ? `Suggested ${suggestedDifficulty} — inferred from ${suggestedExperienceYears ?? 4} yrs experience. Override anytime.`
+              : `Manual override: ${selectedDifficulty} (Resume suggested ${suggestedDifficulty} from ${suggestedExperienceYears ?? 4} yrs experience).`}
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {TRACK_OPTIONS.map((item) => {
           const isSelected = selectedTrack === item.track;
@@ -106,7 +129,14 @@ export const TrackGrid: React.FC<TrackGridProps> = ({
                   }`}>
                     {item.icon}
                   </div>
-                  {isSelected && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                  <div className="flex items-center gap-1.5">
+                    {item.track === 'FULL_LOOP' && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary border border-primary/30 uppercase">
+                        Recommended · 45–60 min
+                      </span>
+                    )}
+                    {isSelected && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                  </div>
                 </div>
 
                 <div>
@@ -117,6 +147,11 @@ export const TrackGrid: React.FC<TrackGridProps> = ({
             </div>
           );
         })}
+      </div>
+
+      <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-elevated/70 border border-border text-xs">
+        <span className="text-text-3 text-[11px] font-medium">Plan preview:</span>
+        <span className="font-semibold text-text text-[11px] font-mono">{getPlanPresetPreview(selectedTrack, selectedDifficulty)}</span>
       </div>
     </div>
   );

@@ -45,6 +45,7 @@ export const createSession = async (payload: {
     targetCompany?: string;
     jobDescription?: string;
     mode?: 'INTERVIEW' | 'PLAYGROUND';
+    planSource?: 'SETUP_SELECTION' | 'RESUME_INFERRED_CONFIRMED';
 }): Promise<SessionResponse> => {
     return fetchJson<SessionResponse>(SESSION_API, {
         method: 'POST',

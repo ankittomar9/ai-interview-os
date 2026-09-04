@@ -568,7 +568,61 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 811ms
     Exit Code: 0
     ```
+---
+
+## Batch 15: [C3] — Setup Plan Preview + Level Auto-Suggest
+
+- **Branch**: `feature/spec-plan-2-c3`
+- **Scope**:
+  - **Resolved Plan Preview Mirror**:
+    - Created `frontend/src/lib/plan-presets.ts` exporting `getPlanPreset` and `getPlanPresetPreview(track, difficulty)`.
+    - Mirror matches backend `SessionPlanService` resolver 1:1 across all 7 tracks and 4 difficulty levels:
+      - DSA + JUNIOR: `"DSA ×2 · ≈35 min"`
+      - DSA + MID: `"DSA ×2 · ≈35 min"`
+      - DSA + SENIOR: `"DSA ×1 · ≈20 min"`
+      - FULL_LOOP @ MID: `"Intro · DSA ×2 · LLD ×2 · ≈58 min"`
+  - **7th Track Option in TrackGrid**:
+    - Added `FULL_LOOP` ("Complete Interview") card to `TrackGrid.tsx` with `"Recommended · 45–60 min"` badge.
+    - Wired one-line dynamic plan preview footer into `TrackGrid.tsx`.
+  - **Honest Resume-Inferred Level Calibration**:
+    - Extended `ResumeDocument` (backend entity & frontend interface) with `suggestedDifficulty`.
+    - Wired `RoleCalibrationService.inferDifficulty` inside `ResumeParsingService.processAndPersist` and `ResumeController` fallbacks.
+    - Verified boundary tests in `ResumeParsingServiceTest`: 1 yr -> `JUNIOR`, 4 yrs -> `MID`, 7 yrs -> `SENIOR`, 12 yrs -> `STAFF`.
+    - In `SetupScreen.tsx`, resume upload preselects suggested level and renders honest disclosure label: `"Suggested MID — inferred from 4 yrs experience. Override anytime."`
+    - When overridden manually, `planSource` updates from `"RESUME_INFERRED_CONFIRMED"` to `"SETUP_SELECTION"` ("manual wins → source=SETUP_SELECTION"), and honest label reflects manual override.
+  - **Section Blocks Calibration Policy**:
+    - In `AiOrchestratorService.java`, injected `- Calibration Policy: Level fixed; do not adjust difficulty from performance.` into the `SECTION CONTEXT:` prompt block.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 239 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 235 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Tests run: 90, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Running com.interviewos.session.service.ResumeParsingServiceTest
+    [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.ResumeParsingServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 149, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `mvn test -pl ai-orchestrator-service`:
+    ```
+    [INFO] Running com.interviewos.ai.service.AiOrchestratorServiceDialogueTest
+    [INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.ai.service.AiOrchestratorServiceDialogueTest
+    [INFO] Results:
+    [INFO] Tests run: 52, Failures: 0, Errors: 0, Skipped: 0
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2607 modules transformed.
+    ✓ built in 787ms
+    Exit Code: 0
+    ```
 - **Reviewer Status**: PASS
+
 
 
 

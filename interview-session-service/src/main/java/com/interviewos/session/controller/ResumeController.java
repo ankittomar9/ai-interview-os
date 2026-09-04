@@ -2,6 +2,7 @@ package com.interviewos.session.controller;
 
 import com.interviewos.session.document.InterviewSessionDocument;
 import com.interviewos.session.document.ResumeDocument;
+import com.interviewos.session.model.DifficultyLevel;
 import com.interviewos.session.repository.InterviewSessionMongoRepository;
 import com.interviewos.session.repository.ResumeMongoRepository;
 import com.interviewos.session.service.ResumeParsingService;
@@ -54,6 +55,8 @@ public class ResumeController {
                     .skills(List.of("Java 21", "Spring Boot", "Microservices", "Kafka", "PostgreSQL", "Docker"))
                     .projectExperiences(List.of("Scalable Backend Architecture & Microservices"))
                     .yearsOfExperience(4)
+                    .inferredRoleLevel("MID")
+                    .suggestedDifficulty(DifficultyLevel.MID)
                     .summary(String.format("Candidate %s with technical profile in Java 21, Spring Boot, Microservices, and Kafka.", candidateName))
                     .uploadedAt(LocalDateTime.now())
                     .build();
@@ -89,6 +92,8 @@ public class ResumeController {
                     .skills(List.of("Java 21", "Spring Boot", "Distributed Systems", "SQL"))
                     .projectExperiences(List.of("Backend Enterprise Applications"))
                     .yearsOfExperience(4)
+                    .inferredRoleLevel("MID")
+                    .suggestedDifficulty(DifficultyLevel.MID)
                     .summary(String.format("Candidate %s with backend engineering profile.", candidateName))
                     .uploadedAt(LocalDateTime.now())
                     .build();
