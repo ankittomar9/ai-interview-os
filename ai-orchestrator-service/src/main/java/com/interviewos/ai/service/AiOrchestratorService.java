@@ -25,11 +25,29 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiOrchestratorService {
+
+    private static final Pattern AFFIRMATIVE_CONSENT_PATTERN = Pattern.compile(
+            "(?i)\\b(yes|yeah|yep|yup|sure|ok|okay|ready|let's go|lets go|go ahead|sounds good|move on)\\b"
+    );
+
+    private static final Pattern NEGATION_GUARD_PATTERN = Pattern.compile(
+            "(?i)\\b(not yet|not ready|don't|dont|do not|later)\\b"
+    );
+
+    public static boolean hasAffirmativeConsent(String candidateText) {
+        if (candidateText == null || candidateText.isBlank()) {
+            return false;
+        }
+        boolean hasAffirmative = AFFIRMATIVE_CONSENT_PATTERN.matcher(candidateText).find();
+        boolean hasNegation = NEGATION_GUARD_PATTERN.matcher(candidateText).find();
+        return hasAffirmative && !hasNegation;
+    }
 
     private final AiClientFactory clientFactory;
     private final AiProviderProperties providerProperties;
@@ -485,6 +503,24 @@ public class AiOrchestratorService {
                 log.info("POST-GUARD: Sanitized persona name inversion from reply");
             }
 
+            // Deterministic Affirmative Consent Guard [C0]
+            if ("ADVANCE_STAGE".equalsIgnoreCase(recommendedAction)) {
+                String candidateText = request.candidateExplanation() != null ? request.candidateExplanation() : "";
+                if (candidateText.isBlank() && request.chatHistory() != null && !request.chatHistory().isEmpty()) {
+                    for (int i = request.chatHistory().size() - 1; i >= 0; i--) {
+                        var msg = request.chatHistory().get(i);
+                        if ("user".equalsIgnoreCase(msg.role()) || "candidate".equalsIgnoreCase(msg.role())) {
+                            candidateText = msg.content() != null ? msg.content() : "";
+                            break;
+                        }
+                    }
+                }
+                if (!hasAffirmativeConsent(candidateText)) {
+                    log.info("CONSENT-GUARD: Downgraded recommendedAction from ADVANCE_STAGE to PROPOSE_STAGE_ADVANCE due to missing affirmative consent or negation in candidate text: '{}'", candidateText);
+                    recommendedAction = "PROPOSE_STAGE_ADVANCE";
+                }
+            }
+
             return new AiDialogueResponse(
                     reply,
                     followUp,
@@ -514,6 +550,11 @@ public class AiOrchestratorService {
             } else if (isAllTestsPassed) {
                 int passed = request.latestExecution().passedTests();
                 int total = request.latestExecution().totalTests();
+                String recAction = "ADVANCE_STAGE";
+                String candidateText = request.candidateExplanation() != null ? request.candidateExplanation() : "";
+                if (!hasAffirmativeConsent(candidateText)) {
+                    recAction = "PROPOSE_STAGE_ADVANCE";
+                }
                 return new AiDialogueResponse(
                         String.format("Your solution is correct and passes all %d/%d test cases! Excellent work.", passed, total),
                         "You can now move to the next question using the Question Rail on the left, or advance to the next stage.",
@@ -523,7 +564,7 @@ public class AiOrchestratorService {
                         List.of("Continue practicing multi-track challenges"),
                         "COMPLETE",
                         "Candidate successfully solved and submitted passing solution.",
-                        "ADVANCE_STAGE"
+                        recAction
                 );
             } else if (isExecutionFailed) {
                 int passed = request.latestExecution().passedTests();

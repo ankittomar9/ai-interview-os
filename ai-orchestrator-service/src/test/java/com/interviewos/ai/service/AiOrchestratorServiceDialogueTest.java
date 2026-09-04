@@ -79,7 +79,7 @@ class AiOrchestratorServiceDialogueTest {
 
         AiDialogueRequest request = new AiDialogueRequest(
                 "Two Sum problem",
-                "I implemented two pointers",
+                "I implemented two pointers and yes I am ready to move on",
                 "int l = 0;",
                 List.of(),
                 ModelProvider.GEMINI,
@@ -359,5 +359,116 @@ class AiOrchestratorServiceDialogueTest {
         assertTrue(capturedPrompt.contains("MUST NOT set \"recommendedAction\": \"ADVANCE_STAGE\" during introduction unless the candidate has explicitly agreed"), "Prompt must require affirmative consent");
         assertFalse(capturedPrompt.contains("Once the introduction exchange is complete, politely guide them: \"Great! Let's dive into our first coding challenge.\" and set \"recommendedAction\": \"ADVANCE_STAGE\""),
                 "Prompt must not contain unconditional auto-advance language");
+    }
+
+    @Test
+    @DisplayName("C0: Consent guard downgrades ADVANCE_STAGE to PROPOSE_STAGE_ADVANCE when candidate lacks affirmative consent")
+    void testConsentGuardDowngradesWithoutAffirmative() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Great job on the code!",
+                  "followUpQuestion": "Next section?",
+                  "isSolutionComplete": true,
+                  "codeAnalysis": "Optimal.",
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "COMPLETE",
+                  "turnSummary": "Candidate finished.",
+                  "recommendedAction": "ADVANCE_STAGE"
+                }
+                """;
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Valid Parentheses")
+                .candidateExplanation("Here is my code submission with stack.")
+                .candidateCode("class Solution {}")
+                .chatHistory(List.of())
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROPOSE_STAGE_ADVANCE", response.recommendedAction(),
+                "Must downgrade ADVANCE_STAGE to PROPOSE_STAGE_ADVANCE when candidate has not given affirmative consent");
+    }
+
+    @Test
+    @DisplayName("C0: Consent guard downgrades ADVANCE_STAGE to PROPOSE_STAGE_ADVANCE when candidate text contains negation")
+    void testConsentGuardDowngradesOnNegation() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Understood.",
+                  "followUpQuestion": "Ready to move on?",
+                  "isSolutionComplete": true,
+                  "codeAnalysis": "Optimal.",
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "COMPLETE",
+                  "turnSummary": "Candidate finished.",
+                  "recommendedAction": "ADVANCE_STAGE"
+                }
+                """;
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        // Candidate says "sure", but also "not yet, I want to review"
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Valid Parentheses")
+                .candidateExplanation("Sure, but not yet, I want to check my logic first.")
+                .candidateCode("class Solution {}")
+                .chatHistory(List.of())
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROPOSE_STAGE_ADVANCE", response.recommendedAction(),
+                "Must downgrade ADVANCE_STAGE to PROPOSE_STAGE_ADVANCE when negation phrase is present");
+    }
+
+    @Test
+    @DisplayName("C0: Consent guard validates all affirmative phrases and blocks all negation phrases")
+    void testHasAffirmativeConsentExhaustive() {
+        // Valid affirmative phrases
+        String[] affirmatives = {
+                "yes", "Yes, I am done.", "yeah let's do it", "yep", "yup",
+                "sure", "ok", "okay, let's continue", "ready", "I am ready now",
+                "let's go", "lets go", "go ahead", "sounds good", "move on", "let's move on"
+        };
+        for (String phrase : affirmatives) {
+            assertTrue(AiOrchestratorService.hasAffirmativeConsent(phrase),
+                    "Expected affirmative consent for: " + phrase);
+        }
+
+        // Negation phrases
+        String[] negations = {
+                "not yet", "I am not yet done", "not ready", "I'm not ready to move on",
+                "don't", "don't advance yet", "dont move on", "do not advance",
+                "later", "we can do that later"
+        };
+        for (String phrase : negations) {
+            assertFalse(AiOrchestratorService.hasAffirmativeConsent(phrase),
+                    "Expected negation guard to reject: " + phrase);
+        }
+
+        // Mixed phrases (affirmative + negation) -> must reject
+        assertFalse(AiOrchestratorService.hasAffirmativeConsent("ok, but not yet"));
+        assertFalse(AiOrchestratorService.hasAffirmativeConsent("sure, but I don't think so"));
+        assertFalse(AiOrchestratorService.hasAffirmativeConsent("ready, but later"));
+
+        // Non-affirmative regular text
+        assertFalse(AiOrchestratorService.hasAffirmativeConsent("Here is my code implementation"));
+        assertFalse(AiOrchestratorService.hasAffirmativeConsent(""));
+        assertFalse(AiOrchestratorService.hasAffirmativeConsent(null));
     }
 }
