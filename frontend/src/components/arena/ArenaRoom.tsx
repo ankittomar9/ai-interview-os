@@ -56,20 +56,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   }, []);
 
   // 1. Session Catalog (Strict track query with zero cross-track bleed)
-  const {
-    questionsList,
-    activeQuestion,
-    activeQuestionIndex,
-    questionStatusMap,
-    selectQuestion,
-    markQuestionStatus
-  } = useSessionCatalog({
-    initialQuestion,
-    initialQuestionsList,
-    track: activeTrack,
-    sessionMode,
-    sessionId
-  });
+  const { questionsList, activeQuestion, activeQuestionIndex, questionStatusMap, selectQuestion, markQuestionStatus } =
+    useSessionCatalog({ initialQuestion, initialQuestionsList, track: activeTrack, sessionMode, sessionId });
 
   // 2. Code State (Keyed per slug to eliminate A10 cross-question bleed)
   const activeSlug = activeQuestion.problemSlug || activeQuestion.slug || `q_${activeQuestionIndex}`;
@@ -97,10 +85,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   });
 
   // 5. Proctoring Sentinel
-  const proctoring = useProctoring({
-    sessionId,
-    isPlayground
-  });
+  const proctoring = useProctoring({ sessionId, isPlayground });
 
   // 6. Dialogue Engine
   const dialogue = useDialogue({
@@ -155,9 +140,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   }, [handleSectionClick, navSections, dialogue]);
 
   const handleNextQuestion = useCallback(() => {
-    if (activeQuestionIndex < questionsList.length - 1) {
-      selectQuestion(activeQuestionIndex + 1);
-    }
+    if (activeQuestionIndex < questionsList.length - 1) selectQuestion(activeQuestionIndex + 1);
   }, [activeQuestionIndex, questionsList.length, selectQuestion]);
 
   const handleNextStage = useCallback(() => {
@@ -170,18 +153,13 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const handleConfirmStageSwitch = useCallback(() => {
     if (pendingStageSwitch) {
       setActiveTrack(pendingStageSwitch.targetTrack);
-      if (pendingStageSwitch.targetIndex !== undefined) {
-        dialogue.transitionSection(pendingStageSwitch.targetIndex, 'MANUAL_JUMP');
-      } else {
-        dialogue.transitionStage(pendingStageSwitch.stage, 'MANUAL_JUMP');
-      }
+      if (pendingStageSwitch.targetIndex !== undefined) dialogue.transitionSection(pendingStageSwitch.targetIndex, 'MANUAL_JUMP');
+      else dialogue.transitionStage(pendingStageSwitch.stage, 'MANUAL_JUMP');
       setPendingStageSwitch(null);
     }
   }, [pendingStageSwitch, dialogue]);
 
-  const handleCancelStageSwitch = useCallback(() => {
-    setPendingStageSwitch(null);
-  }, []);
+  const handleCancelStageSwitch = useCallback(() => setPendingStageSwitch(null), []);
 
   return (
     <ArenaShell

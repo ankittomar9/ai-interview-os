@@ -108,18 +108,38 @@ public class EvaluationReportService {
                 .orElse("LOCAL_SANDBOX");
 
         int plannedMinutes = 45;
+        if (session.plan() != null && session.plan().plannedTotalMinutes() > 0) {
+            plannedMinutes = session.plan().plannedTotalMinutes();
+        }
+
+        long candidateTurns = transcript.stream()
+                .filter(m -> "CANDIDATE".equalsIgnoreCase(m.senderRole()))
+                .count();
+
+        // C4: Build Plan-vs-Actual Assessment Breakdown
+        List<DiagnosticReportResponse.PlanVsActualEntryDto> planVsActualList = buildPlanVsActual(
+                session, transcript, executedMinutes, candidateTurns, plannedMinutes
+        );
+
+        Set<String> executedSectionTypes = planVsActualList.stream()
+                .filter(entry -> "COMPLETED".equalsIgnoreCase(entry.status()) || entry.turnCount() > 0)
+                .map(entry -> entry.sectionType().toUpperCase())
+                .collect(java.util.stream.Collectors.toSet());
+
         String touchedSections = transcript.stream()
                 .filter(t -> t.metadata() != null && (t.metadata().containsKey("sectionType") || t.metadata().containsKey("stage")))
                 .map(t -> t.metadata().containsKey("sectionType") ? t.metadata().get("sectionType") : t.metadata().get("stage"))
                 .distinct()
                 .collect(java.util.stream.Collectors.joining(", "));
         if (touchedSections.isBlank()) {
+            touchedSections = planVsActualList.stream()
+                    .filter(entry -> "COMPLETED".equalsIgnoreCase(entry.status()) || entry.turnCount() > 0)
+                    .map(DiagnosticReportResponse.PlanVsActualEntryDto::sectionType)
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+        if (touchedSections.isBlank()) {
             touchedSections = session.track() != null ? session.track() : "CORE";
         }
-
-        long candidateTurns = transcript.stream()
-                .filter(m -> "CANDIDATE".equalsIgnoreCase(m.senderRole()))
-                .count();
 
         // 3. Deterministic Ground Truth Execution Score & Problem Extraction
         List<SessionServiceClient.TranscriptMessageDto> executionTurns = transcript.stream()
@@ -319,8 +339,12 @@ public class EvaluationReportService {
                 executiveSummary = headline + " " + executiveSummary;
             }
 
+            List<AiRubricClient.DimensionScoreDto> filteredDimensions = rubric.dimensions().stream()
+                    .filter(d -> isDimensionApplicable(d.dimension(), executedSectionTypes, session.track()))
+                    .toList();
+
             try {
-                rubricJson = objectMapper.writeValueAsString(rubric.dimensions());
+                rubricJson = objectMapper.writeValueAsString(filteredDimensions);
             } catch (Exception e) {
                 log.warn("Failed to serialize rubric dimensions to JSON: {}", e.getMessage());
             }
@@ -383,7 +407,23 @@ public class EvaluationReportService {
             }
         }
 
-        executiveSummary += " Disclosure: Scorecard reflects executed assessment sections only; unreached sections are not penalized.";
+        String requestedSections = session.plan() != null && session.plan().sections() != null && !session.plan().sections().isEmpty()
+                ? session.plan().sections().stream().map(SessionServiceClient.PlannedSectionDto::sectionType).collect(java.util.stream.Collectors.joining(", "))
+                : touchedSections;
+
+        String executedSections = planVsActualList.stream()
+                .filter(entry -> "COMPLETED".equalsIgnoreCase(entry.status()) || entry.turnCount() > 0)
+                .map(DiagnosticReportResponse.PlanVsActualEntryDto::sectionType)
+                .collect(java.util.stream.Collectors.joining(", "));
+        if (executedSections.isBlank()) {
+            executedSections = "NONE";
+        }
+
+        String planDisclosure = String.format(
+                "Plan requested {%s}; executed {%s}; verdict reflects executed only. Disclosure: Scorecard reflects executed assessment sections only; unreached sections are not penalized.",
+                requestedSections, executedSections
+        );
+        executiveSummary += " " + planDisclosure;
 
         // Clamp Scores to 0..100
         technicalScore = Math.max(0, Math.min(100, technicalScore));
@@ -420,6 +460,13 @@ public class EvaluationReportService {
             executiveSummary += String.format(" Assessment ended prematurely (%d min, %d turns); minimum viable interview threshold (minimum 3 minutes and at least 3 candidate turns) was not reached.", executedMinutes, candidateTurns);
         }
 
+        String planVsActualJson = null;
+        try {
+            planVsActualJson = objectMapper.writeValueAsString(planVsActualList);
+        } catch (Exception e) {
+            log.warn("Failed to serialize plan-vs-actual to JSON: {}", e.getMessage());
+        }
+
         EvaluationReport report = EvaluationReport.builder()
                 .sessionId(sessionId)
                 .candidateId(session.candidateId())
@@ -444,6 +491,7 @@ public class EvaluationReportService {
                 .droppedChunks(droppedChunks)
                 .consentDowngrades(consentDowngrades)
                 .workspaceProvenance(workspaceProvenance)
+                .planVsActualJson(planVsActualJson)
                 .build();
 
         EvaluationReport saved = reportRepository.save(report);
@@ -484,5 +532,194 @@ public class EvaluationReportService {
         return reportRepository.findByCandidateIdOrderByGeneratedAtDesc(candidateId).stream()
                 .map(DiagnosticReportResponse::fromEntity)
                 .toList();
+    }
+
+    private List<DiagnosticReportResponse.PlanVsActualEntryDto> buildPlanVsActual(
+            SessionServiceClient.SessionDetailsDto session,
+            List<SessionServiceClient.TranscriptMessageDto> transcript,
+            int executedMinutes,
+            long candidateTurns,
+            int plannedMinutes
+    ) {
+        List<SessionServiceClient.PlannedSectionDto> plannedSections = new ArrayList<>();
+        if (session.plan() != null && session.plan().sections() != null && !session.plan().sections().isEmpty()) {
+            plannedSections = session.plan().sections();
+        } else {
+            List<String> transcriptSections = transcript.stream()
+                    .filter(t -> t.metadata() != null && (t.metadata().containsKey("sectionType") || t.metadata().containsKey("stage")))
+                    .map(t -> t.metadata().containsKey("sectionType") ? t.metadata().get("sectionType") : t.metadata().get("stage"))
+                    .distinct()
+                    .toList();
+            if (!transcriptSections.isEmpty()) {
+                for (String tSec : transcriptSections) {
+                    plannedSections.add(new SessionServiceClient.PlannedSectionDto(tSec, session.track() != null ? session.track() : tSec, 1, plannedMinutes, "Assessment Section"));
+                }
+            } else {
+                String defTrack = session.track() != null ? session.track() : "CORE";
+                plannedSections.add(new SessionServiceClient.PlannedSectionDto(defTrack, defTrack, 1, plannedMinutes, "Standard Assessment"));
+            }
+        }
+
+        List<SessionServiceClient.SectionProgressDto> progressList = session.sectionProgress();
+        if (progressList == null || progressList.isEmpty()) {
+            try {
+                progressList = sessionClient.getSectionProgress(session.id());
+            } catch (Exception ignored) {}
+        }
+        if (progressList == null) {
+            progressList = List.of();
+        }
+
+        List<DiagnosticReportResponse.PlanVsActualEntryDto> result = new ArrayList<>();
+
+        for (int i = 0; i < plannedSections.size(); i++) {
+            SessionServiceClient.PlannedSectionDto ps = plannedSections.get(i);
+            final int secIdx = i;
+
+            long turnsInSec = transcript.stream()
+                    .filter(t -> "CANDIDATE".equalsIgnoreCase(t.senderRole()))
+                    .filter(t -> {
+                        if (t.metadata() == null) return false;
+                        String idxStr = t.metadata().get("sectionIndex");
+                        if (idxStr != null && idxStr.equals(String.valueOf(secIdx))) return true;
+                        return matchesSection(ps.sectionType(), t.metadata());
+                    })
+                    .count();
+
+            SessionServiceClient.SectionProgressDto matchingProgress = progressList.stream()
+                    .filter(p -> (p.index() != null && p.index().equals(secIdx)) ||
+                                 (p.sectionType() != null && p.sectionType().equalsIgnoreCase(ps.sectionType())))
+                    .findFirst()
+                    .orElse(null);
+
+            int effectiveTurnCount = (int) turnsInSec;
+            if (matchingProgress != null && matchingProgress.turnCount() != null && matchingProgress.turnCount() > effectiveTurnCount) {
+                effectiveTurnCount = matchingProgress.turnCount();
+            }
+
+            // Fallback for single section sessions without per-turn section metadata
+            if (plannedSections.size() == 1 && effectiveTurnCount == 0 && candidateTurns > 0) {
+                effectiveTurnCount = (int) candidateTurns;
+            }
+
+            int secElapsedMin = 0;
+            if (effectiveTurnCount > 0) {
+                Instant firstSecTime = null;
+                Instant lastSecTime = null;
+                for (SessionServiceClient.TranscriptMessageDto t : transcript) {
+                    if (t.timestamp() != null) {
+                        boolean match = false;
+                        if (t.metadata() != null) {
+                            String idxStr = t.metadata().get("sectionIndex");
+                            match = (idxStr != null && idxStr.equals(String.valueOf(secIdx))) || matchesSection(ps.sectionType(), t.metadata());
+                        } else if (plannedSections.size() == 1) {
+                            match = true;
+                        }
+                        if (match) {
+                            if (firstSecTime == null || t.timestamp().isBefore(firstSecTime)) firstSecTime = t.timestamp();
+                            if (lastSecTime == null || t.timestamp().isAfter(lastSecTime)) lastSecTime = t.timestamp();
+                        }
+                    }
+                }
+                if (firstSecTime != null && lastSecTime != null && !firstSecTime.equals(lastSecTime)) {
+                    secElapsedMin = Math.max(1, (int) Math.round(Duration.between(firstSecTime, lastSecTime).toSeconds() / 60.0));
+                } else if (plannedSections.size() == 1 && executedMinutes > 0) {
+                    secElapsedMin = executedMinutes;
+                } else {
+                    secElapsedMin = Math.max(1, Math.min(ps.softTimeBudgetMinutes(), effectiveTurnCount * 2));
+                }
+            }
+
+            String status;
+            if (effectiveTurnCount >= 1) {
+                status = "COMPLETED";
+            } else if (matchingProgress != null && ("SKIPPED_BY_USER".equalsIgnoreCase(matchingProgress.reason()) || "SKIPPED".equalsIgnoreCase(matchingProgress.reason()))) {
+                status = "SKIPPED";
+            } else if (matchingProgress != null) {
+                status = "ADVANCED_PAST";
+            } else {
+                status = "NOT_REACHED";
+            }
+
+            result.add(new DiagnosticReportResponse.PlanVsActualEntryDto(
+                    ps.sectionType(),
+                    ps.track(),
+                    secIdx,
+                    status,
+                    effectiveTurnCount,
+                    secElapsedMin,
+                    ps.softTimeBudgetMinutes(),
+                    ps.note() != null ? ps.note() : ""
+            ));
+        }
+
+        return result;
+    }
+
+    private boolean matchesSection(String sectionType, Map<String, String> metadata) {
+        if (sectionType == null || metadata == null) return false;
+        String sType = metadata.get("sectionType");
+        String stage = metadata.get("stage");
+        if (sType != null) {
+            if (sType.equalsIgnoreCase(sectionType)) return true;
+            if (sectionType.equalsIgnoreCase("DSA") && (sType.equalsIgnoreCase("CODING_DSA") || sType.equalsIgnoreCase("CORE_TECH") || sType.toUpperCase().contains("DSA"))) return true;
+            if (sectionType.equalsIgnoreCase("CODING_DSA") && (sType.equalsIgnoreCase("DSA") || sType.toUpperCase().contains("DSA"))) return true;
+            if (sectionType.equalsIgnoreCase("LLD") && (sType.equalsIgnoreCase("LOW_LEVEL_DESIGN") || sType.toUpperCase().contains("LLD"))) return true;
+            if (sectionType.equalsIgnoreCase("INTRODUCTION") && (sType.equalsIgnoreCase("INTRO") || sType.toUpperCase().contains("INTRO"))) return true;
+            if (sectionType.equalsIgnoreCase("INTRO") && (sType.equalsIgnoreCase("INTRODUCTION") || sType.toUpperCase().contains("INTRO"))) return true;
+            if (sectionType.equalsIgnoreCase("SYSTEM_DESIGN") && (sType.equalsIgnoreCase("ARCHITECTURE") || sType.toUpperCase().contains("SYSTEM_DESIGN") || sType.toUpperCase().contains("HLD"))) return true;
+            if (sectionType.equalsIgnoreCase("BEHAVIORAL") && sType.toUpperCase().contains("BEHAVIORAL")) return true;
+            if (sectionType.equalsIgnoreCase("RESUME") && sType.toUpperCase().contains("RESUME")) return true;
+        }
+        if (stage != null) {
+            if (stage.equalsIgnoreCase(sectionType)) return true;
+            if (sectionType.equalsIgnoreCase("DSA") && (stage.equalsIgnoreCase("CODING_DSA") || stage.equalsIgnoreCase("CORE_TECH") || stage.toUpperCase().contains("DSA"))) return true;
+            if (sectionType.equalsIgnoreCase("LLD") && (stage.equalsIgnoreCase("LOW_LEVEL_DESIGN") || stage.toUpperCase().contains("LLD"))) return true;
+            if (sectionType.equalsIgnoreCase("INTRODUCTION") && (stage.equalsIgnoreCase("INTRO") || stage.toUpperCase().contains("INTRO"))) return true;
+            if (sectionType.equalsIgnoreCase("INTRO") && (stage.equalsIgnoreCase("INTRODUCTION") || stage.toUpperCase().contains("INTRO"))) return true;
+            if (sectionType.equalsIgnoreCase("SYSTEM_DESIGN") && (stage.equalsIgnoreCase("ARCHITECTURE") || stage.toUpperCase().contains("SYSTEM_DESIGN") || stage.toUpperCase().contains("HLD"))) return true;
+            if (sectionType.equalsIgnoreCase("BEHAVIORAL") && stage.toUpperCase().contains("BEHAVIORAL")) return true;
+            if (sectionType.equalsIgnoreCase("RESUME") && stage.toUpperCase().contains("RESUME")) return true;
+        }
+        return false;
+    }
+
+    private boolean isDimensionApplicable(String dimName, Set<String> executedSectionTypes, String track) {
+        if (dimName == null) return true;
+        String upper = dimName.toUpperCase();
+
+        // LLD dimensions: require LLD executed
+        if (upper.contains("LLD") || upper.contains("LOW_LEVEL") || upper.contains("OBJECT_ORIENTED") || upper.contains("DESIGN_PATTERNS")) {
+            return executedSectionTypes.stream().anyMatch(s -> s.contains("LLD") || s.contains("LOW_LEVEL"));
+        }
+        // SYSTEM_DESIGN dimensions: require SYSTEM_DESIGN executed or standalone track
+        if (upper.contains("ARCHITECTURE") || upper.contains("SCALABILITY") || upper.contains("TRADE_OFFS") || upper.contains("SYSTEM_DESIGN") || upper.contains("COMMUNICATION_DESIGN") || upper.contains("RIGOR")) {
+            if (track != null && (track.toUpperCase().contains("SYSTEM_DESIGN") || track.toUpperCase().contains("ARCHITECTURE"))) {
+                return true;
+            }
+            return executedSectionTypes.stream().anyMatch(s -> s.contains("SYSTEM_DESIGN") || s.contains("ARCHITECTURE") || s.contains("HLD"));
+        }
+        // BEHAVIORAL dimensions: require BEHAVIORAL executed or standalone track
+        if (upper.contains("LEADERSHIP") || upper.contains("CONFLICT_RESOLUTION") || upper.contains("TEAMWORK") || upper.contains("ADAPTABILITY") || upper.contains("COMMUNICATION_BEHAVIORAL")) {
+            if (track != null && (track.toUpperCase().contains("BEHAVIORAL") || track.toUpperCase().contains("LEADERSHIP"))) {
+                return true;
+            }
+            return executedSectionTypes.stream().anyMatch(s -> s.contains("BEHAVIORAL") || s.contains("LEADERSHIP"));
+        }
+        // RESUME dimensions: require RESUME executed or standalone track
+        if (upper.contains("TECHNICAL_DEPTH") || upper.contains("PROJECT_IMPACT") || upper.contains("COMMUNICATION_RESUME") || upper.contains("PROFESSIONALISM_RESUME")) {
+            if (track != null && track.toUpperCase().contains("RESUME")) {
+                return true;
+            }
+            return executedSectionTypes.stream().anyMatch(s -> s.contains("RESUME"));
+        }
+        // DSA / CODING dimensions: require DSA / CORE_TECH / CODING executed or standalone track
+        if (upper.contains("ALGORITHMIC_REASONING") || upper.contains("EDGE_CASE_THOROUGHNESS")) {
+            if (track != null && (track.toUpperCase().contains("DSA") || track.toUpperCase().contains("ALGORITHM") || track.toUpperCase().contains("JAVA") || track.toUpperCase().contains("PYTHON") || track.toUpperCase().contains("CODING"))) {
+                return true;
+            }
+            return executedSectionTypes.stream().anyMatch(s -> s.contains("DSA") || s.contains("CORE") || s.contains("CODING"));
+        }
+        return true;
     }
 }

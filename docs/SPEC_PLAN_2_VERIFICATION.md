@@ -623,14 +623,70 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
 
+## Batch 16: [C4] — Evaluation Scoping + Plan-vs-Actual Breakdown
 
-
-
-
-
-
-
-
-
-
+- **Branch**: `feature/spec-plan-2-c4`
+- **Scope**:
+  - **Flyway Schema Evolution**:
+    - Added `evaluation-report-service/src/main/resources/db/migration/V6__add_plan_vs_actual.sql`: `ALTER TABLE evaluation_reports ADD COLUMN IF NOT EXISTS plan_vs_actual_json TEXT;`.
+  - **Entity & DTO Layer**:
+    - `EvaluationReport.java`: Added `@Lob @Column(columnDefinition = "TEXT") private String planVsActualJson;`.
+    - `SessionServiceClient.java`: Added Feign DTOs `SessionPlanDto`, `PlannedSectionDto`, `SectionProgressDto`, updated `SessionDetailsDto` with `plan` and `sectionProgress`, and added `GET /api/v1/sessions/{id}/section-transitions`.
+    - `DiagnosticReportResponse.java`: Added `PlanVsActualEntryDto`, `planVsActual` list, backwards-compatible constructors, and deserialization in `fromEntity`.
+    - `TranscriptPdfMeta.java`: Added `planVsActual` field and `fromEntity` mapping.
+    - `HumanTranscriptPdfGenerator.java`: Added "Plan vs. Actual Assessment Breakdown" table showing Section, Status, Turns, and Elapsed vs Soft Budget.
+    - `SessionResponse.java` & `InterviewSessionService.java`: Enriched session responses in `interview-session-service` with `sectionProgress` from MongoDB.
+  - **Evaluation Scoping & Breakdown Service Logic**:
+    - Implemented `buildPlanVsActual(...)` in `EvaluationReportService.java`:
+      - Evaluates each planned section against candidate transcript turns and section transitions.
+      - Assigns statuses: `COMPLETED` (≥ 1 candidate turn in section), `ADVANCED_PAST` (0 turns, progressed past via transition), `NOT_REACHED` (0 turns, never reached), `SKIPPED` (explicit skip).
+      - Computes elapsed minutes per section and captures soft budget minutes without generating "too slow" judgments or score deductions.
+    - Implemented `isDimensionApplicable(...)` in `EvaluationReportService.java`:
+      - Dynamically filters rubric dimensions for unreached sections (e.g. Plan `[INTRO, DSA, LLD]` with `INTRO+DSA` transcript yields 0 LLD dimensions in rubric / scorecard).
+    - Mandatory Honest Scoping Disclosure:
+      - Automatically prepends to `executiveSummary`: `"Plan requested {…}; executed {…}; verdict reflects executed only. Disclosure: Scorecard reflects executed assessment sections only; unreached sections are not penalized."`
+  - **Frontend Plan-vs-Actual Breakdown Table**:
+    - Extended `frontend/src/types/index.ts` with `PlanVsActualEntry` interface and `planVsActual` on `DiagnosticReportResponse`.
+    - Updated `frontend/src/components/DiagnosticReportView.tsx` with a responsive Plan vs. Actual Assessment Breakdown table displaying section, status pills, candidate turns, elapsed minutes, and soft budget minutes.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 247 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 234 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 243 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl evaluation-report-service`:
+    ```
+    [INFO] Running com.interviewos.evaluation.controller.EvaluationReportControllerTest
+    [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.evaluation.controller.EvaluationReportControllerTest
+    [INFO] Running com.interviewos.evaluation.service.EvaluationReportServiceTest
+    [INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.evaluation.service.EvaluationReportServiceTest
+    [INFO] Running com.interviewos.evaluation.service.HumanTranscriptPdfGeneratorTest
+    [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.evaluation.service.HumanTranscriptPdfGeneratorTest
+    [INFO] Results:
+    [WARNING] Tests run: 20, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+    - `testPlanVsActual_UnreachedSection_ExcludesDimensionsAndAddsDisclosure`: verifies unreached LLD section marked `NOT_REACHED`, 0 LLD dimensions in scorecard, honest disclosure present in `executiveSummary`.
+    - `testPlanVsActual_FullLoop_ShowsElapsedAndBudgetColumns_NoTooSlowJudgments`: verifies all 4 sections display elapsed minutes and soft budget minutes with zero "too slow" judgments or penalties.
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Tests run: 90, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Running com.interviewos.session.service.ResumeParsingServiceTest
+    [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.ResumeParsingServiceTest
+    [INFO] Running com.interviewos.session.service.SessionRecordingServiceTest
+    [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.SessionRecordingServiceTest
+    [INFO] Running com.interviewos.session.service.SystemCapabilitiesServiceTest
+    [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.SystemCapabilitiesServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 149, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2607 modules transformed.
+    ✓ built in 761ms
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS (Commit candidate ready for master merge)

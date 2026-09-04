@@ -23,6 +23,9 @@ public interface SessionServiceClient {
     @GetMapping("/api/v1/sessions/{id}/recordings/manifest")
     RecordingManifestDto getRecordingManifest(@PathVariable("id") Long id);
 
+    @GetMapping("/api/v1/sessions/{id}/section-transitions")
+    List<SectionProgressDto> getSectionProgress(@PathVariable("id") Long id);
+
     record ProblemDetailsDto(
             String id,
             String problemSlug,
@@ -30,6 +33,35 @@ public interface SessionServiceClient {
             String track,
             String difficulty,
             String problemStatement
+    ) {}
+
+    record PlannedSectionDto(
+            String sectionType,
+            String track,
+            int itemCount,
+            int softTimeBudgetMinutes,
+            String note,
+            List<String> problemSlugs
+    ) {
+        public PlannedSectionDto(String sectionType, String track, int itemCount, int softTimeBudgetMinutes, String note) {
+            this(sectionType, track, itemCount, softTimeBudgetMinutes, note, List.of());
+        }
+    }
+
+    record SessionPlanDto(
+            String source,
+            String level,
+            List<PlannedSectionDto> sections,
+            int plannedTotalMinutes
+    ) {}
+
+    record SectionProgressDto(
+            String sectionType,
+            Integer index,
+            String reason,
+            Object startedAt,
+            Object endedAt,
+            Integer turnCount
     ) {}
 
     record SessionDetailsDto(
@@ -40,8 +72,23 @@ public interface SessionServiceClient {
             String difficulty,
             String targetCompany,
             String status,
-            Long durationSeconds
-    ) {}
+            Long durationSeconds,
+            SessionPlanDto plan,
+            List<SectionProgressDto> sectionProgress
+    ) {
+        public SessionDetailsDto(
+                Long id,
+                String candidateId,
+                String roleTitle,
+                String track,
+                String difficulty,
+                String targetCompany,
+                String status,
+                Long durationSeconds
+        ) {
+            this(id, candidateId, roleTitle, track, difficulty, targetCompany, status, durationSeconds, null, List.of());
+        }
+    }
 
     record RecordingManifestDto(
             Long sessionId,

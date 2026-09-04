@@ -81,7 +81,29 @@ public class HumanTranscriptPdfGenerator {
                     echo, dropped, downgrades, prov);
             contentStream.showText(integrityLine);
             contentStream.endText();
-            y -= 30f;
+            y -= 20f;
+
+            // 2c. Section: Plan-vs-Actual Breakdown (C4)
+            if (meta != null && meta.planVsActual() != null && !meta.planVsActual().isEmpty()) {
+                contentStream.beginText();
+                contentStream.setFont(fontBold, FONT_SIZE_BODY);
+                contentStream.newLineAtOffset(MARGIN, y);
+                contentStream.showText("Plan vs. Actual Assessment Breakdown:");
+                contentStream.endText();
+                y -= LEADING;
+
+                for (com.interviewos.evaluation.dto.DiagnosticReportResponse.PlanVsActualEntryDto entry : meta.planVsActual()) {
+                    contentStream.beginText();
+                    contentStream.setFont(fontRegular, FONT_SIZE_BODY);
+                    contentStream.newLineAtOffset(MARGIN + 10f, y);
+                    String line = String.format("- %s [%s]: %d turns | %d min elapsed (soft budget: %d min)",
+                            entry.sectionType(), entry.status(), entry.turnCount(), entry.elapsedMinutes(), entry.softBudgetMinutes());
+                    contentStream.showText(sanitizeText(line));
+                    contentStream.endText();
+                    y -= LEADING;
+                }
+                y -= 10f;
+            }
 
             // 3. Section Header: Transcript Turns
             contentStream.beginText();

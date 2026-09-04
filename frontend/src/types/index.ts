@@ -171,6 +171,18 @@ export interface DiagnosticReportResponse {
         consentDowngrades: number;
         workspaceProvenance: string;
     };
+    planVsActual?: PlanVsActualEntry[];
+}
+
+export interface PlanVsActualEntry {
+    sectionType: string;
+    track?: string;
+    index: number;
+    status: 'COMPLETED' | 'ADVANCED_PAST' | 'NOT_REACHED' | 'SKIPPED' | string;
+    turnCount: number;
+    elapsedMinutes: number;
+    softBudgetMinutes: number;
+    note?: string;
 }
 
 export interface AttachmentUploadResponse {

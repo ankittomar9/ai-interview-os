@@ -258,7 +258,14 @@ public class InterviewSessionService {
     @Transactional(readOnly = true)
     public SessionResponse getSessionById(Long sessionId) {
         InterviewSession session = findSessionOrThrow(sessionId);
-        return SessionResponse.fromEntity(session);
+        SessionResponse resp = SessionResponse.fromEntity(session);
+        try {
+            var mongoDoc = mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId);
+            if (mongoDoc.isPresent() && mongoDoc.get().getSectionProgress() != null) {
+                return resp.withSectionProgress(mongoDoc.get().getSectionProgress());
+            }
+        } catch (Exception ignored) {}
+        return resp;
     }
 
     @Transactional(readOnly = true)
