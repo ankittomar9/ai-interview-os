@@ -77,6 +77,8 @@ interface ArenaShellProps {
   isRecording?: boolean;
   recordingSeconds?: number;
   recordingInterrupted?: boolean;
+  cameraActive?: boolean;
+  screenActive?: boolean;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
 }
@@ -92,7 +94,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking, voiceOutputEnabled,
     onToggleVoice, onMicToggle, interimTranscript = '', micError = null, onClearMicError,
     hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
-    isRecording, recordingSeconds, recordingInterrupted, isFocusMode = false, onToggleFocusMode
+    isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive,
+    isFocusMode = false, onToggleFocusMode
   } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
@@ -144,6 +147,11 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
               <span className={`w-2 h-2 rounded-full ${recordingInterrupted ? 'bg-danger animate-ping' : isRecording ? 'bg-danger animate-pulse' : 'bg-text-3'}`} />
               <span className="font-bold text-text-2">{recordingInterrupted ? 'REC INTERRUPTED' : isRecording ? 'REC' : 'STANDBY'}</span>
               {isRecording && <span className="text-text-3">({Math.floor((recordingSeconds || 0) / 60)}:{String((recordingSeconds || 0) % 60).padStart(2, '0')})</span>}
+              {isRecording && (cameraActive || screenActive) && (
+                <span className="text-text-3 border-l border-border pl-1.5 ml-0.5">
+                  {cameraActive && '🎥 Cam'} {screenActive && '· 🖥️ Screen'}
+                </span>
+              )}
             </div>
           )}
         </div>

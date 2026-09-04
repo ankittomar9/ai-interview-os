@@ -24,6 +24,7 @@ interface SetupScreenProps {
     provider: ModelProvider;
     apiKey: string;
     mode?: "INTERVIEW" | "PLAYGROUND";
+    recordScreen?: boolean;
   }) => void;
   isLoading: boolean;
   onOpenCatalog?: () => void;
@@ -42,6 +43,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   const [track, setTrack] = useState<InterviewTrack>("ALGORITHMS_DATA_STRUCTURES");
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("SENIOR");
   const [sessionMode, setSessionMode] = useState<"INTERVIEW" | "PLAYGROUND">("INTERVIEW");
+  const [recordScreen, setRecordScreen] = useState(false);
 
   const [provider, setProvider] = useState<ModelProvider>(() => {
     return (localStorage.getItem("app.provider") as ModelProvider) || "GROQ";
@@ -67,7 +69,8 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
       jobDescription,
       provider,
       apiKey,
-      mode: sessionMode
+      mode: sessionMode,
+      recordScreen
     });
   };
 
@@ -143,6 +146,22 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               apiKey={apiKey}
               onChangeApiKey={setApiKey}
             />
+
+            {/* Screen Recording Option (Opt-in) */}
+            <div className="rounded-lg border border-border/70 p-3 bg-surface/50 space-y-1">
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer text-text">
+                <input
+                  type="checkbox"
+                  checked={recordScreen}
+                  onChange={(e) => setRecordScreen(e.target.checked)}
+                  className="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                />
+                <span>🖥️ Also record my screen (shows code + research; stays on this machine)</span>
+              </label>
+              <p className="text-xs text-text-3 pl-6">
+                Est. storage: ~5–10 MB/min (screen) + ~3–5 MB/min (camera)
+              </p>
+            </div>
 
             {/* Action Bar */}
             <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/80">

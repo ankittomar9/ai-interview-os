@@ -1,50 +1,69 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+export type StreamKind = 'camera' | 'screen';
+
+interface QueuedChunk {
+  blob: Blob;
+  seq: number;
+  kind: StreamKind;
+  retries: number;
+}
+
 interface UseSessionRecorderProps {
   sessionId: number;
   isPlayground?: boolean;
   onInterrupted?: (reason: string) => void;
+  recordScreen?: boolean;
 }
 
 export function useSessionRecorder({
   sessionId,
   isPlayground = false,
-  onInterrupted
+  onInterrupted,
+  recordScreen = false
 }: UseSessionRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [uploadedChunks, setUploadedChunks] = useState(0);
   const [recordingInterrupted, setRecordingInterrupted] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [screenActive, setScreenActive] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const seqRef = useRef(0);
+  const cameraRecorderRef = useRef<MediaRecorder | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const cameraSeqRef = useRef(0);
+
+  const screenRecorderRef = useRef<MediaRecorder | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSeqRef = useRef(0);
+
   const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const failedChunksRef = useRef<Array<{ blob: Blob; seq: number; retries: number }>>([]);
+  const failedChunksRef = useRef<Array<QueuedChunk>>([]);
 
-  const createFormData = (blob: Blob, seq: number) => {
+  const createFormData = (blob: Blob, seq: number, kind: StreamKind) => {
     const formData = new FormData();
     formData.append('chunk', blob, `chunk_${seq}.webm`);
     formData.append('seq', String(seq));
+    formData.append('kind', kind);
     return formData;
   };
 
-  const uploadChunk = useCallback(async (blob: Blob, seq: number) => {
+  const uploadChunk = useCallback(async (blob: Blob, seq: number, kind: StreamKind) => {
     if (blob.size === 0) return;
     try {
-      const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${seq}`, {
+      const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${seq}&kind=${kind}`, {
         method: 'POST',
-        body: createFormData(blob, seq)
+        body: createFormData(blob, seq, kind)
       });
       if (res.ok) {
         setUploadedChunks((prev) => prev + 1);
       } else {
-        console.warn(`Recording chunk ${seq} upload failed with status ${res.status}, queuing for retry`);
-        failedChunksRef.current.push({ blob, seq, retries: 0 });
+        console.warn(`Recording ${kind} chunk ${seq} upload failed with status ${res.status}, queuing for retry`);
+        failedChunksRef.current.push({ blob, seq, kind, retries: 0 });
       }
     } catch (err) {
-      console.warn(`Recording chunk ${seq} network notice, queuing for retry:`, err);
-      failedChunksRef.current.push({ blob, seq, retries: 0 });
+      console.warn(`Recording ${kind} chunk ${seq} network notice, queuing for retry:`, err);
+      failedChunksRef.current.push({ blob, seq, kind, retries: 0 });
     }
   }, [sessionId]);
 
@@ -54,13 +73,15 @@ export function useSessionRecorder({
     for (const chunk of candidates) {
       if (chunk.retries >= 3) continue;
       try {
-        const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${chunk.seq}`, {
+        const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${chunk.seq}&kind=${chunk.kind}`, {
           method: 'POST',
-          body: createFormData(chunk.blob, chunk.seq)
+          body: createFormData(chunk.blob, chunk.seq, chunk.kind)
         });
         if (res.ok) {
           setUploadedChunks((prev) => prev + 1);
-          failedChunksRef.current = failedChunksRef.current.filter((c) => c.seq !== chunk.seq);
+          failedChunksRef.current = failedChunksRef.current.filter(
+            (c) => !(c.seq === chunk.seq && c.kind === chunk.kind)
+          );
         } else {
           chunk.retries++;
         }
@@ -78,6 +99,12 @@ export function useSessionRecorder({
     return () => clearInterval(retryInterval);
   }, [sessionId, isPlayground, retryFailedChunks]);
 
+  const pickMime = () => {
+    return MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+      ? 'video/webm;codecs=vp8'
+      : 'video/webm';
+  };
+
   useEffect(() => {
     if (isPlayground || !sessionId) return;
 
@@ -86,53 +113,94 @@ export function useSessionRecorder({
 
     const startRecording = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const cameraStream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 360, frameRate: 15 },
           audio: true
         });
 
         if (isCancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+          cameraStream.getTracks().forEach((t) => t.stop());
           return;
         }
 
-        streamRef.current = stream;
+        cameraStreamRef.current = cameraStream;
+        const cameraRec = new MediaRecorder(cameraStream, {
+          mimeType: pickMime(),
+          videoBitsPerSecond: 400000
+        });
+        cameraRecorderRef.current = cameraRec;
 
-        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-          ? 'video/webm;codecs=vp8'
-          : 'video/webm';
-
-        const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 400000 });
-        mediaRecorderRef.current = recorder;
-
-        recorder.ondataavailable = (event) => {
+        cameraRec.ondataavailable = (event) => {
           if (event.data && event.data.size > 0) {
-            const currentSeq = seqRef.current++;
+            const seq = cameraSeqRef.current++;
             const blob = event.data;
-            uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunk(blob, currentSeq));
+            uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunk(blob, seq, 'camera'));
           }
         };
 
-        recorder.onerror = (event: any) => {
-          console.error('MediaRecorder error event:', event);
+        cameraRec.onerror = (event: any) => {
+          console.error('Camera MediaRecorder error:', event);
           setRecordingInterrupted(true);
-          if (onInterrupted) onInterrupted('MediaRecorder runtime exception');
+          if (onInterrupted) onInterrupted('Camera recording error');
         };
 
-        recorder.onstop = () => {
-          setIsRecording(false);
+        cameraRec.onstop = () => {
+          setCameraActive(false);
         };
 
-        recorder.start(5000); // 5000ms timeslice chunks
+        cameraRec.start(5000);
+        setCameraActive(true);
         setIsRecording(true);
 
         timer = setInterval(() => {
           setRecordingSeconds((prev) => prev + 1);
         }, 1000);
       } catch (err: any) {
-        console.warn('Session recording initial capture notice:', err);
+        console.warn('Session camera recording initial capture notice:', err);
         setRecordingInterrupted(true);
         if (onInterrupted) onInterrupted(err.message || 'Webcam feed unavailable for recording');
+      }
+
+      if (recordScreen && !isCancelled) {
+        try {
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: 8 },
+            audio: false
+          });
+
+          if (isCancelled) {
+            screenStream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+
+          screenStreamRef.current = screenStream;
+          const screenRec = new MediaRecorder(screenStream, {
+            mimeType: pickMime(),
+            videoBitsPerSecond: 400000
+          });
+          screenRecorderRef.current = screenRec;
+
+          screenRec.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              const seq = screenSeqRef.current++;
+              const blob = event.data;
+              uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunk(blob, seq, 'screen'));
+            }
+          };
+
+          screenStream.getVideoTracks()[0].onended = () => {
+            if (screenRec.state !== 'inactive') {
+              try { screenRec.stop(); } catch {}
+            }
+            setScreenActive(false);
+          };
+
+          screenRec.start(5000);
+          setScreenActive(true);
+        } catch (err) {
+          console.warn('Screen recording consent denied or cancelled, continuing camera-only:', err);
+          setScreenActive(false);
+        }
       }
     };
 
@@ -141,23 +209,28 @@ export function useSessionRecorder({
     return () => {
       isCancelled = true;
       clearInterval(timer);
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try {
-          mediaRecorderRef.current.stop();
-        } catch (e) {
-          // ignore
+      [cameraRecorderRef, screenRecorderRef].forEach((ref) => {
+        if (ref.current && ref.current.state !== 'inactive') {
+          try { ref.current.stop(); } catch {}
         }
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-      }
+      });
+      [cameraStreamRef, screenStreamRef].forEach((ref) => {
+        if (ref.current) {
+          ref.current.getTracks().forEach((t) => t.stop());
+        }
+      });
+      setIsRecording(false);
+      setCameraActive(false);
+      setScreenActive(false);
     };
-  }, [sessionId, isPlayground, onInterrupted, uploadChunk]);
+  }, [sessionId, isPlayground, onInterrupted, recordScreen, uploadChunk]);
 
   return {
     isRecording,
     recordingSeconds,
     uploadedChunks,
-    recordingInterrupted
+    recordingInterrupted,
+    cameraActive,
+    screenActive
   };
 }

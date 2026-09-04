@@ -25,6 +25,7 @@ interface ArenaRoomProps {
   apiKey: string;
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   candidateName?: string;
+  recordScreen?: boolean;
   onFinish: () => void;
 }
 
@@ -36,6 +37,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   apiKey,
   sessionMode = 'INTERVIEW',
   candidateName,
+  recordScreen = false,
   onFinish
 }) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
@@ -115,15 +117,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   });
 
   // 7. Session Video Recording Engine
-  const recorder = useSessionRecorder({
-    sessionId,
-    isPlayground
-  });
+  const recorder = useSessionRecorder({ sessionId, isPlayground, recordScreen });
 
   // Handlers
-  const handleRunCode = async () => {
-    await runCode(code, language);
-  };
+  const handleRunCode = async () => { await runCode(code, language); };
 
   const handleSubmitSolution = async () => {
     const result = await submitSolution(code, language);
@@ -239,6 +236,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       isRecording={recorder.isRecording}
       recordingSeconds={recorder.recordingSeconds}
       recordingInterrupted={recorder.recordingInterrupted}
+      cameraActive={recorder.cameraActive}
+      screenActive={recorder.screenActive}
       isFocusMode={isFocusMode}
       onToggleFocusMode={toggleFocusMode}
     />
