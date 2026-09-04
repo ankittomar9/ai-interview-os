@@ -53,6 +53,13 @@ public class RubricService {
 
         ModelProvider provider = resolveProvider(configuredProvider);
         com.interviewos.ai.rubric.model.RubricSchema schema = com.interviewos.ai.rubric.model.RubricSchema.fromTrack(request.track());
+
+        // A7: Non-local primary provider requires strict purity gate check
+        if (provider != ModelProvider.OLLAMA && !allowCloudFallback) {
+            log.info("☁️ Cloud fallback disabled (strict-purity mode). Primary provider '{}' is external cloud. Using deterministic scoring.", provider);
+            return RubricResponse.emptyFallback(schema);
+        }
+
         AiClient resolvedClient;
         ModelProvider effectiveProvider = provider;
         try {
@@ -114,6 +121,7 @@ public class RubricService {
                     }
                 }
             } else {
+                egressTracker.recordCloudCall(provider.name() + "_RUBRIC_PRIMARY");
                 rawResponse = client.generateCompletion(
                         provider,
                         systemInstruction,

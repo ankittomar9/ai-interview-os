@@ -239,4 +239,78 @@ class RubricServiceTest {
         org.mockito.Mockito.verify(clientFactory, org.mockito.Mockito.never()).getClient(ModelProvider.GROQ);
         org.mockito.Mockito.verify(egressTracker, org.mockito.Mockito.never()).recordCloudCall(any());
     }
+
+    @Test
+    @DisplayName("evaluateRubric with Groq as primary skips cloud call when allow-cloud-fallback is false (strict-purity mode)")
+    void testEvaluateRubric_GroqPrimary_StrictPurity_SkipsCloudCall() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rubricService, "configuredProvider", "groq");
+        org.springframework.test.util.ReflectionTestUtils.setField(rubricService, "allowCloudFallback", false);
+
+        RubricEvaluationRequest request = new RubricEvaluationRequest(
+                "reverse-a-string",
+                "Reverse a string",
+                "ALGORITHMS_DATA_STRUCTURES",
+                "SENIOR",
+                List.of(new TurnDto("CANDIDATE", "EXPLANATION", "O(N) time", null)),
+                List.of(new ExecutionDto("PASSED", 5, 5, 80.0, 18.0)),
+                "class Main {}",
+                "java"
+        );
+
+        RubricResponse response = rubricService.evaluateRubric(request);
+
+        assertThat(response.llmGenerated()).isFalse();
+        assertThat(response.dimensions()).isEmpty();
+        org.mockito.Mockito.verify(clientFactory, org.mockito.Mockito.never()).getClient(any());
+        org.mockito.Mockito.verify(egressTracker, org.mockito.Mockito.never()).recordCloudCall(any());
+    }
+
+    @Test
+    @DisplayName("evaluateRubric with Groq as primary records GROQ_RUBRIC_PRIMARY egress before dispatch")
+    void testEvaluateRubric_GroqPrimary_PermissiveMode_RecordsEgressAndDispatches() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rubricService, "configuredProvider", "groq");
+        org.springframework.test.util.ReflectionTestUtils.setField(rubricService, "allowCloudFallback", true);
+
+        AiClient mockGroq = org.mockito.Mockito.mock(AiClient.class);
+        when(clientFactory.getClient(ModelProvider.GROQ)).thenReturn(mockGroq);
+
+        String groqJson = """
+                {
+                  "dimensions": [
+                    { "dimension": "REQUIREMENTS_CLARIFICATION", "score": 90, "rationale": "Clarified inputs", "evidence": "Does input contain spaces?" },
+                    { "dimension": "ALGORITHMIC_REASONING", "score": 95, "rationale": "Optimal O(N)", "evidence": "O(N) time and O(1) space" },
+                    { "dimension": "EDGE_CASE_THOROUGHNESS", "score": 88, "rationale": "Handled null and empty", "evidence": "if (str == null) return;" },
+                    { "dimension": "COMMUNICATION_CLARITY", "score": 92, "rationale": "Structured articulation", "evidence": "Let us step through..." },
+                    { "dimension": "CODE_QUALITY", "score": 95, "rationale": "Clean code", "evidence": "int left = 0;" }
+                  ],
+                  "strengths": ["Optimal solution"],
+                  "weaknesses": ["None notable"],
+                  "studyPlan": ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"],
+                  "executiveSummary": "Strong Hire candidate."
+                }
+                """;
+
+        when(mockGroq.generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("eval")))
+                .thenReturn(groqJson);
+
+        RubricEvaluationRequest request = new RubricEvaluationRequest(
+                "reverse-a-string",
+                "Reverse a string",
+                "ALGORITHMS_DATA_STRUCTURES",
+                "SENIOR",
+                List.of(new TurnDto("CANDIDATE", "EXPLANATION", "O(N) time", null)),
+                List.of(new ExecutionDto("PASSED", 5, 5, 80.0, 18.0)),
+                "class Main {}",
+                "java"
+        );
+
+        RubricResponse response = rubricService.evaluateRubric(request);
+
+        assertThat(response.llmGenerated()).isTrue();
+        assertThat(response.dimensions()).hasSize(5);
+        org.mockito.Mockito.verify(egressTracker, org.mockito.Mockito.times(1))
+                .recordCloudCall("GROQ_RUBRIC_PRIMARY");
+        org.mockito.Mockito.verify(mockGroq, org.mockito.Mockito.times(1))
+                .generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("eval"));
+    }
 }
