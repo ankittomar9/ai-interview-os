@@ -315,4 +315,49 @@ class AiOrchestratorServiceDialogueTest {
                 "AI should acknowledge pass and not revert to engine offline post-guard");
         assertEquals("WRAP_UP", response.recommendedAction());
     }
+
+    @Test
+    @DisplayName("AC-2.1: Prompt assembly INTRODUCTION instructions contain propose-and-wait contract and no time-based advance language")
+    void testPromptAssemblyIntroductionProposeAndWaitContract() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        org.mockito.ArgumentCaptor<String> sysPromptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(aiClient.generateCompletion(any(), sysPromptCaptor.capture(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Welcome Alice! What distributed systems have you worked with?",
+                          "followUpQuestion": null,
+                          "isSolutionComplete": false,
+                          "codeAnalysis": null,
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "EXPLAINING_APPROACH",
+                          "turnSummary": "Candidate gave background.",
+                          "recommendedAction": "PROPOSE_STAGE_ADVANCE"
+                        }
+                        """);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .candidateName("Alice")
+                .currentStage("INTRODUCTION")
+                .candidateExplanation("Hi, I am Alice, a backend engineer.")
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROPOSE_STAGE_ADVANCE", response.recommendedAction());
+
+        String capturedPrompt = sysPromptCaptor.getValue();
+        assertNotNull(capturedPrompt);
+
+        // Assert contract requirements:
+        assertTrue(capturedPrompt.contains("PROPOSE_STAGE_ADVANCE"), "Prompt schema must include PROPOSE_STAGE_ADVANCE");
+        assertTrue(capturedPrompt.contains("There is NO time limit on the introduction"), "Prompt must explicitly forbid time limits");
+        assertTrue(capturedPrompt.contains("MUST NOT set \"recommendedAction\": \"ADVANCE_STAGE\" during introduction unless the candidate has explicitly agreed"), "Prompt must require affirmative consent");
+        assertFalse(capturedPrompt.contains("Once the introduction exchange is complete, politely guide them: \"Great! Let's dive into our first coding challenge.\" and set \"recommendedAction\": \"ADVANCE_STAGE\""),
+                "Prompt must not contain unconditional auto-advance language");
+    }
 }

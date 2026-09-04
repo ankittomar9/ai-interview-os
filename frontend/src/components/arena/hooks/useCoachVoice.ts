@@ -54,6 +54,10 @@ async function convertBlobTo16kHzWav(blob: Blob): Promise<Blob> {
   }
 }
 
+// SPEC-008: Endpointing pacing hygiene: 2.0s sustained silence window before finalizing candidate speech turn.
+// Note: This is pacing hygiene for natural pauses, NOT a flow-advance timer.
+const ENDPOINTING_PACING_SILENCE_MS = 2000;
+
 interface UseCoachVoiceProps {
   onCandidateSpeechFinal?: (text: string) => void;
   onCandidateSpeechPartialSalvage?: (text: string) => void;
@@ -95,6 +99,8 @@ export function useCoachVoice({
   const ttsEndedAtRef = useRef<number>(0);
   const sessionOverlappedAiRef = useRef<boolean>(false);
   const interimTranscriptRef = useRef<string>('');
+  const endpointTimerRef = useRef<any>(null);
+  const pendingFinalSpeechRef = useRef<string>('');
 
   const toggleAiPanel = useCallback(() => setIsAiPanelOpen((prev) => !prev), []);
   const clearMicError = useCallback(() => setMicError(null), []);
@@ -113,9 +119,16 @@ export function useCoachVoice({
       isAiSpeakingRef.current = true;
       sessionOverlappedAiRef.current = true;
 
-      // Salvage pre-TTS captured interim speech
-      if (interimTranscriptRef.current && interimTranscriptRef.current.trim()) {
-        onCandidateSpeechPartialSalvageRef.current?.(interimTranscriptRef.current.trim());
+      if (endpointTimerRef.current) {
+        clearTimeout(endpointTimerRef.current);
+        endpointTimerRef.current = null;
+      }
+
+      // Salvage pre-TTS captured speech (both pending committed and interim)
+      const preSpeech = (pendingFinalSpeechRef.current + ' ' + interimTranscriptRef.current).trim();
+      if (preSpeech) {
+        onCandidateSpeechPartialSalvageRef.current?.(preSpeech);
+        pendingFinalSpeechRef.current = '';
         interimTranscriptRef.current = '';
         setInterimTranscript('');
       }
@@ -163,6 +176,11 @@ export function useCoachVoice({
 
   const stopListening = useCallback(() => {
     shouldListenRef.current = false;
+    if (endpointTimerRef.current) {
+      clearTimeout(endpointTimerRef.current);
+      endpointTimerRef.current = null;
+    }
+    pendingFinalSpeechRef.current = '';
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
       recognitionRef.current = null;
@@ -198,6 +216,11 @@ export function useCoachVoice({
         };
         recognition.onresult = (event: any) => {
           if (window.speechSynthesis?.speaking || isAiSpeakingRef.current || sessionOverlappedAiRef.current) {
+            if (endpointTimerRef.current) {
+              clearTimeout(endpointTimerRef.current);
+              endpointTimerRef.current = null;
+            }
+            pendingFinalSpeechRef.current = '';
             interimTranscriptRef.current = '';
             setInterimTranscript('');
             return;
@@ -209,12 +232,31 @@ export function useCoachVoice({
             if (event.results[i].isFinal) finalStr += tr + ' ';
             else interim += tr + ' ';
           }
-          interimTranscriptRef.current = interim.trim();
-          if (interim) setInterimTranscript(interim.trim());
+
           if (finalStr.trim()) {
-            interimTranscriptRef.current = '';
-            setInterimTranscript('');
-            onCandidateSpeechFinalRef.current?.(finalStr.trim());
+            pendingFinalSpeechRef.current = (pendingFinalSpeechRef.current + ' ' + finalStr.trim()).trim();
+          }
+
+          const combinedDisplay = [pendingFinalSpeechRef.current, interim.trim()].filter(Boolean).join(' ');
+          interimTranscriptRef.current = combinedDisplay;
+          if (combinedDisplay) setInterimTranscript(combinedDisplay);
+
+          if (endpointTimerRef.current) {
+            clearTimeout(endpointTimerRef.current);
+            endpointTimerRef.current = null;
+          }
+
+          if (pendingFinalSpeechRef.current) {
+            // ENDPOINTING PACING HYGIENE (SPEC-008): 2.0s silence window before finalizing speech utterance. NOT a flow-advance timer.
+            endpointTimerRef.current = setTimeout(() => {
+              const textToCommit = pendingFinalSpeechRef.current.trim();
+              pendingFinalSpeechRef.current = '';
+              interimTranscriptRef.current = '';
+              setInterimTranscript('');
+              if (textToCommit && !isAiSpeakingRef.current && !sessionOverlappedAiRef.current) {
+                onCandidateSpeechFinalRef.current?.(textToCommit);
+              }
+            }, ENDPOINTING_PACING_SILENCE_MS);
           }
         };
         recognition.onerror = (event: any) => {

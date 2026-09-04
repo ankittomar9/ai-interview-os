@@ -185,6 +185,25 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                   {m.timestamp && <span className="text-text-3 font-normal text-[9px]">{m.timestamp}</span>}
                 </div>
                 <div className="whitespace-pre-wrap">{m.content}</div>
+                {m.metadata?.recommendedAction === "PROPOSE_STAGE_ADVANCE" && idx === messages.length - 1 && onSend && (
+                  <div className="mt-2.5 pt-2 border-t border-border flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-text-2">Move on to coding?</span>
+                    <button
+                      type="button"
+                      onClick={() => onSend("Yes, let's move on to coding.")}
+                      className="px-2.5 py-1 rounded text-[11px] font-bold bg-primary text-on-accent hover:bg-primary/90 transition-colors cursor-pointer"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSend("Not yet, I'd like to share a bit more.")}
+                      className="px-2.5 py-1 rounded text-[11px] font-medium bg-surface text-text-2 hover:bg-elevated border border-border transition-colors cursor-pointer"
+                    >
+                      Not yet
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {isAiResponding && (

@@ -258,7 +258,7 @@ public class AiOrchestratorService {
                       "areasToImprove": ["Area 1"],
                       "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
                       "turnSummary": "Concise summary of this candidate turn in <= 25 words",
-                      "recommendedAction": "PROBE_DEEPER | OFFER_HINT | ADVANCE_STAGE | ANSWER_CLARIFICATION"
+                      "recommendedAction": "PROBE_DEEPER | OFFER_HINT | PROPOSE_STAGE_ADVANCE | ADVANCE_STAGE | ANSWER_CLARIFICATION"
                     }
                     """.formatted(
                     memory.runningSummary(),
@@ -293,9 +293,12 @@ public class AiOrchestratorService {
                     This is the INTRODUCTION stage. Do NOT present, evaluate, or interrogate coding problems yet.
                     Welcome the candidate warmly by their first name, ask about their engineering background,
                     recent systems or projects they have built, and what they are looking for in their next role.
-                    Keep the conversation natural, encouraging, and conversational (2-3 exchanges).
+                    Keep the conversation natural, encouraging, and conversational.
+                    There is NO time limit on the introduction; slow and accented speakers get as long as they need.
                     Do NOT jump into algorithmic complexity or code interrogation until the introduction is finished.
-                    Once the introduction exchange is complete, politely guide them: "Great! Let's dive into our first coding challenge." and set "recommendedAction": "ADVANCE_STAGE".
+                    When the candidate has shared their background, politely propose moving on: "Great! Shall we dive into our first coding challenge?" and set "recommendedAction": "PROPOSE_STAGE_ADVANCE".
+                    You MUST NOT set "recommendedAction": "ADVANCE_STAGE" during introduction unless the candidate has explicitly agreed or affirmed moving on ("yes", "sure", "let's go", "ready").
+                    If the candidate says "not yet", has more to say, or asks a question, acknowledge warmly, keep listening, and do NOT advance stage.
                     """);
         }
 
