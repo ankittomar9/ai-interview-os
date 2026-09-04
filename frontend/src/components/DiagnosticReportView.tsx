@@ -26,6 +26,7 @@ import { RadarChart } from './ui/RadarChart';
 import { RubricCard } from './ui/RubricCard';
 import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
+import { ReplayStreamToggle } from './ui/ReplayStreamToggle';
 
 interface Props {
   report: DiagnosticReportResponse;
@@ -39,6 +40,15 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     candidateName?: string;
     transcript?: SessionMessage[];
   } | null>(null);
+  const [manifest, setManifest] = useState<{
+    sessionId?: number;
+    isComplete?: boolean;
+    streams?: {
+      camera?: { chunks: number; bytes: number; startedAt: string; endedAt: string };
+      screen?: { chunks: number; bytes: number; startedAt: string; endedAt: string };
+    };
+  } | null>(null);
+  const [replayStreamKind, setReplayStreamKind] = useState<'camera' | 'screen'>('camera');
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.report') === 'true');
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoCurrentTime, setVideoCurrentTime] = useState<number>(0);
@@ -56,8 +66,27 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
       fetchSessionTranscript(report.sessionId)
         .then((data) => setTranscriptData(data))
         .catch((err) => console.warn('Could not load transcript records:', err));
+
+      fetch(`/api/v1/sessions/${report.sessionId}/recordings/manifest`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) {
+            setManifest(data);
+            if (!data.streams?.camera && data.streams?.screen) {
+              setReplayStreamKind('screen');
+            }
+          }
+        })
+        .catch((err) => console.warn('Could not load recording manifest:', err));
     }
   }, [report.sessionId]);
+
+  const availableStreams = useMemo(() => {
+    return {
+      camera: !manifest || !manifest.streams || !!manifest.streams.camera,
+      screen: !!manifest?.streams?.screen
+    };
+  }, [manifest]);
 
   const transcriptList = useMemo((): SessionMessage[] => {
     if (!transcriptData) return [];
@@ -622,26 +651,34 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                     Continuous video &amp; audio proctor stream recorded across session chunks in MongoDB GridFS (7-day lifecycle retention).
                   </p>
                 </div>
-                <a
-                  href={`/api/v1/sessions/${report.sessionId}/recordings/download`}
-                  download={`session-${report.sessionId}-recording.webm`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-primary text-on-accent hover:bg-primary/90 transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download .webm</span>
-                </a>
+                <div className="flex items-center gap-3">
+                  <ReplayStreamToggle
+                    available={availableStreams}
+                    value={replayStreamKind}
+                    onChange={setReplayStreamKind}
+                  />
+                  <a
+                    href={`/api/v1/sessions/${report.sessionId}/recordings/download?kind=${replayStreamKind}`}
+                    download={`session-${report.sessionId}-${replayStreamKind}-recording.webm`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-primary text-on-accent hover:bg-primary/90 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download {replayStreamKind === 'screen' ? 'Screen' : 'Camera'} .webm</span>
+                  </a>
+                </div>
               </div>
 
               <div className="w-full bg-black rounded-lg overflow-hidden border border-border aspect-video max-h-[500px] flex items-center justify-center">
                 <video
                   ref={videoRef}
+                  key={replayStreamKind}
                   controls
                   playsInline
                   onTimeUpdate={() => {
                     if (videoRef.current) setVideoCurrentTime(videoRef.current.currentTime);
                   }}
                   className="w-full h-full object-contain"
-                  src={`/api/v1/sessions/${report.sessionId}/recordings/stream`}
+                  src={`/api/v1/sessions/${report.sessionId}/recordings/stream?kind=${replayStreamKind}`}
                 />
               </div>
 
