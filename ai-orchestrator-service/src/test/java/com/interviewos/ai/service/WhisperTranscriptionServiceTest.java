@@ -101,4 +101,14 @@ class WhisperTranscriptionServiceTest {
         assertEquals("MISSING_API_KEY", result.get("status"));
         assertEquals("", result.get("text"));
     }
+
+    @Test
+    @DisplayName("assemblePrompt biases proper nouns including candidate name and target company")
+    void testAssemblePromptWithProperNounContextBiasing() {
+        String prompt = transcriptionService.assemblePrompt("Ankit Singh Tomar, InterviewOS, ALGORITHMS_DATA_STRUCTURES", null);
+        assertNotNull(prompt);
+        assertTrue(prompt.contains("Ankit Singh Tomar"));
+        assertTrue(prompt.contains("InterviewOS"));
+        assertEquals("Ankit Singh Tomar, InterviewOS, ALGORITHMS_DATA_STRUCTURES", prompt);
+    }
 }

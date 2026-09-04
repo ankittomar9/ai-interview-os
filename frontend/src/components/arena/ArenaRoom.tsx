@@ -93,7 +93,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     onCandidateSpeechFinal: (text) => dialogue.triggerCandidateTurn(text, code),
     onCandidateSpeechPartialSalvage: (text) => dialogue.setChatInput((prev) => mergeSalvageText(prev, text)),
     apiKey,
-    promptContext: [activeTrack, activeQuestion?.title, activeQuestion?.difficulty].filter(Boolean).join(', '),
+    promptContext: [candidateName, activeTrack, activeQuestion?.title, activeQuestion?.difficulty].filter(Boolean).join(', '),
     sessionId
   });
 
