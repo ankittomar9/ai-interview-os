@@ -38,6 +38,7 @@ export interface AiAssistantPanelProps {
   onMicToggle?: () => void;
   isListening?: boolean;
   interimTranscript?: string;
+  salvageHint?: string | null;
   micError?: string | null;
   onClearMicError?: () => void;
   transcript?: TranscriptTurn[];
@@ -63,6 +64,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
   onMicToggle,
   isListening = false,
   interimTranscript = "",
+  salvageHint = null,
   micError = null,
   onClearMicError,
   transcript = [],
@@ -261,6 +263,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             onToggleListening={onMicToggle || (() => {})}
             isAiResponding={isAiResponding}
             interimTranscript={interimTranscript}
+            salvageHint={salvageHint}
             micError={micError}
             onClearMicError={onClearMicError}
             placeholder="Speak or type your response..."

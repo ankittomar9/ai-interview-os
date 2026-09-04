@@ -8,13 +8,12 @@ import { useCoachVoice } from './hooks/useCoachVoice';
 import { useSessionRecorder } from '../../hooks/useSessionRecorder';
 import { ArenaShell } from './ArenaShell';
 import { getPersona } from '../../lib/personas';
+import { mergeSalvageText } from '../../lib/salvage-dedup';
 import type { InterviewStage } from '../StageStepper';
 
 const STAGE_TRACK_MAP: Record<InterviewStage, InterviewTrack> = {
-  INTRODUCTION: 'BEHAVIORAL_STAR',
-  CORE_TECH: 'SPRING_LLD',
-  CODING_DSA: 'ALGORITHMS_DATA_STRUCTURES',
-  SYSTEM_DESIGN: 'SYSTEM_DESIGN'
+  INTRODUCTION: 'BEHAVIORAL_STAR', CORE_TECH: 'SPRING_LLD',
+  CODING_DSA: 'ALGORITHMS_DATA_STRUCTURES', SYSTEM_DESIGN: 'SYSTEM_DESIGN'
 };
 
 interface ArenaRoomProps {
@@ -73,11 +72,16 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     sessionId
   });
 
-  // 2. Code State
-  const [code, setCode] = useState(activeQuestion.starterCode || '');
-  const [language, setLanguage] = useState(
-    activeTrack === 'SQL' ? 'sql' : 'java'
-  );
+  // 2. Code State (Keyed per slug to eliminate A10 cross-question bleed)
+  const activeSlug = activeQuestion.problemSlug || activeQuestion.slug || `q_${activeQuestionIndex}`;
+  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({
+    [activeSlug]: activeQuestion.starterCode || ''
+  }));
+  const code = codeMap[activeSlug] ?? (activeQuestion.starterCode || '');
+  const setCode = useCallback((newCode: string) => {
+    setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode }));
+  }, [activeSlug]);
+  const [language, setLanguage] = useState(activeTrack === 'SQL' ? 'sql' : 'java');
 
   // 3. Execution Engine
   const { isExecuting, executionResult, runCode, submitSolution } = useExecution({
@@ -87,7 +91,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   // 4. Voice Management
   const voice = useCoachVoice({
     onCandidateSpeechFinal: (text) => dialogue.triggerCandidateTurn(text, code),
-    onCandidateSpeechPartialSalvage: (text) => dialogue.setChatInput((prev) => prev ? `${prev} ${text}` : text),
+    onCandidateSpeechPartialSalvage: (text) => dialogue.setChatInput((prev) => mergeSalvageText(prev, text)),
     apiKey,
     promptContext: [activeTrack, activeQuestion?.title, activeQuestion?.difficulty].filter(Boolean).join(', '),
     sessionId

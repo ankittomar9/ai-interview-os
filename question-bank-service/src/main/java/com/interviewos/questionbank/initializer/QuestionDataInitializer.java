@@ -836,18 +836,8 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                         return;
                                     }
                                     String s = scanner.next();
-                                    Stack<Character> stack = new Stack<>();
-                                    boolean valid = true;
-                                    for (char c : s.toCharArray()) {
-                                        if (c == '(') stack.push(')');
-                                        else if (c == '{') stack.push('}');
-                                        else if (c == '[') stack.push(']');
-                                        else if (stack.isEmpty() || stack.pop() != c) {
-                                            valid = false;
-                                            break;
-                                        }
-                                    }
-                                    System.out.println(valid && stack.isEmpty());
+                                    // TODO: Implement solution to determine if brackets in 's' are valid
+                                    System.out.println(false);
                                 }
                             }
                             """)
@@ -863,18 +853,8 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                                 return;
                                             }
                                             String s = scanner.next();
-                                            Stack<Character> stack = new Stack<>();
-                                            boolean valid = true;
-                                            for (char c : s.toCharArray()) {
-                                                if (c == '(') stack.push(')');
-                                                else if (c == '{') stack.push('}');
-                                                else if (c == '[') stack.push(']');
-                                                else if (stack.isEmpty() || stack.pop() != c) {
-                                                    valid = false;
-                                                    break;
-                                                }
-                                            }
-                                            System.out.println(valid && stack.isEmpty());
+                                            // TODO: Implement solution to determine if brackets in 's' are valid
+                                            System.out.println(false);
                                         }
                                     }
                                     """,
@@ -886,17 +866,8 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                         if not line:
                                             print("true")
                                             return
-                                        stack = []
-                                        mapping = {')': '(', '}': '{', ']': '['}
-                                        valid = True
-                                        for char in line:
-                                            if char in mapping.values():
-                                                stack.append(char)
-                                            elif char in mapping:
-                                                if not stack or stack.pop() != mapping[char]:
-                                                    valid = False
-                                                    break
-                                        print("true" if valid and not stack else "false")
+                                        # TODO: Implement solution to determine if brackets in 'line' are valid
+                                        print("false")
 
                                     if __name__ == '__main__':
                                         main()
