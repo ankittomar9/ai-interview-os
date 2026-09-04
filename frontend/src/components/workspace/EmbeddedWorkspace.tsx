@@ -124,7 +124,8 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
       const result: ExecutionResultResponse = await executeProject(sessionId, {
         problemSlug,
         source: 'workspace',
-        workspaceVolume: volumeName
+        workspaceVolume: volumeName,
+        submit: false
       });
 
       const elapsed = (performance.now() - startTime).toFixed(0);

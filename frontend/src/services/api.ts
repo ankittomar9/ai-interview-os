@@ -371,6 +371,7 @@ export const executeCode = async (
         language: string;
         codeSnippet: string;
         problemSlug?: string;
+        submit?: boolean;
     }
 ): Promise<ExecutionResultResponse> => {
     const res = await fetch(`${SESSION_API}/${sessionId}/execute`, {
@@ -389,6 +390,7 @@ export const executeProject = async (
         files?: Record<string, string>;
         source?: 'inline' | 'workspace';
         workspaceVolume?: string;
+        submit?: boolean;
     }
 ): Promise<ExecutionResultResponse> => {
     const res = await fetch(`${SESSION_API}/${sessionId}/execute-project`, {

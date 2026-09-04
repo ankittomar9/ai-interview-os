@@ -9,5 +9,15 @@ public record ExecuteCodeRequest(
         @NotBlank(message = "Code snippet is required")
         String codeSnippet,
 
-        String problemSlug
-) {}
+        String problemSlug,
+
+        Boolean submit
+) {
+    public ExecuteCodeRequest(String language, String codeSnippet, String problemSlug) {
+        this(language, codeSnippet, problemSlug, false);
+    }
+
+    public boolean isSubmit() {
+        return Boolean.TRUE.equals(submit);
+    }
+}

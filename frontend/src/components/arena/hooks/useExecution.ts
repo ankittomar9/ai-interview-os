@@ -30,7 +30,8 @@ export function useExecution({
       const response: ExecutionResultResponse = await executeCode(sessionId, {
         language,
         codeSnippet: code,
-        problemSlug: slug
+        problemSlug: slug,
+        submit: false
       });
 
       if (response.status === 'ENGINE_UNAVAILABLE') {
@@ -45,7 +46,6 @@ export function useExecution({
           rawOutput: response.stderr || 'The code execution engine is temporarily offline. Your code is not marked wrong — the platform cannot verify it right now. Please try again in a moment.'
         };
         setExecutionResult(unavailableResult);
-        if (onCodeRunRecorded) onCodeRunRecorded();
         return unavailableResult;
       }
 
@@ -92,7 +92,6 @@ export function useExecution({
       };
 
       setExecutionResult(result);
-      if (onCodeRunRecorded) onCodeRunRecorded();
       return result;
     } catch (err: any) {
       const failedResult: ExecutionResult = {
@@ -105,7 +104,7 @@ export function useExecution({
     } finally {
       setIsExecuting(false);
     }
-  }, [sessionId, activeQuestion, onCodeRunRecorded]);
+  }, [sessionId, activeQuestion]);
 
   const submitSolution = useCallback(async (code: string, language: string) => {
     setIsExecuting(true);
@@ -115,7 +114,8 @@ export function useExecution({
       const response = await executeCode(sessionId, {
         language,
         codeSnippet: code,
-        problemSlug: slug
+        problemSlug: slug,
+        submit: true
       });
 
       const passed = response.status === 'PASSED' || response.status === 'ACCEPTED';
@@ -138,6 +138,7 @@ export function useExecution({
       }));
 
       const newSub = saveSubmission(sessionId, slug, {
+        type: 'SUBMIT',
         language,
         status: subStatus,
         runtimeMs: response.executionTimeMs || 0,
@@ -151,11 +152,12 @@ export function useExecution({
 
       setSubmissions((prev) => [newSub, ...prev]);
       setActiveExecutionTab('submissions');
+      if (onCodeRunRecorded) onCodeRunRecorded();
       return newSub;
     } finally {
       setIsExecuting(false);
     }
-  }, [sessionId, activeQuestion]);
+  }, [sessionId, activeQuestion, onCodeRunRecorded]);
 
   const resetExecution = useCallback(() => {
     setExecutionResult(null);

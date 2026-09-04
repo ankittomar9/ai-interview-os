@@ -23,6 +23,7 @@ export interface SubmissionRecord {
   at: string; // ISO date string
   language: string;
   status: SubmissionStatus;
+  type?: 'RUN' | 'SUBMIT';
   runtimeMs: number;
   memoryMb: number;
   passedTests: number;

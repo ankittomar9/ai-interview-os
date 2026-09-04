@@ -45,7 +45,9 @@ public class CodeExecutionService {
         Map<String, String> candidateFiles = Map.of("Solution", request.codeSnippet());
 
         ExecutionResultResponse result = runner.run(sessionId, problem, candidateFiles, request.language());
-        recordExecutionTurn(sessionId, request.problemSlug(), result, request.codeSnippet());
+        if (Boolean.TRUE.equals(request.submit())) {
+            recordExecutionTurn(sessionId, request.problemSlug(), result, request.codeSnippet());
+        }
         return result;
     }
 
@@ -73,11 +75,15 @@ public class CodeExecutionService {
                     ? request.workspaceVolume()
                     : "ws_" + sessionId;
             result = runner.runWithVolume(sessionId, problem, volumeName);
-            recordExecutionTurn(sessionId, request.problemSlug(), result, "[Workspace Volume Execution: " + volumeName + "]");
+            if (Boolean.TRUE.equals(request.submit())) {
+                recordExecutionTurn(sessionId, request.problemSlug(), result, "[Workspace Volume Execution: " + volumeName + "]");
+            }
         } else {
             Map<String, String> candidateFiles = request.files() != null ? request.files() : Map.of();
             result = runner.run(sessionId, problem, candidateFiles);
-            recordExecutionTurn(sessionId, request.problemSlug(), result, "[Multi-file Project Submission]");
+            if (Boolean.TRUE.equals(request.submit())) {
+                recordExecutionTurn(sessionId, request.problemSlug(), result, "[Multi-file Project Submission]");
+            }
         }
 
         return result;
