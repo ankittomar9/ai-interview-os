@@ -54,7 +54,7 @@ class CodeExecutionServiceTest {
     }
 
     @Test
-    @DisplayName("AC-3.1: executeCode with submit=false must NOT record a turn in transcript")
+    @DisplayName("AC-3.1: executeCode with submit=false records in submissionsLedger but NOT in transcript")
     void testExecuteCode_whenSubmitFalse_doesNotRecordSessionMessage() {
         ExecuteCodeRequest request = new ExecuteCodeRequest(
                 "java",
@@ -62,6 +62,12 @@ class CodeExecutionServiceTest {
                 "problem-slug",
                 false
         );
+
+        InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .transcript(new ArrayList<>())
+                .submissionsLedger(new ArrayList<>())
+                .build();
 
         when(questionBankClient.fetchProblemBySlug("problem-slug"))
                 .thenReturn(Optional.of(ProblemDocument.builder().buildProfile("STANDALONE_DSA").build()));
@@ -73,17 +79,26 @@ class CodeExecutionServiceTest {
                         .totalTests(3)
                         .executionTimeMs(15.0)
                         .build());
+        when(sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(sessionDoc));
 
         ExecutionResultResponse response = codeExecutionService.executeCode(1L, request);
 
         assertNotNull(response);
         assertEquals("PASSED", response.status());
-        verify(sessionMongoRepository, never()).findFirstBySessionIdOrderByCreatedAtDesc(any());
-        verify(sessionMongoRepository, never()).save(any());
+
+        ArgumentCaptor<InterviewSessionDocument> captor = ArgumentCaptor.forClass(InterviewSessionDocument.class);
+        verify(sessionMongoRepository, times(1)).save(captor.capture());
+
+        InterviewSessionDocument saved = captor.getValue();
+        assertEquals(0, saved.getTranscript().size(), "Transcript must NOT contain turn when submit=false");
+        assertEquals(1, saved.getSubmissionsLedger().size(), "Submissions ledger must record RUN attempt");
+        assertEquals("RUN", saved.getSubmissionsLedger().get(0).getAction());
+        assertEquals("PASSED", saved.getSubmissionsLedger().get(0).getStatus());
     }
 
     @Test
-    @DisplayName("AC-3.1: executeCode with submit=true must record exactly one CODE_EXECUTION turn with code snapshot")
+    @DisplayName("AC-3.1: executeCode with submit=true must record exactly one CODE_EXECUTION turn and one SUBMIT in ledger")
     void testExecuteCode_whenSubmitTrue_recordsCodeExecutionTurnWithCodeSnapshot() {
         String code = "public class Sol { public int solve() { return 42; } }";
         ExecuteCodeRequest request = new ExecuteCodeRequest(
@@ -96,6 +111,7 @@ class CodeExecutionServiceTest {
         InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
                 .sessionId(1L)
                 .transcript(new ArrayList<>())
+                .submissionsLedger(new ArrayList<>())
                 .build();
 
         when(questionBankClient.fetchProblemBySlug("two-sum"))
@@ -126,6 +142,9 @@ class CodeExecutionServiceTest {
         assertEquals("CANDIDATE", turn.getSenderRole());
         assertEquals(code, turn.getCodeSnippet());
         assertTrue(turn.getContent().contains("5/5 tests passed"));
+
+        assertEquals(1, saved.getSubmissionsLedger().size());
+        assertEquals("SUBMIT", saved.getSubmissionsLedger().get(0).getAction());
     }
 
     @Test
@@ -141,6 +160,7 @@ class CodeExecutionServiceTest {
         InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
                 .sessionId(1L)
                 .transcript(new ArrayList<>())
+                .submissionsLedger(new ArrayList<>())
                 .build();
 
         when(questionBankClient.fetchProblemBySlug("two-sum"))
@@ -171,10 +191,13 @@ class CodeExecutionServiceTest {
         assertEquals("ENGINE_ERROR", turn.getMessageType());
         assertEquals("SYSTEM", turn.getSenderRole());
         assertTrue(turn.getContent().contains("ENGINE_UNAVAILABLE"));
+
+        assertEquals(1, saved.getSubmissionsLedger().size());
+        assertEquals("SUBMIT", saved.getSubmissionsLedger().get(0).getAction());
     }
 
     @Test
-    @DisplayName("AC-3.1: executeProject with submit=false must NOT record a turn in transcript")
+    @DisplayName("AC-3.1: executeProject with submit=false records in submissionsLedger but NOT in transcript")
     void testExecuteProject_whenSubmitFalse_doesNotRecordSessionMessage() {
         ExecuteProjectRequest request = new ExecuteProjectRequest(
                 "lld-order-service",
@@ -183,6 +206,12 @@ class CodeExecutionServiceTest {
                 null,
                 false
         );
+
+        InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .transcript(new ArrayList<>())
+                .submissionsLedger(new ArrayList<>())
+                .build();
 
         when(questionBankClient.fetchProblemBySlug("lld-order-service"))
                 .thenReturn(Optional.of(ProblemDocument.builder().buildProfile("MULTI_FILE_PROJECT").build()));
@@ -193,11 +222,64 @@ class CodeExecutionServiceTest {
                         .passedTests(4)
                         .totalTests(4)
                         .build());
+        when(sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(sessionDoc));
 
         ExecutionResultResponse response = codeExecutionService.executeProject(1L, request);
 
         assertNotNull(response);
-        verify(sessionMongoRepository, never()).findFirstBySessionIdOrderByCreatedAtDesc(any());
-        verify(sessionMongoRepository, never()).save(any());
+        ArgumentCaptor<InterviewSessionDocument> captor = ArgumentCaptor.forClass(InterviewSessionDocument.class);
+        verify(sessionMongoRepository, times(1)).save(captor.capture());
+
+        InterviewSessionDocument saved = captor.getValue();
+        assertEquals(0, saved.getTranscript().size());
+        assertEquals(1, saved.getSubmissionsLedger().size());
+        assertEquals("RUN", saved.getSubmissionsLedger().get(0).getAction());
+    }
+
+    @Test
+    @DisplayName("SPEC-PLAN-2 A15: 3 Runs + 1 Submit results in exactly 1 transcript execution turn and RUN: 3 / SUBMIT: 1 in ledger")
+    void testThreeRunsAndOneSubmit_resultsInOneTranscriptTurnAndFourLedgerEntries() {
+        InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .transcript(new ArrayList<>())
+                .submissionsLedger(new ArrayList<>())
+                .build();
+
+        when(questionBankClient.fetchProblemBySlug("valid-parentheses"))
+                .thenReturn(Optional.of(ProblemDocument.builder().buildProfile("STANDALONE_DSA").build()));
+        when(trackRunner.supports(any())).thenReturn(true);
+        when(trackRunner.run(eq(1L), any(), any(), eq("java")))
+                .thenReturn(ExecutionResultResponse.builder()
+                        .status("PASSED")
+                        .passedTests(3)
+                        .totalTests(3)
+                        .executionTimeMs(262.0)
+                        .build());
+        when(sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(sessionDoc));
+
+        // 3 consecutive "Run Tests" (submit = false)
+        for (int i = 0; i < 3; i++) {
+            ExecuteCodeRequest runReq = new ExecuteCodeRequest("java", "class Sol { run " + i + " }", "valid-parentheses", false);
+            codeExecutionService.executeCode(1L, runReq);
+        }
+
+        // 1 final "Submit Solution" (submit = true)
+        ExecuteCodeRequest submitReq = new ExecuteCodeRequest("java", "class Sol { submit solution }", "valid-parentheses", true);
+        codeExecutionService.executeCode(1L, submitReq);
+
+        // Verification:
+        // 1. Transcript has exactly ONE CODE_EXECUTION turn
+        assertEquals(1, sessionDoc.getTranscript().size(), "Must have exactly 1 transcript turn from the submit");
+        assertEquals("CODE_EXECUTION", sessionDoc.getTranscript().get(0).getMessageType());
+        assertTrue(sessionDoc.getTranscript().get(0).getCodeSnippet().contains("submit solution"));
+
+        // 2. Submissions ledger has exactly 4 entries: 3 RUN, 1 SUBMIT
+        assertEquals(4, sessionDoc.getSubmissionsLedger().size(), "Must have 4 total attempts in ledger");
+        long runCount = sessionDoc.getSubmissionsLedger().stream().filter(e -> "RUN".equals(e.getAction())).count();
+        long submitCount = sessionDoc.getSubmissionsLedger().stream().filter(e -> "SUBMIT".equals(e.getAction())).count();
+        assertEquals(3, runCount, "Submissions ledger must have exactly 3 RUN entries");
+        assertEquals(1, submitCount, "Submissions ledger must have exactly 1 SUBMIT entry");
     }
 }

@@ -326,6 +326,12 @@ public class InterviewSessionService {
                 .toList();
     }
 
+    public List<InterviewSessionDocument.SubmissionEntry> getSubmissions(Long sessionId) {
+        return mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)
+                .map(InterviewSessionDocument::getSubmissionsLedger)
+                .orElse(List.of());
+    }
+
     @Transactional
     public SessionResponse completeSession(Long sessionId) {
         InterviewSession session = findSessionOrThrow(sessionId);

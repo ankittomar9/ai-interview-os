@@ -60,6 +60,9 @@ public class InterviewSessionDocument {
     private List<TranscriptTurn> transcript = new ArrayList<>();
 
     @Builder.Default
+    private List<SubmissionEntry> submissionsLedger = new ArrayList<>();
+
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime startedAt;
@@ -90,5 +93,22 @@ public class InterviewSessionDocument {
         private Integer pasteCount;
         private Integer tabSwitchCount;
         private Integer echoFilteredCount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SubmissionEntry {
+        private String id;
+        private String problemSlug;
+        private String action; // "RUN" or "SUBMIT"
+        private String status;
+        private int passedTests;
+        private int totalTests;
+        private double executionTimeMs;
+        private double memoryUsedMb;
+        private String codeSnippet;
+        private LocalDateTime timestamp;
     }
 }

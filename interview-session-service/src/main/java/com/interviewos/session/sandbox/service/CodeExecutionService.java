@@ -45,9 +45,7 @@ public class CodeExecutionService {
         Map<String, String> candidateFiles = Map.of("Solution", request.codeSnippet());
 
         ExecutionResultResponse result = runner.run(sessionId, problem, candidateFiles, request.language());
-        if (Boolean.TRUE.equals(request.submit())) {
-            recordExecutionTurn(sessionId, request.problemSlug(), result, request.codeSnippet());
-        }
+        recordExecution(sessionId, request.problemSlug(), result, request.codeSnippet(), Boolean.TRUE.equals(request.submit()));
         return result;
     }
 
@@ -70,20 +68,17 @@ public class CodeExecutionService {
         TrackRunner runner = findRunner(problem);
 
         ExecutionResultResponse result;
+        boolean isSubmit = Boolean.TRUE.equals(request.submit());
         if (request.isWorkspaceSource()) {
             String volumeName = request.workspaceVolume() != null && !request.workspaceVolume().isBlank()
                     ? request.workspaceVolume()
                     : "ws_" + sessionId;
             result = runner.runWithVolume(sessionId, problem, volumeName);
-            if (Boolean.TRUE.equals(request.submit())) {
-                recordExecutionTurn(sessionId, request.problemSlug(), result, "[Workspace Volume Execution: " + volumeName + "]");
-            }
+            recordExecution(sessionId, request.problemSlug(), result, "[Workspace Volume Execution: " + volumeName + "]", isSubmit);
         } else {
             Map<String, String> candidateFiles = request.files() != null ? request.files() : Map.of();
             result = runner.run(sessionId, problem, candidateFiles);
-            if (Boolean.TRUE.equals(request.submit())) {
-                recordExecutionTurn(sessionId, request.problemSlug(), result, "[Multi-file Project Submission]");
-            }
+            recordExecution(sessionId, request.problemSlug(), result, "[Multi-file Project Submission]", isSubmit);
         }
 
         return result;
@@ -96,40 +91,64 @@ public class CodeExecutionService {
                 .orElseThrow(() -> new IllegalStateException("No compatible TrackRunner found for problem buildProfile: " + problem.getBuildProfile()));
     }
 
-    private void recordExecutionTurn(Long sessionId, String slug, ExecutionResultResponse result, String codeSnippet) {
+    private void recordExecution(Long sessionId, String slug, ExecutionResultResponse result, String codeSnippet, boolean submit) {
         try {
             sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
-                if (doc.getTranscript() == null) {
-                    doc.setTranscript(new ArrayList<>());
+                if (doc.getSubmissionsLedger() == null) {
+                    doc.setSubmissionsLedger(new ArrayList<>());
                 }
 
-                boolean isEngineUnavailable = "ENGINE_UNAVAILABLE".equalsIgnoreCase(result.status());
-                String messageType = isEngineUnavailable ? "ENGINE_ERROR" : "CODE_EXECUTION";
-                String senderRole = isEngineUnavailable ? "SYSTEM" : "CANDIDATE";
-                String content = isEngineUnavailable
-                        ? String.format("SYSTEM NOTICE: Code execution sandbox offline (ENGINE_UNAVAILABLE) for problem '%s'. Run was not executed; candidate is not penalized.", slug)
-                        : String.format("Candidate executed project tests: %d/%d tests passed (%s) in %.1fms. [problem:%s]",
-                                result.passedTests(), result.totalTests(), result.status(), result.executionTimeMs(), slug);
-
-                InterviewSessionDocument.TranscriptTurn turn = InterviewSessionDocument.TranscriptTurn.builder()
-                        .turnNumber(doc.getTranscript().size() + 1)
-                        .senderRole(senderRole)
-                        .messageType(messageType)
-                        .content(content)
+                String action = submit ? "SUBMIT" : "RUN";
+                InterviewSessionDocument.SubmissionEntry entry = InterviewSessionDocument.SubmissionEntry.builder()
+                        .id(java.util.UUID.randomUUID().toString())
+                        .problemSlug(slug)
+                        .action(action)
+                        .status(result.status())
+                        .passedTests(result.passedTests())
+                        .totalTests(result.totalTests())
+                        .executionTimeMs(result.executionTimeMs())
+                        .memoryUsedMb(result.memoryUsedMb())
                         .codeSnippet(codeSnippet)
                         .timestamp(LocalDateTime.now())
                         .build();
+                doc.getSubmissionsLedger().add(entry);
 
-                doc.getTranscript().add(turn);
-                sessionMongoRepository.save(doc);
-                if (isEngineUnavailable) {
-                    log.warn("Recorded ENGINE_ERROR turn for session {} due to sandbox downtime ({})", sessionId, result.status());
-                } else {
-                    log.info("Recorded CODE_EXECUTION turn for session {}: {}/{} passed ({})", sessionId, result.passedTests(), result.totalTests(), result.status());
+                if (submit) {
+                    if (doc.getTranscript() == null) {
+                        doc.setTranscript(new ArrayList<>());
+                    }
+
+                    boolean isEngineUnavailable = "ENGINE_UNAVAILABLE".equalsIgnoreCase(result.status());
+                    String messageType = isEngineUnavailable ? "ENGINE_ERROR" : "CODE_EXECUTION";
+                    String senderRole = isEngineUnavailable ? "SYSTEM" : "CANDIDATE";
+                    String content = isEngineUnavailable
+                            ? String.format("SYSTEM NOTICE: Code execution sandbox offline (ENGINE_UNAVAILABLE) for problem '%s'. Run was not executed; candidate is not penalized.", slug)
+                            : String.format("Candidate executed project tests: %d/%d tests passed (%s) in %.1fms. [problem:%s]",
+                                    result.passedTests(), result.totalTests(), result.status(), result.executionTimeMs(), slug);
+
+                    InterviewSessionDocument.TranscriptTurn turn = InterviewSessionDocument.TranscriptTurn.builder()
+                            .turnNumber(doc.getTranscript().size() + 1)
+                            .senderRole(senderRole)
+                            .messageType(messageType)
+                            .content(content)
+                            .codeSnippet(codeSnippet)
+                            .timestamp(LocalDateTime.now())
+                            .build();
+
+                    doc.getTranscript().add(turn);
+                    if (isEngineUnavailable) {
+                        log.warn("Recorded ENGINE_ERROR turn for session {} due to sandbox downtime ({})", sessionId, result.status());
+                    } else {
+                        log.info("Recorded CODE_EXECUTION turn for session {}: {}/{} passed ({})", sessionId, result.passedTests(), result.totalTests(), result.status());
+                    }
                 }
+
+                sessionMongoRepository.save(doc);
+                log.info("Saved {} attempt in submissions ledger for session {} [problem: {}, passed: {}/{}, status: {}]",
+                        action, sessionId, slug, result.passedTests(), result.totalTests(), result.status());
             });
         } catch (Exception e) {
-            log.warn("⚠️ Failed to record execution turn in Mongo transcript: {}", e.getMessage());
+            log.warn("⚠️ Failed to record execution in Mongo: {}", e.getMessage());
         }
     }
 

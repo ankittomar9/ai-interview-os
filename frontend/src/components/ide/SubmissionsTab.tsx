@@ -27,7 +27,7 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({ submissions }) =
         <div className="text-sm font-bold text-text flex items-center gap-2">
           <span>Submissions History</span>
           <span className="px-2 py-0.5 rounded-full bg-elevated border border-border text-xs font-mono text-text-2">
-            Total Attempts: {submissions.length}
+            Total Attempts: {submissions.length} (Runs: {submissions.filter(s => s.type !== 'SUBMIT').length} / Submits: {submissions.filter(s => s.type === 'SUBMIT').length})
           </span>
         </div>
       </div>
@@ -60,6 +60,13 @@ export const SubmissionsTab: React.FC<SubmissionsTabProps> = ({ submissions }) =
                 className="w-full p-2.5 sm:p-3 flex items-center justify-between text-xs cursor-pointer select-none text-left gap-2"
               >
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase shrink-0 ${
+                    sub.type === 'SUBMIT'
+                      ? 'bg-primary/20 text-primary border border-primary/30'
+                      : 'bg-surface text-text-3 border border-border'
+                  }`}>
+                    {sub.type || 'RUN'}
+                  </span>
                   <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badgeVariantClass} shrink-0`}>
                     {sub.status}
                   </span>

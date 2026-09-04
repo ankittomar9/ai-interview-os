@@ -70,3 +70,36 @@ This append-only verification log records the evidence, automated test runs, lin
   - `AiRubricClientTest.testEvaluateRubric_FallbackOnTimeout`: verifies fallback metric increment with `reason=TIMEOUT_OR_NETWORK`.
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 3: [A15] — Run vs. Submit Server-Side Contract & Submissions Ledger
+
+- **Branch**: `fix/ledger-a15`
+- **Scope**:
+  - **A15**: Enforced `submit` boolean flag in `CodeExecutionService`. When `submit == false` (Run Tests), sandbox runs tests and returns metrics, but does NOT persist a `CODE_EXECUTION` / `ENGINE_ERROR` message to the dialogue transcript. Added `submissionsLedger` (`List<SubmissionEntry>`) to `InterviewSessionDocument` tracking every execution attempt with its action (`RUN` vs `SUBMIT`). Added `GET /api/v1/sessions/{id}/submissions` endpoint.
+  - In frontend: updated `useExecution.ts` to track `RUN` and initialize/sync from `getSubmissions(sessionId, currentSlug)`, and updated `SubmissionsTab.tsx` with `RUN` vs `SUBMIT` badge and breakdown counter.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 249 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 248 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 243 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.sandbox.service.CodeExecutionServiceTest
+    [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.sandbox.service.CodeExecutionServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 47, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `CodeExecutionServiceTest.testExecuteCode_whenSubmitFalse_doesNotRecordSessionMessage`: verified 0 transcript turns and 1 RUN entry in ledger.
+  - `CodeExecutionServiceTest.testExecuteCode_whenSubmitTrue_recordsCodeExecutionTurnWithCodeSnapshot`: verified 1 CODE_EXECUTION transcript turn and 1 SUBMIT entry in ledger.
+  - `CodeExecutionServiceTest.testThreeRunsAndOneSubmit_resultsInOneTranscriptTurnAndFourLedgerEntries`: verified that 3 consecutive test runs followed by 1 submission produce exactly 1 transcript turn and 4 entries in `submissionsLedger` (3 RUN, 1 SUBMIT).
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 1.09s
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
