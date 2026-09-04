@@ -26,8 +26,33 @@ public record DiagnosticReportResponse(
         List<DimensionScoreDto> dimensions,
         boolean llmGenerated,
         Integer requirementsClarityScore,
-        Instant generatedAt
+        Instant generatedAt,
+        IntegritySummaryDto integrity
 ) {
+    public DiagnosticReportResponse(
+            Long reportId,
+            Long sessionId,
+            String candidateId,
+            String roleTitle,
+            String track,
+            String difficulty,
+            HiringVerdict verdict,
+            int overallScore,
+            ScorecardBreakdown scorecard,
+            String executiveSummary,
+            List<String> keyStrengths,
+            List<String> areasForImprovement,
+            List<String> sevenDayStudyPlan,
+            List<DimensionScoreDto> dimensions,
+            boolean llmGenerated,
+            Integer requirementsClarityScore,
+            Instant generatedAt
+    ) {
+        this(reportId, sessionId, candidateId, roleTitle, track, difficulty, verdict, overallScore, scorecard,
+                executiveSummary, keyStrengths, areasForImprovement, sevenDayStudyPlan, dimensions, llmGenerated,
+                requirementsClarityScore, generatedAt, new IntegritySummaryDto(0, 0, 0, "LOCAL_SANDBOX"));
+    }
+
     public record ScorecardBreakdown(
             int technicalAccuracy,
             int problemSolving,
@@ -35,6 +60,13 @@ public record DiagnosticReportResponse(
             int codeQuality,
             int integrityScore,
             int requirementsClarification
+    ) {}
+
+    public record IntegritySummaryDto(
+            int echoFilteredCount,
+            int droppedChunks,
+            int consentDowngrades,
+            String workspaceProvenance
     ) {}
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -57,6 +89,13 @@ public record DiagnosticReportResponse(
             } catch (Exception ignored) {}
         }
 
+        IntegritySummaryDto integrity = new IntegritySummaryDto(
+                r.getEchoFilteredCount() != null ? r.getEchoFilteredCount() : 0,
+                r.getDroppedChunks() != null ? r.getDroppedChunks() : 0,
+                r.getConsentDowngrades() != null ? r.getConsentDowngrades() : 0,
+                r.getWorkspaceProvenance() != null ? r.getWorkspaceProvenance() : "LOCAL_SANDBOX"
+        );
+
         return new DiagnosticReportResponse(
                 r.getId(),
                 r.getSessionId(),
@@ -74,7 +113,8 @@ public record DiagnosticReportResponse(
                 dimensions,
                 Boolean.TRUE.equals(r.getRubricLlmGenerated()),
                 r.getRequirementsClarificationScore(),
-                r.getGeneratedAt()
+                r.getGeneratedAt(),
+                integrity
         );
     }
 }

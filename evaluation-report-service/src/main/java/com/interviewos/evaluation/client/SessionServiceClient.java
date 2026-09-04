@@ -20,6 +20,9 @@ public interface SessionServiceClient {
     @GetMapping("/api/v1/problems/{slug}")
     ProblemDetailsDto getProblemBySlug(@PathVariable("slug") String slug);
 
+    @GetMapping("/api/v1/sessions/{id}/recordings/manifest")
+    RecordingManifestDto getRecordingManifest(@PathVariable("id") Long id);
+
     record ProblemDetailsDto(
             String id,
             String problemSlug,
@@ -40,6 +43,14 @@ public interface SessionServiceClient {
             Long durationSeconds
     ) {}
 
+    record RecordingManifestDto(
+            Long sessionId,
+            int totalChunks,
+            List<DroppedChunkDto> droppedChunks
+    ) {
+        public record DroppedChunkDto(int seq, String kind, String reason) {}
+    }
+
     record TranscriptMessageDto(
             Long id,
             String senderRole,
@@ -47,10 +58,15 @@ public interface SessionServiceClient {
             String content,
             String codeSnippet,
             Instant timestamp,
-            Map<String, String> metadata
+            Map<String, String> metadata,
+            Integer echoFilteredCount
     ) {
         public TranscriptMessageDto(Long id, String senderRole, String messageType, String content, String codeSnippet, Instant timestamp) {
-            this(id, senderRole, messageType, content, codeSnippet, timestamp, null);
+            this(id, senderRole, messageType, content, codeSnippet, timestamp, null, 0);
+        }
+
+        public TranscriptMessageDto(Long id, String senderRole, String messageType, String content, String codeSnippet, Instant timestamp, Map<String, String> metadata) {
+            this(id, senderRole, messageType, content, codeSnippet, timestamp, metadata, 0);
         }
     }
 }

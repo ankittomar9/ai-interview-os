@@ -65,6 +65,18 @@ public class EvaluationReport {
     @CollectionTable(name = "report_study_plan", joinColumns = @JoinColumn(name = "report_id"))
     private List<String> sevenDayStudyPlan;
 
+    @Builder.Default
+    private Integer echoFilteredCount = 0;
+
+    @Builder.Default
+    private Integer droppedChunks = 0;
+
+    @Builder.Default
+    private Integer consentDowngrades = 0;
+
+    @Builder.Default
+    private String workspaceProvenance = "LOCAL_SANDBOX";
+
     private Instant generatedAt;
 
     @PrePersist

@@ -394,6 +394,54 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 11: [A13 + A18] — Report Integrity Signals & Elapsed Time Headline Honesty
+
+- **Branch**: `fix/ledger-a13-a18`
+- **Scope**:
+  - **A13**:
+    - Added Flyway migration `V5__add_integrity_summary_columns.sql` to `evaluation-report-service` adding `echo_filtered_count`, `dropped_chunks`, `consent_downgrades`, and `workspace_provenance` columns.
+    - Updated `EvaluationReport.java` entity with corresponding fields.
+    - Updated `SessionServiceClient.java` to fetch `RecordingManifestDto` (`droppedChunks`) and extract `echoFilteredCount` from transcript turns.
+    - Calculated integrity metrics in `EvaluationReportService.java` from transcript metadata and manifest.
+    - Extended `DiagnosticReportResponse.java` and `TranscriptPdfMeta.java` with `IntegritySummaryDto integrity` block (`echoFilteredCount`, `droppedChunks`, `consentDowngrades`, `workspaceProvenance`).
+    - Updated `HumanTranscriptPdfGenerator.java` to render an explicit `Integrity Summary` block in the exported PDF, guaranteeing explicit rendering of zeros (`Echo Filtered: 0 filtered | Dropped Chunks: 0 | Consent Downgrades: 0 | Workspace: LOCAL_SANDBOX`).
+    - Added `integrity` definition to `DiagnosticReportResponse` in `frontend/src/types/index.ts`.
+    - Added `Session Integrity Audit Signals` card in `DiagnosticReportView.tsx` displaying all 4 signals with explicit zero formatting.
+  - **A18**:
+    - Resolved elapsed time honesty calculation: computed directly from first to last transcript turn timestamp, ensuring sessions with ≥ 2 turns never render 0 executed minutes.
+    - Rendered honest headline: `"Candidate executed %d of %d planned minutes across %d interactive turns in [%s]. Sandbox Execution Sub-Score: %d/100."`.
+    - Appended explicit disclosure notice: `"Disclosure: Scorecard reflects executed assessment sections only; unreached sections are not penalized."`.
+    - Labeled sandbox execution score in weaknesses honestly as `"Sandbox Execution Sub-Score"`.
+    - Disclosed minimum viable interview threshold on premature sessions: `"Assessment ended prematurely (%d min, %d turns); minimum viable interview threshold (minimum 3 minutes and at least 3 candidate turns) was not reached."`.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 223 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl evaluation-report-service`:
+    ```
+    [INFO] Running com.interviewos.evaluation.service.EvaluationReportServiceTest
+    [INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.evaluation.service.EvaluationReportServiceTest
+    [INFO] Running com.interviewos.evaluation.service.HumanTranscriptPdfGeneratorTest
+    [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.evaluation.service.HumanTranscriptPdfGeneratorTest
+    [INFO] Results:
+    [WARNING] Tests run: 18, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `EvaluationReportServiceTest.testReportIntegritySignalsAndHonestHeadline`: verified honest duration calculation (10 min from turn timestamps), headline format, disclosure sentence, and integrity signal extraction/persistence.
+  - `EvaluationReportServiceTest.testPrematureSessionDisclosesThreshold`: verified disclosure of 3 min and 3 candidate turns threshold.
+  - `HumanTranscriptPdfGeneratorTest.testVerifyingIntegritySummaryRenderedWithZeros`: verified PDF generation with explicit zero rendering (`0 filtered`, `0 dropped`, `0 downgrades`).
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 738ms
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 
 
 
