@@ -27,8 +27,34 @@ public record DiagnosticReportResponse(
         boolean llmGenerated,
         Integer requirementsClarityScore,
         Instant generatedAt,
-        IntegritySummaryDto integrity
+        IntegritySummaryDto integrity,
+        List<PlanVsActualEntryDto> planVsActual
 ) {
+    public DiagnosticReportResponse(
+            Long reportId,
+            Long sessionId,
+            String candidateId,
+            String roleTitle,
+            String track,
+            String difficulty,
+            HiringVerdict verdict,
+            int overallScore,
+            ScorecardBreakdown scorecard,
+            String executiveSummary,
+            List<String> keyStrengths,
+            List<String> areasForImprovement,
+            List<String> sevenDayStudyPlan,
+            List<DimensionScoreDto> dimensions,
+            boolean llmGenerated,
+            Integer requirementsClarityScore,
+            Instant generatedAt,
+            IntegritySummaryDto integrity
+    ) {
+        this(reportId, sessionId, candidateId, roleTitle, track, difficulty, verdict, overallScore, scorecard,
+                executiveSummary, keyStrengths, areasForImprovement, sevenDayStudyPlan, dimensions, llmGenerated,
+                requirementsClarityScore, generatedAt, integrity, List.of());
+    }
+
     public DiagnosticReportResponse(
             Long reportId,
             Long sessionId,
@@ -50,7 +76,7 @@ public record DiagnosticReportResponse(
     ) {
         this(reportId, sessionId, candidateId, roleTitle, track, difficulty, verdict, overallScore, scorecard,
                 executiveSummary, keyStrengths, areasForImprovement, sevenDayStudyPlan, dimensions, llmGenerated,
-                requirementsClarityScore, generatedAt, new IntegritySummaryDto(0, 0, 0, "LOCAL_SANDBOX"));
+                requirementsClarityScore, generatedAt, new IntegritySummaryDto(0, 0, 0, "LOCAL_SANDBOX"), List.of());
     }
 
     public record ScorecardBreakdown(
@@ -67,6 +93,17 @@ public record DiagnosticReportResponse(
             int droppedChunks,
             int consentDowngrades,
             String workspaceProvenance
+    ) {}
+
+    public record PlanVsActualEntryDto(
+            String sectionType,
+            String track,
+            int index,
+            String status,
+            int turnCount,
+            int elapsedMinutes,
+            int softBudgetMinutes,
+            String note
     ) {}
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -96,6 +133,13 @@ public record DiagnosticReportResponse(
                 r.getWorkspaceProvenance() != null ? r.getWorkspaceProvenance() : "LOCAL_SANDBOX"
         );
 
+        List<PlanVsActualEntryDto> planVsActual = List.of();
+        if (r.getPlanVsActualJson() != null && !r.getPlanVsActualJson().isBlank()) {
+            try {
+                planVsActual = MAPPER.readValue(r.getPlanVsActualJson(), new TypeReference<List<PlanVsActualEntryDto>>() {});
+            } catch (Exception ignored) {}
+        }
+
         return new DiagnosticReportResponse(
                 r.getId(),
                 r.getSessionId(),
@@ -114,7 +158,8 @@ public record DiagnosticReportResponse(
                 Boolean.TRUE.equals(r.getRubricLlmGenerated()),
                 r.getRequirementsClarificationScore(),
                 r.getGeneratedAt(),
-                integrity
+                integrity,
+                planVsActual
         );
     }
 }

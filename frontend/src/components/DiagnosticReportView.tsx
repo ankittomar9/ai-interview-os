@@ -427,6 +427,54 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
               ))}
             </div>
 
+            {/* PLAN-VS-ACTUAL BREAKDOWN (C4) */}
+            {report.planVsActual && report.planVsActual.length > 0 && (
+              <div className="bg-surface border border-border rounded-lg p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-text">Plan vs. Actual Assessment Breakdown</h3>
+                  </div>
+                  <span className="text-xs text-text-3">Soft budgets are reference estimates; unreached sections are never penalized.</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border/80 text-text-3">
+                        <th className="py-2 px-3 font-semibold">Section</th>
+                        <th className="py-2 px-3 font-semibold">Status</th>
+                        <th className="py-2 px-3 font-semibold">Turns</th>
+                        <th className="py-2 px-3 font-semibold">Elapsed</th>
+                        <th className="py-2 px-3 font-semibold">Soft Budget</th>
+                        <th className="py-2 px-3 font-semibold">Focus</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {report.planVsActual.map((p, idx) => (
+                        <tr key={idx} className="hover:bg-elevated/40 transition-colors">
+                          <td className="py-2.5 px-3 font-medium text-text">{p.sectionType}</td>
+                          <td className="py-2.5 px-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                              p.status === 'COMPLETED' ? 'bg-success/15 text-success border border-success/30' :
+                              p.status === 'ADVANCED_PAST' ? 'bg-primary/15 text-primary border border-primary/30' :
+                              p.status === 'SKIPPED' ? 'bg-warning/15 text-warning border border-warning/30' :
+                              'bg-surface text-text-3 border border-border'
+                            }`}>
+                              {p.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-text-2">{p.turnCount}</td>
+                          <td className="py-2.5 px-3 font-mono text-text">{p.elapsedMinutes}m</td>
+                          <td className="py-2.5 px-3 font-mono text-text-3">{p.softBudgetMinutes}m</td>
+                          <td className="py-2.5 px-3 text-text-3">{p.note || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* D. MIDDLE ROW: RADAR | NARRATIVE */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               {/* Radar Card */}

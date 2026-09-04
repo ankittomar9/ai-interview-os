@@ -77,6 +77,10 @@ public class EvaluationReport {
     @Builder.Default
     private String workspaceProvenance = "LOCAL_SANDBOX";
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String planVsActualJson;
+
     private Instant generatedAt;
 
     @PrePersist
