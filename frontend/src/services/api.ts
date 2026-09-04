@@ -190,17 +190,23 @@ export const evaluateArchitectureDesign = async (
     return res.json();
 };
 
-// --- Groq Whisper Speech-To-Text Transcription Endpoint (:8082) ---
+// --- Groq / Local Whisper Speech-To-Text Transcription Endpoint (:8082) ---
 export const transcribeAudio = async (
     audioBlob: Blob,
     apiKey?: string,
-    promptContext?: string
-): Promise<{ transcript: string; durationSeconds: number; provider: string }> => {
+    promptContext?: string,
+    sessionId?: number,
+    lang?: string
+): Promise<{ transcript: string; durationSeconds: number; provider: string; text?: string }> => {
+    const isWav = audioBlob.type.includes('wav');
+    const filename = isWav ? 'candidate_speech.wav' : 'candidate_speech.webm';
     const formData = new FormData();
-    formData.append('file', audioBlob, 'candidate_speech.webm');
-    formData.append('audio', audioBlob, 'candidate_speech.webm');
+    formData.append('file', audioBlob, filename);
+    formData.append('audio', audioBlob, filename);
     if (apiKey) formData.append('apiKey', apiKey);
     if (promptContext) formData.append('promptContext', promptContext);
+    if (sessionId != null) formData.append('sessionId', String(sessionId));
+    if (lang) formData.append('lang', lang);
 
     const headers: Record<string, string> = {};
     if (apiKey) {

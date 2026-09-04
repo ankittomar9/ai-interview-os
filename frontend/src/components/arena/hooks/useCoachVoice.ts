@@ -1,12 +1,72 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { transcribeAudio } from '../../../services/api';
 
+function encodePcm16Wav(samples: Float32Array, sampleRate = 16000): Blob {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++, offset += 2) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+async function convertBlobTo16kHzWav(blob: Blob): Promise<Blob> {
+  const arrayBuffer = await blob.arrayBuffer();
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioContextClass) return blob;
+  const audioCtx = new AudioContextClass();
+  try {
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const targetSampleRate = 16000;
+    const targetFrames = Math.ceil(audioBuffer.duration * targetSampleRate);
+    if (targetFrames === 0) return blob;
+    const offlineCtx = new OfflineAudioContext(1, targetFrames, targetSampleRate);
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineCtx.destination);
+    source.start(0);
+    const rendered = await offlineCtx.startRendering();
+    return encodePcm16Wav(rendered.getChannelData(0), targetSampleRate);
+  } finally {
+    try { void audioCtx.close(); } catch {}
+  }
+}
+
 interface UseCoachVoiceProps {
   onCandidateSpeechFinal?: (text: string) => void;
   apiKey?: string;
+  promptContext?: string;
+  sessionId?: number;
 }
 
-export function useCoachVoice({ onCandidateSpeechFinal, apiKey }: UseCoachVoiceProps = {}) {
+export function useCoachVoice({
+  onCandidateSpeechFinal,
+  apiKey,
+  promptContext,
+  sessionId
+}: UseCoachVoiceProps = {}) {
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
   const [isListening, setIsListening] = useState(false);
@@ -22,6 +82,10 @@ export function useCoachVoice({ onCandidateSpeechFinal, apiKey }: UseCoachVoiceP
   onCandidateSpeechFinalRef.current = onCandidateSpeechFinal;
   const apiKeyRef = useRef(apiKey);
   apiKeyRef.current = apiKey;
+  const promptContextRef = useRef(promptContext);
+  promptContextRef.current = promptContext;
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
 
   const toggleAiPanel = useCallback(() => setIsAiPanelOpen((prev) => !prev), []);
   const clearMicError = useCallback(() => setMicError(null), []);
@@ -97,17 +161,34 @@ export function useCoachVoice({ onCandidateSpeechFinal, apiKey }: UseCoachVoiceP
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        }
+      });
       audioChunksRef.current = [];
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((track) => track.stop());
         if (audioChunksRef.current.length > 0) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const rawBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          if (rawBlob.size > 50 * 1024 * 1024) {
+            setMicError('Recording too long (>50MB)');
+            return;
+          }
+          let uploadBlob: Blob = rawBlob;
+          try {
+            uploadBlob = await convertBlobTo16kHzWav(rawBlob);
+          } catch (convErr) {
+            console.warn('[useCoachVoice] 16kHz WAV conversion notice, uploading webm fallback:', convErr);
+          }
           try {
             setInterimTranscript('Transcribing speech...');
-            const result = await transcribeAudio(audioBlob, apiKeyRef.current);
+            const result = await transcribeAudio(uploadBlob, apiKeyRef.current, promptContextRef.current, sessionIdRef.current);
             const text = (result as any).transcript || (result as any).text;
             if (text && text.trim()) onCandidateSpeechFinalRef.current?.(text.trim());
             else setMicError('No speech detected');
