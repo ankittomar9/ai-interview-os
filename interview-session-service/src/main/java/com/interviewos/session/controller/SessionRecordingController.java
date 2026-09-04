@@ -5,9 +5,11 @@ import com.interviewos.session.service.SessionRecordingService.RecordingManifest
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
@@ -92,5 +94,15 @@ public class SessionRecordingController {
             log.error("Download failed for session {} kind {}: {}", id, kind, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxSizeException(MaxUploadSizeExceededException ex) {
+        log.error("Recording chunk exceeds size limit: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(Map.of(
+                        "error", "Recording chunk exceeds 16MB limit",
+                        "hint", "Reduce video quality or shorten chunk duration"
+                ));
     }
 }
