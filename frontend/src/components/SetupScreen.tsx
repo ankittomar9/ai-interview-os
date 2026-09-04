@@ -7,6 +7,7 @@ import { TrackGrid } from "./setup/TrackGrid";
 import { ResumeSection } from "./setup/ResumeSection";
 import { ProviderSection } from "./setup/ProviderSection";
 import { Button } from "./ui/Button";
+import { ThemeToggle } from "./ui/ThemeToggle";
 import { Compass, Play, ShieldAlert, Award, TrendingUp } from "lucide-react";
 import { FloatingAiOrb } from "./ai/FloatingAiOrb";
 import { AiAssistantPanel } from "./ai/AiAssistantPanel";
@@ -82,24 +83,27 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
 
         {/* Right Light Form Panel */}
         <div className="lg:col-span-8 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto space-y-6">
-          {/* Top Full-Width Segmented Mode Switcher */}
-          <div className="grid grid-cols-2 gap-2 bg-elevated p-1.5 rounded-xl border border-border">
-            <button
-              type="button"
-              onClick={() => setSessionMode("INTERVIEW")}
-              className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "INTERVIEW" ? "bg-primary text-on-accent shadow-sm" : "text-text-3 hover:text-text")}
-            >
-              <ShieldAlert className="w-4 h-4" />
-              <span>Proctored Interview</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSessionMode("PLAYGROUND")}
-              className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "PLAYGROUND" ? "bg-success text-on-accent shadow-sm" : "text-text-3 hover:text-text")}
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Playground Practice</span>
-            </button>
+          {/* Top Header Row: Segmented Mode Switcher + Theme Toggle */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 grid grid-cols-2 gap-2 bg-elevated p-1.5 rounded-xl border border-border">
+              <button
+                type="button"
+                onClick={() => setSessionMode("INTERVIEW")}
+                className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "INTERVIEW" ? "bg-primary text-on-accent shadow-sm" : "text-text-3 hover:text-text")}
+              >
+                <ShieldAlert className="w-4 h-4" />
+                <span>Proctored Interview</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionMode("PLAYGROUND")}
+                className={"flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (sessionMode === "PLAYGROUND" ? "bg-success text-on-accent shadow-sm" : "text-text-3 hover:text-text")}
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>Playground Practice</span>
+              </button>
+            </div>
+            <ThemeToggle size="md" />
           </div>
 
           {/* Form Sections */}

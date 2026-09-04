@@ -469,3 +469,133 @@
   --color-sidebar-text-3: #64748b;
   --color-sidebar-accent: #1e293b;
 }
+
+/* 8. macOS Sequoia (Frosted Light) */
+[data-theme="sequoia"] {
+  --background: #f5f5f7;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-inset: #f5f5f7;
+  --border: #d2d2d7;
+  --border-subtle: #e5e5ea;
+  --text-primary: #1d1d1f;
+  --text-secondary: #424245;
+  --text-muted: #86868b;
+  --text-on-accent: #ffffff;
+  --accent: #007AFF;
+  --accent-hover: #0062cc;
+  --accent-soft: #e8f0fe;
+  --success: #34c759;
+  --warning: #ff9500;
+  --error: #ff3b30;
+  --info: #007aff;
+  --code-keyword: #af00db;
+  --code-type: #001080;
+  --code-string: #a31515;
+  --code-function: #795e26;
+  --code-comment: #008000;
+  --code-literal: #098658;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --color-bg: var(--background);
+  --color-surface: var(--surface);
+  --color-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-text: var(--text-primary);
+  --color-text-2: var(--text-secondary);
+  --color-text-3: var(--text-muted);
+  --color-primary: var(--accent);
+  --color-primary-2: var(--accent-hover);
+  --color-rail-bg: var(--surface);
+  --color-mandatory: #ea580c;
+  --color-solved: var(--success);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--error);
+
+  --verdict-pass: var(--success);
+  --verdict-warn: var(--warning);
+  --verdict-fail: var(--error);
+
+  --editor-bg: #f5f5f7;
+  --editor-surface: #ffffff;
+  --editor-gutter: #f5f5f7;
+  --editor-active-line: #e5e5ea;
+  --editor-status: var(--surface-elevated);
+  --editor-text: var(--text-primary);
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #1d1d1f;
+  --color-sidebar-text: #d2d2d7;
+  --color-sidebar-text-2: #f5f5f7;
+  --color-sidebar-text-3: #86868b;
+  --color-sidebar-accent: #2c2c2e;
+}
+
+/* 9. macOS Sequoia Graphite (Dark) */
+[data-theme="sequoia-graphite"] {
+  --background: #1c1c1e;
+  --surface: #2c2c2e;
+  --surface-elevated: #3a3a3c;
+  --surface-inset: #1c1c1e;
+  --border: #3a3a3c;
+  --border-subtle: #2c2c2e;
+  --text-primary: #f5f5f7;
+  --text-secondary: #d2d2d7;
+  --text-muted: #86868b;
+  --text-on-accent: #ffffff;
+  --accent: #0A84FF;
+  --accent-hover: #409cff;
+  --accent-soft: #1e3a5f;
+  --success: #30d158;
+  --warning: #ffd60a;
+  --error: #ff453a;
+  --info: #64d2ff;
+  --code-keyword: #fc5fa3;
+  --code-type: #5dd8ff;
+  --code-string: #fc6a5d;
+  --code-function: #a167e6;
+  --code-comment: #6c7986;
+  --code-literal: #d0bf69;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --color-bg: var(--background);
+  --color-surface: var(--surface);
+  --color-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-text: var(--text-primary);
+  --color-text-2: var(--text-secondary);
+  --color-text-3: var(--text-muted);
+  --color-primary: var(--accent);
+  --color-primary-2: var(--accent-hover);
+  --color-rail-bg: var(--surface);
+  --color-mandatory: #ff9f0a;
+  --color-solved: var(--success);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--error);
+
+  --verdict-pass: var(--success);
+  --verdict-warn: var(--warning);
+  --verdict-fail: var(--error);
+
+  --editor-bg: var(--background);
+  --editor-surface: var(--surface);
+  --editor-gutter: var(--background);
+  --editor-active-line: #2c2c2e;
+  --editor-status: var(--surface-elevated);
+  --editor-text: var(--text-primary);
+
+  --color-on-accent: var(--text-on-accent);
+  --color-sidebar-bg: #161618;
+  --color-sidebar-text: #aeaeb2;
+  --color-sidebar-text-2: #e5e5ea;
+  --color-sidebar-text-3: #636366;
+  --color-sidebar-accent: #242426;
+}

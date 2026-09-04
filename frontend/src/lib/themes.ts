@@ -5,7 +5,9 @@ export type ThemeId =
   | 'deep-ocean'
   | 'material-oceanic'
   | 'ide-slate'
-  | 'ide-paper';
+  | 'ide-paper'
+  | 'sequoia'
+  | 'sequoia-graphite';
 
 export interface ThemeDefinition {
   id: ThemeId;
@@ -88,5 +90,25 @@ export const themes: ThemeDefinition[] = [
     panel: '#f7f8fa',
     border: '#e0e2e6',
     isDark: false
+  },
+  {
+    id: 'sequoia',
+    name: 'macOS Sequoia',
+    description: 'macOS Sequoia, frosted light',
+    accent: '#007AFF',
+    background: '#f5f5f7',
+    panel: '#ffffff',
+    border: '#d2d2d7',
+    isDark: false
+  },
+  {
+    id: 'sequoia-graphite',
+    name: 'Sequoia Graphite',
+    description: 'macOS Sequoia, graphite dark',
+    accent: '#0A84FF',
+    background: '#1c1c1e',
+    panel: '#2c2c2e',
+    border: '#3a3a3c',
+    isDark: true
   }
 ];
