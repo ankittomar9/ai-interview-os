@@ -1,7 +1,11 @@
 package com.interviewos.session.service;
 
+import com.interviewos.session.document.InterviewSessionDocument;
+import com.interviewos.session.dto.SectionTransitionRequest;
+import com.interviewos.session.entity.InterviewSession;
 import com.interviewos.session.model.DifficultyLevel;
 import com.interviewos.session.model.InterviewTrack;
+import com.interviewos.session.model.SessionStatus;
 import com.interviewos.session.repository.InterviewSessionMongoRepository;
 import com.interviewos.session.repository.InterviewSessionRepository;
 import com.interviewos.session.repository.SessionMessageRepository;
@@ -154,5 +158,63 @@ class InterviewSessionServiceTest {
 
         assertThat(planned).hasSize(3);
         assertThat(planned).noneMatch(DSA_SLUGS::contains);
+    }
+
+    @Test
+    @DisplayName("A12: Manual 1->3 jump records skipped intermediate stage as MANUAL_JUMP with turnCount=0 and counts stage 1 turns")
+    void testManualJump_recordsIntermediateStageWithZeroTurns() {
+        Long sessionId = 100L;
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .status(SessionStatus.IN_PROGRESS)
+                .build();
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+
+        InterviewSessionDocument.TranscriptTurn turn1 = InterviewSessionDocument.TranscriptTurn.builder()
+                .senderRole("CANDIDATE")
+                .metadata(Map.of("stage", "INTRODUCTION", "sectionType", "INTRODUCTION"))
+                .content("Hello, I am ready.")
+                .build();
+        InterviewSessionDocument.TranscriptTurn turn2 = InterviewSessionDocument.TranscriptTurn.builder()
+                .senderRole("CANDIDATE")
+                .metadata(Map.of("stage", "INTRODUCTION", "sectionType", "INTRODUCTION"))
+                .content("I have 5 years experience.")
+                .build();
+        InterviewSessionDocument.TranscriptTurn aiTurn = InterviewSessionDocument.TranscriptTurn.builder()
+                .senderRole("AI")
+                .metadata(Map.of("stage", "INTRODUCTION", "sectionType", "INTRODUCTION"))
+                .content("Great to meet you.")
+                .build();
+
+        InterviewSessionDocument doc = InterviewSessionDocument.builder()
+                .sessionId(sessionId)
+                .status("IN_PROGRESS")
+                .transcript(new ArrayList<>(List.of(turn1, aiTurn, turn2)))
+                .sectionProgress(new ArrayList<>())
+                .build();
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.of(doc));
+
+        // Candidate on Stage 1 (INTRODUCTION, idx 0) jumps directly to Stage 3 (CODING_DSA, idx 2)
+        SectionTransitionRequest request = new SectionTransitionRequest("INTRODUCTION", "CODING_DSA", 0, "MANUAL_JUMP");
+        List<InterviewSessionDocument.SectionProgress> progressList = serviceWithFallbackOnly.recordSectionTransition(sessionId, request);
+
+        // Assert that both stage 0 (INTRODUCTION) and skipped intermediate stage 1 (CORE_TECH) are recorded
+        assertThat(progressList).hasSize(2);
+
+        InterviewSessionDocument.SectionProgress intro = progressList.get(0);
+        assertThat(intro.getSectionType()).isEqualTo("INTRODUCTION");
+        assertThat(intro.getIndex()).isEqualTo(0);
+        assertThat(intro.getReason()).isEqualTo("MANUAL_JUMP");
+        assertThat(intro.getTurnCount()).isEqualTo(2); // 2 candidate turns in introduction
+
+        InterviewSessionDocument.SectionProgress coreTech = progressList.get(1);
+        assertThat(coreTech.getSectionType()).isEqualTo("CORE_TECH");
+        assertThat(coreTech.getIndex()).isEqualTo(1);
+        assertThat(coreTech.getReason()).isEqualTo("MANUAL_JUMP");
+        assertThat(coreTech.getTurnCount()).isEqualTo(0); // 0 turns because it was jumped past!
+
+        // Idempotency: re-invoking does not produce duplicates
+        List<InterviewSessionDocument.SectionProgress> progressListAgain = serviceWithFallbackOnly.recordSectionTransition(sessionId, request);
+        assertThat(progressListAgain).hasSize(2);
     }
 }

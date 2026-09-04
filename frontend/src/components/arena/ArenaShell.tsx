@@ -49,6 +49,8 @@ interface ArenaShellProps {
   isAiResponding: boolean;
   currentStage: InterviewStage;
   onStageClick?: (stage: InterviewStage) => void;
+  stageTurnCounts?: Record<InterviewStage, number>;
+  stageTransitionReasons?: Record<InterviewStage, any>;
   providerError?: ProviderErrorState | null;
   onRetryProvider?: () => void;
   onClearProviderError?: () => void;
@@ -91,14 +93,14 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     sessionId, track, onSwitchTrack, question, questionsList, activeQuestionIndex, onSelectQuestion,
     questionStatusMap, code, onChangeCode, language, onChangeLanguage, onRunCode, onSubmitSolution,
     isExecuting, executionResult, provider, apiKey, sessionMode = 'INTERVIEW', onFinish, messages,
-    chatInput, setChatInput, onSendTurn, isAiResponding, currentStage, onStageClick, providerError,
-    onRetryProvider, onClearProviderError, onOpenProviderSettings, pendingStageSwitch,
-    onConfirmStageSwitch, onCancelStageSwitch, onNextQuestion, onNextStage, isAiPanelOpen,
-    onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking, voiceOutputEnabled,
-    onToggleVoice, onMicToggle, interimTranscript = '', micError = null, onClearMicError,
-    hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
-    isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive,
-    recordScreen, onStartScreenShare, isFocusMode = false, onToggleFocusMode
+    chatInput, setChatInput, onSendTurn, isAiResponding, currentStage, onStageClick, stageTurnCounts,
+    stageTransitionReasons, providerError, onRetryProvider, onClearProviderError, onOpenProviderSettings,
+    pendingStageSwitch, onConfirmStageSwitch, onCancelStageSwitch, onNextQuestion, onNextStage,
+    isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
+    voiceOutputEnabled, onToggleVoice, onMicToggle, interimTranscript = '', micError = null,
+    onClearMicError, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
+    isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive, recordScreen,
+    onStartScreenShare, isFocusMode = false, onToggleFocusMode
   } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
@@ -110,11 +112,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     const timer = setTimeout(onClearProviderError, 8000);
     return () => clearTimeout(timer);
   }, [providerError, onClearProviderError]);
-
   useEffect(() => {
-    if (currentStage === 'INTRODUCTION' && !isPlayground) {
-      document.getElementById('chat-input')?.focus();
-    }
+    if (currentStage === 'INTRODUCTION' && !isPlayground) document.getElementById('chat-input')?.focus();
   }, [currentStage, isPlayground]);
 
   const handleTrackSelect = useCallback((trackKey: string) => {
@@ -176,7 +175,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
           </button>
         </div>
       </div>
-      {!isFocusMode && <StageStepper currentStage={currentStage} isPlayground={isPlayground} onStageClick={onStageClick} />}
+      {!isFocusMode && <StageStepper currentStage={currentStage} isPlayground={isPlayground} onStageClick={onStageClick} stageTurnCounts={stageTurnCounts} stageTransitionReasons={stageTransitionReasons} />}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
         <div className="flex-1 min-w-0 h-full overflow-hidden">

@@ -337,6 +337,64 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 10: [A12] — Evidence-less Stage Completion & Stepper Hollow State
+
+- **Branch**: `fix/ledger-a12`
+- **Scope**:
+  - **A12**:
+    - **Root Cause Forensics**: Prior code applied `ADVANCE_STAGE` unconditionally in `useDialogue.ts:140` and rendered green checkmarks for all past stages in `StageStepper.tsx` even if a candidate manually jumped stages with zero candidate turns.
+    - **Backend Resolution**:
+      - Added `SectionProgress` document model inside `InterviewSessionDocument.java`: `sectionType`, `index`, `reason` (`CONSENTED | MANUAL_JUMP | SESSION_ENDED | SKIPPED_BY_USER`), `startedAt`, `endedAt`, `turnCount`.
+      - Added `SectionTransitionRequest` DTO in `com.interviewos.session.dto`.
+      - Implemented `recordSectionTransition(Long sessionId, SectionTransitionRequest request)` and `getSectionProgress(Long sessionId)` in `InterviewSessionService.java`:
+        - Strictly idempotent per section index and section type.
+        - Calculates candidate turn count server-side from transcript turns with stage/sectionType metadata.
+        - Automatically detects forward jumps across intermediate stages (e.g. 1 -> 3), recording skipped stages (e.g. stage 2 `CORE_TECH`) as `MANUAL_JUMP` with `turnCount = 0`.
+      - Added `POST /api/v1/sessions/{id}/section-transitions` and `GET /api/v1/sessions/{id}/section-transitions` endpoints in `InterviewSessionController.java`.
+    - **Frontend Resolution**:
+      - Added `recordSectionTransition` and `getSectionProgress` client helpers in `frontend/src/services/api.ts`.
+      - Updated `StageStepper.tsx`:
+        - Accepts `stageTurnCounts?: Record<InterviewStage, number>` and `stageTransitionReasons?: Record<InterviewStage, StageTransitionReason>`.
+        - For completed stages (`idx < currentIndex`): renders filled green checkmark (`CheckCircle2`) when `turnCount > 0`; renders hollow dashed circle (`Circle`) with muted `(advanced)` label when `turnCount === 0`.
+        - Renders dashed divider bar for sections advanced past without turns.
+        - Manual jump remains legal and ungated.
+      - Updated `useDialogue.ts`:
+        - Tracks `stageTurnCounts` (incremented on candidate turn).
+        - Tracks `stageTransitionReasons`.
+        - Provides `transitionStage(targetStage, reason)`: on forward jumps (e.g. 1 -> 3), marks intermediate stages as `MANUAL_JUMP` with 0 turns, fires transition records to backend, and updates state.
+        - Appends stage and sectionType metadata on candidate turns.
+      - Integrated with `ArenaRoom.tsx` and `ArenaShell.tsx`:
+        - Wires stage clicks and stage switches through `dialogue.transitionStage`.
+        - Passes `stageTurnCounts` and `stageTransitionReasons` through to `StageStepper`.
+        - Preserves strict line budgets.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 248 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 244 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 243 lines (Budget: ≤ 250) — **PASS**
+  - `StageStepper.tsx`: 127 lines — **PASS**
+  - `useDialogue.ts`: 284 lines — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.controller.InterviewSessionControllerTest
+    [INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.controller.InterviewSessionControllerTest
+    [INFO] Running com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Tests run: 58, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 116, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 1.22s
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 
 
 

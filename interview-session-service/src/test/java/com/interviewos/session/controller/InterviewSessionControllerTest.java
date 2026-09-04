@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -205,5 +206,62 @@ class InterviewSessionControllerTest {
                 .andExpect(jsonPath("$.suspiciousTyping").value(false))
                 .andExpect(jsonPath("$.copyCount").value(1))
                 .andExpect(jsonPath("$.pasteCount").value(2));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions/{id}/section-transitions should record transition and return 200 OK")
+    void testRecordSectionTransition() throws Exception {
+        com.interviewos.session.dto.SectionTransitionRequest req = new com.interviewos.session.dto.SectionTransitionRequest(
+                "INTRODUCTION", "CODING_DSA", 0, "MANUAL_JUMP", 0
+        );
+
+        com.interviewos.session.document.InterviewSessionDocument.SectionProgress p1 =
+                com.interviewos.session.document.InterviewSessionDocument.SectionProgress.builder()
+                        .sectionType("INTRODUCTION")
+                        .index(0)
+                        .reason("MANUAL_JUMP")
+                        .turnCount(0)
+                        .build();
+
+        com.interviewos.session.document.InterviewSessionDocument.SectionProgress p2 =
+                com.interviewos.session.document.InterviewSessionDocument.SectionProgress.builder()
+                        .sectionType("CORE_TECH")
+                        .index(1)
+                        .reason("MANUAL_JUMP")
+                        .turnCount(0)
+                        .build();
+
+        when(sessionService.recordSectionTransition(any(), any(com.interviewos.session.dto.SectionTransitionRequest.class)))
+                .thenReturn(List.of(p1, p2));
+
+        mockMvc.perform(post("/api/v1/sessions/1/section-transitions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sectionType").value("INTRODUCTION"))
+                .andExpect(jsonPath("$[0].reason").value("MANUAL_JUMP"))
+                .andExpect(jsonPath("$[1].sectionType").value("CORE_TECH"))
+                .andExpect(jsonPath("$[1].reason").value("MANUAL_JUMP"))
+                .andExpect(jsonPath("$[1].turnCount").value(0));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/sessions/{id}/section-transitions should return list of section progresses")
+    void testGetSectionProgress() throws Exception {
+        com.interviewos.session.document.InterviewSessionDocument.SectionProgress p =
+                com.interviewos.session.document.InterviewSessionDocument.SectionProgress.builder()
+                        .sectionType("INTRODUCTION")
+                        .index(0)
+                        .reason("CONSENTED")
+                        .turnCount(3)
+                        .build();
+
+        when(sessionService.getSectionProgress(1L)).thenReturn(List.of(p));
+
+        mockMvc.perform(get("/api/v1/sessions/1/section-transitions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sectionType").value("INTRODUCTION"))
+                .andExpect(jsonPath("$[0].reason").value("CONSENTED"))
+                .andExpect(jsonPath("$[0].turnCount").value(3));
     }
 }
