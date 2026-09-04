@@ -80,6 +80,7 @@ interface ArenaShellProps {
   cameraActive?: boolean;
   screenActive?: boolean;
   recordScreen?: boolean;
+  salvageHint?: string | null;
   onStartScreenShare?: () => void;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
@@ -102,8 +103,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
 
-  const [hintsRevealed, setHintsRevealed] = useState<Record<string, number>>({});
-  const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, boolean>>({});
+  const [hintsRevealed, setHintsRevealed] = useState<Record<string, number>>({}); const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!providerError || !onClearProviderError) return;
@@ -239,6 +239,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         onToggleVoice={onToggleVoice}
         onMicToggle={onMicToggle}
         interimTranscript={interimTranscript}
+        salvageHint={props.salvageHint}
         micError={micError}
         onClearMicError={onClearMicError}
         stackAbove="webcam"

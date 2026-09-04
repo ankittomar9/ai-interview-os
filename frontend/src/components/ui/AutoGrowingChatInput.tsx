@@ -9,6 +9,7 @@ interface AutoGrowingChatInputProps {
   onToggleListening: () => void;
   isAiResponding: boolean;
   interimTranscript?: string;
+  salvageHint?: string | null;
   micError?: string | null;
   onClearMicError?: () => void;
   placeholder?: string;
@@ -24,6 +25,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   onToggleListening,
   isAiResponding,
   interimTranscript = '',
+  salvageHint = null,
   micError = null,
   onClearMicError,
   placeholder = 'Speak or type your explanation...',
@@ -109,6 +111,13 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
           <div className="mt-1 px-1 text-[11px] text-primary-2 italic animate-pulse flex items-center gap-1">
             <span>🎙️</span>
             <span>{interimTranscript}</span>
+          </div>
+        )}
+        {/* Honest Salvage Continuation Hint */}
+        {!isListening && salvageHint && value.trim() && (
+          <div className="mt-1 px-1 text-[10px] text-primary-2/90 italic flex items-center gap-1">
+            <span>📝</span>
+            <span>{salvageHint}</span>
           </div>
         )}
       </div>
