@@ -138,6 +138,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
       {pendingStageSwitch && onConfirmStageSwitch && onCancelStageSwitch && (
         <StageSwitchModal targetTrack={pendingStageSwitch.targetTrack} onConfirm={onConfirmStageSwitch} onCancel={onCancelStageSwitch} />
       )}
+      {isAiSpeaking && (
+        <div className="fixed top-4 right-4 bg-amber-500 text-white px-3 py-1.5 rounded-lg shadow-lg z-50 animate-pulse text-xs font-semibold flex items-center gap-1.5">🔇 Mic muted (AI speaking)</div>
+      )}
       <div className="h-12 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 z-20">
         <div className="flex items-center gap-3">
           <TrackNavMenu activeTrack={track} onSelectTrack={handleTrackSelect} isPlayground={isPlayground} />

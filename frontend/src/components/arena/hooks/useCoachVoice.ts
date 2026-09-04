@@ -86,6 +86,8 @@ export function useCoachVoice({
   promptContextRef.current = promptContext;
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
+  const shouldListenRef = useRef(false);
+  const isAiSpeakingRef = useRef(false);
 
   const toggleAiPanel = useCallback(() => setIsAiPanelOpen((prev) => !prev), []);
   const clearMicError = useCallback(() => setMicError(null), []);
@@ -98,13 +100,29 @@ export function useCoachVoice({
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
-    utterance.onstart = () => { setIsSpeakingNow(true); setIsAiSpeaking(true); };
-    utterance.onend = () => { setIsSpeakingNow(false); setIsAiSpeaking(false); };
-    utterance.onerror = () => { setIsSpeakingNow(false); setIsAiSpeaking(false); };
+    utterance.onstart = () => {
+      setIsSpeakingNow(true);
+      setIsAiSpeaking(true);
+      isAiSpeakingRef.current = true;
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch {}
+      }
+    };
+    utterance.onend = () => {
+      setIsSpeakingNow(false);
+      setIsAiSpeaking(false);
+      isAiSpeakingRef.current = false;
+    };
+    utterance.onerror = () => {
+      setIsSpeakingNow(false);
+      setIsAiSpeaking(false);
+      isAiSpeakingRef.current = false;
+    };
     window.speechSynthesis.speak(utterance);
   }, [voiceOutputEnabled]);
 
   const stopListening = useCallback(() => {
+    shouldListenRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch {}
       recognitionRef.current = null;
@@ -118,8 +136,13 @@ export function useCoachVoice({
 
   const startListening = useCallback(async () => {
     if (typeof window === 'undefined') return;
+    shouldListenRef.current = true;
     setMicError(null);
     setInterimTranscript('');
+
+    if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+      return;
+    }
 
     const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognitionClass) {
@@ -130,6 +153,10 @@ export function useCoachVoice({
         recognition.lang = 'en-US';
         recognition.onstart = () => { setIsListening(true); setMicError(null); };
         recognition.onresult = (event: any) => {
+          if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+            setInterimTranscript('');
+            return;
+          }
           let interim = '';
           let finalStr = '';
           for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -151,7 +178,11 @@ export function useCoachVoice({
           setIsListening(false);
           setInterimTranscript('');
         };
-        recognition.onend = () => { setIsListening(false); setInterimTranscript(''); };
+        recognition.onend = () => {
+          recognitionRef.current = null;
+          setIsListening(false);
+          setInterimTranscript('');
+        };
         recognitionRef.current = recognition;
         recognition.start();
         return;
@@ -212,6 +243,29 @@ export function useCoachVoice({
     if (isListening) stopListening();
     else void startListening();
   }, [isListening, startListening, stopListening]);
+
+  // SPEC-007: Acoustic duplex guard — monitor TTS state and pause recognition while AI speaks
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+    const checkSpeaking = () => {
+      const speaking = Boolean(window.speechSynthesis && window.speechSynthesis.speaking);
+      setIsAiSpeaking(speaking);
+      isAiSpeakingRef.current = speaking;
+
+      if (speaking) {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.stop(); } catch {}
+          recognitionRef.current = null;
+        }
+      } else if (shouldListenRef.current && !isListening && !recognitionRef.current) {
+        void startListening();
+      }
+    };
+
+    const interval = setInterval(checkSpeaking, 100);
+    return () => clearInterval(interval);
+  }, [isListening, startListening]);
 
   useEffect(() => () => {
     stopListening();
