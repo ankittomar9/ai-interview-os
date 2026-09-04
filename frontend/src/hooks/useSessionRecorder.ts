@@ -40,25 +40,30 @@ export function useSessionRecorder({
   const uploadQueueRef = useRef<Promise<void>>(Promise.resolve());
   const failedChunksRef = useRef<Array<QueuedChunk>>([]);
 
-  const createFormData = (blob: Blob, seq: number, kind: StreamKind) => {
+  const createFormData = (blob: Blob, seq: number) => {
     const formData = new FormData();
     formData.append('chunk', blob, `chunk_${seq}.webm`);
-    formData.append('seq', String(seq));
-    formData.append('kind', kind);
     return formData;
   };
+
+  const reportDrop = useCallback((seq: number, kind: StreamKind, reason: string) => {
+    fetch(`/api/v1/sessions/${sessionId}/recordings/drop?seq=${seq}&kind=${kind}&reason=${encodeURIComponent(reason)}`, {
+      method: 'POST'
+    }).catch(() => {});
+  }, [sessionId]);
 
   const uploadChunk = useCallback(async (blob: Blob, seq: number, kind: StreamKind) => {
     if (blob.size === 0) return;
     try {
       const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${seq}&kind=${kind}`, {
         method: 'POST',
-        body: createFormData(blob, seq, kind)
+        body: createFormData(blob, seq)
       });
       if (res.ok) {
         setUploadedChunks((prev) => prev + 1);
       } else if (res.status === 413) {
-        console.error(`Recording ${kind} chunk ${seq} exceeds 16MB limit. Terminal error, discarding without retry.`);
+        console.error(`Recording ${kind} chunk ${seq} exceeds size limit. Discarding and recording drop.`);
+        reportDrop(seq, kind, 'PAYLOAD_TOO_LARGE_413');
       } else {
         console.warn(`Recording ${kind} chunk ${seq} upload failed with status ${res.status}, queuing for retry`);
         failedChunksRef.current.push({ blob, seq, kind, retries: 0 });
@@ -67,7 +72,7 @@ export function useSessionRecorder({
       console.warn(`Recording ${kind} chunk ${seq} network notice, queuing for retry:`, err);
       failedChunksRef.current.push({ blob, seq, kind, retries: 0 });
     }
-  }, [sessionId]);
+  }, [sessionId, reportDrop]);
 
   const retryFailedChunks = useCallback(async () => {
     if (failedChunksRef.current.length === 0) return;
@@ -77,7 +82,7 @@ export function useSessionRecorder({
       try {
         const res = await fetch(`/api/v1/sessions/${sessionId}/recordings/chunk?seq=${chunk.seq}&kind=${chunk.kind}`, {
           method: 'POST',
-          body: createFormData(chunk.blob, chunk.seq, chunk.kind)
+          body: createFormData(chunk.blob, chunk.seq)
         });
         if (res.ok) {
           setUploadedChunks((prev) => prev + 1);
@@ -86,6 +91,7 @@ export function useSessionRecorder({
           );
         } else if (res.status === 413) {
           console.error(`Retried chunk ${chunk.seq} (${chunk.kind}) returned 413 limit. Dropping from retry queue.`);
+          reportDrop(chunk.seq, chunk.kind, 'PAYLOAD_TOO_LARGE_413');
           failedChunksRef.current = failedChunksRef.current.filter(
             (c) => !(c.seq === chunk.seq && c.kind === chunk.kind)
           );
@@ -96,7 +102,7 @@ export function useSessionRecorder({
         chunk.retries++;
       }
     }
-  }, [sessionId]);
+  }, [sessionId, reportDrop]);
 
   useEffect(() => {
     if (isPlayground || !sessionId) return;

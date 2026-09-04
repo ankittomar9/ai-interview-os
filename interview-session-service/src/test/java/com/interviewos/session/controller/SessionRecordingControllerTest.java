@@ -28,10 +28,19 @@ class SessionRecordingControllerTest {
     private SessionRecordingController controller;
 
     @Test
-    @DisplayName("uploadChunk saves chunk successfully")
+    @DisplayName("uploadChunk saves chunk successfully with clean parameters")
     void testUploadChunkSuccess() throws Exception {
         MockMultipartFile chunk = new MockMultipartFile("chunk", "test.webm", "video/webm", new byte[]{1, 2, 3});
-        ResponseEntity<Map<String, Object>> response = controller.uploadChunk(1L, 0, "camera", chunk);
+        ResponseEntity<Map<String, Object>> response = controller.uploadChunk(1L, "0", "camera", chunk);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(recordingService).saveChunk(1L, 0, "camera", chunk);
+    }
+
+    @Test
+    @DisplayName("uploadChunk defensively sanitizes duplicated seq and kind (e.g. seq='0,0', kind='camera,camera')")
+    void testUploadChunkDuplicatedParamsSanitization() throws Exception {
+        MockMultipartFile chunk = new MockMultipartFile("chunk", "test.webm", "video/webm", new byte[]{1, 2, 3});
+        ResponseEntity<Map<String, Object>> response = controller.uploadChunk(1L, "0,0", "camera,camera", chunk);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(recordingService).saveChunk(1L, 0, "camera", chunk);
     }
@@ -40,8 +49,16 @@ class SessionRecordingControllerTest {
     @DisplayName("uploadChunk rejects invalid kind with 400")
     void testUploadChunkInvalidKind() {
         MockMultipartFile chunk = new MockMultipartFile("chunk", "test.webm", "video/webm", new byte[]{1, 2, 3});
-        ResponseEntity<Map<String, Object>> response = controller.uploadChunk(1L, 0, "invalid_kind", chunk);
+        ResponseEntity<Map<String, Object>> response = controller.uploadChunk(1L, "0", "invalid_kind", chunk);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("reportDroppedChunk records dropped chunk notice")
+    void testReportDroppedChunk() {
+        ResponseEntity<Void> response = controller.reportDroppedChunk(1L, "3", "screen", "PAYLOAD_TOO_LARGE_413");
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(recordingService).recordDroppedChunk(1L, 3, "screen", "PAYLOAD_TOO_LARGE_413");
     }
 
     @Test

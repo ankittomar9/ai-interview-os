@@ -26,10 +26,18 @@ public class SessionRecordingController {
     @PostMapping(value = "/{id}/recordings/chunk", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadChunk(
             @PathVariable Long id,
-            @RequestParam("seq") int seq,
-            @RequestParam(value = "kind", defaultValue = "camera") String kind,
+            @RequestParam("seq") String rawSeq,
+            @RequestParam(value = "kind", defaultValue = "camera") String rawKind,
             @RequestParam("chunk") MultipartFile chunk
     ) {
+        String kind = (rawKind != null ? rawKind.split(",")[0].trim().toLowerCase() : "camera");
+        int seq;
+        try {
+            seq = Integer.parseInt(rawSeq != null ? rawSeq.split(",")[0].trim() : "0");
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "seq must be an integer"));
+        }
+
         if (!"camera".equals(kind) && !"screen".equals(kind)) {
             return ResponseEntity.badRequest().body(Map.of("error", "kind must be camera|screen"));
         }
@@ -46,6 +54,23 @@ public class SessionRecordingController {
             log.error("Failed to store {} chunk {} for session {}: {}", kind, seq, id, e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/{id}/recordings/drop")
+    public ResponseEntity<Void> reportDroppedChunk(
+            @PathVariable Long id,
+            @RequestParam("seq") String rawSeq,
+            @RequestParam(value = "kind", defaultValue = "camera") String rawKind,
+            @RequestParam(value = "reason", defaultValue = "PAYLOAD_TOO_LARGE_413") String reason
+    ) {
+        String kind = (rawKind != null ? rawKind.split(",")[0].trim().toLowerCase() : "camera");
+        int seq = 0;
+        try {
+            seq = Integer.parseInt(rawSeq != null ? rawSeq.split(",")[0].trim() : "0");
+        } catch (NumberFormatException ignored) {}
+
+        recordingService.recordDroppedChunk(id, seq, kind, reason);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}/recordings/manifest")
