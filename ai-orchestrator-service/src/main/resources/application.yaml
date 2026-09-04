@@ -26,6 +26,14 @@ ai:
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
       default-model: ${OLLAMA_MODEL:qwen2.5-coder:7b}
+    openai:
+      endpoint: ${OPENAI_BASE_URL:https://api.openai.com/v1/chat/completions}
+      default-model: ${OPENAI_MODEL_DIALOGUE:gpt-4o}
+      model-dialogue: ${OPENAI_MODEL_DIALOGUE:gpt-4o}
+      model-fast: ${OPENAI_MODEL_FAST:gpt-4o-mini}
+      model-eval: ${OPENAI_MODEL_EVAL:gpt-4o}
+      rubric-model: ${OPENAI_MODEL_EVAL:gpt-4o}
+      api-key: ${OPENAI_API_KEY:}
   rubric:
     timeout-seconds: ${RUBRIC_TIMEOUT_SECONDS:25}
     allow-cloud-fallback: ${AI_RUBRIC_ALLOW_CLOUD_FALLBACK:${RUBRIC_ALLOW_CLOUD_FALLBACK:true}}

@@ -27,9 +27,9 @@ const PROVIDERS: ProviderOption[] = [
   },
   {
     provider: 'OPENAI',
-    name: 'OpenAI GPT-4o',
-    latencyBadge: 'Standard',
-    desc: 'High-reasoning code analysis and evaluation capabilities.'
+    name: 'Frontier (OpenAI-compatible)',
+    latencyBadge: 'High Quality',
+    desc: 'Highest quality interviewer. Uses cloud — purity badge will show egress.'
   },
   {
     provider: 'OLLAMA',
@@ -123,7 +123,7 @@ export const ProviderSection: React.FC<ProviderSectionProps> = ({
             type="password"
             value={apiKey}
             onChange={(e) => handleKeyInput(e.target.value)}
-            placeholder={`Paste your ${selectedProvider} API key (e.g. gsk_...)`}
+            placeholder={selectedProvider === 'OPENAI' ? 'Paste your OpenAI or compatible API key (sk-...)' : `Paste your ${selectedProvider} API key (e.g. gsk_...)`}
             className="w-full bg-elevated border border-border rounded-lg px-3 py-2 text-xs text-text focus:outline-none focus:border-primary font-mono"
           />
         </div>
