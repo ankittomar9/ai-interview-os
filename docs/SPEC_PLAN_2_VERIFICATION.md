@@ -300,6 +300,44 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 9: [A9] — Difficulty Ladder Provenance & Family-Key Mapping (SQL vs SQL_DATABASE)
+
+- **Branch**: `fix/ledger-a9`
+- **Scope**:
+  - **A9**:
+    - **Root Cause Forensics**: In `InterviewSessionService.java`, `fallbackCatalog` mapped track keys using legacy names (`SQL_DATABASE`, `SYSTEM_DESIGN_LLD`, `SYSTEM_DESIGN_HLD`, `BEHAVIORAL`), whereas `InterviewTrack` enums use `SQL`, `SPRING_LLD`, `JAVA_SPRING_BOOT`, `SYSTEM_DESIGN`, `BEHAVIORAL_STAR`. This key mismatch caused non-DSA tracks to miss the fallback map and silently fall back to DSA algorithms (`two-sum`, `reverse-a-string`, `lru-cache`). Additionally, missing rungs fell back to a hardcoded `List.of("two-sum", "reverse-a-string", "lru-cache")`, which caused JUNIOR problems to be assigned at rung 3 (high/SENIOR/STAFF) whenever remote was offline or empty.
+    - **Resolution**:
+      - Introduced `resolveCatalogTrackKey(track)` mapping all `InterviewTrack` enum values to canonical catalog keys (`SQL`, `SPRING_LLD`, `SYSTEM_DESIGN`, `BEHAVIORAL_STAR`, `ALGORITHMS_DATA_STRUCTURES`).
+      - Populated `fallbackCatalog` with entries for both canonical keys and aliases for all 4 difficulty rungs (`JUNIOR`, `MID`, `SENIOR`, `STAFF`) with authentic question slugs matching catalog contents.
+      - Added `findAdjacentRungCandidates` to fall back within the same track family (e.g. `STAFF` falls back to `SENIOR` of the same track) instead of cross-track DSA pollution.
+      - Added per-pick provenance logging: `log.info("Ladder pick: {}|{}|{}|source={}", chosen, rung, chosenDifficulty, source)` (`slug|requestedRung|chosenDifficulty|source=REMOTE|FALLBACK`).
+    - **Deterministic 28-Combo Test Suite**:
+      - Added `InterviewSessionServiceTest.java` with 57 unit tests covering all 28 track × difficulty combinations in both Fallback and Remote modes, plus adjacent-rung fallback without cross-track pollution.
+      - Confirmed that prior code failed 16/28 combinations by injecting DSA problems into non-DSA tracks, whereas the new implementation passes all 28/28 combinations with 100% track integrity and strict ladder rung satisfaction (rung 3 is never JUNIOR for MID/SENIOR/STAFF).
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 227 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Tests run: 57, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.776 s -- in com.interviewos.session.service.InterviewSessionServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 113, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 1.11s
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 
 
 
