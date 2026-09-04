@@ -11,6 +11,11 @@ import com.interviewos.session.repository.InterviewSessionRepository;
 import com.interviewos.session.repository.SessionMessageRepository;
 import com.interviewos.session.sandbox.client.QuestionBankClient;
 import com.interviewos.session.sandbox.document.ProblemDocument;
+import com.interviewos.session.dto.CreateSessionRequest;
+import com.interviewos.session.dto.SessionResponse;
+import com.interviewos.session.model.PlannedSection;
+import com.interviewos.session.model.SectionType;
+import com.interviewos.session.model.SessionPlan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +30,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -46,17 +52,20 @@ class InterviewSessionServiceTest {
     @Mock
     private QuestionBankClient questionBankClient;
 
+    private SessionPlanService sessionPlanService;
     private InterviewSessionService serviceWithFallbackOnly;
     private InterviewSessionService serviceWithRemote;
 
     @BeforeEach
     void setUp() {
+        sessionPlanService = new SessionPlanService(null);
         serviceWithFallbackOnly = new InterviewSessionService(
                 sessionRepository,
                 messageRepository,
                 mongoSessionRepository,
                 resumeParsingService,
-                null
+                sessionPlanService,
+                new com.fasterxml.jackson.databind.ObjectMapper()
         );
 
         serviceWithRemote = new InterviewSessionService(
@@ -64,13 +73,15 @@ class InterviewSessionServiceTest {
                 messageRepository,
                 mongoSessionRepository,
                 resumeParsingService,
-                questionBankClient
+                new SessionPlanService(questionBankClient),
+                new com.fasterxml.jackson.databind.ObjectMapper()
         );
     }
 
     static Stream<Arguments> all28Combinations() {
         List<Arguments> args = new ArrayList<>();
         for (InterviewTrack track : InterviewTrack.values()) {
+            if (track == InterviewTrack.FULL_LOOP) continue; // 7 focused tracks x 4 difficulties = 28 combinations
             for (DifficultyLevel diff : DifficultyLevel.values()) {
                 args.add(Arguments.of(track, diff));
             }
@@ -106,6 +117,8 @@ class InterviewSessionServiceTest {
         } else if (track == InterviewTrack.SYSTEM_DESIGN) {
             assertThat(planned).noneMatch(DSA_SLUGS::contains);
         } else if (track == InterviewTrack.BEHAVIORAL_STAR) {
+            assertThat(planned).noneMatch(DSA_SLUGS::contains);
+        } else if (track == InterviewTrack.RESUME_BASED) {
             assertThat(planned).noneMatch(DSA_SLUGS::contains);
         }
 
@@ -216,5 +229,137 @@ class InterviewSessionServiceTest {
         // Idempotency: re-invoking does not produce duplicates
         List<InterviewSessionDocument.SectionProgress> progressListAgain = serviceWithFallbackOnly.recordSectionTransition(sessionId, request);
         assertThat(progressListAgain).hasSize(2);
+    }
+
+    @ParameterizedTest(name = "[C1 Plan 28-Combo] {0} x {1}")
+    @MethodSource("all28Combinations")
+    @DisplayName("C1: Deterministic 28-combo plan resolver: 2 sections (INTRO + domain), valid budgets, zero DSA bleed")
+    void testSessionPlan_All28Combinations(InterviewTrack track, DifficultyLevel difficulty) {
+        SessionPlan plan = sessionPlanService.buildPlan(track, difficulty, 42L);
+
+        assertThat(plan).isNotNull();
+        assertThat(plan.source()).isEqualTo("SETUP_SELECTION");
+        assertThat(plan.level()).isEqualTo(difficulty);
+        assertThat(plan.sections()).hasSize(2);
+
+        PlannedSection intro = plan.sections().get(0);
+        assertThat(intro.sectionType()).isEqualTo(SectionType.INTRODUCTION);
+        assertThat(intro.softTimeBudgetMinutes()).isEqualTo(5);
+        assertThat(intro.itemCount()).isEqualTo(1);
+
+        PlannedSection domain = plan.sections().get(1);
+        assertThat(domain.track()).isEqualTo(track);
+        assertThat(domain.problemSlugs()).isNotEmpty();
+        assertThat(domain.problemSlugs()).hasSize(domain.itemCount());
+
+        int expectedTotal = intro.softTimeBudgetMinutes() + domain.softTimeBudgetMinutes();
+        assertThat(plan.plannedTotalMinutes()).isEqualTo(expectedTotal);
+
+        // Zero DSA bleed for non-DSA tracks
+        if (track != InterviewTrack.ALGORITHMS_DATA_STRUCTURES) {
+            assertThat(domain.problemSlugs()).noneMatch(DSA_SLUGS::contains);
+        }
+    }
+
+    @Test
+    @DisplayName("C1: FULL_LOOP presets implement exact multi-stage progression and budgets")
+    void testSessionPlan_FullLoop_Presets() {
+        // JUNIOR: INTRO(5) + DSA(30, 2 items) + LLD(15, 1 item) = 52 min
+        SessionPlan junior = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.JUNIOR, 42L);
+        assertThat(junior.plannedTotalMinutes()).isEqualTo(52);
+        assertThat(junior.sections()).hasSize(3);
+        assertThat(junior.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
+        assertThat(junior.sections().get(1).sectionType()).isEqualTo(SectionType.DSA);
+        assertThat(junior.sections().get(1).itemCount()).isEqualTo(2);
+        assertThat(junior.sections().get(2).sectionType()).isEqualTo(SectionType.LLD);
+        assertThat(junior.sections().get(2).itemCount()).isEqualTo(1);
+
+        // MID: INTRO(5) + DSA(30, 2 items) + LLD(20, 2 items) = 58 min
+        SessionPlan mid = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.MID, 42L);
+        assertThat(mid.plannedTotalMinutes()).isEqualTo(58);
+        assertThat(mid.sections()).hasSize(3);
+        assertThat(mid.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
+        assertThat(mid.sections().get(1).sectionType()).isEqualTo(SectionType.DSA);
+        assertThat(mid.sections().get(1).itemCount()).isEqualTo(2);
+        assertThat(mid.sections().get(2).sectionType()).isEqualTo(SectionType.LLD);
+        assertThat(mid.sections().get(2).itemCount()).isEqualTo(2);
+
+        // SENIOR: INTRO(5) + DSA(15, 1 item) + LLD(15, 1 item) + SD(18, 1 item) = 55 min
+        SessionPlan senior = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.SENIOR, 42L);
+        assertThat(senior.plannedTotalMinutes()).isEqualTo(55);
+        assertThat(senior.sections()).hasSize(4);
+        assertThat(senior.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
+        assertThat(senior.sections().get(1).sectionType()).isEqualTo(SectionType.DSA);
+        assertThat(senior.sections().get(2).sectionType()).isEqualTo(SectionType.LLD);
+        assertThat(senior.sections().get(3).sectionType()).isEqualTo(SectionType.SYSTEM_DESIGN);
+
+        // STAFF: INTRO(5) + LLD(15, 1 item) + SD(18, 1 item) + RESUME(12, 1 item) = 52 min
+        SessionPlan staff = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.STAFF, 42L);
+        assertThat(staff.plannedTotalMinutes()).isEqualTo(52);
+        assertThat(staff.sections()).hasSize(4);
+        assertThat(staff.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
+        assertThat(staff.sections().get(1).sectionType()).isEqualTo(SectionType.LLD);
+        assertThat(staff.sections().get(2).sectionType()).isEqualTo(SectionType.SYSTEM_DESIGN);
+        assertThat(staff.sections().get(3).sectionType()).isEqualTo(SectionType.RESUME);
+        assertThat(staff.sections().get(3).problemSlugs()).noneMatch(DSA_SLUGS::contains);
+    }
+
+    @Test
+    @DisplayName("C1: createSession in INTERVIEW mode populates plan in entity, Mongo doc, and response")
+    void testCreateSession_InterviewMode_PersistsPlan() {
+        CreateSessionRequest request = new CreateSessionRequest(
+                "cand-1",
+                "Alice Candidate",
+                "Software Engineer",
+                InterviewTrack.SQL,
+                DifficultyLevel.MID,
+                "Acme Corp",
+                "Job Desc",
+                "INTERVIEW"
+        );
+
+        when(sessionRepository.save(any(InterviewSession.class))).thenAnswer(inv -> {
+            InterviewSession s = inv.getArgument(0);
+            s.setId(200L);
+            return s;
+        });
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(200L)).thenReturn(Optional.empty());
+
+        SessionResponse response = serviceWithFallbackOnly.createSession(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.sessionMode()).isEqualTo("INTERVIEW");
+        assertThat(response.plan()).isNotNull();
+        assertThat(response.plan().sections()).hasSize(2);
+        assertThat(response.plan().level()).isEqualTo(DifficultyLevel.MID);
+    }
+
+    @Test
+    @DisplayName("C1: createSession in PLAYGROUND mode leaves plan null")
+    void testCreateSession_PlaygroundMode_LeavesPlanNull() {
+        CreateSessionRequest request = new CreateSessionRequest(
+                "cand-2",
+                "Bob Playground",
+                "Software Engineer",
+                InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
+                DifficultyLevel.JUNIOR,
+                "Acme Corp",
+                "Job Desc",
+                "PLAYGROUND"
+        );
+
+        when(sessionRepository.save(any(InterviewSession.class))).thenAnswer(inv -> {
+            InterviewSession s = inv.getArgument(0);
+            s.setId(201L);
+            return s;
+        });
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(201L)).thenReturn(Optional.empty());
+
+        SessionResponse response = serviceWithFallbackOnly.createSession(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.sessionMode()).isEqualTo("PLAYGROUND");
+        assertThat(response.plan()).isNull();
+        assertThat(response.plannedSlugs()).isEmpty();
     }
 }

@@ -26,6 +26,7 @@ public record SessionResponse(
         Long durationSeconds,
         String sessionMode,
         List<String> plannedSlugs,
+        com.interviewos.session.model.SessionPlan plan,
         List<MessageResponse> messages
 ) {
     public SessionResponse(
@@ -43,7 +44,7 @@ public record SessionResponse(
             Long durationSeconds,
             List<MessageResponse> messages
     ) {
-        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, "INTERVIEW", List.of(), messages);
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, "INTERVIEW", List.of(), null, messages);
     }
 
     public SessionResponse(
@@ -62,7 +63,27 @@ public record SessionResponse(
             String sessionMode,
             List<MessageResponse> messages
     ) {
-        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, List.of(), messages);
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, List.of(), null, messages);
+    }
+
+    public SessionResponse(
+            Long id,
+            String candidateId,
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String targetCompany,
+            String jobDescription,
+            SessionStatus status,
+            Instant createdAt,
+            Instant startedAt,
+            Instant completedAt,
+            Long durationSeconds,
+            String sessionMode,
+            List<String> plannedSlugs,
+            List<MessageResponse> messages
+    ) {
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, plannedSlugs, null, messages);
     }
     public record MessageResponse(
             Long id,
@@ -119,10 +140,20 @@ public record SessionResponse(
         }
     }
 
+    private static final com.fasterxml.jackson.databind.ObjectMapper OBJECT_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
+
     public static SessionResponse fromEntity(InterviewSession session) {
         List<MessageResponse> messageResponses = session.getMessages() != null
                 ? session.getMessages().stream().map(MessageResponse::fromEntity).toList()
                 : List.of();
+
+        com.interviewos.session.model.SessionPlan plan = null;
+        if (session.getPlanJson() != null && !session.getPlanJson().isBlank()) {
+            try {
+                plan = OBJECT_MAPPER.readValue(session.getPlanJson(), com.interviewos.session.model.SessionPlan.class);
+            } catch (Exception ignored) {
+            }
+        }
 
         return new SessionResponse(
                 session.getId(),
@@ -139,6 +170,7 @@ public record SessionResponse(
                 session.getDurationSeconds(),
                 session.getSessionMode() != null ? session.getSessionMode() : "INTERVIEW",
                 session.getPlannedSlugs() != null ? session.getPlannedSlugs() : List.of(),
+                plan,
                 messageResponses
         );
     }

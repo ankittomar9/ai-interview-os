@@ -28,14 +28,41 @@ import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class InterviewSessionService {
 
     private final InterviewSessionRepository sessionRepository;
     private final SessionMessageRepository messageRepository;
     private final InterviewSessionMongoRepository mongoSessionRepository;
     private final ResumeParsingService resumeParsingService;
-    private final com.interviewos.session.sandbox.client.QuestionBankClient questionBankClient;
+    private final SessionPlanService sessionPlanService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public InterviewSessionService(
+            InterviewSessionRepository sessionRepository,
+            SessionMessageRepository messageRepository,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            ResumeParsingService resumeParsingService,
+            SessionPlanService sessionPlanService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.fasterxml.jackson.databind.ObjectMapper objectMapper
+    ) {
+        this.sessionRepository = sessionRepository;
+        this.messageRepository = messageRepository;
+        this.mongoSessionRepository = mongoSessionRepository;
+        this.resumeParsingService = resumeParsingService;
+        this.sessionPlanService = sessionPlanService;
+        this.objectMapper = objectMapper != null ? objectMapper : new com.fasterxml.jackson.databind.ObjectMapper();
+    }
+
+    public InterviewSessionService(
+            InterviewSessionRepository sessionRepository,
+            SessionMessageRepository messageRepository,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            ResumeParsingService resumeParsingService,
+            com.interviewos.session.sandbox.client.QuestionBankClient questionBankClient
+    ) {
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, new SessionPlanService(questionBankClient), new com.fasterxml.jackson.databind.ObjectMapper());
+    }
 
     @Transactional
     public SessionResponse createSession(CreateSessionRequest request) {
@@ -43,11 +70,26 @@ public class InterviewSessionService {
 
         String effectiveMode = request.getEffectiveMode();
         List<String> plannedSlugs = new ArrayList<>();
-        if ("INTERVIEW".equalsIgnoreCase(effectiveMode)) {
+        com.interviewos.session.model.SessionPlan plan = null;
+        String planJson = null;
+
+        if (!"PLAYGROUND".equalsIgnoreCase(effectiveMode)) {
             long seed = Math.abs((long) (request.candidateId() != null ? request.candidateId().hashCode() : 42) * 31
                     + (request.track() != null ? request.track().name().hashCode() : 0)
                     + (request.difficulty() != null ? request.difficulty().name().hashCode() : 0));
-            plannedSlugs = buildPlannedSlugs(request.track(), request.difficulty(), seed);
+            plan = sessionPlanService.buildPlan(request.track(), request.difficulty(), seed);
+            try {
+                planJson = objectMapper.writeValueAsString(plan);
+            } catch (Exception e) {
+                log.warn("Failed to serialize session plan to JSON: {}", e.getMessage());
+            }
+            if (plan != null && plan.sections() != null) {
+                for (var sec : plan.sections()) {
+                    if (sec.problemSlugs() != null) {
+                        plannedSlugs.addAll(sec.problemSlugs());
+                    }
+                }
+            }
         }
 
         InterviewSession session = InterviewSession.builder()
@@ -60,13 +102,22 @@ public class InterviewSessionService {
                 .status(SessionStatus.INITIALIZED)
                 .sessionMode(effectiveMode)
                 .plannedSlugs(plannedSlugs)
+                .planJson(planJson)
                 .build();
 
         InterviewSession saved = sessionRepository.save(session);
 
         // Sync to MongoDB Document Store (Safe Upsert)
         try {
+            List<InterviewSessionDocument.PlannedSectionDocument> planSectionDocs = new ArrayList<>();
+            if (plan != null && plan.sections() != null) {
+                planSectionDocs = plan.sections().stream()
+                        .map(InterviewSessionDocument.PlannedSectionDocument::fromRecord)
+                        .toList();
+            }
+
             final List<String> finalPlannedSlugs = plannedSlugs;
+            final List<InterviewSessionDocument.PlannedSectionDocument> finalPlanSectionDocs = planSectionDocs;
             InterviewSessionDocument mongoDoc = mongoSessionRepository
                     .findFirstBySessionIdOrderByCreatedAtDesc(saved.getId())
                     .orElseGet(() -> InterviewSessionDocument.builder()
@@ -74,12 +125,13 @@ public class InterviewSessionService {
                             .candidateId(request.candidateId())
                             .candidateName(request.candidateName() != null && !request.candidateName().isBlank() ? request.candidateName() : request.candidateId())
                             .targetRoleTitle(request.roleTitle())
-                            .interviewTrack(request.track().name())
-                            .seniorityLevel(request.difficulty().name())
+                            .interviewTrack(request.track() != null ? request.track().name() : null)
+                            .seniorityLevel(request.difficulty() != null ? request.difficulty().name() : null)
                             .targetCompany(request.targetCompany())
                             .status(SessionStatus.INITIALIZED.name())
                             .sessionMode(effectiveMode)
                             .plannedSlugs(finalPlannedSlugs)
+                            .planSections(finalPlanSectionDocs)
                             .transcript(new ArrayList<>())
                             .createdAt(LocalDateTime.now())
                             .build());
@@ -87,6 +139,7 @@ public class InterviewSessionService {
             mongoDoc.setStatus(SessionStatus.INITIALIZED.name());
             mongoDoc.setSessionMode(effectiveMode);
             mongoDoc.setPlannedSlugs(plannedSlugs);
+            mongoDoc.setPlanSections(planSectionDocs);
             mongoSessionRepository.save(mongoDoc);
         } catch (Exception e) {
             log.warn("⚠️ Failed to mirror session to MongoDB: {}", e.getMessage());
@@ -96,175 +149,11 @@ public class InterviewSessionService {
     }
 
     public String resolveCatalogTrackKey(com.interviewos.session.model.InterviewTrack track) {
-        if (track == null) return "ALGORITHMS_DATA_STRUCTURES";
-        return switch (track) {
-            case SQL -> "SQL";
-            case SPRING_LLD, JAVA_SPRING_BOOT -> "SPRING_LLD";
-            case SYSTEM_DESIGN -> "SYSTEM_DESIGN";
-            case BEHAVIORAL_STAR -> "BEHAVIORAL_STAR";
-            case RESUME_BASED, ALGORITHMS_DATA_STRUCTURES -> "ALGORITHMS_DATA_STRUCTURES";
-        };
-    }
-
-    private List<String> findAdjacentRungCandidates(
-            Map<com.interviewos.session.model.DifficultyLevel, List<String>> trackMap,
-            com.interviewos.session.model.DifficultyLevel rung
-    ) {
-        com.interviewos.session.model.DifficultyLevel[] order = switch (rung) {
-            case STAFF -> new com.interviewos.session.model.DifficultyLevel[]{
-                    com.interviewos.session.model.DifficultyLevel.SENIOR,
-                    com.interviewos.session.model.DifficultyLevel.MID,
-                    com.interviewos.session.model.DifficultyLevel.JUNIOR
-            };
-            case SENIOR -> new com.interviewos.session.model.DifficultyLevel[]{
-                    com.interviewos.session.model.DifficultyLevel.MID,
-                    com.interviewos.session.model.DifficultyLevel.STAFF,
-                    com.interviewos.session.model.DifficultyLevel.JUNIOR
-            };
-            case MID -> new com.interviewos.session.model.DifficultyLevel[]{
-                    com.interviewos.session.model.DifficultyLevel.SENIOR,
-                    com.interviewos.session.model.DifficultyLevel.JUNIOR,
-                    com.interviewos.session.model.DifficultyLevel.STAFF
-            };
-            case JUNIOR -> new com.interviewos.session.model.DifficultyLevel[]{
-                    com.interviewos.session.model.DifficultyLevel.MID,
-                    com.interviewos.session.model.DifficultyLevel.SENIOR,
-                    com.interviewos.session.model.DifficultyLevel.STAFF
-            };
-        };
-
-        for (com.interviewos.session.model.DifficultyLevel alt : order) {
-            List<String> found = trackMap.get(alt);
-            if (found != null && !found.isEmpty()) {
-                return found;
-            }
-        }
-        return List.of();
+        return sessionPlanService.resolveCatalogTrackKey(track);
     }
 
     public List<String> buildPlannedSlugs(com.interviewos.session.model.InterviewTrack track, com.interviewos.session.model.DifficultyLevel difficulty, long seed) {
-        if (track == null) track = com.interviewos.session.model.InterviewTrack.ALGORITHMS_DATA_STRUCTURES;
-        if (difficulty == null) difficulty = com.interviewos.session.model.DifficultyLevel.MID;
-
-        com.interviewos.session.model.DifficultyLevel low = switch (difficulty) {
-            case JUNIOR -> com.interviewos.session.model.DifficultyLevel.JUNIOR;
-            case MID -> com.interviewos.session.model.DifficultyLevel.JUNIOR;
-            case SENIOR -> com.interviewos.session.model.DifficultyLevel.MID;
-            case STAFF -> com.interviewos.session.model.DifficultyLevel.SENIOR;
-        };
-        com.interviewos.session.model.DifficultyLevel mid = difficulty;
-        com.interviewos.session.model.DifficultyLevel high = switch (difficulty) {
-            case JUNIOR -> com.interviewos.session.model.DifficultyLevel.MID;
-            case MID -> com.interviewos.session.model.DifficultyLevel.SENIOR;
-            case SENIOR, STAFF -> com.interviewos.session.model.DifficultyLevel.STAFF;
-        };
-
-        List<com.interviewos.session.model.DifficultyLevel> ladder = List.of(low, mid, high);
-        List<String> planned = new ArrayList<>();
-        java.util.Set<String> seen = new java.util.HashSet<>();
-
-        Map<com.interviewos.session.model.DifficultyLevel, List<String>> dsaMap = Map.of(
-                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("two-sum", "reverse-a-string", "valid-parentheses"),
-                com.interviewos.session.model.DifficultyLevel.MID, List.of("longest-substring-without-repeating-characters", "search-in-rotated-sorted-array", "lru-cache"),
-                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("lru-cache", "merge-k-sorted-lists", "trapping-rain-water"),
-                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("trapping-rain-water", "topo-course-schedule", "merge-k-sorted-lists")
-        );
-
-        Map<com.interviewos.session.model.DifficultyLevel, List<String>> sqlMap = Map.of(
-                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("monthly-active-users", "sql-user-cohort-retention", "sql-running-revenue"),
-                com.interviewos.session.model.DifficultyLevel.MID, List.of("sql-running-revenue", "sql-funnel-ratios", "sql-dedup-keep-latest", "department-top-salaries"),
-                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("sql-top-n-per-group", "sql-sessionization", "sql-7d-moving-average", "sql-month-over-month"),
-                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("sql-top-n-per-group", "sql-spend-quartiles", "complex-financial-rollup")
-        );
-
-        Map<com.interviewos.session.model.DifficultyLevel, List<String>> lldMap = Map.of(
-                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("parking-lot-system", "lld-order-service"),
-                com.interviewos.session.model.DifficultyLevel.MID, List.of("lld-order-service", "rate-limiter-service", "cache-eviction-service"),
-                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("distributed-task-scheduler", "cache-eviction-service"),
-                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("distributed-task-scheduler", "cache-eviction-service")
-        );
-
-        Map<com.interviewos.session.model.DifficultyLevel, List<String>> hldMap = Map.of(
-                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("url-shortener", "url-shortener-system-design"),
-                com.interviewos.session.model.DifficultyLevel.MID, List.of("url-shortener-system-design", "distributed-cache", "ride-sharing-dispatch"),
-                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("distributed-rate-limiter", "real-time-chat", "distributed-cache"),
-                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("distributed-rate-limiter", "real-time-chat")
-        );
-
-        Map<com.interviewos.session.model.DifficultyLevel, List<String>> behavioralMap = Map.of(
-                com.interviewos.session.model.DifficultyLevel.JUNIOR, List.of("leadership-conflict", "behavioral-technical-conflict"),
-                com.interviewos.session.model.DifficultyLevel.MID, List.of("critical-bug-production", "leadership-conflict", "behavioral-technical-conflict"),
-                com.interviewos.session.model.DifficultyLevel.SENIOR, List.of("behavioral-technical-conflict", "cross-team-collaboration", "critical-bug-production"),
-                com.interviewos.session.model.DifficultyLevel.STAFF, List.of("behavioral-technical-conflict", "cross-team-collaboration")
-        );
-
-        Map<String, Map<com.interviewos.session.model.DifficultyLevel, List<String>>> fallbackCatalog = Map.ofEntries(
-                Map.entry("ALGORITHMS_DATA_STRUCTURES", dsaMap),
-                Map.entry("SQL", sqlMap),
-                Map.entry("SQL_DATABASE", sqlMap),
-                Map.entry("SPRING_LLD", lldMap),
-                Map.entry("JAVA_SPRING_BOOT", lldMap),
-                Map.entry("SYSTEM_DESIGN_LLD", lldMap),
-                Map.entry("SYSTEM_DESIGN", hldMap),
-                Map.entry("SYSTEM_DESIGN_HLD", hldMap),
-                Map.entry("BEHAVIORAL_STAR", behavioralMap),
-                Map.entry("BEHAVIORAL", behavioralMap),
-                Map.entry("RESUME_BASED", dsaMap)
-        );
-
-        String canonicalKey = resolveCatalogTrackKey(track);
-        Map<com.interviewos.session.model.DifficultyLevel, List<String>> trackMap = fallbackCatalog.getOrDefault(
-                canonicalKey,
-                fallbackCatalog.get("ALGORITHMS_DATA_STRUCTURES")
-        );
-
-        java.util.Random random = new java.util.Random(seed);
-        for (int i = 0; i < ladder.size(); i++) {
-            com.interviewos.session.model.DifficultyLevel rung = ladder.get(i);
-            List<String> candidates = new ArrayList<>();
-            String source = "FALLBACK";
-            com.interviewos.session.model.DifficultyLevel chosenDifficulty = rung;
-
-            if (questionBankClient != null) {
-                try {
-                    var remote = questionBankClient.listProblems(canonicalKey, rung.name());
-                    if (remote != null && !remote.isEmpty()) {
-                        remote.forEach(p -> candidates.add(p.getProblemSlug()));
-                        if (!candidates.isEmpty()) {
-                            source = "REMOTE";
-                        }
-                    }
-                } catch (Exception e) {
-                    log.debug("Notice on remote question bank lookup for ladder: {}", e.getMessage());
-                }
-            }
-
-            if (candidates.isEmpty()) {
-                source = "FALLBACK";
-                List<String> rungCandidates = trackMap.get(rung);
-                if (rungCandidates != null && !rungCandidates.isEmpty()) {
-                    candidates.addAll(rungCandidates);
-                } else {
-                    candidates.addAll(findAdjacentRungCandidates(trackMap, rung));
-                }
-            }
-
-            List<String> unseen = candidates.stream().filter(s -> !seen.contains(s)).toList();
-            String chosen;
-            if (!unseen.isEmpty()) {
-                chosen = unseen.get(random.nextInt(unseen.size()));
-            } else if (!candidates.isEmpty()) {
-                chosen = candidates.get(random.nextInt(candidates.size()));
-            } else {
-                chosen = "q-" + (i + 1);
-            }
-            seen.add(chosen);
-            planned.add(chosen);
-
-            log.info("Ladder pick: {}|{}|{}|source={}", chosen, rung, chosenDifficulty, source);
-        }
-
-        return planned;
+        return sessionPlanService.buildPlannedSlugs(track, difficulty, seed);
     }
 
     @Transactional
