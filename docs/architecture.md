@@ -52,7 +52,9 @@ AI Interview OS is an autonomous multi-track technical assessment and Socratic p
                                     +---------------+
 ```
 
-> **Edge Consolidation & RAM Reduction (ADR-004 / SPEC-002)**: In single-node laptop deployments, `cloud-config-server` (:8888) and `service-discovery-service` (:8761) are retired in favor of Docker internal DNS and embedded profile inlining, reducing JVM memory consumption by ~750MB and guaranteeing a total platform footprint **<5GB** (capped at ~4.7GB).
+> **Edge Consolidation & RAM Reduction (ADR-004 / SPEC-002)**: In single-node laptop deployments, `cloud-config-server` (:8888) and `service-discovery-service` (:8761) are retired in favor of Docker internal DNS and embedded profile inlining, reducing JVM memory consumption by ~750MB and maintaining platform footprint at ~2.5GB core stack (~5.2GB measured with execution engines).
+>
+> **Code Budget Enforcement**: Core frontend arena components strictly adhere to a 250-line ceiling (`ArenaShell.tsx` ≤ 250, `ArenaRoom.tsx` ≤ 250, `useCoachVoice.ts` ≤ 250) measured objectively using `wc -l`.
 
 ### Service Responsibilities
 

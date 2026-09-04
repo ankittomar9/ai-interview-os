@@ -28,6 +28,7 @@ RUN cmake -B build -DWHISPER_BUILD_SERVER=ON && \
 # Build argument for model selection (default: large-v3-turbo quantized q5_0 ~574MB)
 # Lite profile: --build-arg WHISPER_MODEL=ggml-base.en.bin (~140MB)
 ARG WHISPER_MODEL=ggml-large-v3-turbo-q5_0.bin
+ENV WHISPER_MODEL=${WHISPER_MODEL}
 
 # Download neural speech-to-text model
 RUN mkdir -p models && \
@@ -38,5 +39,5 @@ EXPOSE 8178
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
   CMD curl -f http://localhost:8178/health || exit 1
 
-ENTRYPOINT ["./build/bin/whisper-server"]
-CMD ["-m", "models/ggml-large-v3-turbo-q5_0.bin", "--host", "0.0.0.0", "--port", "8178", "--convert"]
+ENTRYPOINT ["/bin/sh", "-c", "exec ./build/bin/whisper-server -m models/${WHISPER_MODEL} --host 0.0.0.0 --port 8178 --convert \"$@\"", "--"]
+CMD []

@@ -120,6 +120,7 @@ class SessionRecordingServiceTest {
         assertEquals(1024L, manifest.getStreams().get("camera").getBytes());
         assertEquals(1, manifest.getStreams().get("screen").getChunks());
         assertEquals(2048L, manifest.getStreams().get("screen").getBytes());
+        assertEquals("Stream timestamps are upload-time", manifest.getNote());
     }
 
     @Test

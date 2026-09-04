@@ -10,7 +10,7 @@ This document serves as the authoritative, living task tracker and acceptance sp
 |---|---|---|---|---|---|
 | **R1** | Reliability | Engine-Down Honesty in Arena IDE | P0 | **COMPLETED** (`f97d155`) | `useExecution.ts`, `TestcasePanel.tsx` |
 | **R2** | Reliability | Transcript & Report Honesty on Sandbox Outages | P0 | **IN PROGRESS** (M21) | `interview-session-service`, `ai-orchestrator`, `evaluation-report` |
-| **R3** | Reliability | Recording Chunk Re-queue & GridFS Store-Before-Delete | P1 | **PLANNED** | `useSessionRecorder.ts`, `SessionRecordingService.java` |
+| **R3** | Reliability | Recording Chunk Re-queue & GridFS Store-Before-Delete | P1 | **COMPLETED** (`0290995`) | `useSessionRecorder.ts`, `SessionRecordingService.java` |
 | **R4** | Reliability | Container Stability, Memory Limits & Healthchecks | P1 | **PLANNED** | `docker-compose.yaml` |
 | **R5** | Reliability | Groq Whisper Audio Engine Resilience & Buffering | P2 | **PLANNED** | `WhisperTranscriptionService.java` |
 | **U1** | UX/UI | SubmissionsTab Warning Badge & Honest History | P1 | **IN PROGRESS** (M21) | `SubmissionsTab.tsx` |
