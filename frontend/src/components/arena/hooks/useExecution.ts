@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { GenerateQuestionResponse } from '../../../types';
 import { executeCode, type ExecutionResultResponse } from '../../../services/api';
-import { saveSubmission, type SubmissionRecord, type SubmissionStatus } from '../../../lib/submissions';
+import { saveSubmission, getSubmissions, type SubmissionRecord, type SubmissionStatus } from '../../../lib/submissions';
 import type { ExecutionResult, TestCaseItem } from '../../ide/TestcasePanel';
 
 interface UseExecutionProps {
@@ -15,11 +15,18 @@ export function useExecution({
   activeQuestion,
   onCodeRunRecorded
 }: UseExecutionProps) {
+  const currentSlug = activeQuestion?.problemSlug || activeQuestion?.slug || 'problem';
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [activeExecutionTab, setActiveExecutionTab] = useState<'testcases' | 'submissions'>('testcases');
   const [customInput, setCustomInput] = useState('');
-  const [submissions, setSubmissions] = useState<SubmissionRecord[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionRecord[]>(() =>
+    getSubmissions(sessionId, currentSlug)
+  );
+
+  useEffect(() => {
+    setSubmissions(getSubmissions(sessionId, currentSlug));
+  }, [sessionId, currentSlug]);
 
   const runCode = useCallback(async (code: string, language: string) => {
     setIsExecuting(true);
@@ -92,6 +99,35 @@ export function useExecution({
       };
 
       setExecutionResult(result);
+
+      let runSubStatus: SubmissionStatus = 'Wrong Answer';
+      if (passed) runSubStatus = 'Accepted';
+      else if (response.status === 'COMPILE_ERROR' || response.status === 'SYNTAX_ERROR') runSubStatus = 'Compile Error';
+      else if (response.status === 'RUNTIME_ERROR') runSubStatus = 'Runtime Error';
+      else if (response.status === 'TIMEOUT') runSubStatus = 'Time Limit Exceeded';
+      else if (response.status === 'MEMORY_EXCEEDED') runSubStatus = 'Memory Limit Exceeded';
+
+      const runRecord = saveSubmission(sessionId, slug, {
+        type: 'RUN',
+        language,
+        status: runSubStatus,
+        runtimeMs: response.executionTimeMs || 0,
+        memoryMb: response.memoryUsedMb || 0,
+        passedTests: response.passedTests || 0,
+        totalTests: response.totalTests || 0,
+        rawOutput: response.stdout || response.stderr,
+        compilerOutput: response.compilerOutput,
+        cases: cases.map((c) => ({
+          name: `Case ${c.id}`,
+          passed: c.passed,
+          input: c.input,
+          expectedOutput: c.expectedOutput,
+          actualOutput: c.actualOutput,
+          error: c.error
+        }))
+      });
+      setSubmissions((prev) => [runRecord, ...prev]);
+
       return result;
     } catch (err: any) {
       const failedResult: ExecutionResult = {

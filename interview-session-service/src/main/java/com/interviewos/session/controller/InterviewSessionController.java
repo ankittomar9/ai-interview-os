@@ -69,6 +69,14 @@ public class InterviewSessionController {
         return ResponseEntity.ok(transcript);
     }
 
+    @GetMapping("/{id}/submissions")
+    public ResponseEntity<List<com.interviewos.session.document.InterviewSessionDocument.SubmissionEntry>> getSessionSubmissions(@PathVariable Long id) {
+        log.info("Fetching submissions ledger for session ID: {}", id);
+        List<com.interviewos.session.document.InterviewSessionDocument.SubmissionEntry> submissions = sessionService.getSubmissions(id);
+        log.info("Retrieved {} submissions ledger entries for session ID: {}", submissions.size(), id);
+        return ResponseEntity.ok(submissions);
+    }
+
     @PostMapping("/{id}/complete")
     public ResponseEntity<SessionResponse> completeSession(@PathVariable Long id) {
         long start = System.currentTimeMillis();
