@@ -149,4 +149,60 @@ class RubricServiceTest {
         assertThat(response.dimensions().get(1).dimension()).isEqualTo("CONFLICT_RESOLUTION");
         assertThat(response.dimensions().get(2).dimension()).isEqualTo("TEAMWORK");
     }
+
+    @Test
+    @DisplayName("evaluateRubric falls back to Groq on Ollama timeout/failure")
+    void testEvaluateRubricFallsBackToGroqOnOllamaTimeout() {
+        AiClient mockOllama = org.mockito.Mockito.mock(AiClient.class);
+        AiClient mockGroq = org.mockito.Mockito.mock(AiClient.class);
+
+        when(clientFactory.getClient(ModelProvider.OLLAMA)).thenReturn(mockOllama);
+        when(clientFactory.getClient(ModelProvider.GROQ)).thenReturn(mockGroq);
+
+        when(mockOllama.generateCompletion(any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Ollama read timeout"));
+
+        String groqJson = """
+                {
+                  "dimensions": [
+                    { "dimension": "REQUIREMENTS_CLARIFICATION", "score": 90, "rationale": "Clarified inputs", "evidence": "Does input contain spaces?" },
+                    { "dimension": "ALGORITHMIC_REASONING", "score": 95, "rationale": "Optimal O(N)", "evidence": "O(N) time and O(1) space" },
+                    { "dimension": "EDGE_CASE_THOROUGHNESS", "score": 88, "rationale": "Handled null and empty", "evidence": "if (str == null) return;" },
+                    { "dimension": "COMMUNICATION_CLARITY", "score": 92, "rationale": "Structured articulation", "evidence": "Let us step through..." },
+                    { "dimension": "CODE_QUALITY", "score": 95, "rationale": "Idiomatic clean code", "evidence": "int left = 0;" }
+                  ],
+                  "strengths": ["Excellent Big-O mastery", "Optimal solution"],
+                  "weaknesses": ["None notable"],
+                  "studyPlan": [
+                    "Day 1: Advanced Stacks", "Day 2: Two Pointers", "Day 3: Sliding Window",
+                    "Day 4: Monotonic Queues", "Day 5: Graph Theory", "Day 6: System Design", "Day 7: Mock Interview"
+                  ],
+                  "executiveSummary": "Strong Hire candidate with deep algorithmic foundation."
+                }
+                """;
+
+        when(mockGroq.generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("eval")))
+                .thenReturn(groqJson);
+
+        RubricEvaluationRequest request = new RubricEvaluationRequest(
+                "reverse-a-string",
+                "Reverse a string",
+                "ALGORITHMS_DATA_STRUCTURES",
+                "SENIOR",
+                List.of(new TurnDto("CANDIDATE", "EXPLANATION", "O(N) time and O(1) space", null)),
+                List.of(new ExecutionDto("PASSED", 5, 5, 80.0, 18.0)),
+                "class Main {}",
+                "java"
+        );
+
+        RubricResponse response = rubricService.evaluateRubric(request);
+
+        assertThat(response.llmGenerated()).isTrue();
+        assertThat(response.dimensions()).hasSize(5);
+        assertThat(response.dimensions().get(0).score()).isEqualTo(90);
+        assertThat(response.dimensions().get(1).score()).isEqualTo(95);
+        assertThat(response.executiveSummary()).contains("Strong Hire");
+        org.mockito.Mockito.verify(mockGroq, org.mockito.Mockito.times(1))
+                .generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("eval"));
+    }
 }

@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -30,10 +32,16 @@ public class RubricService {
     private final ObjectMapper objectMapper;
 
     @Value("${rubric.provider:ollama}")
-    private String configuredProvider;
+    private String configuredProvider = "ollama";
 
     @Value("${rubric.api-key:${RUBRIC_API_KEY:}}")
-    private String configuredApiKey;
+    private String configuredApiKey = "";
+
+    @Value("${rubric.timeout-seconds:25}")
+    private int rubricTimeoutSeconds = 25;
+
+    @Value("${ai.providers.groq.api-key:${GROQ_API_KEY:}}")
+    private String groqApiKey = "";
 
     public RubricResponse evaluateRubric(RubricEvaluationRequest request) {
         log.info("Starting qualitative rubric evaluation for problem: '{}', track: '{}', difficulty: '{}'",
@@ -41,26 +49,59 @@ public class RubricService {
 
         ModelProvider provider = resolveProvider(configuredProvider);
         com.interviewos.ai.rubric.model.RubricSchema schema = com.interviewos.ai.rubric.model.RubricSchema.fromTrack(request.track());
-        AiClient client;
+        AiClient resolvedClient;
+        ModelProvider effectiveProvider = provider;
         try {
-            client = clientFactory.getClient(provider);
+            resolvedClient = clientFactory.getClient(provider);
         } catch (Exception e) {
-            log.warn("⚠️ Failed to resolve AI client for rubric provider '{}': {}. Returning deterministic fallback signal.",
+            log.warn("⚠️ Failed to resolve AI client for rubric provider '{}': {}. Attempting Groq fallback.",
                     provider, e.getMessage());
-            return RubricResponse.emptyFallback(schema);
+            try {
+                resolvedClient = clientFactory.getClient(ModelProvider.GROQ);
+                effectiveProvider = ModelProvider.GROQ;
+            } catch (Exception groqResolveErr) {
+                return RubricResponse.emptyFallback(schema);
+            }
         }
+        final AiClient client = resolvedClient;
+        final ModelProvider activeProvider = effectiveProvider;
 
         String systemInstruction = buildSystemInstruction(schema);
         String userPrompt = buildSanitizedUserPrompt(request);
 
         try {
-            String rawResponse = client.generateCompletion(
-                    provider,
-                    systemInstruction,
-                    userPrompt,
-                    configuredApiKey,
-                    "eval"
-            );
+            String rawResponse;
+            if (activeProvider == ModelProvider.OLLAMA) {
+                try {
+                    log.info("Evaluating rubric with Ollama (local, timeout: {}s)...", rubricTimeoutSeconds);
+                    rawResponse = CompletableFuture.supplyAsync(() -> client.generateCompletion(
+                            ModelProvider.OLLAMA,
+                            systemInstruction,
+                            userPrompt,
+                            configuredApiKey,
+                            "eval"
+                    )).get(rubricTimeoutSeconds, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    log.warn("⚠️ Ollama rubric timeout or failure ({}). Falling back to Groq LPU...", e.getMessage());
+                    AiClient groqClient = clientFactory.getClient(ModelProvider.GROQ);
+                    String effectiveGroqKey = (groqApiKey != null && !groqApiKey.isBlank()) ? groqApiKey : configuredApiKey;
+                    rawResponse = groqClient.generateCompletion(
+                            ModelProvider.GROQ,
+                            systemInstruction,
+                            userPrompt,
+                            effectiveGroqKey,
+                            "eval"
+                    );
+                }
+            } else {
+                rawResponse = client.generateCompletion(
+                        provider,
+                        systemInstruction,
+                        userPrompt,
+                        configuredApiKey,
+                        "eval"
+                );
+            }
 
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);
             LlmRubricPayload parsed = objectMapper.readValue(cleanJson, LlmRubricPayload.class);
@@ -81,7 +122,7 @@ public class RubricService {
         } catch (Exception e) {
             log.warn("⚠️ Failed to generate/parse LLM rubric with provider '{}': {}. Falling back to deterministic rubric.",
                     provider, e.getMessage());
-            return RubricResponse.emptyFallback();
+            return RubricResponse.emptyFallback(schema);
         }
     }
 
