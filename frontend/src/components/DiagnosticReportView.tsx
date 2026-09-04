@@ -17,7 +17,8 @@ import {
   Layers,
   HelpCircle,
   Award,
-  Video
+  Video,
+  VideoOff
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
@@ -42,7 +43,10 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
   } | null>(null);
   const [manifest, setManifest] = useState<{
     sessionId?: number;
+    format?: string;
     isComplete?: boolean;
+    totalChunks?: number;
+    totalBytes?: number;
     streams?: {
       camera?: { chunks: number; bytes: number; startedAt: string; endedAt: string };
       screen?: { chunks: number; bytes: number; startedAt: string; endedAt: string };
@@ -83,8 +87,8 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
 
   const availableStreams = useMemo(() => {
     return {
-      camera: !manifest || !manifest.streams || !!manifest.streams.camera,
-      screen: !!manifest?.streams?.screen
+      camera: !!manifest?.streams?.camera && ((manifest.streams.camera.chunks ?? 0) > 0),
+      screen: !!manifest?.streams?.screen && ((manifest.streams.screen.chunks ?? 0) > 0)
     };
   }, [manifest]);
 
@@ -657,30 +661,51 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                     value={replayStreamKind}
                     onChange={setReplayStreamKind}
                   />
-                  <a
-                    href={`/api/v1/sessions/${report.sessionId}/recordings/download?kind=${replayStreamKind}`}
-                    download={`session-${report.sessionId}-${replayStreamKind}-recording.webm`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-primary text-on-accent hover:bg-primary/90 transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download {replayStreamKind === 'screen' ? 'Screen' : 'Camera'} .webm</span>
-                  </a>
+                  {availableStreams[replayStreamKind] ? (
+                    <a
+                      href={`/api/v1/sessions/${report.sessionId}/recordings/download?kind=${replayStreamKind}`}
+                      download={`session-${report.sessionId}-${replayStreamKind}-recording.webm`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-primary text-on-accent hover:bg-primary/90 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download {replayStreamKind === 'screen' ? 'Screen' : 'Camera'} .webm</span>
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-surface text-text-3 border border-border opacity-60 cursor-not-allowed"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>No footage stored</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="w-full bg-black rounded-lg overflow-hidden border border-border aspect-video max-h-[500px] flex items-center justify-center">
-                <video
-                  ref={videoRef}
-                  key={replayStreamKind}
-                  controls
-                  playsInline
-                  onTimeUpdate={() => {
-                    if (videoRef.current) setVideoCurrentTime(videoRef.current.currentTime);
-                  }}
-                  className="w-full h-full object-contain"
-                  src={`/api/v1/sessions/${report.sessionId}/recordings/stream?kind=${replayStreamKind}`}
-                />
-              </div>
+              {availableStreams[replayStreamKind] ? (
+                <div className="w-full bg-black rounded-lg overflow-hidden border border-border aspect-video max-h-[500px] flex items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    key={replayStreamKind}
+                    controls
+                    playsInline
+                    onTimeUpdate={() => {
+                      if (videoRef.current) setVideoCurrentTime(videoRef.current.currentTime);
+                    }}
+                    className="w-full h-full object-contain"
+                    src={`/api/v1/sessions/${report.sessionId}/recordings/stream?kind=${replayStreamKind}`}
+                  />
+                </div>
+              ) : (
+                <div className="w-full bg-surface rounded-lg overflow-hidden border border-border aspect-video max-h-[500px] flex flex-col items-center justify-center p-6 text-center text-text-3 space-y-2">
+                  <VideoOff className="w-10 h-10 opacity-40 text-text-3" />
+                  <span className="text-sm font-semibold text-text-2">No footage stored</span>
+                  <p className="text-xs text-text-3 max-w-sm">
+                    No {replayStreamKind === 'screen' ? 'screen capture' : 'camera'} recording chunks were captured for this session.
+                  </p>
+                </div>
+              )}
 
               {/* U2: SESSION REPLAY WITH SYNCHRONIZED TRANSCRIPT TIMELINE */}
               <div className="border border-border rounded-lg p-4 bg-surface space-y-3">
@@ -737,9 +762,15 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                 </div>
                 <div className="bg-elevated p-3 rounded border border-border space-y-1">
                   <span className="text-[11px] font-semibold text-text-3 block">Integrity Status</span>
-                  <Chip variant="success" size="sm">
-                    Verified Stream Available
-                  </Chip>
+                  {manifest && (manifest.totalChunks ?? 0) > 0 ? (
+                    <Chip variant="success" size="sm">
+                      Verified Stream Available ({manifest.totalChunks} chunks)
+                    </Chip>
+                  ) : (
+                    <Chip variant="neutral" size="sm">
+                      No footage stored
+                    </Chip>
+                  )}
                 </div>
               </div>
             </div>

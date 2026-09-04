@@ -102,4 +102,47 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 4: [A16 + A6] — Recording Chunk Upload 400 Param Bug, 413 Drop Telemetry, and Replay Honesty
+
+- **Branch**: `fix/ledger-a16-a6`
+- **Scope**:
+  - **A16**:
+    - Removed redundant `seq` and `kind` appends to `FormData` (`createFormData(blob, seq)`) in `useSessionRecorder.ts`, resolving the Spring Boot multipart comma-merging bug (`kind="camera,camera"`).
+    - Defensively sanitized `seq` and `kind` in `SessionRecordingController.java` via `.split(",")[0]`.
+    - Raised Nginx client body size in `frontend/nginx.conf` to `client_max_body_size 50M;`.
+    - Computed available streams and integrity status in `DiagnosticReportView.tsx` strictly from persisted chunk count (`manifest.totalChunks > 0`). When 0 chunks are captured, download button shows "No footage stored" (disabled) and video player shows an honest empty state with `VideoOff` icon instead of a broken player claiming verified stream.
+  - **A6**:
+    - Added `DroppedChunkInfo` DTO and `droppedChunks` list in `RecordingManifest`.
+    - Implemented `recordDroppedChunk(Long sessionId, int seq, String kind, String reason)` in `SessionRecordingService.java`, persisting dropped chunk audit documents to GridFS (`RECORDING_DROPPED_CHUNK`) and incrementing Prometheus counter `recording_chunk_dropped_total{kind,reason}`.
+    - Added `POST /api/v1/sessions/{id}/recordings/drop` endpoint and `@ExceptionHandler(MaxUploadSizeExceededException.class)` returning HTTP 413 in `SessionRecordingController.java`.
+    - Added 413 error reporting and discard in `useSessionRecorder.ts` to prevent unbounded retry storms.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 227 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.controller.SessionRecordingControllerTest
+    [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.controller.SessionRecordingControllerTest
+    [INFO] Running com.interviewos.session.service.SessionRecordingServiceTest
+    [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.SessionRecordingServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 50, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `SessionRecordingControllerTest.testUploadChunkDuplicatedParamsSanitization`: verifies `seq="0,0"` and `kind="camera,camera"` cleanly parse to `seq=0` and `kind="camera"`.
+  - `SessionRecordingControllerTest.testReportDroppedChunk`: verifies drop report records `PAYLOAD_TOO_LARGE_413`.
+  - `SessionRecordingServiceTest.testRecordDroppedChunk_storesInGridFs`: verifies dropped chunk GridFS audit doc and Micrometer counter `recording_chunk_dropped_total{kind=screen,reason=PAYLOAD_TOO_LARGE_413}` incremented.
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 1.15s
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 

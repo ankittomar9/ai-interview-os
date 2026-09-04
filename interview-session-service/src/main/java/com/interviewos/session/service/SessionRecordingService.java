@@ -18,6 +18,10 @@ import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.ObjectProvider;
+
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -26,12 +30,42 @@ import java.util.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SessionRecordingService {
 
     private final GridFsTemplate gridFsTemplate;
     private final GridFSBucket gridFSBucket;
     private final InterviewSessionMongoRepository mongoSessionRepository;
+    private final MeterRegistry meterRegistry;
+
+    public SessionRecordingService(
+            GridFsTemplate gridFsTemplate,
+            GridFSBucket gridFSBucket,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            ObjectProvider<MeterRegistry> meterRegistryProvider
+    ) {
+        this.gridFsTemplate = gridFsTemplate;
+        this.gridFSBucket = gridFSBucket;
+        this.mongoSessionRepository = mongoSessionRepository;
+        this.meterRegistry = meterRegistryProvider != null ? meterRegistryProvider.getIfAvailable() : null;
+    }
+
+    public SessionRecordingService(
+            GridFsTemplate gridFsTemplate,
+            GridFSBucket gridFSBucket,
+            InterviewSessionMongoRepository mongoSessionRepository
+    ) {
+        this(gridFsTemplate, gridFSBucket, mongoSessionRepository, null);
+    }
+
+    @Data
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class DroppedChunkInfo {
+        private int seq;
+        private String kind;
+        private String reason;
+        private String timestamp;
+    }
 
     @Data
     @Builder
@@ -53,6 +87,7 @@ public class SessionRecordingService {
         private Map<String, StreamMeta> streams;
         private Integer totalChunks;
         private Long totalBytes;
+        private List<DroppedChunkInfo> droppedChunks;
         private String startedAt;
         private String endedAt;
     }
@@ -119,6 +154,43 @@ public class SessionRecordingService {
         return getSortedChunks(sessionId, "camera");
     }
 
+    public void recordDroppedChunk(Long sessionId, int seq, String kind, String reason) {
+        String safeKind = (kind != null && "screen".equalsIgnoreCase(kind)) ? "screen" : "camera";
+        String safeReason = (reason != null && !reason.isBlank()) ? reason : "PAYLOAD_TOO_LARGE_413";
+        log.warn("⚠️ Recording dropped chunk: session={}, seq={}, kind={}, reason={}", sessionId, seq, safeKind, safeReason);
+
+        if (meterRegistry != null) {
+            try {
+                Counter.builder("recording_chunk_dropped_total")
+                        .tag("kind", safeKind)
+                        .tag("reason", safeReason)
+                        .description("Total number of dropped recording chunks")
+                        .register(meterRegistry)
+                        .increment();
+            } catch (Exception e) {
+                log.debug("Metric registration failed: {}", e.getMessage());
+            }
+        }
+
+        if (sessionId != null) {
+            try {
+                Document meta = new Document();
+                meta.put("sessionId", sessionId);
+                meta.put("type", "RECORDING_DROPPED_CHUNK");
+                meta.put("kind", safeKind);
+                meta.put("seq", seq);
+                meta.put("reason", safeReason);
+                meta.put("droppedAt", Instant.now().toString());
+
+                gridFsTemplate.store(new java.io.ByteArrayInputStream(new byte[0]),
+                        String.format("dropped_%d_%s_chunk_%05d.json", sessionId, safeKind, seq),
+                        "application/json", meta);
+            } catch (Exception e) {
+                log.warn("Failed to store dropped chunk record in GridFS: {}", e.getMessage());
+            }
+        }
+    }
+
     public RecordingManifest getManifest(Long sessionId) {
         List<GridFSFile> cameraChunks = getSortedChunks(sessionId, "camera");
         List<GridFSFile> screenChunks = getSortedChunks(sessionId, "screen");
@@ -149,6 +221,27 @@ public class SessionRecordingService {
                     .build());
         }
 
+        List<DroppedChunkInfo> droppedChunks = new ArrayList<>();
+        try {
+            GridFSFindIterable droppedFiles = gridFSBucket.find(
+                    new Document("metadata.sessionId", sessionId)
+                            .append("metadata.type", "RECORDING_DROPPED_CHUNK")
+            );
+            for (GridFSFile f : droppedFiles) {
+                Document meta = f.getMetadata();
+                if (meta != null) {
+                    droppedChunks.add(DroppedChunkInfo.builder()
+                            .seq(meta.getInteger("seq", 0))
+                            .kind(meta.getString("kind"))
+                            .reason(meta.getString("reason"))
+                            .timestamp(meta.getString("droppedAt"))
+                            .build());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not query dropped chunks for session {}: {}", sessionId, e.getMessage());
+        }
+
         boolean isComplete = !streams.isEmpty();
         int totalChunks = cameraChunks.size() + screenChunks.size();
         long totalBytes = streams.values().stream().mapToLong(StreamMeta::getBytes).sum();
@@ -160,6 +253,7 @@ public class SessionRecordingService {
                 .streams(streams.isEmpty() ? null : streams)
                 .totalChunks(totalChunks)
                 .totalBytes(totalBytes)
+                .droppedChunks(droppedChunks.isEmpty() ? null : droppedChunks)
                 .build();
     }
 

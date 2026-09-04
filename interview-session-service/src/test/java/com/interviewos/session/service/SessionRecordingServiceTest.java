@@ -121,4 +121,32 @@ class SessionRecordingServiceTest {
         assertEquals(1, manifest.getStreams().get("screen").getChunks());
         assertEquals(2048L, manifest.getStreams().get("screen").getBytes());
     }
+
+    @Test
+    void testRecordDroppedChunk_storesInGridFs() {
+        io.micrometer.core.instrument.simple.SimpleMeterRegistry meterRegistry = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> provider =
+                mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(meterRegistry);
+
+        SessionRecordingService serviceWithMetrics = new SessionRecordingService(
+                gridFsTemplate, gridFSBucket, mongoSessionRepository, provider
+        );
+
+        serviceWithMetrics.recordDroppedChunk(42L, 5, "screen", "PAYLOAD_TOO_LARGE_413");
+
+        verify(gridFsTemplate, times(1)).store(any(), eq("dropped_42_screen_chunk_00005.json"), eq("application/json"), argThat(doc ->
+                "RECORDING_DROPPED_CHUNK".equals(doc.get("type")) &&
+                "screen".equals(doc.get("kind")) &&
+                Integer.valueOf(5).equals(doc.get("seq")) &&
+                "PAYLOAD_TOO_LARGE_413".equals(doc.get("reason"))
+        ));
+
+        io.micrometer.core.instrument.Counter counter = meterRegistry.find("recording_chunk_dropped_total")
+                .tag("kind", "screen")
+                .tag("reason", "PAYLOAD_TOO_LARGE_413")
+                .counter();
+        assertNotNull(counter);
+        assertEquals(1.0, counter.count());
+    }
 }
