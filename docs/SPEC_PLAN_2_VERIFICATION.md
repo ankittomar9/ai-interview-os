@@ -187,6 +187,43 @@ This append-only verification log records the evidence, automated test runs, lin
     ```
 - **Reviewer Status**: PASS
 
+---
+
+## Batch 6: [A5 + A14] — Sidecar Dockerfile Scoping & Docs/Hygiene
+
+- **Branch**: `fix/ledger-a5-a14`
+- **Scope**:
+  - **A5**:
+    - Scoped `ENV WHISPER_MODEL=${WHISPER_MODEL}` in `whisper-sidecar/Dockerfile`.
+    - Replaced hardcoded exec-form CMD with dynamic shell entrypoint `ENTRYPOINT ["/bin/sh", "-c", "exec ./build/bin/whisper-server -m models/${WHISPER_MODEL} --host 0.0.0.0 --port 8178 --convert \"$@\"", "--"]`, ensuring both default profile (`ggml-large-v3-turbo-q5_0.bin`) and lite profile (`ggml-base.en.bin`) boot without pointing to missing files.
+  - **A14**:
+    - Updated `README.md` memory footprint from ~4.5 GB to `~5.2 GB (measured)` with execution engines.
+    - Updated `docs/architecture.md` platform memory footprint to `~5.2GB measured with execution engines` and documented standardized line-count methodology: `wc -l` with strict $\le 250$ line ceiling.
+    - Marked task **R3** (Recording Chunk Re-queue & GridFS Store-Before-Delete) as **COMPLETED** (`0290995`) in `docs/SPEC.md`.
+    - Added `selfBrowserSurface: 'exclude'` to `getDisplayMedia` in `frontend/src/hooks/useSessionRecorder.ts`.
+    - Added explicit note to `RecordingManifest` in `SessionRecordingService.java`: `"Stream timestamps are upload-time"`.
+- **Line Count Verification (`wc -l`)**:
+  - `ArenaShell.tsx`: 240 lines (Budget: ≤ 250) — **PASS**
+  - `ArenaRoom.tsx`: 227 lines (Budget: ≤ 250) — **PASS**
+  - `useCoachVoice.ts`: 225 lines (Budget: ≤ 250) — **PASS**
+- **Automated Test Evidence**:
+  - `mvn test -pl interview-session-service`:
+    ```
+    [INFO] Running com.interviewos.session.service.SessionRecordingServiceTest
+    [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- in com.interviewos.session.service.SessionRecordingServiceTest
+    [INFO] Results:
+    [WARNING] Tests run: 50, Failures: 0, Errors: 0, Skipped: 1
+    [INFO] BUILD SUCCESS
+    ```
+  - `npm run build` (frontend):
+    ```
+    ✓ 2605 modules transformed.
+    ✓ built in 1.05s
+    Exit Code: 0
+    ```
+- **Reviewer Status**: PASS
+
+
 
 
 

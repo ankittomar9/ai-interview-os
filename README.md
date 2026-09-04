@@ -57,7 +57,7 @@ docker compose --profile engines up -d
 | Compose command | What boots | ~Memory | Best for |
 |---|---|---|---|
 | `docker compose up -d` | Core stack (gateway, services, Mongo, Postgres, QuestionBank) | ~2.5 GB | Behavioral, HLD, resume ingestion, AI dialogue |
-| `docker compose --profile engines up -d` | Core + Judge0 CE (server/workers/db/redis) + Docker Maven runner | ~4.5 GB | DSA coding + Spring Boot LLD execution |
+| `docker compose --profile engines up -d` | Core + Judge0 CE (server/workers/db/redis) + Docker Maven runner | ~5.2 GB (measured) | DSA coding + Spring Boot LLD execution |
 
 ### 3. Observability (optional)
 ```bash

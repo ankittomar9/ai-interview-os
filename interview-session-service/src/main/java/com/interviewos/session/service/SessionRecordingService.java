@@ -90,6 +90,7 @@ public class SessionRecordingService {
         private List<DroppedChunkInfo> droppedChunks;
         private String startedAt;
         private String endedAt;
+        private String note;
     }
 
     public void saveChunk(Long sessionId, int seq, String kind, MultipartFile file) throws Exception {
@@ -254,6 +255,7 @@ public class SessionRecordingService {
                 .totalChunks(totalChunks)
                 .totalBytes(totalBytes)
                 .droppedChunks(droppedChunks.isEmpty() ? null : droppedChunks)
+                .note("Stream timestamps are upload-time")
                 .build();
     }
 

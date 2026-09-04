@@ -123,8 +123,9 @@ export function useSessionRecorder({
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 8 },
-        audio: false
-      });
+        audio: false,
+        selfBrowserSurface: 'exclude'
+      } as any);
       screenStreamRef.current = screenStream;
       const screenRec = new MediaRecorder(screenStream, {
         mimeType: pickMime(),
