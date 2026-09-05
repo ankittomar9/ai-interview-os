@@ -43,6 +43,9 @@ class AiOrchestratorControllerTest {
     @MockBean
     private com.interviewos.ai.service.EgressTracker egressTracker;
 
+    @MockBean
+    private com.interviewos.ai.service.ProviderStatusService providerStatusService;
+
     @Test
     @DisplayName("POST /generate-question with valid payload should return 200 OK")
     void testGenerateQuestionSuccess() throws Exception {
@@ -125,6 +128,32 @@ class AiOrchestratorControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.provider").value("OLLAMA"))
                 .andExpect(jsonPath("$.running").value(true));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/ai/providers/status should return 200 OK with providers list")
+    void testGetProvidersStatus() throws Exception {
+        when(providerStatusService.getProvidersStatus(any(), any())).thenReturn(java.util.List.of(
+                new com.interviewos.ai.dto.ProviderStatusDto("GEMINI", true, "ENV", "READY", "gemini-3.5-flash", true, null, null, System.currentTimeMillis())
+        ));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/ai/providers/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].provider").value("GEMINI"))
+                .andExpect(jsonPath("$[0].state").value("READY"))
+                .andExpect(jsonPath("$[0].configuredModel").value("gemini-3.5-flash"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/ai/providers/status/refresh should return 200 OK with refreshed status")
+    void testRefreshProvidersStatus() throws Exception {
+        when(providerStatusService.refresh()).thenReturn(java.util.List.of(
+                new com.interviewos.ai.dto.ProviderStatusDto("GROQ", true, "ENV", "READY", "openai/gpt-oss-120b", true, null, null, System.currentTimeMillis())
+        ));
+
+        mockMvc.perform(post("/api/v1/ai/providers/status/refresh"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].provider").value("GROQ"));
     }
 
     @Test
