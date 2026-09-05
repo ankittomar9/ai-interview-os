@@ -254,6 +254,7 @@ services:
 
   # 4.5 Local Whisper.cpp Speech-to-Text Sidecar (SPEC-003, profile: local-stt)
   whisper-sidecar:
+    image: ai-interview-os-whisper-sidecar:latest
     build:
       context: ./whisper-sidecar
       dockerfile: Dockerfile
@@ -265,7 +266,7 @@ services:
     ports:
       - "8178:8178"
     mem_limit: 2g
-    profiles: ["local-stt", "engines"]
+    profiles: ["local-stt"]
     restart: unless-stopped
 
   # 5. Proctor Sentinel Service (Connected to PostgreSQL)
