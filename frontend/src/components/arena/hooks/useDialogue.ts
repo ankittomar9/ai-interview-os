@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { ModelProvider, IntegritySignals, PlannedSection } from "../../../types";
 import { processDialogueTurn, addMessageToSession, recordSectionTransition } from "../../../services/api";
 import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
@@ -81,6 +81,12 @@ export function useDialogue({
 
   const lastTurnRef = useRef<{ textToSend: string; codeSnapshot: string } | null>(null);
   const echoFilteredCountRef = useRef<number>(0);
+  const highestSectionIndexRef = useRef<number>(0);
+  useEffect(() => {
+    if (activeSectionIndex > highestSectionIndexRef.current) {
+      highestSectionIndexRef.current = activeSectionIndex;
+    }
+  }, [activeSectionIndex]);
 
   const transitionSection = useCallback(async (targetIndex: number, reason: StageTransitionReason = 'MANUAL_JUMP') => {
     if (targetIndex < 0 || targetIndex >= navSections.length) return;
@@ -151,11 +157,9 @@ export function useDialogue({
   }, [activeSectionIndex, navSections, stageTurnCounts, sessionId, onSectionChanged]);
 
   const transitionStage = useCallback(async (targetStage: InterviewStage, reason: StageTransitionReason = 'MANUAL_JUMP') => {
-    const targetIdx = navSections.findIndex((s) => s.stage === targetStage);
+    const targetIdx = navSections.findIndex((s) => s.stage === targetStage || s.sectionType === targetStage);
     if (targetIdx !== -1) {
       await transitionSection(targetIdx, reason);
-    } else {
-      setCurrentStage(targetStage);
     }
   }, [navSections, transitionSection]);
 
@@ -173,13 +177,14 @@ export function useDialogue({
 
     if (forcedText === undefined) setChatInput("");
     lastTurnRef.current = { textToSend, codeSnapshot };
-    const curKey = currentNavSection.key;
-    const curStageKey = currentNavSection.stage;
-    setStageTurnCounts((prev) => ({
-      ...prev,
-      [curKey]: (prev[curKey] || 0) + 1,
-      [curStageKey]: (prev[curStageKey] || 0) + 1
-    }));
+    const isReviewingClosed = !isPlayground && activeSectionIndex < highestSectionIndexRef.current;
+    if (!isReviewingClosed) {
+      const curKey = currentNavSection.key;
+      setStageTurnCounts((prev) => ({
+        ...prev,
+        [curKey]: (prev[curKey] || 0) + 1
+      }));
+    }
 
     const candidateMsg: DialogueMessage = {
       role: "candidate",

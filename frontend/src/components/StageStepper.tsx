@@ -1,13 +1,15 @@
 import React from 'react';
-import { CheckCircle2, CircleDot, Circle } from 'lucide-react';
-import type { PlannedSection } from '../types';
-import { buildNavSections } from '../lib/plan-navigation';
+import { CheckCircle2, CircleDot, Circle, Lock } from 'lucide-react';
+import { toast } from '../hooks/useToast';
+import type { PlannedSection, SectionType } from '../types';
+import { buildNavSections, type StageNavInfo } from '../lib/plan-navigation';
+import { evaluateNavigationGate } from '../lib/gating';
 
-export type InterviewStage = 'INTRODUCTION' | 'CORE_TECH' | 'CODING_DSA' | 'SYSTEM_DESIGN';
+export type InterviewStage = SectionType;
 export type StageTransitionReason = 'CONSENTED' | 'MANUAL_JUMP' | 'SESSION_ENDED' | 'SKIPPED_BY_USER';
 
 interface Props {
-  currentStage: InterviewStage;
+  currentStage?: InterviewStage;
   currentSectionIndex?: number;
   sections?: PlannedSection[];
   isPlayground?: boolean;
@@ -17,22 +19,7 @@ interface Props {
   stageTransitionReasons?: Record<string, StageTransitionReason>;
 }
 
-interface StageInfo {
-  key: string;
-  stage: InterviewStage;
-  label: string;
-  description: string;
-}
-
-const DEFAULT_STAGES: StageInfo[] = [
-  { key: 'INTRODUCTION', stage: 'INTRODUCTION', label: '1. Introduction', description: 'Background & Role Fit' },
-  { key: 'CORE_TECH', stage: 'CORE_TECH', label: '2. Core Tech', description: 'Deep Dive & Foundations' },
-  { key: 'CODING_DSA', stage: 'CODING_DSA', label: '3. Coding & DSA', description: 'Sandbox Implementation' },
-  { key: 'SYSTEM_DESIGN', stage: 'SYSTEM_DESIGN', label: '4. System Design', description: 'Architecture & Scalability' },
-];
-
 export const StageStepper: React.FC<Props> = ({
-  currentStage,
   currentSectionIndex,
   sections,
   isPlayground = false,
@@ -41,21 +28,11 @@ export const StageStepper: React.FC<Props> = ({
   stageTurnCounts,
   stageTransitionReasons
 }) => {
-  const items: StageInfo[] = React.useMemo(() => {
-    if (sections && sections.length > 0) {
-      return buildNavSections(sections).map((s) => ({
-        key: s.key,
-        stage: s.stage,
-        label: s.label,
-        description: s.description
-      }));
-    }
-    return DEFAULT_STAGES;
+  const items: StageNavInfo[] = React.useMemo(() => {
+    return buildNavSections(sections);
   }, [sections]);
 
-  const currentIndex = currentSectionIndex !== undefined
-    ? currentSectionIndex
-    : items.findIndex((s) => s.stage === currentStage);
+  const currentIndex = currentSectionIndex !== undefined ? currentSectionIndex : 0;
 
   return (
     <div className="flex items-center justify-between bg-surface border-b border-border px-6 py-2.5 relative z-10 select-none overflow-x-auto">
@@ -63,14 +40,17 @@ export const StageStepper: React.FC<Props> = ({
         const isCompleted = idx < currentIndex;
         const isActive = idx === currentIndex;
         const isClickable = !!onSectionClick || !!onStageClick;
-        const turnCount = stageTurnCounts?.[stage.key] ?? stageTurnCounts?.[stage.stage] ?? 0;
+        const turnCount = stageTurnCounts?.[stage.key] ?? 0;
         const isAdvancedPast = isCompleted && turnCount === 0;
+        const gate = evaluateNavigationGate(idx, currentIndex, isPlayground, items[currentIndex]?.label);
 
         const Content = (
           <>
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all shrink-0 ${
-                isAdvancedPast
+                gate.isLocked
+                  ? 'bg-elevated/50 border-border text-text-3/60'
+                  : isAdvancedPast
                   ? 'bg-transparent border-dashed border-text-3/60 text-text-3'
                   : isCompleted
                   ? 'bg-success/20 border-success text-success'
@@ -79,7 +59,9 @@ export const StageStepper: React.FC<Props> = ({
                   : 'bg-elevated border-border text-text-3'
               }`}
             >
-              {isAdvancedPast ? (
+              {gate.isLocked ? (
+                <Lock className="w-3.5 h-3.5 text-text-3/60" />
+              ) : isAdvancedPast ? (
                 <Circle className="w-3.5 h-3.5 text-text-3/70 stroke-[1.5]" />
               ) : isCompleted ? (
                 <CheckCircle2 className="w-4 h-4" />
@@ -92,12 +74,19 @@ export const StageStepper: React.FC<Props> = ({
 
             <div className="text-left">
               <div
-                className={`text-xs font-bold tracking-wide ${
+                className={`text-xs font-bold tracking-wide flex items-center gap-1.5 ${
                   isActive ? 'text-text' : isAdvancedPast ? 'text-text-3' : isCompleted ? 'text-success' : 'text-text-3'
                 }`}
               >
-                {stage.label}
-                {isAdvancedPast && <span className="ml-1 text-[10px] font-normal text-text-3">(advanced)</span>}
+                <span>{stage.label}</span>
+                {gate.isReviewing && (
+                  <span className="text-[10px] font-normal text-warning bg-warning/20 border border-warning/30 px-1 py-0.2 rounded">
+                    Reviewing — round closed
+                  </span>
+                )}
+                {isAdvancedPast && !gate.isReviewing && (
+                  <span className="text-[10px] font-normal text-text-3">(advanced)</span>
+                )}
               </div>
               <div className="text-[11px] text-text-3 hidden sm:block">
                 {stage.description}
@@ -107,7 +96,9 @@ export const StageStepper: React.FC<Props> = ({
         );
 
         const reason = stageTransitionReasons?.[stage.key];
-        const titleText = isAdvancedPast
+        const titleText = gate.isLocked
+          ? gate.tooltip || `Finish current round first — or end the round early`
+          : isAdvancedPast
           ? `${stage.label} (advanced past${reason ? `: ${reason}` : ''})`
           : isPlayground
           ? `Jump to ${stage.label} (playground)`
@@ -119,12 +110,20 @@ export const StageStepper: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => {
+                  if (gate.isLocked) {
+                    toast.warning(gate.tooltip || 'This round is locked');
+                    return;
+                  }
                   if (onSectionClick) onSectionClick(idx, stage.stage);
                   else if (onStageClick) onStageClick(stage.stage);
                 }}
                 title={titleText}
-                className={`flex items-center gap-2.5 transition-all rounded-md px-2 py-1 cursor-pointer hover:bg-elevated focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${
-                  isCompleted || isActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'
+                className={`flex items-center gap-2.5 transition-all rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${
+                  gate.isLocked
+                    ? 'opacity-40 cursor-not-allowed'
+                    : isCompleted || isActive
+                    ? 'opacity-100 cursor-pointer hover:bg-elevated'
+                    : 'opacity-70 hover:opacity-100 cursor-pointer hover:bg-elevated'
                 }`}
               >
                 {Content}
@@ -144,7 +143,7 @@ export const StageStepper: React.FC<Props> = ({
               <div
                 className={`flex-1 h-0.5 mx-3 sm:mx-4 transition-colors ${
                   idx < currentIndex
-                    ? (stageTurnCounts?.[stage.key] ?? stageTurnCounts?.[stage.stage] ?? 0) === 0
+                    ? (stageTurnCounts?.[stage.key] ?? 0) === 0
                       ? 'bg-border border-t border-dashed border-text-3/40'
                       : 'bg-success'
                     : 'bg-border'
