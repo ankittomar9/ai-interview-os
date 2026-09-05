@@ -48,9 +48,10 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     totalChunks?: number;
     totalBytes?: number;
     streams?: {
-      camera?: { chunks: number; bytes: number; startedAt: string; endedAt: string };
-      screen?: { chunks: number; bytes: number; startedAt: string; endedAt: string };
+      camera?: { chunks: number; bytes: number; startedAt?: string; endedAt?: string; summary?: any };
+      screen?: { chunks: number; bytes: number; startedAt?: string; endedAt?: string; summary?: any };
     };
+    droppedChunks?: Array<{ seq: number; kind: string; reason: string; timestamp?: string }>;
   } | null>(null);
   const [replayStreamKind, setReplayStreamKind] = useState<'camera' | 'screen'>('camera');
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.report') === 'true');
@@ -813,9 +814,15 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
               ) : (
                 <div className="w-full bg-surface rounded-lg overflow-hidden border border-border aspect-video max-h-[500px] flex flex-col items-center justify-center p-6 text-center text-text-3 space-y-2">
                   <VideoOff className="w-10 h-10 opacity-40 text-text-3" />
-                  <span className="text-sm font-semibold text-text-2">No footage stored</span>
+                  <span className="text-sm font-semibold text-text-2">
+                    {manifest?.streams?.[replayStreamKind]?.summary?.attempted && manifest.streams[replayStreamKind].summary.uploaded === 0
+                      ? 'No recording stored — uploads failed'
+                      : 'No footage stored'}
+                  </span>
                   <p className="text-xs text-text-3 max-w-sm">
-                    No {replayStreamKind === 'screen' ? 'screen capture' : 'camera'} recording chunks were captured for this session.
+                    {manifest?.streams?.[replayStreamKind]?.summary?.attempted && manifest.streams[replayStreamKind].summary.uploaded === 0
+                      ? `${manifest.streams[replayStreamKind].summary.attempted} chunks attempted via ${manifest.streams[replayStreamKind].summary.qualityPreset || 'preset'} (${manifest.streams[replayStreamKind].summary.codec || 'webm'}), but network uploads failed.`
+                      : `No ${replayStreamKind === 'screen' ? 'screen capture' : 'camera'} recording chunks were captured for this session.`}
                   </p>
                 </div>
               )}
@@ -864,24 +871,44 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                 </div>
               </div>
 
+              {/* Stream Integrity & Gap Alerts (D6) */}
+              {(() => {
+                const streamSummary = manifest?.streams?.[replayStreamKind]?.summary;
+                const dropped = manifest?.droppedChunks?.filter((d) => d.kind === replayStreamKind) || [];
+                const failedSeqs = streamSummary?.failedSeqs || [];
+                if (dropped.length === 0 && failedSeqs.length === 0) return null;
+                return (
+                  <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg text-xs space-y-1 text-danger font-mono">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span>Stream Integrity Notice ({replayStreamKind}):</span>
+                    </div>
+                    {failedSeqs.length > 0 && <div>Upload failed sequences: seq {failedSeqs.join(', ')} missing</div>}
+                    {dropped.length > 0 && <div>Dropped chunks: {dropped.map((d: any) => `seq ${d.seq} (${d.reason})`).join(', ')}</div>}
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <div className="bg-elevated p-3 rounded border border-border space-y-1">
                   <span className="text-[11px] font-semibold text-text-3 block">Storage Engine</span>
                   <span className="text-xs font-bold text-text">MongoDB GridFS Chunked</span>
                 </div>
                 <div className="bg-elevated p-3 rounded border border-border space-y-1">
-                  <span className="text-[11px] font-semibold text-text-3 block">Stream Format</span>
-                  <span className="text-xs font-bold text-text">WebM (VP8 / Opus 5000ms chunks)</span>
+                  <span className="text-[11px] font-semibold text-text-3 block">Stream Format &amp; Preset</span>
+                  <span className="text-xs font-bold text-text truncate block">
+                    {manifest?.streams?.[replayStreamKind]?.summary?.qualityPreset || 'READABLE'} · {manifest?.streams?.[replayStreamKind]?.summary?.codec?.split(';')[0] || 'video/webm'}
+                  </span>
                 </div>
                 <div className="bg-elevated p-3 rounded border border-border space-y-1">
                   <span className="text-[11px] font-semibold text-text-3 block">Integrity Status</span>
-                  {manifest && (manifest.totalChunks ?? 0) > 0 ? (
+                  {manifest && (manifest.streams?.[replayStreamKind]?.chunks ?? 0) > 0 ? (
                     <Chip variant="success" size="sm">
-                      Verified Stream Available ({manifest.totalChunks} chunks)
+                      Verified Stream ({manifest.streams?.[replayStreamKind]?.chunks} chunks)
                     </Chip>
                   ) : (
                     <Chip variant="neutral" size="sm">
-                      No footage stored
+                      {manifest?.streams?.[replayStreamKind]?.summary?.attempted && manifest.streams[replayStreamKind].summary.uploaded === 0 ? 'Uploads Failed' : 'No footage stored'}
                     </Chip>
                   )}
                 </div>

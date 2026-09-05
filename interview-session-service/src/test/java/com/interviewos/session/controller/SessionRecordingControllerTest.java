@@ -62,11 +62,30 @@ class SessionRecordingControllerTest {
     }
 
     @Test
-    @DisplayName("handleMaxSizeException returns 413 PAYLOAD_TOO_LARGE with clear message")
+    @DisplayName("handleMaxSizeException returns 413 PAYLOAD_TOO_LARGE with corrected hint")
     void testHandleMaxSizeException() {
         MaxUploadSizeExceededException ex = new MaxUploadSizeExceededException(16 * 1024 * 1024);
         ResponseEntity<Map<String, String>> response = controller.handleMaxSizeException(ex);
         assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.getStatusCode());
         assertTrue(response.getBody().get("error").contains("16MB"));
+        assertTrue(response.getBody().get("hint").contains("verify bitrate ladder"));
+    }
+
+    @Test
+    @DisplayName("recordSummary stores summary metadata via service")
+    void testRecordSummary() {
+        SessionRecordingService.RecordingSummaryInfo summary = SessionRecordingService.RecordingSummaryInfo.builder()
+                .kind("screen")
+                .attempted(10)
+                .uploaded(10)
+                .codec("video/webm;codecs=vp9")
+                .width(1920)
+                .height(1080)
+                .bitrateBps(4500000)
+                .qualityPreset("READABLE")
+                .build();
+        ResponseEntity<Void> response = controller.recordSummary(1L, summary);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(recordingService).saveSummary(1L, summary);
     }
 }
