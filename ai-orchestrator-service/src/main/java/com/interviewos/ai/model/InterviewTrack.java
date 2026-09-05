@@ -10,5 +10,9 @@ public enum InterviewTrack {
     BEHAVIORAL_STAR,
     SPRING_LLD,
     SQL,
-    RESUME_BASED
+    RESUME_BASED,
+    FULL_LOOP,
+    DSA_LLD,
+    DSA_LLD_HLD,
+    LLD_HLD
 }

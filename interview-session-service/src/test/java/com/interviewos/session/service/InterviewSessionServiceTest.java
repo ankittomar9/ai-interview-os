@@ -96,7 +96,7 @@ class InterviewSessionServiceTest {
     static Stream<Arguments> all28Combinations() {
         List<Arguments> args = new ArrayList<>();
         for (InterviewTrack track : InterviewTrack.values()) {
-            if (track == InterviewTrack.FULL_LOOP) continue; // 7 focused tracks x 4 difficulties = 28 combinations
+            if (track == InterviewTrack.FULL_LOOP || track == InterviewTrack.DSA_LLD || track == InterviewTrack.DSA_LLD_HLD || track == InterviewTrack.LLD_HLD) continue; // 7 focused tracks x 4 difficulties = 28 combinations
             for (DifficultyLevel diff : DifficultyLevel.values()) {
                 args.add(Arguments.of(track, diff));
             }
