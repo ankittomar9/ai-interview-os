@@ -1,6 +1,6 @@
 export type ModelProvider = 'GEMINI' | 'GROQ' | 'OPENAI' | 'ANTHROPIC' | 'QWEN' | 'GLM' | 'KIMI' | 'DEEPSEEK' | 'OLLAMA';
 
-export type InterviewTrack = 'JAVA_SPRING_BOOT' | 'ALGORITHMS_DATA_STRUCTURES' | 'SYSTEM_DESIGN' | 'BEHAVIORAL_STAR' | 'SPRING_LLD' | 'SQL' | 'RESUME_BASED' | 'FULL_LOOP';
+export type InterviewTrack = 'JAVA_SPRING_BOOT' | 'ALGORITHMS_DATA_STRUCTURES' | 'SYSTEM_DESIGN' | 'BEHAVIORAL_STAR' | 'SPRING_LLD' | 'SQL' | 'RESUME_BASED' | 'FULL_LOOP' | 'DSA_LLD' | 'DSA_LLD_HLD' | 'LLD_HLD';
 
 export type DifficultyLevel = 'JUNIOR' | 'MID' | 'SENIOR' | 'STAFF';
 
