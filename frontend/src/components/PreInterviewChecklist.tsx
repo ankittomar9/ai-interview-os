@@ -1,12 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Camera, Mic, Wifi, ArrowRight, ShieldCheck, AlertTriangle, Cpu, Server, Terminal } from 'lucide-react';
+import {
+  Camera,
+  Mic,
+  Wifi,
+  ArrowRight,
+  ShieldCheck,
+  AlertTriangle,
+  Cpu,
+  Server,
+  Terminal,
+  Monitor
+} from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Chip } from './ui/Chip';
 import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
-import { sendTelemetryEvent } from '../services/api';
+import { sendTelemetryEvent, submitVerification, startSession } from '../services/api';
+import { setScreenStream, setVerifyReceipt } from '../services/verificationStreams';
 
 interface Props {
   sessionId: number;
@@ -46,14 +58,29 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const [cameraOk, setCameraOk] = useState(false);
   const [micOk, setMicOk] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [networkOk] = useState(true);
+
+  // Screen share state
+  const [screenOk, setScreenOk] = useState(false);
+  const [screenScope, setScreenScope] = useState<'MONITOR' | 'WINDOW' | 'BROWSER' | 'UNKNOWN' | null>(null);
+  const [screenLabel, setScreenLabel] = useState<string>('');
+  const [screenError, setScreenError] = useState<string | null>(null);
+
+  // D7 Network capability honesty
+  const [networkOk, setNetworkOk] = useState(false);
+
   const [secondaryCameraConnected] = useState(false);
   const [singleCameraAcknowledged, setSingleCameraAcknowledged] = useState(false);
   const [consentGiven, setConsentGiven] = useState(!isInterview);
   const [envMode, setEnvMode] = useState<'dev' | 'prod'>('prod');
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.checklist') === 'true');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const screenVideoPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const cameraTelemetrySent = useRef(false);
+  const micTelemetrySent = useRef(false);
 
   const toggleAiPanel = () => {
     setIsAiPanelOpen((prev) => {
@@ -68,16 +95,20 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const phoneProctorUrl = `http://${host}:5173/phone-proctor?session=${sessionId}`;
 
   useEffect(() => {
-    // 1. Fetch system & sandbox capabilities from backend
+    // 1. Fetch system & sandbox capabilities from backend (D7 Network Chip probe)
     const fetchCapabilities = async () => {
       try {
         const resp = await fetch(`http://${host}:8080/api/v1/system/capabilities`);
         if (resp.ok) {
           const data = await resp.json();
           setCapabilities(data);
+          setNetworkOk(true);
+        } else {
+          setNetworkOk(false);
         }
       } catch (err) {
         console.debug('Capabilities probe notice:', err);
+        setNetworkOk(false);
       }
     };
     void fetchCapabilities();
@@ -85,7 +116,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
       void fetchCapabilities();
     }, 5000);
 
-    // 2. Hardware setup
+    // 2. Frontal webcam & microphone hardware setup
     let mediaStream: MediaStream | null = null;
     let audioContext: AudioContext | null = null;
     let analyser: AnalyserNode | null = null;
@@ -102,6 +133,14 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           videoPreviewRef.current.srcObject = mediaStream;
         }
         setCameraOk(true);
+        if (!cameraTelemetrySent.current) {
+          cameraTelemetrySent.current = true;
+          void sendTelemetryEvent({
+            sessionId,
+            eventType: 'TAB_BLUR',
+            metadataDetails: 'VERIFY_CAMERA_OK'
+          });
+        }
 
         audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         analyser = audioContext.createAnalyser();
@@ -121,6 +160,14 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             setAudioLevel(Math.min(100, Math.round((average / 128) * 100)));
             if (average > 10) {
               setMicOk(true);
+              if (!micTelemetrySent.current) {
+                micTelemetrySent.current = true;
+                void sendTelemetryEvent({
+                  sessionId,
+                  eventType: 'TAB_BLUR',
+                  metadataDetails: 'VERIFY_MIC_OK'
+                });
+              }
             }
           }
           animFrame = requestAnimationFrame(updateAudioMeter);
@@ -143,10 +190,150 @@ export const PreInterviewChecklist: React.FC<Props> = ({
       }
       cancelAnimationFrame(animFrame);
     };
-  }, [host]);
+  }, [host, sessionId]);
+
+  // Handle Full Monitor Screen Share Acquisition
+  const handleShareScreen = async () => {
+    try {
+      setScreenError(null);
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 8 } as any,
+        audio: false,
+        selfBrowserSurface: 'exclude'
+      } as any);
+
+      const track = stream.getVideoTracks()[0];
+      if (!track) {
+        throw new Error('No video track found in screen capture');
+      }
+
+      const settings = track.getSettings ? track.getSettings() : ({} as any);
+      const displaySurface = (settings as any).displaySurface;
+
+      if (displaySurface === 'monitor') {
+        const label = track.label || 'Entire Screen';
+        setScreenScope('MONITOR');
+        setScreenLabel(label);
+        setScreenOk(true);
+        setScreenStream(stream);
+        if (screenVideoPreviewRef.current) {
+          screenVideoPreviewRef.current.srcObject = stream;
+        }
+        void sendTelemetryEvent({
+          sessionId,
+          eventType: 'TAB_BLUR',
+          metadataDetails: 'VERIFY_SCREEN_OK scope=MONITOR'
+        });
+      } else if (displaySurface === 'window' || displaySurface === 'browser') {
+        track.stop();
+        setScreenOk(false);
+        setScreenScope(displaySurface === 'window' ? 'WINDOW' : 'BROWSER');
+        setScreenError('Window/tab sharing is not accepted — share your entire screen.');
+        void sendTelemetryEvent({
+          sessionId,
+          eventType: 'TAB_BLUR',
+          metadataDetails: `SHARE_SCOPE_REJECTED scope=${displaySurface}`
+        });
+        return;
+      } else {
+        // Display surface property unsupported (e.g. Firefox)
+        const label = track.label || 'Screen';
+        setScreenScope('UNKNOWN');
+        setScreenLabel(label);
+        setScreenOk(true);
+        setScreenStream(stream);
+        if (screenVideoPreviewRef.current) {
+          screenVideoPreviewRef.current.srcObject = stream;
+        }
+        void sendTelemetryEvent({
+          sessionId,
+          eventType: 'TAB_BLUR',
+          metadataDetails: 'VERIFY_SCREEN_OK scope=UNKNOWN'
+        });
+      }
+
+      track.onended = () => {
+        setScreenOk(false);
+        setScreenStream(null);
+        setScreenScope(null);
+        if (screenVideoPreviewRef.current) {
+          screenVideoPreviewRef.current.srcObject = null;
+        }
+      };
+    } catch (err: any) {
+      if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
+        void sendTelemetryEvent({
+          sessionId,
+          eventType: 'TAB_BLUR',
+          metadataDetails: 'VERIFY_SCREEN_DENIED'
+        });
+      } else {
+        setScreenError(err.message || 'Failed to capture screen');
+      }
+    }
+  };
+
+  const handleStart = async () => {
+    setIsSubmitting(true);
+    setStartError(null);
+    try {
+      if (isInterview) {
+        const receipt = await submitVerification(sessionId, {
+          cameraOk,
+          micOk,
+          screenOk,
+          screenScope: screenScope || 'UNKNOWN',
+          screenLabel: screenLabel || 'Entire Screen',
+          consent: consentGiven,
+          outcome: 'VERIFIED',
+          userAgent: navigator.userAgent
+        });
+        setVerifyReceipt(receipt);
+      }
+      await startSession(sessionId);
+      if (!secondaryCameraConnected && singleCameraAcknowledged) {
+        void sendTelemetryEvent({
+          sessionId,
+          eventType: 'TAB_BLUR',
+          metadataDetails: 'SINGLE_CAMERA_ONLY_ACKNOWLEDGED: Candidate completed interview with single front camera; 45-degree angle unmonitored.'
+        });
+      }
+      onProceed();
+    } catch (err: any) {
+      setStartError(err.message || 'Verification or session start failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDevBypass = async () => {
+    setIsSubmitting(true);
+    setStartError(null);
+    try {
+      if (isInterview) {
+        const receipt = await submitVerification(sessionId, {
+          cameraOk: true,
+          micOk: true,
+          screenOk: true,
+          screenScope: 'MONITOR',
+          screenLabel: 'Dev Display',
+          consent: true,
+          outcome: 'DEV_BYPASS',
+          userAgent: navigator.userAgent
+        });
+        setVerifyReceipt(receipt);
+      }
+      await startSession(sessionId);
+      onProceed();
+    } catch (err: any) {
+      setStartError(err.message || 'Dev launch failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const isSecondarySatisfied = !isInterview || secondaryCameraConnected || singleCameraAcknowledged;
-  const allChecksPassed = !isInterview || (cameraOk && micOk && isSecondarySatisfied && consentGiven && networkOk);
+  const allChecksPassed = !isInterview || (cameraOk && micOk && screenOk && isSecondarySatisfied && consentGiven && networkOk);
 
   return (
     <div className="min-h-screen bg-bg text-text py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center select-text">
@@ -306,8 +493,9 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             <Button
               variant="primary"
               size="sm"
+              loading={isSubmitting}
               icon={<ArrowRight className="w-4 h-4" />}
-              onClick={onProceed}
+              onClick={handleDevBypass}
             >
               Instant Launch
             </Button>
@@ -365,13 +553,83 @@ export const PreInterviewChecklist: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Right Column: Dual-Camera QR & Network */}
+          {/* Right Column: Screen Share & Dual Camera */}
           <div className="space-y-4">
+            {/* 3. Screen Share — Full Monitor */}
+            <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-xs font-bold text-text">
+                  <Monitor className="w-4 h-4 text-text-3" />
+                  <span>3. Screen Share — Full Monitor</span>
+                </div>
+                <Chip
+                  variant={
+                    screenOk
+                      ? screenScope === 'UNKNOWN'
+                        ? 'warning'
+                        : 'success'
+                      : screenError
+                        ? 'danger'
+                        : 'neutral'
+                  }
+                  size="sm"
+                >
+                  {screenOk
+                    ? screenScope === 'UNKNOWN'
+                      ? 'Shared (unverified scope) — Flagged'
+                      : `Monitor Shared — ${screenLabel || 'Entire Screen'}`
+                    : screenError
+                      ? 'Window/Tab Rejected'
+                      : 'Not Shared'}
+                </Chip>
+              </div>
+
+              {screenOk ? (
+                <div className="space-y-2">
+                  <div className="w-full h-36 bg-bg rounded-md overflow-hidden border border-border relative">
+                    <video
+                      ref={screenVideoPreviewRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-contain bg-black"
+                    />
+                  </div>
+                  <p className="text-[11px] text-text-3">
+                    Full monitor stream active. Screen will be recorded throughout the interview.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  <p className="text-[11px] text-text-3 leading-relaxed">
+                    Mandatory: Select <strong>Entire Screen</strong> when prompted. Sharing a single window, application, or browser tab is rejected.
+                  </p>
+                  {screenError && (
+                    <div className="p-2 rounded bg-danger/10 border border-danger/30 text-xs text-danger flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{screenError}</span>
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleShareScreen}
+                    icon={<Monitor className="w-3.5 h-3.5 text-primary" />}
+                    className="w-full text-xs font-semibold"
+                  >
+                    {screenError ? 'Retry Screen Share' : 'Share My Screen'}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* 4. Dual-Camera Phone Link */}
             <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-xs font-bold text-text">
                   <Camera className="w-4 h-4 text-text-3" />
-                  <span>3. Dual-Camera Phone Link</span>
+                  <span>4. Dual-Camera Phone Link</span>
                 </div>
                 <Chip variant={secondaryCameraConnected ? 'success' : singleCameraAcknowledged ? 'warning' : 'neutral'} size="sm">
                   {secondaryCameraConnected ? 'Connected' : singleCameraAcknowledged ? 'Single-Camera Acknowledged' : 'Scan QR'}
@@ -399,20 +657,21 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* 5. Network Connection (D7 Capabilities probe status) */}
             <div className="bg-surface border border-border rounded-lg p-4 flex justify-between items-center">
               <div className="flex items-center gap-2 text-xs font-bold text-text">
                 <Wifi className="w-4 h-4 text-text-3" />
-                <span>4. Network Connection</span>
+                <span>5. Network Connection</span>
               </div>
-              <Chip variant="success" size="sm">
-                Localhost / LAN (0 ms)
+              <Chip variant={networkOk ? 'success' : 'danger'} size="sm">
+                {networkOk ? 'Backend Reachable' : 'Backend Unreachable'}
               </Chip>
             </div>
           </div>
 
         </div>
 
-        {/* 5. Proctoring & Recording Consent */}
+        {/* 6. Proctoring & Recording Consent */}
         <div className="bg-surface border border-border rounded-lg p-4 flex items-center justify-between flex-wrap gap-3">
           <label className="flex items-center gap-3 cursor-pointer select-none">
             <input
@@ -422,7 +681,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
             />
             <span className="text-xs font-semibold text-text">
-              This session is recorded and proctored. I consent to video/audio recording and AI integrity analysis.
+              This session is recorded and proctored. I consent to video/audio recording, full-screen monitor capture, and AI integrity analysis.
             </span>
           </label>
           <Chip variant={consentGiven ? 'success' : 'danger'} size="sm">
@@ -439,27 +698,26 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           </div>
         )}
 
+        {startError && (
+          <div className="bg-danger/10 border border-danger/30 p-3 rounded-lg flex items-center gap-2 text-xs text-danger">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{startError}</span>
+          </div>
+        )}
+
         {!allChecksPassed && envMode === 'prod' && (
           <div className="bg-elevated border border-warning/30 p-3 rounded-lg flex items-center gap-2 text-xs text-warning">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Please complete all 4 checklist gates above (Webcam, Mic, Secondary Camera/Acknowledgement, Consent) to proceed.</span>
+            <span>Please complete all checklist gates above (Webcam, Mic, Full-Screen Share, Secondary Camera/Acknowledgement, Consent, Network) to proceed.</span>
           </div>
         )}
 
         <Button
           variant="primary"
           size="lg"
-          disabled={!allChecksPassed}
-          onClick={() => {
-            if (!secondaryCameraConnected && singleCameraAcknowledged) {
-              void sendTelemetryEvent({
-                sessionId,
-                eventType: 'TAB_BLUR',
-                metadataDetails: 'SINGLE_CAMERA_ONLY_ACKNOWLEDGED: Candidate completed interview with single front camera; 45-degree angle unmonitored.'
-              });
-            }
-            onProceed();
-          }}
+          disabled={!allChecksPassed || isSubmitting}
+          loading={isSubmitting}
+          onClick={handleStart}
           icon={<ArrowRight className="w-5 h-5" />}
           className="w-full"
         >
