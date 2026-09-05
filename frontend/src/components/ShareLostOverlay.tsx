@@ -3,6 +3,7 @@ import { AlertTriangle, Monitor, ShieldAlert } from 'lucide-react';
 import { Button } from './ui/Button';
 import { abortSession, sendTelemetryEvent } from '../services/api';
 import { setScreenStream, clearVerificationStreams } from '../services/verificationStreams';
+import { buildDisplayShareConstraints } from '../lib/displayCapture';
 
 interface ShareLostOverlayProps {
   sessionId: number;
@@ -59,11 +60,7 @@ export const ShareLostOverlay: React.FC<ShareLostOverlayProps> = ({
     setIsReconnecting(true);
     setErrorMsg(null);
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } } as any,
-        audio: false,
-        selfBrowserSurface: 'exclude'
-      } as any);
+      const stream = await navigator.mediaDevices.getDisplayMedia(buildDisplayShareConstraints() as any);
 
       const track = stream.getVideoTracks()[0];
       if (!track) throw new Error('No video track available in capture');
