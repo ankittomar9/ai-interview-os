@@ -717,6 +717,35 @@ This append-only verification log records the evidence, automated test runs, lin
 - **Status**: **WAITING ON USER** for personal microphone recording of the 5 WAV clips into scripts/eval/clips_user/.
 - **Implementer Status**: claim submitted, pending blob review
 
+---
+
+## §HOTFIX-1 Remediation Ledger & Audit Trail
+
+### Hotfix H4: Standing Test Waiver for Suppressed Context Bootstrap Tests
+
+| Parameter | Value |
+| :--- | :--- |
+| **Status** | Active Standing Waiver (Bounded to Context Tests Only) |
+| **Governing Spec** | REMEDIATION-HOTFIX-1 §4 (AC-H4) |
+| **Audit Protocol** | Explicit Enumeration with Tracking IDs |
+
+#### Bounded Test Waiver Roster
+
+| Service Module | Fully Qualified Test Name | `@Disabled` Declaration | Coverage Scope | Root Cause / Rationale | Tracking ID |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `evaluation-report-service` | `com.interviewos.evaluation.EvaluationReportServiceApplicationTests#contextLoads` | `@Disabled("Requires live PostgreSQL database container")` | Full Spring Boot context wiring, JPA Hibernate entity mappings, and Flyway database migration bootstrap against live relational store. | In headless Maven environments without a live PostgreSQL daemon or Testcontainers Docker daemon bridge, HikariCP fails connection acquisition, blocking Flyway migration init. | `DEBT-TEST-001` |
+| `interview-session-service` | `com.interviewos.session.InterviewSessionServiceApplicationTests#contextLoads` | `@Disabled("Requires live PostgreSQL and MongoDB database containers")` | Full Spring Boot context bootstrap, dual JPA/PostgreSQL and Spring Data MongoDB repository auto-configuration, and Feign client wiring. | Requires concurrent live PostgreSQL (port 5432) and MongoDB (port 27017) instances. Without container orchestration during unit test phase, context bootstrap throws `DataAccessResourceFailureException`. | `DEBT-TEST-002` |
+
+#### Waiver Invariants & Boundary Guarantees
+1. **Zero Silent Skips**: All skipped tests are explicitly annotated with `@Disabled` declaring their external dependency requirements.
+2. **No Test Deletion**: The test classes remain in `src/test/java` under version control; no tests have been deleted.
+3. **No Widening**: The waiver strictly covers only the two `@SpringBootTest` context bootstrap classes listed above.
+4. **Comprehensive Slice Coverage**:
+   - `evaluation-report-service`: 19 passing tests across `EvaluationReportControllerTest` (WebMvc slice), `EvaluationReportServiceTest` (unit tests), and `HumanTranscriptPdfGeneratorTest` (PDF render tests).
+   - `interview-session-service`: 148 passing tests across `InterviewSessionServiceTest` (90 tests), `InterviewSessionControllerTest` (6 tests), `SystemCapabilitiesServiceTest` (5 tests), `SessionRecordingServiceTest` (5 tests), `ResumeParsingServiceTest` (2 tests), `SessionRecordingControllerTest` (2 tests), `SystemCapabilitiesControllerTest` (2 tests), `CodeExecutionServiceTest` (6 tests), and the 28-combo difficulty ladder suite.
+
+- **Implementer Status**: claim submitted, pending blob review
+
 ## SPEC-PLAN-1 Final Batch Summary & Audit Ledger
 
 | Batch | Code | Scope / Merge Description | Merge Commit | Implementer Status |
