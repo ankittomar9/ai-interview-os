@@ -352,7 +352,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               <h1 className="text-xl font-bold text-text tracking-tight">Pre-Assessment System Verification</h1>
             </div>
             <p className="text-xs text-text-3 mt-1">
-              Candidate Readiness Check for <strong className="text-text">{roleTitle}</strong> â€¢ Session #{sessionId}
+              Candidate Readiness Check for <strong className="text-text">{roleTitle}</strong> • Session #{sessionId}
             </p>
           </div>
 
@@ -404,7 +404,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               capabilities?.engines?.dsa?.state === 'STARTING' ? `DSA (${capabilities?.engines?.dsa?.detail || 'warming up'})` : null,
               capabilities?.engines?.lld?.state === 'STARTING' ? `Spring Boot LLD (${capabilities?.engines?.lld?.detail || 'warming up'})` : null,
               capabilities?.engines?.sql?.state === 'STARTING' ? `SQL (${capabilities?.engines?.sql?.detail || 'warming up'})` : null,
-            ].filter(Boolean).join(' â€¢ ');
+            ].filter(Boolean).join(' • ');
 
             return (
               <>
@@ -424,7 +424,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                       {capabilities?.engines?.dsa?.ready
                         ? 'Judge0 Online'
                         : capabilities?.engines?.dsa?.state === 'STARTING'
-                          ? 'Startingâ€¦'
+                          ? 'Starting…'
                           : 'Sandbox Offline'}
                     </Chip>
                   </div>
@@ -444,7 +444,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                       {capabilities?.engines?.lld?.ready
                         ? 'Docker Maven Online'
                         : capabilities?.engines?.lld?.state === 'STARTING'
-                          ? 'Startingâ€¦'
+                          ? 'Starting…'
                           : 'Docker Offline'}
                     </Chip>
                   </div>
@@ -468,7 +468,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                   <div className="bg-elevated border border-warning/30 rounded p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-warning">
                     <div className="flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
-                      <span>Startingâ€¦ (engines warming up): {startingDetails || 'Initial probe in progress â€” auto re-polling every 5s'}</span>
+                      <span>Starting… (engines warming up): {startingDetails || 'Initial probe in progress — auto re-polling every 5s'}</span>
                     </div>
                   </div>
                 )}
@@ -560,12 +560,12 @@ export const PreInterviewChecklist: React.FC<Props> = ({
 
           {/* Right Column: Screen Share & Dual Camera */}
           <div className="space-y-4">
-            {/* 3. Screen Share â€” Full Monitor */}
+            {/* 3. Screen Share — Full Monitor */}
             <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-xs font-bold text-text">
                   <Monitor className="w-4 h-4 text-text-3" />
-                  <span>3. Screen Share â€” Full Monitor</span>
+                  <span>3. Screen Share — Full Monitor</span>
                 </div>
                 <Chip
                   variant={
@@ -581,8 +581,8 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 >
                   {screenOk
                     ? screenScope === 'UNKNOWN'
-                      ? 'Shared (unverified scope) â€” Flagged'
-                      : `Monitor Shared â€” ${screenLabel || 'Entire Screen'}`
+                      ? 'Shared (unverified scope) — Flagged'
+                      : `Monitor Shared — ${screenLabel || 'Entire Screen'}`
                     : screenError
                       ? (screenScope === 'WINDOW' || screenScope === 'BROWSER')
                         ? 'Window/Tab Rejected'
@@ -663,10 +663,10 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 ))}
               </div>
               <p className="text-[11px] text-text-3">
-                {recordingQuality === 'READABLE' && 'Default high-clarity ladder (2.5â€“4.5 Mbps) â€” code text remains fully legible.'}
-                {recordingQuality === 'COMPACT' && 'OBS-efficient tier (0.8â€“1.2 Mbps) â€” minimal storage impact, readable at 100% zoom.'}
-                {recordingQuality === 'BALANCED' && 'Balanced rate (1.5â€“2.5 Mbps) â€” good text contrast with moderate file size.'}
-                {recordingQuality === 'STUDIO' && 'Maximum fidelity (3.0â€“6.0 Mbps) â€” uncompressed text sharpness.'}
+                {recordingQuality === 'READABLE' && 'Default high-clarity ladder (2.5–4.5 Mbps) — code text remains fully legible.'}
+                {recordingQuality === 'COMPACT' && 'OBS-efficient tier (0.8–1.2 Mbps) — minimal storage impact, readable at 100% zoom.'}
+                {recordingQuality === 'BALANCED' && 'Balanced rate (1.5–2.5 Mbps) — good text contrast with moderate file size.'}
+                {recordingQuality === 'STUDIO' && 'Maximum fidelity (3.0–6.0 Mbps) — uncompressed text sharpness.'}
               </p>
             </div>
 
@@ -688,7 +688,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 </div>
                 <div className="space-y-1 text-xs">
                   <p className="text-[11px] text-text-3 leading-relaxed">
-                    Scan with phone on same Wi-Fi to stream 45Â° angle desk feed.
+                    Scan with phone on same Wi-Fi to stream 45° angle desk feed.
                   </p>
                   <label className="flex items-center gap-2 text-[11px] text-text-2 cursor-pointer pt-1">
                     <input
@@ -767,7 +767,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           icon={<ArrowRight className="w-5 h-5" />}
           className="w-full"
         >
-          {allChecksPassed ? 'All Systems Verified âž¡ï¸ Start Interview' : 'Complete Required Checklist Gates Above'}
+          {allChecksPassed ? 'All Systems Verified → Start Interview' : 'Complete Required Checklist Gates Above'}
         </Button>
 
       </Card>
