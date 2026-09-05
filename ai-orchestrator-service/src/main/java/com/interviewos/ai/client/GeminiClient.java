@@ -27,6 +27,14 @@ public class GeminiClient implements AiClient {
     private final ObjectMapper objectMapper;
     private final com.interviewos.ai.service.EgressTracker egressTracker;
 
+    @jakarta.annotation.PostConstruct
+    public void validateConfiguration() {
+        AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(ModelProvider.GEMINI);
+        if (config == null || config.defaultModel() == null || config.defaultModel().isBlank()) {
+            log.warn("ai.providers.gemini.default-model not configured — sessions on GEMINI will fail");
+        }
+    }
+
     @Override
     public boolean supports(ModelProvider provider) {
         return provider == ModelProvider.GEMINI;
@@ -54,7 +62,10 @@ public class GeminiClient implements AiClient {
             String customModel
     ) {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(ModelProvider.GEMINI);
-        String model = (config != null) ? config.getEffectiveModelFor(customModel) : ((customModel != null && !customModel.isBlank()) ? customModel : "gemini-2.0-flash");
+        String model = (config != null) ? config.getEffectiveModelFor(customModel) : ((customModel != null && !customModel.isBlank()) ? customModel : null);
+        if (model == null || model.isBlank()) {
+            throw new IllegalStateException("ai.providers.gemini.default-model not configured");
+        }
 
         String effectiveKey = (apiKey != null && !apiKey.isBlank()) ? apiKey : (config != null && config.apiKey() != null && !config.apiKey().isBlank() ? config.apiKey().trim() : null);
         if (effectiveKey == null || effectiveKey.isBlank()) {

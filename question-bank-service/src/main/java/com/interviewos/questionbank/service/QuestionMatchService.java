@@ -25,6 +25,12 @@ public class QuestionMatchService {
     private final QuestionRepository questionRepository;
     private final ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.model:${GEMINI_MODEL:gemini-3.5-flash}}")
+    private String geminiModel = "gemini-3.5-flash";
+
+    @org.springframework.beans.factory.annotation.Value("${gemini.api.endpoint:${GEMINI_ENDPOINT:https://generativelanguage.googleapis.com/v1beta/models/}}")
+    private String geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/";
+
     public QuestionMatchResponse matchQuestion(QuestionMatchRequest request) {
         String track = request.track() != null ? request.track().trim() : "ALGORITHMS_DATA_STRUCTURES";
         String difficulty = request.difficulty() != null ? request.difficulty().trim() : "JUNIOR";
@@ -148,7 +154,7 @@ public class QuestionMatchService {
                     .build();
 
             if ("GEMINI".equalsIgnoreCase(provider)) {
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;
+                String url = geminiEndpoint + geminiModel + ":generateContent?key=" + apiKey;
                 Map<String, Object> body = Map.of(
                         "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt.toString())))),
                         "generationConfig", Map.of("temperature", 0.1, "responseMimeType", "application/json")

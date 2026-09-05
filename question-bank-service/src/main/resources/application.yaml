@@ -25,3 +25,8 @@ management:
       show-details: always
     prometheus:
       enabled: true
+
+gemini:
+  api:
+    model: ${GEMINI_MODEL:gemini-3.5-flash}
+    endpoint: ${GEMINI_ENDPOINT:https://generativelanguage.googleapis.com/v1beta/models/}
