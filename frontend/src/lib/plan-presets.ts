@@ -1,4 +1,4 @@
-﻿import type { DifficultyLevel, InterviewTrack, SectionType } from '../types';
+import type { DifficultyLevel, InterviewTrack, SectionType } from '../types';
 
 export interface PlanPresetSection {
   sectionType: SectionType;
@@ -70,6 +70,66 @@ export const getPlanPreset = (track: InterviewTrack, difficulty: DifficultyLevel
           ]
         };
     }
+  }
+
+  if (track === 'DSA_LLD') {
+    const dsaItems = (difficulty === 'JUNIOR' || difficulty === 'MID') ? 2 : 1;
+    const dsaMinutes = (difficulty === 'JUNIOR' || difficulty === 'MID') ? 30 : 15;
+    const lldItems = difficulty === 'MID' ? 2 : 1;
+    const lldMinutes = difficulty === 'MID' ? 20 : 15;
+    const totalMinutes = 5 + dsaMinutes + lldMinutes;
+    return {
+      track,
+      difficulty,
+      plannedTotalMinutes: totalMinutes,
+      preview: `Intro · DSA ×${dsaItems} · LLD ×${lldItems} · ≈${totalMinutes} min`,
+      sections: [
+        { sectionType: 'INTRODUCTION', track: 'BEHAVIORAL_STAR', itemCount: 1, softTimeBudgetMinutes: 5, note: 'Candidate background & warm-up' },
+        { sectionType: 'DSA', track: 'ALGORITHMS_DATA_STRUCTURES', itemCount: dsaItems, softTimeBudgetMinutes: dsaMinutes, note: 'Core algorithms & data structures' },
+        { sectionType: 'LLD', track: 'SPRING_LLD', itemCount: lldItems, softTimeBudgetMinutes: lldMinutes, note: 'Object-oriented component design' }
+      ]
+    };
+  }
+
+  if (track === 'LLD_HLD') {
+    const lldItems = difficulty === 'MID' ? 2 : 1;
+    const lldMinutes = difficulty === 'MID' ? 20 : 15;
+    const hldItems = 1;
+    const hldMinutes = 18;
+    const totalMinutes = 5 + lldMinutes + hldMinutes;
+    return {
+      track,
+      difficulty,
+      plannedTotalMinutes: totalMinutes,
+      preview: `Intro · LLD ×${lldItems} · System Design ×${hldItems} · ≈${totalMinutes} min`,
+      sections: [
+        { sectionType: 'INTRODUCTION', track: 'BEHAVIORAL_STAR', itemCount: 1, softTimeBudgetMinutes: 5, note: 'Candidate background & warm-up' },
+        { sectionType: 'LLD', track: 'SPRING_LLD', itemCount: lldItems, softTimeBudgetMinutes: lldMinutes, note: 'Modular component & low-level design' },
+        { sectionType: 'SYSTEM_DESIGN', track: 'SYSTEM_DESIGN', itemCount: hldItems, softTimeBudgetMinutes: hldMinutes, note: 'High-level distributed architecture' }
+      ]
+    };
+  }
+
+  if (track === 'DSA_LLD_HLD') {
+    const dsaItems = (difficulty === 'JUNIOR' || difficulty === 'MID') ? 2 : 1;
+    const dsaMinutes = (difficulty === 'JUNIOR' || difficulty === 'MID') ? 30 : 15;
+    const lldItems = difficulty === 'MID' ? 2 : 1;
+    const lldMinutes = difficulty === 'MID' ? 20 : 15;
+    const hldItems = 1;
+    const hldMinutes = 18;
+    const totalMinutes = 5 + dsaMinutes + lldMinutes + hldMinutes;
+    return {
+      track,
+      difficulty,
+      plannedTotalMinutes: totalMinutes,
+      preview: `Intro · DSA ×${dsaItems} · LLD ×${lldItems} · System Design ×${hldItems} · ≈${totalMinutes} min`,
+      sections: [
+        { sectionType: 'INTRODUCTION', track: 'BEHAVIORAL_STAR', itemCount: 1, softTimeBudgetMinutes: 5, note: 'Candidate background & warm-up' },
+        { sectionType: 'DSA', track: 'ALGORITHMS_DATA_STRUCTURES', itemCount: dsaItems, softTimeBudgetMinutes: dsaMinutes, note: 'Core algorithms & data structures' },
+        { sectionType: 'LLD', track: 'SPRING_LLD', itemCount: lldItems, softTimeBudgetMinutes: lldMinutes, note: 'Modular component design' },
+        { sectionType: 'SYSTEM_DESIGN', track: 'SYSTEM_DESIGN', itemCount: hldItems, softTimeBudgetMinutes: hldMinutes, note: 'High-level distributed architecture' }
+      ]
+    };
   }
 
   // Focused tracks

@@ -13,15 +13,27 @@ export interface TrackOption {
 export const TRACK_OPTIONS: TrackOption[] = [
   {
     track: 'FULL_LOOP',
-    title: 'Complete Interview',
+    title: 'Full Loop (DSA+LLD+HLD)',
     description: 'Complete multi-stage interview loop calibrated to your seniority (45–60 min).',
     icon: <Sparkles className="w-4 h-4" />
   },
   {
-    track: 'ALGORITHMS_DATA_STRUCTURES',
-    title: 'Algorithms & Data Structures',
-    description: 'LeetCode-style algorithmic coding, complexity math & Standard I/O sandbox.',
+    track: 'DSA_LLD',
+    title: 'DSA + LLD',
+    description: 'Algorithmic problem solving followed by object-oriented low-level design.',
     icon: <Binary className="w-4 h-4" />
+  },
+  {
+    track: 'DSA_LLD_HLD',
+    title: 'DSA + LLD + HLD',
+    description: 'Comprehensive tech evaluation: algorithms, component design, and architecture.',
+    icon: <Layers className="w-4 h-4" />
+  },
+  {
+    track: 'LLD_HLD',
+    title: 'LLD + HLD',
+    description: 'Modular component architecture and large-scale distributed system design.',
+    icon: <Code2 className="w-4 h-4" />
   },
   {
     track: 'SQL',
@@ -30,27 +42,15 @@ export const TRACK_OPTIONS: TrackOption[] = [
     icon: <Database className="w-4 h-4" />
   },
   {
-    track: 'SPRING_LLD',
-    title: 'Spring Boot LLD Projects',
-    description: 'Multi-file Spring Boot services in an isolated workspace + Maven tests.',
-    icon: <Code2 className="w-4 h-4" />
-  },
-  {
-    track: 'SYSTEM_DESIGN',
-    title: 'High-Level System Design',
-    description: 'Interactive architecture whiteboard canvas with multimodal AI evaluation.',
-    icon: <Layers className="w-4 h-4" />
-  },
-  {
     track: 'BEHAVIORAL_STAR',
     title: 'Behavioral & Leadership',
-    description: 'STAR structured scenarios, leadership dilemmas & tradeoff dialogue.',
+    description: 'AI-led dialogue on engineering dilemmas, leadership tradeoffs, and team culture.',
     icon: <Users2 className="w-4 h-4" />
   },
   {
     track: 'RESUME_BASED',
-    title: 'Others (Resume-Based)',
-    description: 'Frontier AI generates personalized questions grounded in your resume.',
+    title: 'Resume Deep-Dive (Non-Tech)',
+    description: "AI-led conversation grounded in your resume — no rubrics, the interviewer's read matters.",
     icon: <FileText className="w-4 h-4" />
   }
 ];

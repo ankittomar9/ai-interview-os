@@ -84,11 +84,11 @@ public class SessionPlanService {
         if (track == null) return "ALGORITHMS_DATA_STRUCTURES";
         return switch (track) {
             case SQL -> "SQL_DATABASE";
-            case SPRING_LLD, JAVA_SPRING_BOOT -> "SYSTEM_DESIGN_LLD";
+            case SPRING_LLD, JAVA_SPRING_BOOT, LLD_HLD -> "SYSTEM_DESIGN_LLD";
             case SYSTEM_DESIGN -> "SYSTEM_DESIGN_HLD";
             case BEHAVIORAL_STAR -> "BEHAVIORAL";
             case RESUME_BASED -> "AI-from-resume";
-            case ALGORITHMS_DATA_STRUCTURES -> "ALGORITHMS_DATA_STRUCTURES";
+            case ALGORITHMS_DATA_STRUCTURES, DSA_LLD, DSA_LLD_HLD -> "ALGORITHMS_DATA_STRUCTURES";
             case FULL_LOOP -> "FULL_LOOP";
         };
     }
@@ -113,6 +113,15 @@ public class SessionPlanService {
                 case SENIOR -> 55;
                 case STAFF -> 52;
             };
+        } else if (track == InterviewTrack.DSA_LLD) {
+            sections = buildDsaLldSections(difficulty, seed);
+            plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
+        } else if (track == InterviewTrack.LLD_HLD) {
+            sections = buildLldHldSections(difficulty, seed);
+            plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
+        } else if (track == InterviewTrack.DSA_LLD_HLD) {
+            sections = buildDsaLldHldSections(difficulty, seed);
+            plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
         } else {
             sections = buildFocusedSections(track, difficulty, seed);
             plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
@@ -259,6 +268,142 @@ public class SessionPlanService {
         return sections;
     }
 
+    private List<PlannedSection> buildDsaLldSections(DifficultyLevel difficulty, long seed) {
+        Set<String> seenSlugs = new HashSet<>();
+        List<PlannedSection> sections = new ArrayList<>();
+        sections.add(new PlannedSection(
+                SectionType.INTRODUCTION,
+                InterviewTrack.BEHAVIORAL_STAR,
+                1,
+                5,
+                "Candidate background, role calibration & warm-up",
+                List.of()
+        ));
+
+        int dsaCount = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 2 : 1;
+        int dsaMinutes = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 30 : 15;
+        List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs);
+        seenSlugs.addAll(dsaSlugs);
+        sections.add(new PlannedSection(
+                SectionType.DSA,
+                InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
+                dsaCount,
+                dsaMinutes,
+                "Core algorithms & data structures",
+                dsaSlugs
+        ));
+
+        int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
+        int lldMinutes = (difficulty == DifficultyLevel.MID) ? 20 : 15;
+        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs);
+        seenSlugs.addAll(lldSlugs);
+        sections.add(new PlannedSection(
+                SectionType.LLD,
+                InterviewTrack.SPRING_LLD,
+                lldCount,
+                lldMinutes,
+                "Object-oriented and low-level component design",
+                lldSlugs
+        ));
+
+        return sections;
+    }
+
+    private List<PlannedSection> buildLldHldSections(DifficultyLevel difficulty, long seed) {
+        Set<String> seenSlugs = new HashSet<>();
+        List<PlannedSection> sections = new ArrayList<>();
+        sections.add(new PlannedSection(
+                SectionType.INTRODUCTION,
+                InterviewTrack.BEHAVIORAL_STAR,
+                1,
+                5,
+                "Candidate background, role calibration & warm-up",
+                List.of()
+        ));
+
+        int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
+        int lldMinutes = (difficulty == DifficultyLevel.MID) ? 20 : 15;
+        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed, seenSlugs);
+        seenSlugs.addAll(lldSlugs);
+        sections.add(new PlannedSection(
+                SectionType.LLD,
+                InterviewTrack.SPRING_LLD,
+                lldCount,
+                lldMinutes,
+                "Modular component & low-level design",
+                lldSlugs
+        ));
+
+        int hldCount = 1;
+        int hldMinutes = 18;
+        List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, hldCount, seed + 1, seenSlugs);
+        seenSlugs.addAll(sdSlugs);
+        sections.add(new PlannedSection(
+                SectionType.SYSTEM_DESIGN,
+                InterviewTrack.SYSTEM_DESIGN,
+                hldCount,
+                hldMinutes,
+                "High-level distributed architecture & trade-offs",
+                sdSlugs
+        ));
+
+        return sections;
+    }
+
+    private List<PlannedSection> buildDsaLldHldSections(DifficultyLevel difficulty, long seed) {
+        Set<String> seenSlugs = new HashSet<>();
+        List<PlannedSection> sections = new ArrayList<>();
+        sections.add(new PlannedSection(
+                SectionType.INTRODUCTION,
+                InterviewTrack.BEHAVIORAL_STAR,
+                1,
+                5,
+                "Candidate background, role calibration & warm-up",
+                List.of()
+        ));
+
+        int dsaCount = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 2 : 1;
+        int dsaMinutes = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 30 : 15;
+        List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs);
+        seenSlugs.addAll(dsaSlugs);
+        sections.add(new PlannedSection(
+                SectionType.DSA,
+                InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
+                dsaCount,
+                dsaMinutes,
+                "Core algorithms & algorithmic problem solving",
+                dsaSlugs
+        ));
+
+        int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
+        int lldMinutes = (difficulty == DifficultyLevel.MID) ? 20 : 15;
+        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs);
+        seenSlugs.addAll(lldSlugs);
+        sections.add(new PlannedSection(
+                SectionType.LLD,
+                InterviewTrack.SPRING_LLD,
+                lldCount,
+                lldMinutes,
+                "Modular component & low-level design",
+                lldSlugs
+        ));
+
+        int hldCount = 1;
+        int hldMinutes = 18;
+        List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, hldCount, seed + 2, seenSlugs);
+        seenSlugs.addAll(sdSlugs);
+        sections.add(new PlannedSection(
+                SectionType.SYSTEM_DESIGN,
+                InterviewTrack.SYSTEM_DESIGN,
+                hldCount,
+                hldMinutes,
+                "High-level distributed architecture & trade-offs",
+                sdSlugs
+        ));
+
+        return sections;
+    }
+
     private List<PlannedSection> buildFocusedSections(InterviewTrack track, DifficultyLevel difficulty, long seed) {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
@@ -337,9 +482,9 @@ public class SessionPlanService {
     private SectionType mapTrackToSectionType(InterviewTrack track) {
         if (track == null) return SectionType.DSA;
         return switch (track) {
-            case ALGORITHMS_DATA_STRUCTURES -> SectionType.DSA;
+            case ALGORITHMS_DATA_STRUCTURES, DSA_LLD, DSA_LLD_HLD -> SectionType.DSA;
             case SQL -> SectionType.SQL;
-            case SPRING_LLD, JAVA_SPRING_BOOT -> SectionType.LLD;
+            case SPRING_LLD, JAVA_SPRING_BOOT, LLD_HLD -> SectionType.LLD;
             case SYSTEM_DESIGN -> SectionType.SYSTEM_DESIGN;
             case BEHAVIORAL_STAR -> SectionType.BEHAVIORAL;
             case RESUME_BASED -> SectionType.RESUME;
