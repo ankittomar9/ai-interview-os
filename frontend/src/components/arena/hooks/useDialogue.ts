@@ -24,7 +24,10 @@ interface UseDialogueProps {
   provider: ModelProvider;
   apiKey: string;
   isPlayground?: boolean;
-  questionContext: string;
+  questionContext?: string;
+  getQuestionContext?: () => string;
+  sectionQuestionTitle?: string;
+  getSectionQuestionTitle?: () => string | undefined;
   problemSlug?: string;
   candidateName?: string;
   initialWelcome?: string;
@@ -40,6 +43,9 @@ export function useDialogue({
   apiKey,
   isPlayground = false,
   questionContext,
+  getQuestionContext,
+  sectionQuestionTitle,
+  getSectionQuestionTitle,
   problemSlug,
   candidateName,
   initialWelcome = "",
@@ -129,6 +135,16 @@ export function useDialogue({
     const targetSec = navSections[toIdx];
     setActiveSectionIndex(toIdx);
     setCurrentStage(targetSec.stage);
+    const dividerMsg: DialogueMessage = {
+      role: 'interviewer',
+      content: `— Round ${toIdx + 1}: ${targetSec.label} —`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      metadata: {
+        type: 'ROUND_BOUNDARY',
+        sectionType: String(targetSec.sectionType)
+      }
+    };
+    setMessages((prev) => [...prev, dividerMsg]);
     if (onSectionChanged) {
       onSectionChanged(toIdx, targetSec);
     }
@@ -190,9 +206,13 @@ export function useDialogue({
         integritySignals: integrity
       });
 
+      const resolvedQuestionContext = getQuestionContext ? getQuestionContext() : (questionContext || "");
+      const resolvedSectionTitle = getSectionQuestionTitle ? getSectionQuestionTitle() : sectionQuestionTitle;
+
       const aiResponse = await processDialogueTurn({
         sessionId,
-        questionContext,
+        questionContext: resolvedQuestionContext,
+        sectionQuestionTitle: resolvedSectionTitle,
         problemSlug,
         candidateExplanation: textToSend,
         candidateCode: codeSnapshot,
