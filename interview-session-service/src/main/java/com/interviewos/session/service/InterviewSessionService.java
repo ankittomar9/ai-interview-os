@@ -563,7 +563,7 @@ public class InterviewSessionService {
     public SessionVerificationResponse recordVerification(Long sessionId, SessionVerificationRequest request) {
         InterviewSession session = findSessionOrThrow(sessionId);
         if (session.getStatus() == SessionStatus.ABORTED_SHARE) {
-            throw new IllegalStateException("Cannot record section transitions for an aborted session: " + session.getStatus());
+            throw new IllegalStateException("Cannot submit verification for an aborted session: " + session.getStatus());
         }
 
         if (session.getStatus() != SessionStatus.INITIALIZED) {
