@@ -71,11 +71,28 @@ public class SessionRecordingService {
     @Data
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class RecordingSummaryInfo {
+        private String kind;
+        private int attempted;
+        private int uploaded;
+        private List<Integer> failedSeqs;
+        private String codec;
+        private Integer width;
+        private Integer height;
+        private Integer bitrateBps;
+        private String qualityPreset;
+        private String reportedAt;
+    }
+
+    @Data
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class StreamMeta {
         private int chunks;
         private long bytes;
         private String startedAt;
         private String endedAt;
+        private RecordingSummaryInfo summary;
     }
 
     @Data
@@ -193,6 +210,35 @@ public class SessionRecordingService {
         }
     }
 
+    public void saveSummary(Long sessionId, RecordingSummaryInfo summary) {
+        if (summary == null || sessionId == null) return;
+        String safeKind = (summary.getKind() != null && "screen".equalsIgnoreCase(summary.getKind())) ? "screen" : "camera";
+        gridFsTemplate.delete(new Query(
+                Criteria.where("metadata.sessionId").is(sessionId)
+                        .and("metadata.type").is("RECORDING_SUMMARY")
+                        .and("metadata.kind").is(safeKind)
+        ));
+        Document meta = new Document();
+        meta.put("sessionId", sessionId);
+        meta.put("type", "RECORDING_SUMMARY");
+        meta.put("kind", safeKind);
+        meta.put("attempted", summary.getAttempted());
+        meta.put("uploaded", summary.getUploaded());
+        meta.put("failedSeqs", summary.getFailedSeqs() != null ? summary.getFailedSeqs() : Collections.emptyList());
+        meta.put("codec", summary.getCodec());
+        meta.put("width", summary.getWidth());
+        meta.put("height", summary.getHeight());
+        meta.put("bitrateBps", summary.getBitrateBps());
+        meta.put("qualityPreset", summary.getQualityPreset());
+        meta.put("reportedAt", Instant.now().toString());
+
+        gridFsTemplate.store(new java.io.ByteArrayInputStream(new byte[0]),
+                String.format("summary_%d_%s.json", sessionId, safeKind),
+                "application/json", meta);
+        log.info("📊 Stored recordings/summary for session {} kind {}: preset={}, attempted={}, uploaded={}",
+                sessionId, safeKind, summary.getQualityPreset(), summary.getAttempted(), summary.getUploaded());
+    }
+
     public RecordingManifest getManifest(Long sessionId) {
         List<GridFSFile> cameraChunks = getSortedChunks(sessionId, "camera");
         List<GridFSFile> screenChunks = getSortedChunks(sessionId, "screen");
@@ -221,6 +267,44 @@ public class SessionRecordingService {
                     .startedAt(startedAt)
                     .endedAt(endedAt)
                     .build());
+        }
+
+        try {
+            GridFSFindIterable summaryFiles = gridFSBucket.find(
+                    new Document("metadata.sessionId", sessionId)
+                            .append("metadata.type", "RECORDING_SUMMARY")
+            );
+            for (GridFSFile f : summaryFiles) {
+                Document meta = f.getMetadata();
+                if (meta != null) {
+                    String k = meta.getString("kind");
+                    @SuppressWarnings("unchecked")
+                    List<Integer> failed = (List<Integer>) meta.get("failedSeqs");
+                    RecordingSummaryInfo s = RecordingSummaryInfo.builder()
+                            .kind(k)
+                            .attempted(meta.getInteger("attempted", 0))
+                            .uploaded(meta.getInteger("uploaded", 0))
+                            .failedSeqs(failed != null ? failed : Collections.emptyList())
+                            .codec(meta.getString("codec"))
+                            .width(meta.getInteger("width"))
+                            .height(meta.getInteger("height"))
+                            .bitrateBps(meta.getInteger("bitrateBps"))
+                            .qualityPreset(meta.getString("qualityPreset"))
+                            .reportedAt(meta.getString("reportedAt"))
+                            .build();
+                    if (streams.containsKey(k)) {
+                        streams.get(k).setSummary(s);
+                    } else {
+                        streams.put(k, StreamMeta.builder()
+                                .chunks(0)
+                                .bytes(0L)
+                                .summary(s)
+                                .build());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not query recording summaries for session {}: {}", sessionId, e.getMessage());
         }
 
         List<DroppedChunkInfo> droppedChunks = new ArrayList<>();

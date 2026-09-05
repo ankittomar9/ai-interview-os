@@ -121,13 +121,22 @@ public class SessionRecordingController {
         }
     }
 
+    @PostMapping("/{id}/recordings/summary")
+    public ResponseEntity<Void> recordSummary(
+            @PathVariable Long id,
+            @RequestBody SessionRecordingService.RecordingSummaryInfo summary
+    ) {
+        recordingService.saveSummary(id, summary);
+        return ResponseEntity.ok().build();
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, String>> handleMaxSizeException(MaxUploadSizeExceededException ex) {
-        log.error("Recording chunk exceeds size limit: {}", ex.getMessage());
+        log.error("Recording chunk exceeds 16MB size limit: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                 .body(Map.of(
                         "error", "Recording chunk exceeds 16MB limit",
-                        "hint", "Reduce video quality or shorten chunk duration"
+                        "hint", "Chunk exceeds 16MB — verify bitrate ladder (expected ≤3MB @5s)"
                 ));
     }
 }
