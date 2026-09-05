@@ -584,7 +584,9 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                       ? 'Shared (unverified scope) â€” Flagged'
                       : `Monitor Shared â€” ${screenLabel || 'Entire Screen'}`
                     : screenError
-                      ? 'Window/Tab Rejected'
+                      ? (screenScope === 'WINDOW' || screenScope === 'BROWSER')
+                        ? 'Window/Tab Rejected'
+                        : 'Check Failed'
                       : 'Not Shared'}
                 </Chip>
               </div>
