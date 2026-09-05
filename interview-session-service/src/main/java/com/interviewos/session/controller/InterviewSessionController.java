@@ -3,6 +3,9 @@ package com.interviewos.session.controller;
 import com.interviewos.session.dto.AddMessageRequest;
 import com.interviewos.session.dto.CreateSessionRequest;
 import com.interviewos.session.dto.SessionResponse;
+import com.interviewos.session.dto.AbortSessionRequest;
+import com.interviewos.session.dto.SessionVerificationRequest;
+import com.interviewos.session.dto.SessionVerificationResponse;
 import com.interviewos.session.service.InterviewSessionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -75,6 +78,34 @@ public class InterviewSessionController {
         List<com.interviewos.session.document.InterviewSessionDocument.SubmissionEntry> submissions = sessionService.getSubmissions(id);
         log.info("Retrieved {} submissions ledger entries for session ID: {}", submissions.size(), id);
         return ResponseEntity.ok(submissions);
+    }
+
+
+    @PostMapping("/{id}/verification")
+    public ResponseEntity<SessionVerificationResponse> recordVerification(
+            @PathVariable Long id,
+            @RequestBody SessionVerificationRequest request
+    ) {
+        log.info("Recording hardware/screen verification for session ID: {}", id);
+        SessionVerificationResponse response = sessionService.recordVerification(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/verification")
+    public ResponseEntity<SessionVerificationResponse> getVerification(@PathVariable Long id) {
+        log.info("Fetching verification receipt for session ID: {}", id);
+        SessionVerificationResponse response = sessionService.getVerification(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/abort")
+    public ResponseEntity<SessionResponse> abortSession(
+            @PathVariable Long id,
+            @RequestBody(required = false) AbortSessionRequest request
+    ) {
+        log.info("Aborting session ID: {} [Reason: {}]", id, request != null ? request.reason() : "UNSPECIFIED");
+        SessionResponse response = sessionService.abortSession(id, request);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/complete")

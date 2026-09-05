@@ -11,6 +11,12 @@ import com.interviewos.session.model.SessionStatus;
 import com.interviewos.session.repository.InterviewSessionMongoRepository;
 import com.interviewos.session.repository.InterviewSessionRepository;
 import com.interviewos.session.repository.SessionMessageRepository;
+import com.interviewos.session.dto.AbortSessionRequest;
+import com.interviewos.session.dto.SessionVerificationRequest;
+import com.interviewos.session.dto.SessionVerificationResponse;
+import com.interviewos.session.entity.SessionVerification;
+import com.interviewos.session.exception.VerificationRequiredException;
+import com.interviewos.session.repository.SessionVerificationRepository;
 import com.interviewos.session.document.ResumeDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +42,7 @@ public class InterviewSessionService {
     private final ResumeParsingService resumeParsingService;
     private final SessionPlanService sessionPlanService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final SessionVerificationRepository verificationRepository;
 
     @org.springframework.beans.factory.annotation.Autowired
     public InterviewSessionService(
@@ -44,7 +51,8 @@ public class InterviewSessionService {
             InterviewSessionMongoRepository mongoSessionRepository,
             ResumeParsingService resumeParsingService,
             SessionPlanService sessionPlanService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) com.fasterxml.jackson.databind.ObjectMapper objectMapper
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) SessionVerificationRepository verificationRepository
     ) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
@@ -52,6 +60,7 @@ public class InterviewSessionService {
         this.resumeParsingService = resumeParsingService;
         this.sessionPlanService = sessionPlanService;
         this.objectMapper = objectMapper != null ? objectMapper : new com.fasterxml.jackson.databind.ObjectMapper();
+        this.verificationRepository = verificationRepository;
     }
 
     public InterviewSessionService(
@@ -61,7 +70,18 @@ public class InterviewSessionService {
             ResumeParsingService resumeParsingService,
             com.interviewos.session.sandbox.client.QuestionBankClient questionBankClient
     ) {
-        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, new SessionPlanService(questionBankClient), new com.fasterxml.jackson.databind.ObjectMapper());
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, new SessionPlanService(questionBankClient), new com.fasterxml.jackson.databind.ObjectMapper(), null);
+    }
+
+    public InterviewSessionService(
+            InterviewSessionRepository sessionRepository,
+            SessionMessageRepository messageRepository,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            ResumeParsingService resumeParsingService,
+            SessionPlanService sessionPlanService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper
+    ) {
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, null);
     }
 
     @Transactional
@@ -164,6 +184,28 @@ public class InterviewSessionService {
             throw new IllegalStateException("Cannot start session in status: " + session.getStatus());
         }
 
+        // Server-side verification gate for INTERVIEW sessions (SPEC-SCREEN-1 G2/D4/§6)
+        if (session.getSessionMode() == null || !"PLAYGROUND".equalsIgnoreCase(session.getSessionMode())) {
+            SessionVerification verification = verificationRepository != null
+                    ? verificationRepository.findBySessionId(sessionId).orElse(null)
+                    : null;
+
+            boolean validOutcome = verification != null && (
+                    "VERIFIED".equalsIgnoreCase(verification.getOutcome()) ||
+                    "DEV_BYPASS".equalsIgnoreCase(verification.getOutcome())
+            );
+            boolean screenOk = verification != null && "OK".equalsIgnoreCase(verification.getScreenStatus());
+            boolean consentOk = verification != null && verification.isConsent();
+            boolean recent = verification != null && verification.getVerifiedAt() != null &&
+                    verification.getVerifiedAt().isAfter(Instant.now().minus(Duration.ofMinutes(10)));
+
+            if (!validOutcome || !screenOk || !consentOk || !recent) {
+                log.warn("Start session rejected for session {}: VERIFICATION_REQUIRED (validOutcome={}, screenOk={}, consentOk={}, recent={})",
+                        sessionId, validOutcome, screenOk, consentOk, recent);
+                throw new VerificationRequiredException("VERIFICATION_REQUIRED: Valid screen share and verification receipt required to start interview session");
+            }
+        }
+
         session.setStatus(SessionStatus.IN_PROGRESS);
         session.setStartedAt(Instant.now());
         log.info("Session {} transitioned to IN_PROGRESS", sessionId);
@@ -187,6 +229,10 @@ public class InterviewSessionService {
     @Transactional
     public SessionResponse.MessageResponse addMessage(Long sessionId, AddMessageRequest request) {
         InterviewSession session = findSessionOrThrow(sessionId);
+
+        if (session.getStatus() == SessionStatus.ABORTED_SHARE) {
+            throw new IllegalStateException("Cannot add messages to an aborted session: " + session.getStatus());
+        }
 
         if (session.getStatus() != SessionStatus.IN_PROGRESS && session.getStatus() != SessionStatus.INITIALIZED) {
             throw new IllegalStateException("Cannot add messages to a session in status: " + session.getStatus());
@@ -510,6 +556,98 @@ public class InterviewSessionService {
         return mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)
                 .map(InterviewSessionDocument::getSectionProgress)
                 .orElse(List.of());
+    }
+
+
+    @Transactional
+    public SessionVerificationResponse recordVerification(Long sessionId, SessionVerificationRequest request) {
+        InterviewSession session = findSessionOrThrow(sessionId);
+        if (session.getStatus() == SessionStatus.ABORTED_SHARE) {
+            throw new IllegalStateException("Cannot record section transitions for an aborted session: " + session.getStatus());
+        }
+
+        if (session.getStatus() != SessionStatus.INITIALIZED) {
+            throw new IllegalStateException("Cannot submit verification for session in status: " + session.getStatus() + ". Verification is immutable after start.");
+        }
+
+        String scope = request.screenScope() != null ? request.screenScope().trim().toUpperCase() : "UNKNOWN";
+        if (!"MONITOR".equals(scope) && !"UNKNOWN".equals(scope)) {
+            throw new IllegalArgumentException("Invalid screen scope: " + request.screenScope() + ". Only MONITOR or UNKNOWN is accepted.");
+        }
+        if ("UNKNOWN".equals(scope) && (request.screenLabel() == null || request.screenLabel().isBlank())) {
+            throw new IllegalArgumentException("screenLabel naming the browser environment is required when screenScope is UNKNOWN");
+        }
+
+        String outcome = request.outcome() != null && !request.outcome().isBlank()
+                ? request.outcome().trim().toUpperCase()
+                : (request.screenOk() && request.cameraOk() && request.micOk() && request.consent() ? "VERIFIED" : "FAILED");
+
+        SessionVerification verification = verificationRepository != null
+                ? verificationRepository.findBySessionId(sessionId).orElseGet(() -> SessionVerification.builder().sessionId(sessionId).build())
+                : SessionVerification.builder().sessionId(sessionId).build();
+
+        verification.setCameraStatus(request.cameraOk() ? "OK" : "FAILED");
+        verification.setMicStatus(request.micOk() ? "OK" : "FAILED");
+        verification.setScreenStatus(request.screenOk() ? "OK" : "FAILED");
+        verification.setScreenScope(scope);
+        verification.setScreenLabel(request.screenLabel());
+        verification.setConsent(request.consent());
+        verification.setOutcome(outcome);
+        verification.setUserAgent(request.userAgent());
+        verification.setVerifiedAt(Instant.now());
+
+        SessionVerification saved = verificationRepository != null
+                ? verificationRepository.save(verification)
+                : verification;
+
+        log.info("Recorded verification receipt for session {}: outcome={}, screenScope={}, screenOk={}",
+                sessionId, outcome, scope, request.screenOk());
+        return SessionVerificationResponse.fromEntity(saved);
+    }
+
+    public SessionVerificationResponse getVerification(Long sessionId) {
+        findSessionOrThrow(sessionId);
+        SessionVerification verification = verificationRepository != null
+                ? verificationRepository.findBySessionId(sessionId).orElse(null)
+                : null;
+        if (verification == null) {
+            throw new NoSuchElementException("Verification receipt not found for session: " + sessionId);
+        }
+        return SessionVerificationResponse.fromEntity(verification);
+    }
+
+    @Transactional
+    public SessionResponse abortSession(Long sessionId, AbortSessionRequest request) {
+        InterviewSession session = findSessionOrThrow(sessionId);
+
+        if (session.getStatus() == SessionStatus.ABORTED_SHARE) {
+            log.info("Session {} already in ABORTED_SHARE status (idempotent abort)", sessionId);
+            return SessionResponse.fromEntity(session);
+        }
+
+        session.setStatus(SessionStatus.ABORTED_SHARE);
+        if (session.getCompletedAt() == null) {
+            session.setCompletedAt(Instant.now());
+        }
+        if (session.getStartedAt() != null) {
+            session.setDurationSeconds(Duration.between(session.getStartedAt(), session.getCompletedAt()).getSeconds());
+        }
+
+        InterviewSession saved = sessionRepository.save(session);
+
+        try {
+            mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
+                doc.setStatus(SessionStatus.ABORTED_SHARE.name());
+                doc.setCompletedAt(LocalDateTime.now());
+                mongoSessionRepository.save(doc);
+            });
+        } catch (Exception e) {
+            log.warn("Failed to sync ABORTED_SHARE to Mongo: {}", e.getMessage());
+        }
+
+        log.info("Session {} transitioned to ABORTED_SHARE [reason: {}]",
+                sessionId, request != null ? request.reason() : "UNSPECIFIED");
+        return SessionResponse.fromEntity(saved);
     }
 
     private InterviewSession findSessionOrThrow(Long sessionId) {
