@@ -26,10 +26,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -51,10 +53,13 @@ class InterviewSessionServiceTest {
 
     @Mock
     private QuestionBankClient questionBankClient;
+    @Mock
+    private com.interviewos.session.repository.SessionVerificationRepository verificationRepository;
 
     private SessionPlanService sessionPlanService;
     private InterviewSessionService serviceWithFallbackOnly;
     private InterviewSessionService serviceWithRemote;
+    private InterviewSessionService serviceWithVerification;
 
     @BeforeEach
     void setUp() {
@@ -75,6 +80,16 @@ class InterviewSessionServiceTest {
                 resumeParsingService,
                 new SessionPlanService(questionBankClient),
                 new com.fasterxml.jackson.databind.ObjectMapper()
+        );
+
+        serviceWithVerification = new InterviewSessionService(
+                sessionRepository,
+                messageRepository,
+                mongoSessionRepository,
+                resumeParsingService,
+                sessionPlanService,
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                verificationRepository
         );
     }
 
@@ -413,5 +428,148 @@ class InterviewSessionServiceTest {
         SessionResponse resManual = serviceWithFallbackOnly.createSession(reqManual);
         assertThat(resManual.plan()).isNotNull();
         assertThat(resManual.plan().source()).isEqualTo("SETUP_SELECTION");
+    }
+
+    @Test
+    @DisplayName("startSession in INTERVIEW mode without receipt throws VerificationRequiredException (409)")
+    void testStartSession_InterviewMode_WithoutReceipt_ThrowsVerificationRequiredException() {
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .candidateId("cand-1")
+                .roleTitle("Engineer")
+                .track(InterviewTrack.SQL)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.INITIALIZED)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(verificationRepository.findBySessionId(1L)).thenReturn(Optional.empty());
+
+        assertThrows(com.interviewos.session.exception.VerificationRequiredException.class,
+                () -> serviceWithVerification.startSession(1L));
+    }
+
+    @Test
+    @DisplayName("startSession in INTERVIEW mode with valid receipt succeeds and transitions to IN_PROGRESS")
+    void testStartSession_InterviewMode_WithValidReceipt_Succeeds() {
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .candidateId("cand-1")
+                .roleTitle("Engineer")
+                .track(InterviewTrack.SQL)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.INITIALIZED)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        com.interviewos.session.entity.SessionVerification verification = com.interviewos.session.entity.SessionVerification.builder()
+                .id(10L)
+                .sessionId(1L)
+                .cameraStatus("OK")
+                .micStatus("OK")
+                .screenStatus("OK")
+                .screenScope("MONITOR")
+                .consent(true)
+                .outcome("VERIFIED")
+                .verifiedAt(Instant.now())
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(verificationRepository.findBySessionId(1L)).thenReturn(Optional.of(verification));
+
+        SessionResponse resp = serviceWithVerification.startSession(1L);
+        assertEquals(SessionStatus.IN_PROGRESS, resp.status());
+        assertNotNull(resp.startedAt());
+    }
+
+    @Test
+    @DisplayName("startSession in PLAYGROUND mode without receipt succeeds directly")
+    void testStartSession_PlaygroundMode_WithoutReceipt_Succeeds() {
+        InterviewSession session = InterviewSession.builder()
+                .id(2L)
+                .candidateId("cand-2")
+                .roleTitle("Engineer")
+                .track(InterviewTrack.SQL)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.INITIALIZED)
+                .sessionMode("PLAYGROUND")
+                .build();
+
+        when(sessionRepository.findById(2L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        SessionResponse resp = serviceWithVerification.startSession(2L);
+        assertEquals(SessionStatus.IN_PROGRESS, resp.status());
+    }
+
+    @Test
+    @DisplayName("recordVerification on already started session throws IllegalStateException")
+    void testRecordVerification_AlreadyStarted_ThrowsConflict() {
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .candidateId("cand-1")
+                .roleTitle("Engineer")
+                .track(InterviewTrack.SQL)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.IN_PROGRESS)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+
+        com.interviewos.session.dto.SessionVerificationRequest req = new com.interviewos.session.dto.SessionVerificationRequest(
+                true, true, true, "MONITOR", "Primary", true, "VERIFIED", "UA"
+        );
+
+        assertThrows(IllegalStateException.class, () -> serviceWithVerification.recordVerification(1L, req));
+    }
+
+    @Test
+    @DisplayName("abortSession transitions status to ABORTED_SHARE idempotently")
+    void testAbortSession_Idempotent() {
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .candidateId("cand-1")
+                .roleTitle("Engineer")
+                .track(InterviewTrack.SQL)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.IN_PROGRESS)
+                .startedAt(Instant.now().minusSeconds(30))
+                .sessionMode("INTERVIEW")
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        com.interviewos.session.dto.AbortSessionRequest req = new com.interviewos.session.dto.AbortSessionRequest("SHARE_LOST_EXPIRED");
+        SessionResponse resp1 = serviceWithVerification.abortSession(1L, req);
+        assertEquals(SessionStatus.ABORTED_SHARE, resp1.status());
+
+        SessionResponse resp2 = serviceWithVerification.abortSession(1L, req);
+        assertEquals(SessionStatus.ABORTED_SHARE, resp2.status());
+    }
+
+    @Test
+    @DisplayName("addMessage on session in ABORTED_SHARE status throws IllegalStateException")
+    void testAddMessage_WhenAborted_ThrowsIllegalStateException() {
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .candidateId("cand-1")
+                .roleTitle("Engineer")
+                .track(InterviewTrack.SQL)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.ABORTED_SHARE)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+
+        com.interviewos.session.dto.AddMessageRequest msgReq = new com.interviewos.session.dto.AddMessageRequest(
+                "CANDIDATE", com.interviewos.session.model.MessageType.EXPLANATION, "Hello", null
+        );
+
+        assertThrows(IllegalStateException.class, () -> serviceWithVerification.addMessage(1L, msgReq));
     }
 }

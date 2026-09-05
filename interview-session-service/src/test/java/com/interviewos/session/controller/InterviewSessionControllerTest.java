@@ -264,4 +264,90 @@ class InterviewSessionControllerTest {
                 .andExpect(jsonPath("$[0].reason").value("CONSENTED"))
                 .andExpect(jsonPath("$[0].turnCount").value(3));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions/{id}/start without verification returns 409 VERIFICATION_REQUIRED")
+    void testStartSession_WithoutVerification_Returns409() throws Exception {
+        when(sessionService.startSession(1L)).thenThrow(
+                new com.interviewos.session.exception.VerificationRequiredException(
+                        "VERIFICATION_REQUIRED: Valid screen share and verification receipt required to start interview session"
+                )
+        );
+
+        mockMvc.perform(post("/api/v1/sessions/1/start"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("VERIFICATION_REQUIRED"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("VERIFICATION_REQUIRED")));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions/{id}/start with valid verification returns 200 OK")
+    void testStartSession_Success() throws Exception {
+        SessionResponse mockResponse = new SessionResponse(
+                1L, "candidate-123", "Role", InterviewTrack.JAVA_SPRING_BOOT,
+                DifficultyLevel.SENIOR, "Google", "JD", SessionStatus.IN_PROGRESS,
+                Instant.now(), Instant.now(), null, null, "INTERVIEW", null, null
+        );
+
+        when(sessionService.startSession(1L)).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/v1/sessions/1/start"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions/{id}/verification records hardware receipt")
+    void testRecordVerification_Success() throws Exception {
+        com.interviewos.session.dto.SessionVerificationRequest req = new com.interviewos.session.dto.SessionVerificationRequest(
+                true, true, true, "MONITOR", "Primary Display", true, "VERIFIED", "Mozilla/5.0"
+        );
+        com.interviewos.session.dto.SessionVerificationResponse resp = new com.interviewos.session.dto.SessionVerificationResponse(
+                1L, 1L, "OK", "OK", "OK", "MONITOR", "Primary Display", true, "VERIFIED", "Mozilla/5.0", Instant.now()
+        );
+
+        when(sessionService.recordVerification(any(), any())).thenReturn(resp);
+
+        mockMvc.perform(post("/api/v1/sessions/1/verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("VERIFIED"))
+                .andExpect(jsonPath("$.screenScope").value("MONITOR"))
+                .andExpect(jsonPath("$.screenStatus").value("OK"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/sessions/{id}/verification returns verification receipt")
+    void testGetVerification_Success() throws Exception {
+        com.interviewos.session.dto.SessionVerificationResponse resp = new com.interviewos.session.dto.SessionVerificationResponse(
+                1L, 1L, "OK", "OK", "OK", "MONITOR", "Primary Display", true, "VERIFIED", "Mozilla/5.0", Instant.now()
+        );
+
+        when(sessionService.getVerification(1L)).thenReturn(resp);
+
+        mockMvc.perform(get("/api/v1/sessions/1/verification"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.screenScope").value("MONITOR"))
+                .andExpect(jsonPath("$.outcome").value("VERIFIED"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions/{id}/abort transitions session to ABORTED_SHARE")
+    void testAbortSession_Success() throws Exception {
+        com.interviewos.session.dto.AbortSessionRequest req = new com.interviewos.session.dto.AbortSessionRequest("SHARE_LOST_EXPIRED");
+        SessionResponse mockResponse = new SessionResponse(
+                1L, "candidate-123", "Role", InterviewTrack.JAVA_SPRING_BOOT,
+                DifficultyLevel.SENIOR, "Google", "JD", SessionStatus.ABORTED_SHARE,
+                Instant.now(), Instant.now(), Instant.now(), 60L, "INTERVIEW", null, null
+        );
+
+        when(sessionService.abortSession(any(), any())).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/v1/sessions/1/abort")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ABORTED_SHARE"));
+    }
 }

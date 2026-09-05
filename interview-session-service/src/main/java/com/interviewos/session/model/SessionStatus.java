@@ -5,5 +5,6 @@ public enum SessionStatus {
     IN_PROGRESS,
     PAUSED,
     COMPLETED,
-    EVALUATED
+    EVALUATED,
+    ABORTED_SHARE
 }
