@@ -28,3 +28,30 @@ The evaluation harness measures Word Error Rate (WER) using Levenshtein distance
    python scripts/eval/wer_eval.py --simulate-biased --prompt-context "Ankit Singh Tomar" --compare scripts/eval/baseline_wer.simulated.json --output scripts/eval/wer_report.simulated.json
    ```
    Simulation outputs explicitly record `"simulation": true`, `"endpoint": null`, and per-clip `"source": "SIMULATED"` to prevent any false attestation of live decode.
+
+## Human Acceptance Clips (H3 Protocol)
+
+Real acceptance criteria for the InterviewOS STT stream are measured strictly against 5 human-recorded microphone audio clips (~10–15 seconds each, 16-bit 16kHz PCM WAV) spoken by the repository owner:
+- **2 Technical sentences** (distributed systems, database indexing)
+- **2 Conversational sentences** (roadmap prioritization, stakeholder design alignment)
+- **1 Proper-noun-heavy sentence** (`Ankit Singh Tomar`, `InterviewOS`, `Whisper`, `Ollama`, `Groq`, `Kubernetes`, `Judge0`)
+
+### Recording Instructions
+
+1. Run the interactive recorder:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/eval/record_clips.ps1
+   ```
+   The script prompts each sentence, records from your microphone via native Windows multimedia API, saves the clips to `scripts/eval/clips_user/user_clip_01.wav` ... `user_clip_05.wav`, and generates `scripts/eval/manifest_user.csv`.
+
+2. Alternatively, record using your preferred microphone tool (e.g. Audacity, Windows Sound Recorder) and save 16-bit 16kHz WAV files directly to `scripts/eval/clips_user/user_clip_01.wav` through `user_clip_05.wav`, ensuring the exact spoken words are entered into `scripts/eval/manifest_user.csv`.
+
+3. Run the live acceptance evaluation:
+   ```bash
+   # Arm A (Baseline):
+   python scripts/eval/wer_eval.py --manifest scripts/eval/manifest_user.csv --clips-dir scripts/eval/clips_user --output scripts/eval/baseline_wer_user.json
+
+   # Arm B (Context Biased):
+   python scripts/eval/wer_eval.py --manifest scripts/eval/manifest_user.csv --clips-dir scripts/eval/clips_user --prompt-context "Ankit Singh Tomar, InterviewOS, Whisper, Ollama, Groq, Kubernetes, Judge0" --compare scripts/eval/baseline_wer_user.json --output scripts/eval/wer_report_user.json
+   ```
+

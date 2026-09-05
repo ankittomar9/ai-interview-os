@@ -705,6 +705,18 @@ This append-only verification log records the evidence, automated test runs, lin
 
 ---
 
+---
+
+## Hotfix H3: [H3-Prep] — Human Microphone Acceptance Clips Harness
+
+- **Branch**: hotfix/h3-user-clips
+- **Scope**:
+  - Delivered scripts/eval/record_clips.ps1 interactive recorder leveraging native Windows MCI multimedia subsystem to capture 16-bit 16kHz mono PCM WAV clips without third-party dependencies.
+  - Initialized scripts/eval/clips_user/ for 5 real microphone clips (2 technical, 2 conversational, 1 proper-noun-heavy with repo owner name and platform stack).
+  - Documented protocol and instructions in scripts/eval/README.md.
+- **Status**: **WAITING ON USER** for personal microphone recording of the 5 WAV clips into scripts/eval/clips_user/.
+- **Implementer Status**: claim submitted, pending blob review
+
 ## SPEC-PLAN-1 Final Batch Summary & Audit Ledger
 
 | Batch | Code | Scope / Merge Description | Merge Commit | Implementer Status |
