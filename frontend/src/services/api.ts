@@ -55,9 +55,54 @@ export const createSession = async (payload: {
 };
 
 export const startSession = async (sessionId: number): Promise<SessionResponse> => {
-    const res = await fetch(`${SESSION_API}/${sessionId}/start`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to start session via Gateway');
-    return res.json();
+    return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}/start`, {
+        method: 'POST'
+    });
+};
+
+export interface VerificationPayload {
+    cameraOk: boolean;
+    micOk: boolean;
+    screenOk: boolean;
+    screenScope: 'MONITOR' | 'WINDOW' | 'BROWSER' | 'UNKNOWN';
+    screenLabel: string;
+    consent: boolean;
+    outcome: 'VERIFIED' | 'DEV_BYPASS' | 'FAILED';
+    userAgent?: string;
+}
+
+export interface VerificationReceipt {
+    id: number;
+    sessionId: number;
+    cameraStatus: string;
+    micStatus: string;
+    screenStatus: string;
+    screenScope: 'MONITOR' | 'WINDOW' | 'BROWSER' | 'UNKNOWN';
+    screenLabel: string;
+    consent: boolean;
+    outcome: 'VERIFIED' | 'DEV_BYPASS' | 'FAILED';
+    userAgent: string;
+    verifiedAt: string;
+}
+
+export const submitVerification = async (sessionId: number, data: VerificationPayload): Promise<VerificationReceipt> => {
+    return fetchJson<VerificationReceipt>(`${SESSION_API}/${sessionId}/verification`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+    });
+};
+
+export const getVerification = async (sessionId: number): Promise<VerificationReceipt> => {
+    return fetchJson<VerificationReceipt>(`${SESSION_API}/${sessionId}/verification`, {
+        method: 'GET'
+    });
+};
+
+export const abortSession = async (sessionId: number, reason: string): Promise<SessionResponse> => {
+    return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}/abort`, {
+        method: 'POST',
+        body: JSON.stringify({ reason })
+    });
 };
 
 export const addMessageToSession = async (

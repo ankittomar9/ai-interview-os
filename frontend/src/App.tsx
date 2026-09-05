@@ -51,8 +51,6 @@ export function App() {
     return getStoredApiKey(p);
   });
 
-  const [recordScreen, setRecordScreen] = useState(false);
-
   const handleStartInterview = async (config: {
     candidateId: string;
     candidateName?: string;
@@ -64,13 +62,11 @@ export function App() {
     provider: ModelProvider;
     apiKey: string;
     mode?: 'INTERVIEW' | 'PLAYGROUND';
-    recordScreen?: boolean;
     planSource?: 'SETUP_SELECTION' | 'RESUME_INFERRED_CONFIRMED';
   }) => {
     setIsLoading(true);
     const chosenMode = config.mode || 'INTERVIEW';
     setSessionMode(chosenMode);
-    setRecordScreen(!!config.recordScreen);
     setCandidateId(config.candidateId);
     if (config.candidateName) setCandidateName(config.candidateName);
     setRoleTitle(config.roleTitle);
@@ -91,7 +87,10 @@ export function App() {
       });
       setSessionId(session.id);
       setSessionPlan(session.plan);
-      await startSession(session.id);
+
+      if (chosenMode === 'PLAYGROUND') {
+        await startSession(session.id);
+      }
 
       let initialQ: GenerateQuestionResponse;
       let plannedList: GenerateQuestionResponse[] = [];
@@ -266,7 +265,6 @@ export function App() {
           apiKey={apiKey}
           sessionMode={sessionMode}
           candidateName={candidateName}
-          recordScreen={recordScreen}
           plan={sessionPlan}
           onFinish={handleFinishInterview}
         />
