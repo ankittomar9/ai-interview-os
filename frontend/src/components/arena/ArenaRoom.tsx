@@ -9,6 +9,7 @@ import { useSessionRecorder } from '../../hooks/useSessionRecorder';
 import { ArenaShell } from './ArenaShell';
 import { ShareLostOverlay } from '../ShareLostOverlay';
 import { clearVerificationStreams } from '../../services/verificationStreams';
+import { evaluateNavigationGate } from '../../lib/gating';
 import { getPersona } from '../../lib/personas';
 import { mergeSalvageText } from '../../lib/salvage-dedup';
 import type { InterviewStage } from '../StageStepper';
@@ -143,12 +144,21 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const handleSectionClick = useCallback((targetIndex: number, targetStage: InterviewStage) => {
     const sec = navSections[targetIndex];
     if (!sec) return;
+
+    const gate = evaluateNavigationGate(targetIndex, dialogue.activeSectionIndex, isPlayground, navSections[dialogue.activeSectionIndex]?.label);
+    if (gate.isLocked) {
+      const confirmed = window.confirm(`Finish current round first — or end the round early?\n\nDo you want to end this round early and proceed to ${sec.label}?`);
+      if (!confirmed) return;
+      dialogue.transitionSection(targetIndex, 'SKIPPED_BY_USER');
+      return;
+    }
+
     if (sec.track && sec.track !== activeTrack) {
       setPendingStageSwitch({ stage: targetStage, targetTrack: sec.track, targetIndex });
     } else {
       dialogue.transitionSection(targetIndex, 'MANUAL_JUMP');
     }
-  }, [activeTrack, dialogue, navSections]);
+  }, [activeTrack, dialogue, navSections, isPlayground]);
 
   const handleStageClick = useCallback((targetStage: InterviewStage) => {
     const targetIdx = navSections.findIndex((s) => s.stage === targetStage);
