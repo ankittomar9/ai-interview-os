@@ -14,7 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
+import com.interviewos.ai.dto.ProviderStatusDto;
+import com.interviewos.ai.service.ProviderStatusService;
 
 @Slf4j
 @RestController
@@ -26,6 +29,7 @@ public class AiOrchestratorController {
     private final WhisperTranscriptionService whisperService;
     private final com.interviewos.ai.service.VoiceCoachService voiceCoachService;
     private final com.interviewos.ai.service.EgressTracker egressTracker;
+    private final ProviderStatusService providerStatusService;
 
     @PostMapping("/generate-question")
     public ResponseEntity<GenerateQuestionResponse> generateQuestion(
@@ -142,5 +146,20 @@ public class AiOrchestratorController {
                 "running", running,
                 "provider", "OLLAMA"
         ));
+    }
+
+    @GetMapping("/providers/status")
+    public ResponseEntity<List<ProviderStatusDto>> getProvidersStatus(
+            @RequestHeader(value = "X-InterviewOS-Key", required = false) String byokKey,
+            @RequestHeader(value = "X-InterviewOS-Provider", required = false) String headerProvider,
+            @RequestParam(value = "provider", required = false) String queryProvider
+    ) {
+        String targetProvider = queryProvider != null && !queryProvider.isBlank() ? queryProvider : headerProvider;
+        return ResponseEntity.ok(providerStatusService.getProvidersStatus(byokKey, targetProvider));
+    }
+
+    @PostMapping("/providers/status/refresh")
+    public ResponseEntity<List<ProviderStatusDto>> refreshProvidersStatus() {
+        return ResponseEntity.ok(providerStatusService.refresh());
     }
 }

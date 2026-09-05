@@ -55,6 +55,13 @@ public class AiOrchestratorService {
     private final SessionTranscriptClient sessionTranscriptClient;
     private final ObjectMapper objectMapper;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ProviderStatusService providerStatusService;
+
+    public void setProviderStatusService(ProviderStatusService providerStatusService) {
+        this.providerStatusService = providerStatusService;
+    }
+
     /**
      * Generates a tailored interview question matched via Question Bank and personalized by LLM.
      */
@@ -459,6 +466,9 @@ public class AiOrchestratorService {
                     effectiveApiKey,
                     request.modelName() != null ? request.modelName() : "dialogue"
             );
+            if (providerStatusService != null) {
+                providerStatusService.recordOutcome(effectiveProvider, "OK", 200);
+            }
 
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);
             JsonNode root = objectMapper.readTree(cleanJson);
@@ -551,6 +561,11 @@ public class AiOrchestratorService {
                     recommendedAction
             );
         } catch (Exception e) {
+            if (providerStatusService != null) {
+                Integer status = (e instanceof org.springframework.web.client.RestClientResponseException rce)
+                        ? rce.getStatusCode().value() : null;
+                providerStatusService.recordOutcome(effectiveProvider, "ERROR", status);
+            }
             log.warn("⚠️ LLM dialogue extraction notice: {}. Using completion-aware structured fallback dialogue.", e.getMessage());
 
             if (isEngineError) {
