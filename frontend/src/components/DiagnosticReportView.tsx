@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { DiagnosticReportResponse, DimensionScore, SessionMessage } from '../types';
-import { fetchSessionTranscript } from '../services/api';
+import { fetchSessionTranscript, getVerification, type VerificationReceipt } from '../services/api';
 import { ProgressChart } from './ProgressChart';
 import {
   CheckCircle2,
@@ -65,11 +65,25 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     });
   };
 
+  const [verificationReceipt, setVerificationReceipt] = useState<VerificationReceipt | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<string | null>(null);
+
   useEffect(() => {
     if (report.sessionId) {
       fetchSessionTranscript(report.sessionId)
         .then((data) => setTranscriptData(data))
         .catch((err) => console.warn('Could not load transcript records:', err));
+
+      getVerification(report.sessionId)
+        .then((rec) => setVerificationReceipt(rec))
+        .catch((err) => console.debug('Verification receipt load note:', err));
+
+      fetch(`/api/v1/sessions/${report.sessionId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.status) setSessionStatus(data.status);
+        })
+        .catch(() => {});
 
       fetch(`/api/v1/sessions/${report.sessionId}/recordings/manifest`)
         .then((res) => (res.ok ? res.json() : null))
@@ -205,6 +219,17 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     content += `Track: ${report.track}\n`;
     content += `Overall Score: ${report.overallScore}/100 [Verdict: ${report.verdict}]\n`;
     content += `Total Dialogue Turns: ${transcriptList.length}\n`;
+    let vLine = 'Verification: UNVERIFIED\n';
+    if (sessionStatus === 'ABORTED_SHARE') {
+      vLine = 'Verification: ABORTED_SHARE (screen share lost and timed out)\n';
+    } else if (verificationReceipt) {
+      if (verificationReceipt.outcome === 'DEV_BYPASS') {
+        vLine = `Verification: DEV_BYPASS (bypassed at ${verificationReceipt.verifiedAt || 'N/A'})\n`;
+      } else {
+        vLine = `Verification: Camera=${verificationReceipt.cameraStatus || 'OK'} Mic=${verificationReceipt.micStatus || 'OK'} Screen=${verificationReceipt.screenScope || 'MONITOR'} Consent=${verificationReceipt.consent ? 'OK' : 'NO'} (verified ${verificationReceipt.verifiedAt || 'N/A'}, outcome=${verificationReceipt.outcome})\n`;
+      }
+    }
+    content += vLine;
     content += `==========================================================\n\n`;
 
     transcriptList.forEach((turn, index: number) => {
@@ -368,6 +393,18 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
         {activeTab === 'report' ? (
           <div className="space-y-6">
 
+            {sessionStatus === 'ABORTED_SHARE' && (
+              <div className="bg-danger/10 border border-danger/40 rounded-lg p-4 flex items-center gap-3 text-danger">
+                <ShieldAlert className="w-5 h-5 shrink-0" />
+                <div>
+                  <h3 className="font-bold text-sm">Session Terminated Early (Screen Share Interrupted)</h3>
+                  <p className="text-xs text-text-3 mt-0.5">
+                    The full-monitor screen share was disconnected and not restored within the 60-second recovery window.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* B. VERDICT BANNER CARD */}
             <div className="bg-surface border border-border rounded-lg p-6 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-center">
               {/* ScoreRing Left */}
@@ -386,7 +423,12 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                       {report.candidateId} · {report.track} · {report.difficulty} · Session #{report.sessionId}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {verificationReceipt && (
+                      <Chip variant={verificationReceipt.outcome === 'VERIFIED' ? 'success' : 'warning'} size="sm">
+                        {verificationReceipt.outcome === 'DEV_BYPASS' ? 'Dev Bypass' : `Screen: ${verificationReceipt.screenScope}`}
+                      </Chip>
+                    )}
                     {hasSingleCameraFlag && (
                       <Chip variant="warning" size="sm">
                         Single-Camera Assessment
