@@ -746,6 +746,58 @@ This append-only verification log records the evidence, automated test runs, lin
 
 - **Implementer Status**: claim submitted, pending blob review
 
+
+### Hotfix H5: Out-of-Ledger Additions Audit (A15, A16, A18)
+
+Per REMEDIATION-HOTFIX-1 §5, items A15, A16, and A18 were added beyond the SPEC-PLAN-1 original ledger (A1–A14). This audit is a claim submission for blob-level review evaluating files touched, API surface deltas, additive-only status, and client backwards compatibility.
+
+#### 1. Item A15 Audit: Enforce Run vs Submit Transcript Contract & Submissions Ledger
+
+| Field | Detail |
+| :--- | :--- |
+| **Commit Hash** | `99a762d` (merged in `79b13c4`) |
+| **Files Touched (8)** | `interview-session-service/src/main/java/com/interviewos/session/controller/InterviewSessionController.java`<br>`interview-session-service/src/main/java/com/interviewos/session/document/InterviewSessionDocument.java`<br>`interview-session-service/src/main/java/com/interviewos/session/sandbox/service/CodeExecutionService.java`<br>`interview-session-service/src/main/java/com/interviewos/session/service/InterviewSessionService.java`<br>`interview-session-service/src/test/java/com/interviewos/session/sandbox/service/CodeExecutionServiceTest.java`<br>`frontend/src/components/arena/hooks/useExecution.ts`<br>`frontend/src/components/ide/SubmissionsTab.tsx`<br>`docs/SPEC_PLAN_2_VERIFICATION.md` |
+| **API Surface Delta** | **1 New Endpoint Added**:<br>• `GET /api/v1/sessions/{id}/submissions`<br>Existing endpoints unchanged in signature. |
+| **Additive-Only?** | **YES** |
+| **Behavior Change for Pre-Existing Clients?** | **NO** (Old clients calling execution endpoint receive unchanged response payloads and status codes). |
+| **SPEC-PLAN-1 §6 Violation Found?** | **NO** |
+
+##### A15 Per-Endpoint Contract Scrutiny
+
+| Endpoint | Method | Pre-A15 Contract | Post-A15 Contract | Delta Classification | Changed vs Grew? | Behavior Impact on Existing Clients |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `/api/v1/sessions/{id}/sandbox/run` | `POST` | Input: `CodeExecutionRequest`<br>Output: `ExecutionResultResponse`<br>Status: `200 OK`<br>Side Effect: Only appends turn to `transcript` if `submit=true`. | Input: `CodeExecutionRequest` (identical)<br>Output: `ExecutionResultResponse` (identical)<br>Status: `200 OK` (identical)<br>Side Effect: Records entry into `submissionsLedger` on all runs; appends turn to `transcript` ONLY when `submit=true`. | **INTERNAL REFINEMENT ONLY** (Zero HTTP contract change) | **GREW INTERNALLY** (Contract response did not change) | None. Pre-existing clients continue to post code and receive the exact same `ExecutionResultResponse` JSON. |
+| `/api/v1/sessions/{id}/transcript` | `GET` | Output: `List<TranscriptTurn>`<br>Status: `200 OK` | Output: `List<TranscriptTurn>`<br>Status: `200 OK` | **UNCHANGED CONTRACT** | **IDENTICAL** | None. Prevents non-submission `RUN` attempts from injecting unprompted candidate turns into transcript. |
+| `/api/v1/sessions/{id}/submissions` | `GET` | *Did not exist* | Output: `List<SubmissionEntry>`<br>Status: `200 OK` | **NEW ENDPOINT** | **GREW (Additive)** | None. Pre-existing clients do not call this endpoint; IDE Submissions tab consumes it optionally. |
+
+---
+
+#### 2. Item A16 Audit: Recording Chunk Upload Bug, 413 Drop Telemetry, and Replay Honesty
+
+| Field | Detail |
+| :--- | :--- |
+| **Commit Hash** | `9cb8975` (merged in `0290995`) |
+| **Files Touched (8)** | `interview-session-service/src/main/java/com/interviewos/session/controller/SessionRecordingController.java`<br>`interview-session-service/src/main/java/com/interviewos/session/service/SessionRecordingService.java`<br>`interview-session-service/src/test/java/com/interviewos/session/controller/SessionRecordingControllerTest.java`<br>`interview-session-service/src/test/java/com/interviewos/session/service/SessionRecordingServiceTest.java`<br>`frontend/src/hooks/useSessionRecorder.ts`<br>`frontend/src/components/DiagnosticReportView.tsx`<br>`frontend/nginx.conf`<br>`docs/SPEC_PLAN_2_VERIFICATION.md` |
+| **API Surface Delta** | **1 New Endpoint Added**:<br>• `POST /api/v1/sessions/{id}/recordings/drop`<br>**1 Existing Endpoint Made Permissive**:<br>• `POST /api/v1/sessions/{id}/recordings/chunk` (defensive parsing for concatenated query params).<br>**1 DTO Field Added**:<br>• `RecordingManifest.droppedChunks`. |
+| **Additive-Only?** | **YES** |
+| **Behavior Change for Pre-Existing Clients?** | **NO** (Pre-existing clients sending standard multipart chunks continue to receive `200 OK`; defensive string parsing fixes browser duplicate query params that previously triggered 400 Bad Request). |
+| **SPEC-PLAN-1 §6 Violation Found?** | **NO** |
+
+---
+
+#### 3. Item A18 Audit: Report Integrity Signals & Honest Elapsed Duration Headline
+
+| Field | Detail |
+| :--- | :--- |
+| **Commit Hash** | `cce3086` (merged in `00c7fa2`) |
+| **Files Touched (12)** | `evaluation-report-service/src/main/java/com/interviewos/evaluation/entity/EvaluationReport.java`<br>`evaluation-report-service/src/main/java/com/interviewos/evaluation/dto/DiagnosticReportResponse.java`<br>`evaluation-report-service/src/main/java/com/interviewos/evaluation/client/SessionServiceClient.java`<br>`evaluation-report-service/src/main/java/com/interviewos/evaluation/service/EvaluationReportService.java`<br>`evaluation-report-service/src/main/java/com/interviewos/evaluation/service/TranscriptPdfMeta.java`<br>`evaluation-report-service/src/main/java/com/interviewos/evaluation/service/HumanTranscriptPdfGenerator.java`<br>`evaluation-report-service/src/main/resources/db/migration/V5__add_integrity_summary_columns.sql`<br>`evaluation-report-service/src/test/java/com/interviewos/evaluation/service/EvaluationReportServiceTest.java`<br>`evaluation-report-service/src/test/java/com/interviewos/evaluation/service/HumanTranscriptPdfGeneratorTest.java`<br>`frontend/src/types/index.ts`<br>`frontend/src/components/DiagnosticReportView.tsx`<br>`docs/SPEC_PLAN_2_VERIFICATION.md` |
+| **API Surface Delta** | **Additive DTO Field**:<br>• `DiagnosticReportResponse.integrity` (`IntegritySummaryDto` with `echoFilteredCount`, `droppedChunks`, `consentDowngrades`, `workspaceProvenance`).<br>**Calculation Fix**:<br>• `DiagnosticReportResponse.elapsedDurationMinutes` honestly reflects first-turn-to-last-turn elapsed duration instead of hardcoded numbers. |
+| **Additive-Only?** | **YES** (Existing fields on `DiagnosticReportResponse` preserved; `integrity` defaults safely and is nullable). |
+| **Behavior Change for Pre-Existing Clients?** | **NO** (Pre-existing clients deserializing `DiagnosticReportResponse` ignore unknown properties or read nullable `integrity`). |
+| **SPEC-PLAN-1 §6 Violation Found?** | **NO** |
+
+- **Implementer Status**: claim submitted, pending blob review
+
 ## SPEC-PLAN-1 Final Batch Summary & Audit Ledger
 
 | Batch | Code | Scope / Merge Description | Merge Commit | Implementer Status |
