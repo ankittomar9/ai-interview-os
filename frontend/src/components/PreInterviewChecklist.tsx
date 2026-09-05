@@ -26,6 +26,7 @@ import {
   QUALITY_PRESETS,
   type RecordingQualityPreset
 } from '../lib/recording-quality';
+import { buildDisplayShareConstraints } from '../lib/displayCapture';
 
 interface Props {
   sessionId: number;
@@ -204,11 +205,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const handleShareScreen = async () => {
     try {
       setScreenError(null);
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } } as any,
-        audio: false,
-        selfBrowserSurface: 'exclude'
-      } as any);
+      const stream = await navigator.mediaDevices.getDisplayMedia(buildDisplayShareConstraints() as any);
 
       const track = stream.getVideoTracks()[0];
       if (!track) {
