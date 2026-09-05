@@ -1,0 +1,110 @@
+﻿================================================================================
+Running STT Evaluation (LIVE MODE) on 20 clips
+Endpoint: http://localhost:8082/api/v1/ai/transcribe
+================================================================================
+[01/20] [PASS] WER:   0.0% | Latency:  4077ms | Source: LIVE | Clip: clip_01_kafka.wav
+[02/20] [PASS] WER:   0.0% | Latency:  3972ms | Source: LIVE | Clip: clip_02_dijkstra.wav
+[03/20] [FAIL] WER:  36.4% | Latency:  4628ms | Source: LIVE | Clip: clip_03_react_hooks.wav
+       Ref: "React hooks like useEffect and useCallback manage component lifecycles and memoization."
+       Hyp: " React hooks like Use Effect and Use Callback Manage Component Lifecycles and Memoization
+"
+[04/20] [WARN] WER:  22.2% | Latency:  3045ms | Source: LIVE | Clip: clip_04_kubernetes.wav
+       Ref: "Kubernetes automates deployment scaling and operations of application containers."
+       Hyp: " Cuba-Rnetz automates deployment scaling and operations of application containers.
+"
+[05/20] [WARN] WER:  20.0% | Latency:  4363ms | Source: LIVE | Clip: clip_05_spring_boot.wav
+       Ref: "Spring Boot simplifies microservice configuration with dependency injection and autowiring."
+       Hyp: " Spring Boot simplifies microservice configuration with dependency injection and auto wiring.
+"
+[06/20] [PASS] WER:   6.7% | Latency:  4783ms | Source: LIVE | Clip: clip_06_redis.wav
+       Ref: "Redis serves as an in-memory data store for sub-millisecond caching and session state."
+       Hyp: " Readies serves as an in-memory data store for sub-millisecond caching and session state.
+"
+[07/20] [PASS] WER:   0.0% | Latency:  3916ms | Source: LIVE | Clip: clip_07_polymorphism.wav
+[08/20] [WARN] WER:  11.1% | Latency:  4663ms | Source: LIVE | Clip: clip_08_proper_noun_ankit.wav
+       Ref: "Hello, my name is Ankit Singh Tomar and I am interviewing for the senior backend role at InterviewOS."
+       Hyp: " Hello, my name is Ankit Singh Tomar and I am interviewing for the Senior Back-End Role at InterviewOS.
+"
+[09/20] [PASS] WER:   0.0% | Latency:  4156ms | Source: LIVE | Clip: clip_09_docker.wav
+[10/20] [PASS] WER:   0.0% | Latency:  2696ms | Source: LIVE | Clip: clip_10_graphql.wav
+[11/20] [PASS] WER:   0.0% | Latency:  3816ms | Source: LIVE | Clip: clip_11_locking.wav
+[12/20] [PASS] WER:   0.0% | Latency:  4445ms | Source: LIVE | Clip: clip_12_migration.wav
+[13/20] [PASS] WER:   0.0% | Latency:  2478ms | Source: LIVE | Clip: clip_13_complexity.wav
+[14/20] [PASS] WER:   0.0% | Latency:  4394ms | Source: LIVE | Clip: clip_14_proper_noun_company.wav
+[15/20] [PASS] WER:   0.0% | Latency:  4213ms | Source: LIVE | Clip: clip_15_feedback.wav
+[16/20] [WARN] WER:  14.3% | Latency:  4361ms | Source: LIVE | Clip: clip_16_postgres_btree.wav
+       Ref: "I chose PostgreSQL with B-tree indexes because our workload is primarily read-heavy."
+       Hyp: " I chose PostGRA SQL with B-Tree indexes because our workload is primarily read-heavy.
+"
+[17/20] [PASS] WER:   7.7% | Latency:  2959ms | Source: LIVE | Clip: clip_17_cache_dynamodb.wav
+       Ref: "If the cache misses we query DynamoDB and repopulate the Redis cluster asynchronously."
+       Hyp: " If the cache misses we query DynamoDB and repopulate the readys cluster asynchronously.
+"
+[18/20] [PASS] WER:   8.3% | Latency:  4177ms | Source: LIVE | Clip: clip_18_zookeeper_lock.wav
+       Ref: "We can prevent race conditions by acquiring a distributed lock in Zookeeper."
+       Hyp: " We can prevent race conditions by acquiring a distributed lock in ZuKeeper.
+"
+[19/20] [PASS] WER:   0.0% | Latency:  2535ms | Source: LIVE | Clip: clip_19_bst_rotations.wav
+[20/20] [WARN] WER:  21.4% | Latency:  3139ms | Source: LIVE | Clip: clip_20_cicd_pipeline.wav
+       Ref: "Our CI CD pipeline runs unit tests, static linting, and Docker container builds automatically."
+       Hyp: " RCICD pipeline runs unit tests, static linting, and Docker Container builds automatically.
+"
+
+================================================================================
+SUMMARY [LIVE]: Corpus WER = 7.14% (18/252 words) | Avg Latency: 3840.7ms
+================================================================================
+
+Saved evaluation report to scripts/eval/baseline_wer.json
+
+Gates: Absolute WER <= 8%: PASS
+================================================================================
+Running STT Evaluation (LIVE MODE) on 20 clips
+Endpoint: http://localhost:8082/api/v1/ai/transcribe
+Prompt Context: Ankit Singh Tomar, InterviewOS, Stripe, Uber, Kafka, Redis, Kubernetes, PostgreSQL, Zookeeper, CI/CD, React, Spring Boot, Dijkstra
+================================================================================
+[01/20] [PASS] WER:   0.0% | Latency:  3925ms | Source: LIVE | Clip: clip_01_kafka.wav
+[02/20] [PASS] WER:   0.0% | Latency:  3114ms | Source: LIVE | Clip: clip_02_dijkstra.wav
+[03/20] [FAIL] WER:  36.4% | Latency:  4759ms | Source: LIVE | Clip: clip_03_react_hooks.wav
+       Ref: "React hooks like useEffect and useCallback manage component lifecycles and memoization."
+       Hyp: " React hooks like use effect and use callback manage component lifecycles and memoization.
+"
+[04/20] [WARN] WER:  11.1% | Latency:  3284ms | Source: LIVE | Clip: clip_04_kubernetes.wav
+       Ref: "Kubernetes automates deployment scaling and operations of application containers."
+       Hyp: " Kubernetz Automates Deployment Scaling and Operations of Application Containers.
+"
+[05/20] [WARN] WER:  20.0% | Latency:  5002ms | Source: LIVE | Clip: clip_05_spring_boot.wav
+       Ref: "Spring Boot simplifies microservice configuration with dependency injection and autowiring."
+       Hyp: " Spring Boot simplifies microservice configuration with dependency injection and auto wiring.
+"
+[06/20] [PASS] WER:   0.0% | Latency:  4614ms | Source: LIVE | Clip: clip_06_redis.wav
+[07/20] [PASS] WER:   0.0% | Latency:  2970ms | Source: LIVE | Clip: clip_07_polymorphism.wav
+[08/20] [WARN] WER:  11.1% | Latency:  4949ms | Source: LIVE | Clip: clip_08_proper_noun_ankit.wav
+       Ref: "Hello, my name is Ankit Singh Tomar and I am interviewing for the senior backend role at InterviewOS."
+       Hyp: " Hello, my name is Ankit Singh Tomar and I am interviewing for the Senior Back-End Role at InterviewOS.
+"
+[09/20] [PASS] WER:   0.0% | Latency:  2893ms | Source: LIVE | Clip: clip_09_docker.wav
+[10/20] [PASS] WER:   0.0% | Latency:  4245ms | Source: LIVE | Clip: clip_10_graphql.wav
+[11/20] [PASS] WER:   0.0% | Latency:  4349ms | Source: LIVE | Clip: clip_11_locking.wav
+[12/20] [PASS] WER:   0.0% | Latency:  4416ms | Source: LIVE | Clip: clip_12_migration.wav
+[13/20] [PASS] WER:   0.0% | Latency:  2691ms | Source: LIVE | Clip: clip_13_complexity.wav
+[14/20] [PASS] WER:   0.0% | Latency:  4769ms | Source: LIVE | Clip: clip_14_proper_noun_company.wav
+[15/20] [PASS] WER:   0.0% | Latency:  4355ms | Source: LIVE | Clip: clip_15_feedback.wav
+[16/20] [PASS] WER:   0.0% | Latency:  3118ms | Source: LIVE | Clip: clip_16_postgres_btree.wav
+[17/20] [PASS] WER:   0.0% | Latency:  4450ms | Source: LIVE | Clip: clip_17_cache_dynamodb.wav
+[18/20] [PASS] WER:   0.0% | Latency:  2686ms | Source: LIVE | Clip: clip_18_zookeeper_lock.wav
+[19/20] [PASS] WER:   0.0% | Latency:  4357ms | Source: LIVE | Clip: clip_19_bst_rotations.wav
+[20/20] [WARN] WER:  21.4% | Latency:  4609ms | Source: LIVE | Clip: clip_20_cicd_pipeline.wav
+       Ref: "Our CI CD pipeline runs unit tests, static linting, and Docker container builds automatically."
+       Hyp: " RCICD Pipeline runs unit tests, static linting, and Docker Container builds automatically.
+"
+
+================================================================================
+SUMMARY [LIVE]: Corpus WER = 4.76% (12/252 words) | Avg Latency: 3977.8ms
+================================================================================
+
+Saved evaluation report to scripts/eval/wer_report.json
+
+--- Comparison vs Baseline (scripts/eval/baseline_wer.json) ---
+Baseline WER: 7.14% -> Current WER: 4.76%
+Relative WER Reduction: +33.33%
+Gates: Absolute WER <= 8%: PASS | Relative Reduction >= 40%: FAIL

@@ -167,9 +167,12 @@ def run_evaluation(
     simulated_biased: bool = False
 ) -> Dict[str, Any]:
     """Run evaluation across all clips in manifest."""
+    is_simulation = simulated_baseline or simulated_biased
+
     clips = []
     with open(manifest_path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+        filtered_lines = [line for line in f if not line.strip().startswith("#")]
+        reader = csv.DictReader(filtered_lines)
         for row in reader:
             clips.append(row)
 
@@ -182,8 +185,11 @@ def run_evaluation(
     total_latency_ms = 0.0
 
     print("=" * 80)
-    print(f"Running STT Evaluation on {len(clips)} clips")
-    print(f"Endpoint: {endpoint}")
+    if is_simulation:
+        print(f"Running STT Evaluation (SIMULATION MODE) on {len(clips)} clips")
+    else:
+        print(f"Running STT Evaluation (LIVE MODE) on {len(clips)} clips")
+        print(f"Endpoint: {endpoint}")
     if prompt_context:
         print(f"Prompt Context: {prompt_context}")
     print("=" * 80)
@@ -194,21 +200,30 @@ def run_evaluation(
         category = clip.get("category", "general")
         audio_path = os.path.join(clips_dir, filename)
 
-        if simulated_biased or (prompt_context and (simulated_baseline or not os.path.exists(audio_path))):
-            hyp = clip.get("biased_hypothesis", clip.get("baseline_hypothesis", reference))
-            latency_ms = float(clip.get("biased_latency_ms", 310))
-            provider = "WHISPER_CONTEXT_BIASED"
-        elif simulated_baseline or not os.path.exists(audio_path):
-            # Deterministic baseline simulation for benchmark reference
-            hyp = clip.get("baseline_hypothesis", reference)
-            latency_ms = float(clip.get("baseline_latency_ms", 350))
-            provider = "WHISPER_CPP_BASE"
+        if is_simulation:
+            source = "SIMULATED"
+            latency_ms = None
+            if simulated_biased:
+                hyp = clip.get("biased_hypothesis", clip.get("baseline_hypothesis", reference))
+                provider = "SIMULATED_BIASED_MANIFEST"
+            else:
+                hyp = clip.get("baseline_hypothesis", reference)
+                provider = "SIMULATED_BASELINE_MANIFEST"
         else:
-            hyp, latency_ms, provider = post_audio_multipart(
+            # LIVE MODE: must hard-fail on missing audio clips
+            if not os.path.exists(audio_path):
+                sys.stderr.write(f"\nERROR: Audio clip file not found: {audio_path}\n"
+                                 f"Live evaluation requires real audio clips. Aborting.\n")
+                sys.exit(1)
+
+            source = "LIVE"
+            hyp, measured_latency_ms, provider = post_audio_multipart(
                 endpoint, audio_path, prompt_context, session_id, api_key
             )
             if hyp is None:
                 hyp = ""
+            latency_ms = measured_latency_ms
+            total_latency_ms += latency_ms
 
         wer, s, d, ins, r_len = compute_wer(reference, hyp)
         clip_errs = s + d + ins
@@ -218,12 +233,12 @@ def run_evaluation(
         total_s += s
         total_d += d
         total_ins += ins
-        total_latency_ms += latency_ms
 
-        results.append({
+        result_entry: Dict[str, Any] = {
             "id": idx,
             "filename": filename,
             "category": category,
+            "source": source,
             "reference": reference,
             "hypothesis": hyp,
             "wer": round(wer, 4),
@@ -231,21 +246,24 @@ def run_evaluation(
             "deletions": d,
             "insertions": ins,
             "ref_words": r_len,
-            "latency_ms": round(latency_ms, 1),
+            "latency_ms": round(latency_ms, 1) if latency_ms is not None else None,
             "provider": provider
-        })
+        }
+        results.append(result_entry)
 
         status_flag = "PASS" if wer <= 0.10 else "WARN" if wer <= 0.25 else "FAIL"
-        print(f"[{idx:02d}/20] [{status_flag}] WER: {wer*100:5.1f}% | Latency: {latency_ms:5.0f}ms | Clip: {filename}")
+        latency_str = f"{latency_ms:5.0f}ms" if latency_ms is not None else "     N/A"
+        print(f"[{idx:02d}/{len(clips):02d}] [{status_flag}] WER: {wer*100:5.1f}% | Latency: {latency_str} | Source: {source} | Clip: {filename}")
         if wer > 0:
             print(f"       Ref: \"{reference}\"")
             print(f"       Hyp: \"{hyp}\"")
 
     corpus_wer = (total_errors / total_ref_words) if total_ref_words > 0 else 0.0
-    avg_latency = (total_latency_ms / len(clips)) if clips else 0.0
+    avg_latency = (total_latency_ms / len(clips)) if (clips and not is_simulation) else None
 
-    summary = {
+    summary: Dict[str, Any] = {
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "simulation": is_simulation,
         "total_clips": len(clips),
         "total_words": total_ref_words,
         "total_errors": total_errors,
@@ -254,14 +272,16 @@ def run_evaluation(
         "insertions": total_ins,
         "corpus_wer": round(corpus_wer, 4),
         "corpus_wer_percent": round(corpus_wer * 100, 2),
-        "avg_latency_ms": round(avg_latency, 1),
-        "endpoint": endpoint,
+        "avg_latency_ms": round(avg_latency, 1) if avg_latency is not None else None,
+        "endpoint": None if is_simulation else endpoint,
         "prompt_context": prompt_context,
         "results": results
     }
 
     print("\n" + "=" * 80)
-    print(f"SUMMARY: Corpus WER = {corpus_wer * 100:.2f}% ({total_errors}/{total_ref_words} words) | Avg Latency: {avg_latency:.1f}ms")
+    latency_summary_str = f"{avg_latency:.1f}ms" if avg_latency is not None else "N/A (Simulated)"
+    mode_str = "SIMULATION" if is_simulation else "LIVE"
+    print(f"SUMMARY [{mode_str}]: Corpus WER = {corpus_wer * 100:.2f}% ({total_errors}/{total_ref_words} words) | Avg Latency: {latency_summary_str}")
     print("=" * 80)
 
     return summary
@@ -295,8 +315,17 @@ def main():
     # Automated Gate Verification
     curr_wer = report.get("corpus_wer", 0.0)
     gate_abs_wer = curr_wer <= 0.08
-    gate_reduction = True
-    reduction = 0.0
+
+    # Speed gate (gate_speed_30s_clip_le_20s) deleted per REMEDIATION-HOTFIX-1 §1.1:
+    # No 30-second benchmark reference clip exists in the 20-clip dataset (durations are 4.8s - 6.8s).
+    # Hardcoded 'passed: True' is strictly removed to prevent unverified attestation.
+    report["gates"] = {
+        "gate_absolute_wer_le_8pct": {
+            "required": "<= 8.0%",
+            "actual": f"{curr_wer * 100:.2f}%",
+            "passed": gate_abs_wer
+        }
+    }
 
     if args.compare and os.path.exists(args.compare):
         with open(args.compare, "r", encoding="utf-8") as f:
@@ -304,24 +333,11 @@ def main():
         base_wer = base_data.get("corpus_wer", 0.0)
         reduction = ((base_wer - curr_wer) / base_wer * 100) if base_wer > 0 else 0.0
         gate_reduction = reduction >= 40.0
-
-    report["gates"] = {
-        "gate_absolute_wer_le_8pct": {
-            "required": "<= 8.0%",
-            "actual": f"{curr_wer * 100:.2f}%",
-            "passed": gate_abs_wer
-        },
-        "gate_relative_reduction_ge_40pct": {
+        report["gates"]["gate_relative_reduction_ge_40pct"] = {
             "required": ">= 40.0%",
             "actual": f"{reduction:+.2f}%",
             "passed": gate_reduction
-        },
-        "gate_speed_30s_clip_le_20s": {
-            "required": "<= 20s for 30s audio on 8-core",
-            "actual": f"{report.get('avg_latency_ms', 0):.1f}ms per clip",
-            "passed": True
         }
-    }
 
     # Ensure output dir exists
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
@@ -333,7 +349,9 @@ def main():
         print(f"\n--- Comparison vs Baseline ({args.compare}) ---")
         print(f"Baseline WER: {base_wer * 100:.2f}% -> Current WER: {curr_wer * 100:.2f}%")
         print(f"Relative WER Reduction: {reduction:+.2f}%")
-        print(f"Gates: Absolute WER <= 8%: {'PASS' if gate_abs_wer else 'FAIL'} | Relative Reduction >= 40%: {'PASS' if gate_reduction else 'FAIL'} | Speed <= 20s: PASS")
+        print(f"Gates: Absolute WER <= 8%: {'PASS' if gate_abs_wer else 'FAIL'} | Relative Reduction >= 40%: {'PASS' if gate_reduction else 'FAIL'}")
+    else:
+        print(f"\nGates: Absolute WER <= 8%: {'PASS' if gate_abs_wer else 'FAIL'}")
 
 if __name__ == "__main__":
     main()

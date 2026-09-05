@@ -21,6 +21,8 @@ dist/
 # Logs & temporary files
 *.log
 logs/
+!scripts/eval/logs/
+!scripts/eval/logs/*.log
 .DS_Store
 Thumbs.db
 
