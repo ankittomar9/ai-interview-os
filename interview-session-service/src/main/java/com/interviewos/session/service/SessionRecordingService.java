@@ -37,6 +37,7 @@ public class SessionRecordingService {
     private final InterviewSessionMongoRepository mongoSessionRepository;
     private final MeterRegistry meterRegistry;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public SessionRecordingService(
             GridFsTemplate gridFsTemplate,
             GridFSBucket gridFSBucket,

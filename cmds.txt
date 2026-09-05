@@ -1,46 +1,41 @@
-Ran command: `git status`
-Viewed docker-compose.yaml:1-60
-Viewed docker-compose.yaml:330-341
+# AI Interview OS — Fast Development & Build Guide
 
-Here are the exact Docker commands to **clear the build cache (while keeping all downloaded base images like PostgreSQL, MongoDB, Judge0, etc. intact)** and rebuild your containers cleanly:
+### ⚡ The 5-to-10-Second Fast Refresh (Recommended)
 
----
-
-### 1. Step-by-Step Clean & Rebuild
+You **never** need to download JARs or wipe Docker caches when modifying code. Use the new rapid refresh script:
 
 ```powershell
-# Step 1: Remove old build cache (does NOT delete downloaded base images)
-docker builder prune -f
+# 1. Refresh only the service you edited (takes ~5-8 seconds):
+.\scripts\dev-refresh.ps1 interview-session-service
+.\scripts\dev-refresh.ps1 evaluation-report-service
+.\scripts\dev-refresh.ps1 ai-orchestrator-service
+.\scripts\dev-refresh.ps1 api-gateway-service
+.\scripts\dev-refresh.ps1 frontend
 
-# Step 2: Stop and remove stale/orphan containers and networks
-docker compose --profile engines down --remove-orphans
-
-# Step 3: Rebuild your application images fresh (without cache)
-docker compose --profile engines build --no-cache
-
-# Step 4: Start all services and engines in the background
-docker compose --profile engines up -d
+# 2. Or refresh all modified backend microservices incrementally (takes ~15-20s):
+.\scripts\dev-refresh.ps1
 ```
 
 ---
 
-### 2. Or Run Everything in One Shot (Copy & Paste)
+### 🛠️ Manual 2-Step Refresh (Without the Script)
 
 ```powershell
-docker builder prune -f; docker compose --profile engines down --remove-orphans; docker compose --profile engines up -d --build --force-recreate
+# Step 1: Package only the touched module (uses host ~/.m2 cache, ~5s):
+mvn package -pl interview-session-service -DskipTests
+
+# Step 2: Recreate only that container in Docker (~3s):
+docker compose up -d --no-deps --build interview-session-service
 ```
 
 ---
 
-### 🔍 To Verify Services are Healthy:
+### 🚫 Why the Old Command Took 10–15 Minutes:
 
-```powershell
-# Check container status
-docker compose ps
-
-# Follow logs of the interview session service & runner
-docker compose logs -f interview-session-service
-```
+1. **`docker builder prune -f`**: Purged Docker's entire layer cache, forcing Docker to download all npm packages for `frontend` and re-run all base layers from the internet every time.
+2. **`lld-runner-build` tagged under `--profile engines`**: Inside `docker/lld-runner/Dockerfile` is `mvn dependency:go-offline`. Every time `--profile engines` was built with a pruned cache, Docker downloaded 500+ MB of Spring Boot and JUnit JARs from Maven Central inside Docker from scratch.
+3. **`docker compose down` and `--force-recreate`**: Destroyed running PostgreSQL, MongoDB, Judge0, and Redis containers, forcing all databases to re-initialize and recreate schemas from scratch.
+4. **`mvn clean`**: Deleted all pre-compiled classes on the host, preventing Maven from doing fast incremental compilation.
 
 > [!TIP]
-> **Data Safety**: Your database volumes (`postgres_data`, `mongodb_data`, `judge0_db_data`) and downloaded base images (`postgres:16-alpine`, `mongo:7.0`, `codercom/code-server`, etc.) are completely preserved and won't need to be redownloaded.
+> `lld-runner-build` and `workspace-build` have been moved to `profiles: ["build-images"]`. They only need to be built once and will never be rebuilt during normal `--profile engines up` runs.

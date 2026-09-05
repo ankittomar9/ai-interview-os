@@ -175,23 +175,23 @@ services:
     mem_limit: 64m
     restart: unless-stopped
 
-  # 0.7 Pre-warmed LLD Maven Runner Image Builder
+  # 0.7 Pre-warmed LLD Maven Runner Image Builder (Run only once: docker compose --profile build-images build)
   lld-runner-build:
     build:
       context: ./docker/lld-runner
       dockerfile: Dockerfile
     image: ai-interview-os/lld-runner:latest
     entrypoint: ["true"]
-    profiles: ["engines"]
+    profiles: ["build-images"]
 
-  # 0.8 Embedded VS Code (code-server) Image Builder for M9 Workspace
+  # 0.8 Embedded VS Code (code-server) Image Builder for M9 Workspace (Run only once: docker compose --profile build-images build)
   workspace-build:
     build:
       context: ./docker/workspace
       dockerfile: Dockerfile
     image: ai-interview-os/workspace:latest
     entrypoint: ["true"]
-    profiles: ["engines"]
+    profiles: ["build-images"]
 
   # NOTE (ADR-004 / SPEC-002): Standalone service-discovery-service (:8761) and
   # cloud-config-server (:8888) have been retired in favor of Docker internal DNS

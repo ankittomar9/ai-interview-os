@@ -31,6 +31,7 @@ public class ResumeParsingService {
         this(resumeRepository, new RoleCalibrationService());
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ResumeParsingService(ResumeMongoRepository resumeRepository, RoleCalibrationService roleCalibrationService) {
         this.resumeRepository = resumeRepository;
         this.roleCalibrationService = roleCalibrationService != null ? roleCalibrationService : new RoleCalibrationService();

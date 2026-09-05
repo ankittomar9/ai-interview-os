@@ -46,6 +46,12 @@ spring:
           filters:
             - RewritePath=/api/v1/resumes(?<segment>/?.*), /api/v1/sessions/resume$\{segment}
 
+        # Route 1.3: System Capabilities & Health (:8081)
+        - id: system-capabilities-route
+          uri: ${SESSION_SERVICE_URL:http://interview-session-service:8081}
+          predicates:
+            - Path=/api/v1/system/**
+
         # Route 2: AI Orchestrator Service (:8082)
         - id: ai-orchestrator-route
           uri: ${AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}

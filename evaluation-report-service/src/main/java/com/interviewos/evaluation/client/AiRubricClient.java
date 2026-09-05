@@ -25,6 +25,7 @@ public class AiRubricClient {
     private final RestClient restClient;
     private final MeterRegistry meterRegistry;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AiRubricClient(
             @Value("${services.ai-orchestrator.url:http://ai-orchestrator-service:8082}") String aiOrchestratorUrl,
             @Value("${services.ai-orchestrator.timeout-seconds:65}") int timeoutSeconds,
