@@ -332,12 +332,14 @@ public class AiOrchestratorService {
                     
                     SECTION CONTEXT:
                     - Current Section Type: %s
+                    - Section Problem: %s
                     - Section Position: %d of %d
                     - Soft Time Budget: %d minutes
                     - Section Guidance: %s
                     - Calibration Policy: Level fixed; do not adjust difficulty from performance.
                     """,
                     request.sectionType(),
+                    (request.sectionQuestionTitle() != null && !request.sectionQuestionTitle().isBlank()) ? request.sectionQuestionTitle() : "Current Section Assignment",
                     request.sectionIndex() != null ? request.sectionIndex() + 1 : 1,
                     request.totalSections() != null ? request.totalSections() : 1,
                     request.softTimeBudgetMinutes() != null ? request.softTimeBudgetMinutes() : 15,

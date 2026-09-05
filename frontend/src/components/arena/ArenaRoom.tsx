@@ -18,6 +18,7 @@ interface ArenaRoomProps {
   sessionId: number;
   question: GenerateQuestionResponse;
   initialQuestionsList?: GenerateQuestionResponse[];
+  sectionQuestions?: GenerateQuestionResponse[][];
   provider: ModelProvider;
   apiKey: string;
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
@@ -30,6 +31,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   sessionId,
   question: initialQuestion,
   initialQuestionsList,
+  sectionQuestions,
   provider,
   apiKey,
   sessionMode = 'INTERVIEW',
@@ -60,9 +62,19 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     });
   }, []);
 
-  // 1. Session Catalog (Strict track query with zero cross-track bleed)
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
+  // 1. Session Catalog (Strict section-scoped query with zero cross-round bleed)
   const { questionsList, activeQuestion, activeQuestionIndex, questionStatusMap, selectQuestion, markQuestionStatus } =
-    useSessionCatalog({ initialQuestion, initialQuestionsList, track: activeTrack, sessionMode, sessionId });
+    useSessionCatalog({
+      defaultQuestion: initialQuestion,
+      sectionQuestions,
+      activeSectionIndex,
+      playlistQuestions: initialQuestionsList,
+      track: activeTrack,
+      sessionMode,
+      sessionId
+    });
 
   // 2. Code State (Keyed per slug to eliminate A10 cross-question bleed)
   const activeSlug = activeQuestion.problemSlug || activeQuestion.slug || `q_${activeQuestionIndex}`;
@@ -94,14 +106,16 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     provider,
     apiKey,
     isPlayground,
-    questionContext: activeQuestion.problemStatement || '',
-    problemSlug: activeQuestion.problemSlug || activeQuestion.slug,
+    getQuestionContext: () => activeQuestion?.problemStatement || '',
+    getSectionQuestionTitle: () => activeQuestion?.title,
+    problemSlug: activeQuestion?.problemSlug || activeQuestion?.slug,
     candidateName,
     initialWelcome: persona.welcomeMessage,
     sections: plan?.sections,
     onAiSpeechRequested: voice.speakText,
     getIntegritySignals: proctoring.getIntegritySignals,
-    onSectionChanged: (_idx, sec) => {
+    onSectionChanged: (idx, sec) => {
+      setActiveSectionIndex(idx);
       if (sec.track && sec.track !== activeTrack) setActiveTrack(sec.track);
     }
   });
@@ -181,6 +195,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       track={activeTrack}
       sections={plan?.sections}
       activeSectionIndex={dialogue.activeSectionIndex}
+      sectionQuestions={sectionQuestions}
       onSectionClick={handleSectionClick}
       onSwitchTrack={setActiveTrack}
       question={activeQuestion}

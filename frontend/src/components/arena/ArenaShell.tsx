@@ -81,6 +81,7 @@ interface ArenaShellProps {
   recordingInterrupted?: boolean;
   cameraActive?: boolean; screenActive?: boolean; verificationBroken?: boolean;
   sections?: PlannedSection[]; activeSectionIndex?: number; onSectionClick?: (index: number, stage: InterviewStage) => void;
+  sectionQuestions?: GenerateQuestionResponse[][];
   salvageHint?: string | null;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
@@ -98,7 +99,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     voiceOutputEnabled, onToggleVoice, onMicToggle, interimTranscript = '', micError = null,
     onClearMicError, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
     isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive, verificationBroken = false,
-    isFocusMode = false, onToggleFocusMode
+    isFocusMode = false, onToggleFocusMode, sectionQuestions
   } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
@@ -189,6 +190,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
             <Separator className="w-[3px] bg-border/60 hover:bg-primary/60 cursor-col-resize relative flex items-center justify-center z-10 select-none" />
             <Panel defaultSize="68%" minSize="50%" id="router-screen-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
               <TrackScreenRouter
+                sectionType={props.sections?.[props.activeSectionIndex ?? 0]?.sectionType}
+                sectionQuestions={sectionQuestions}
                 track={track}
                 sessionId={sessionId}
                 question={question}

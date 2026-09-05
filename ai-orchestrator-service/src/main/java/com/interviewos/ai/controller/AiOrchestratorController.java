@@ -84,6 +84,15 @@ public class AiOrchestratorController {
                         .modelName(request.modelName())
                         .latestExecution(request.latestExecution())
                         .sessionMode(request.sessionMode())
+                        .integritySignals(request.integritySignals())
+                        .candidateName(request.candidateName())
+                        .currentStage(request.currentStage())
+                        .sectionType(request.sectionType())
+                        .sectionIndex(request.sectionIndex())
+                        .totalSections(request.totalSections())
+                        .softTimeBudgetMinutes(request.softTimeBudgetMinutes())
+                        .sectionQuestionTitle(request.sectionQuestionTitle())
+                        .sectionNote(request.sectionNote())
                         .build()
                 : request;
 

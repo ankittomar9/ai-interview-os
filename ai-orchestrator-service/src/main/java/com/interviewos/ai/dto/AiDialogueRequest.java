@@ -51,6 +51,8 @@ public record AiDialogueRequest(
 
         Integer softTimeBudgetMinutes,
 
+        String sectionQuestionTitle,
+
         String sectionNote
 ) {
     public String getEffectiveMode() {
@@ -73,7 +75,7 @@ public record AiDialogueRequest(
             String candidateName,
             String currentStage
     ) {
-        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, sessionMode, integritySignals, candidateName, currentStage, null, null, null, null, null);
+        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, sessionMode, integritySignals, candidateName, currentStage, null, null, null, null, null, null);
     }
 
     // Backwards-compatible constructor for testing & older callers
@@ -86,7 +88,7 @@ public record AiDialogueRequest(
             String apiKey,
             String modelName
     ) {
-        this(questionContext, null, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null, "INTERVIEW", null, null, null, null, null, null, null, null);
+        this(questionContext, null, null, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, null, "INTERVIEW", null, null, null, null, null, null, null, null, null);
     }
 
     public AiDialogueRequest(
@@ -100,7 +102,7 @@ public record AiDialogueRequest(
             String modelName,
             ExecutionDto latestExecution
     ) {
-        this(questionContext, null, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null, null, null, null, null, null, null, null);
+        this(questionContext, null, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null, null, null, null, null, null, null, null, null);
     }
 
     public AiDialogueRequest(
@@ -115,7 +117,7 @@ public record AiDialogueRequest(
             String modelName,
             ExecutionDto latestExecution
     ) {
-        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null, null, null, null, null, null, null, null);
+        this(questionContext, sessionId, problemSlug, candidateExplanation, candidateCode, chatHistory, modelProvider, apiKey, modelName, latestExecution, "INTERVIEW", null, null, null, null, null, null, null, null, null);
     }
 
     public record ChatMessageDto(
