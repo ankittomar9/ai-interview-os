@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getScreenStream, clearVerificationStreams } from '../services/verificationStreams';
-export const computeScreenBitrate = (height: number): number => {
-  if (height >= 1000) return 4500000;
-  if (height >= 700) return 2500000;
-  return 1200000;
-};
+import {
+  getStoredRecordingQuality,
+  computeScreenBitrate,
+  QUALITY_PRESETS
+} from '../lib/recording-quality';
 
 export type StreamKind = 'camera' | 'screen';
 
@@ -36,6 +36,7 @@ export function useSessionRecorder({
   const [screenActive, setScreenActive] = useState(false);
   const [verificationBroken, setVerificationBroken] = useState(false);
   const [failedChunkCount, setFailedChunkCount] = useState(0);
+  const qualityPreset = getStoredRecordingQuality();
 
   const screenWidthRef = useRef<number>(1920);
   const screenHeightRef = useRef<number>(1080);
@@ -148,11 +149,11 @@ export function useSessionRecorder({
       const width = settings.width || 1920;
       screenWidthRef.current = width;
       screenHeightRef.current = height;
-      const bitrateBps = computeScreenBitrate(height);
+      const { bitrateBps, isCapped } = computeScreenBitrate(height, qualityPreset);
       screenBitrateRef.current = bitrateBps;
       const mime = pickMime();
       screenCodecRef.current = mime;
-      console.info(`[useSessionRecorder] Screen attach: ${width}x${height}, bitrate=${bitrateBps} bps, codec=${mime}`);
+      console.info(`[useSessionRecorder] Screen attach: preset=${qualityPreset}, ${width}x${height}, bitrate=${bitrateBps} bps${isCapped ? ' (capped by operator)' : ''}, codec=${mime}`);
 
       const screenRec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: bitrateBps });
       screenRecorderRef.current = screenRec;
@@ -200,8 +201,9 @@ export function useSessionRecorder({
 
     const startRecording = async () => {
       try {
+        const qConfig = QUALITY_PRESETS[qualityPreset] || QUALITY_PRESETS.READABLE;
         const cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+          video: { width: { ideal: qConfig.cameraWidth }, height: { ideal: qConfig.cameraHeight }, frameRate: { ideal: qConfig.cameraFps } },
           audio: true
         });
         if (isCancelled) {
@@ -211,7 +213,7 @@ export function useSessionRecorder({
 
         cameraStreamRef.current = cameraStream;
         const camMime = pickMime();
-        const cameraRec = new MediaRecorder(cameraStream, { mimeType: camMime, videoBitsPerSecond: 1200000 });
+        const cameraRec = new MediaRecorder(cameraStream, { mimeType: camMime, videoBitsPerSecond: qConfig.cameraBps });
         cameraRecorderRef.current = cameraRec;
 
         cameraRec.ondataavailable = (event) => {
@@ -288,11 +290,11 @@ export function useSessionRecorder({
           width: screenWidthRef.current,
           height: screenHeightRef.current,
           bitrateBps: screenBitrateRef.current,
-          qualityPreset: 'READABLE'
+          qualityPreset
         })
       });
     } catch (_) {}
-  }, [sessionId, uploadedChunks, retryFailedChunks]);
+  }, [sessionId, uploadedChunks, qualityPreset, retryFailedChunks]);
 
   return {
     isRecording,

@@ -10,7 +10,8 @@ import {
   Cpu,
   Server,
   Terminal,
-  Monitor
+  Monitor,
+  Video
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
@@ -19,6 +20,12 @@ import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
 import { sendTelemetryEvent, submitVerification, startSession } from '../services/api';
 import { setScreenStream, setVerifyReceipt } from '../services/verificationStreams';
+import {
+  getStoredRecordingQuality,
+  setStoredRecordingQuality,
+  QUALITY_PRESETS,
+  type RecordingQualityPreset
+} from '../lib/recording-quality';
 
 interface Props {
   sessionId: number;
@@ -64,6 +71,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const [screenScope, setScreenScope] = useState<'MONITOR' | 'WINDOW' | 'BROWSER' | 'UNKNOWN' | null>(null);
   const [screenLabel, setScreenLabel] = useState<string>('');
   const [screenError, setScreenError] = useState<string | null>(null);
+  const [recordingQuality, setRecordingQuality] = useState<RecordingQualityPreset>(() => getStoredRecordingQuality());
 
   // D7 Network capability honesty
   const [networkOk, setNetworkOk] = useState(false);
@@ -228,7 +236,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         track.stop();
         setScreenOk(false);
         setScreenScope(displaySurface === 'window' ? 'WINDOW' : 'BROWSER');
-        setScreenError('Window/tab sharing is not accepted — share your entire screen.');
+        setScreenError('Window/tab sharing is not accepted â€” share your entire screen.');
         void sendTelemetryEvent({
           sessionId,
           eventType: 'TAB_BLUR',
@@ -347,7 +355,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               <h1 className="text-xl font-bold text-text tracking-tight">Pre-Assessment System Verification</h1>
             </div>
             <p className="text-xs text-text-3 mt-1">
-              Candidate Readiness Check for <strong className="text-text">{roleTitle}</strong> • Session #{sessionId}
+              Candidate Readiness Check for <strong className="text-text">{roleTitle}</strong> â€¢ Session #{sessionId}
             </p>
           </div>
 
@@ -399,7 +407,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               capabilities?.engines?.dsa?.state === 'STARTING' ? `DSA (${capabilities?.engines?.dsa?.detail || 'warming up'})` : null,
               capabilities?.engines?.lld?.state === 'STARTING' ? `Spring Boot LLD (${capabilities?.engines?.lld?.detail || 'warming up'})` : null,
               capabilities?.engines?.sql?.state === 'STARTING' ? `SQL (${capabilities?.engines?.sql?.detail || 'warming up'})` : null,
-            ].filter(Boolean).join(' • ');
+            ].filter(Boolean).join(' â€¢ ');
 
             return (
               <>
@@ -419,7 +427,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                       {capabilities?.engines?.dsa?.ready
                         ? 'Judge0 Online'
                         : capabilities?.engines?.dsa?.state === 'STARTING'
-                          ? 'Starting…'
+                          ? 'Startingâ€¦'
                           : 'Sandbox Offline'}
                     </Chip>
                   </div>
@@ -439,7 +447,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                       {capabilities?.engines?.lld?.ready
                         ? 'Docker Maven Online'
                         : capabilities?.engines?.lld?.state === 'STARTING'
-                          ? 'Starting…'
+                          ? 'Startingâ€¦'
                           : 'Docker Offline'}
                     </Chip>
                   </div>
@@ -463,7 +471,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                   <div className="bg-elevated border border-warning/30 rounded p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs text-warning">
                     <div className="flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
-                      <span>Starting… (engines warming up): {startingDetails || 'Initial probe in progress — auto re-polling every 5s'}</span>
+                      <span>Startingâ€¦ (engines warming up): {startingDetails || 'Initial probe in progress â€” auto re-polling every 5s'}</span>
                     </div>
                   </div>
                 )}
@@ -555,12 +563,12 @@ export const PreInterviewChecklist: React.FC<Props> = ({
 
           {/* Right Column: Screen Share & Dual Camera */}
           <div className="space-y-4">
-            {/* 3. Screen Share — Full Monitor */}
+            {/* 3. Screen Share â€” Full Monitor */}
             <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-xs font-bold text-text">
                   <Monitor className="w-4 h-4 text-text-3" />
-                  <span>3. Screen Share — Full Monitor</span>
+                  <span>3. Screen Share â€” Full Monitor</span>
                 </div>
                 <Chip
                   variant={
@@ -576,8 +584,8 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 >
                   {screenOk
                     ? screenScope === 'UNKNOWN'
-                      ? 'Shared (unverified scope) — Flagged'
-                      : `Monitor Shared — ${screenLabel || 'Entire Screen'}`
+                      ? 'Shared (unverified scope) â€” Flagged'
+                      : `Monitor Shared â€” ${screenLabel || 'Entire Screen'}`
                     : screenError
                       ? 'Window/Tab Rejected'
                       : 'Not Shared'}
@@ -624,6 +632,45 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               )}
             </div>
 
+            {/* Recording Quality Selector (D10) */}
+            <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-xs font-bold text-text">
+                  <Video className="w-4 h-4 text-text-3" />
+                  <span>Recording Quality</span>
+                </div>
+                <span className="text-[10px] text-text-3 font-mono">
+                  {QUALITY_PRESETS[recordingQuality]?.estSize10Min}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 p-1 bg-elevated/60 border border-border rounded-lg">
+                {(['COMPACT', 'BALANCED', 'READABLE', 'STUDIO'] as RecordingQualityPreset[]).map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    disabled={isSubmitting || screenOk}
+                    onClick={() => {
+                      setRecordingQuality(preset);
+                      setStoredRecordingQuality(preset);
+                    }}
+                    className={`py-1.5 text-xs font-semibold rounded-md transition-all text-center ${
+                      recordingQuality === preset
+                        ? 'bg-primary text-on-accent shadow-sm'
+                        : 'text-text-3 hover:text-text hover:bg-surface/60'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-text-3">
+                {recordingQuality === 'READABLE' && 'Default high-clarity ladder (2.5â€“4.5 Mbps) â€” code text remains fully legible.'}
+                {recordingQuality === 'COMPACT' && 'OBS-efficient tier (0.8â€“1.2 Mbps) â€” minimal storage impact, readable at 100% zoom.'}
+                {recordingQuality === 'BALANCED' && 'Balanced rate (1.5â€“2.5 Mbps) â€” good text contrast with moderate file size.'}
+                {recordingQuality === 'STUDIO' && 'Maximum fidelity (3.0â€“6.0 Mbps) â€” uncompressed text sharpness.'}
+              </p>
+            </div>
+
             {/* 4. Dual-Camera Phone Link */}
             <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
               <div className="flex justify-between items-center">
@@ -642,7 +689,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 </div>
                 <div className="space-y-1 text-xs">
                   <p className="text-[11px] text-text-3 leading-relaxed">
-                    Scan with phone on same Wi-Fi to stream 45° angle desk feed.
+                    Scan with phone on same Wi-Fi to stream 45Â° angle desk feed.
                   </p>
                   <label className="flex items-center gap-2 text-[11px] text-text-2 cursor-pointer pt-1">
                     <input
@@ -721,7 +768,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           icon={<ArrowRight className="w-5 h-5" />}
           className="w-full"
         >
-          {allChecksPassed ? 'All Systems Verified ➡️ Start Interview' : 'Complete Required Checklist Gates Above'}
+          {allChecksPassed ? 'All Systems Verified âž¡ï¸ Start Interview' : 'Complete Required Checklist Gates Above'}
         </Button>
 
       </Card>
