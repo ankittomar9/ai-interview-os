@@ -37,6 +37,7 @@ interface TrackScreenRouterProps {
 }
 
 export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
+  sectionType,
   track,
   sessionId,
   question,

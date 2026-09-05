@@ -3,6 +3,7 @@ import { Volume2, VolumeX, X, Sparkles, MessageSquare, ShieldCheck } from "lucid
 import { AiOrbAvatar, WaveformBars } from "./AiOrbAvatar";
 import { Chip } from "../ui/Chip";
 import { AutoGrowingChatInput } from "../ui/AutoGrowingChatInput";
+import { RoundDivider } from "../arena/RoundDivider";
 
 export interface ChatMessage {
   role: "candidate" | "interviewer" | "system";
@@ -165,7 +166,11 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                 <p className="text-[10px]">Your explanation and code submissions will be evaluated here.</p>
               </div>
             )}
-            {messages.map((m, idx) => (
+            {messages.map((m, idx) => {
+              if (m.metadata?.type === 'ROUND_BOUNDARY') {
+                return <RoundDivider key={idx} title={m.content} sectionType={m.metadata?.sectionType} />;
+              }
+              return (
               <div
                 key={idx}
                 className={"p-2.5 rounded-lg border text-xs leading-relaxed " + (m.role === "candidate" ? "bg-primary/10 border-primary/40 text-text" : "bg-elevated border-border text-text")}
@@ -207,7 +212,8 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
             {isAiResponding && (
               <div className="p-2 rounded-md bg-elevated border border-border text-primary-2 text-xs flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 animate-spin text-primary" />
