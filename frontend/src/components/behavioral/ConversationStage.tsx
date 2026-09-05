@@ -167,31 +167,11 @@ export const ConversationStage: React.FC<ConversationStageProps> = ({
 
                     <p className="whitespace-pre-wrap font-sans">{msg.content}</p>
 
-                    {/* Metadata chips / Tags if available */}
-                    {msg.metadata && Object.keys(msg.metadata).length > 0 && (
-                      <div className="pt-1 flex flex-wrap gap-1.5 text-[10px]">
-                        {msg.metadata.detectedIntent && (
-                          <span
-                            className={`px-2 py-0.5 rounded-md font-mono ${
-                              isAi
-                                ? 'bg-surface border border-border text-text-3'
-                                : 'bg-white/20 text-on-accent'
-                            }`}
-                          >
-                            Intent: {msg.metadata.detectedIntent}
-                          </span>
-                        )}
-                        {msg.metadata.turnSummary && (
-                          <span
-                            className={`px-2 py-0.5 rounded-md font-mono italic ${
-                              isAi
-                                ? 'bg-surface border border-border text-text-3'
-                                : 'bg-white/20 text-on-accent'
-                            }`}
-                          >
-                            {msg.metadata.turnSummary}
-                          </span>
-                        )}
+                    {/* Interviewer's read strip per D7 */}
+                    {isAi && (msg.metadata?.interviewersRead || msg.metadata?.turnSummary) && (
+                      <div className="mt-2 pt-2 border-t border-border/40 text-[11px] text-text-3 flex items-start gap-1.5 bg-surface/50 p-2 rounded-md">
+                        <span className="font-semibold text-primary shrink-0">Interviewer's read:</span>
+                        <span className="italic">{msg.metadata.interviewersRead || msg.metadata.turnSummary}</span>
                       </div>
                     )}
                   </div>

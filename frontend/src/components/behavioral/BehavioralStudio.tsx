@@ -38,6 +38,8 @@ interface BehavioralStudioProps {
   apiKey?: string;
   initialQuestion?: GenerateQuestionResponse;
   candidateName?: string;
+  resumeSummary?: string;
+  resumeText?: string;
   onFinish: () => void;
   onBack?: () => void;
 }
@@ -52,6 +54,8 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
   apiKey,
   initialQuestion,
   candidateName = 'Candidate',
+  resumeSummary,
+  resumeText: _resumeText,
   onFinish,
   onBack
 }) => {
@@ -223,8 +227,9 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
 
     const initStudio = async () => {
       // 1. Fetch Session Resume if already stored
+      let storedResume: any = null;
       try {
-        const storedResume = await getSessionResume(sessionId);
+        storedResume = await getSessionResume(sessionId);
         if (storedResume && isMounted) {
           setActiveResume(storedResume);
         }
@@ -236,10 +241,19 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
       if (hasInitializedGreetingRef.current) return;
       hasInitializedGreetingRef.current = true;
 
-      const questionPrompt = initialQuestion?.problemStatement ||
-        (track === 'RESUME_BASED'
-          ? `Welcome ${candidateName}. Let's examine your background in distributed systems and cloud architecture. Tell me about the most complex microservice or data pipeline you engineered from your resume, the primary scaling bottlenecks you faced, and your architectural decisions.`
-          : `Welcome ${candidateName}. In this behavioral and technical leadership assessment, we will explore how you handle complex engineering trade-offs, critical outages, and cross-functional team leadership. Describe a high-stakes technical disagreement or system failure you resolved, your specific ownership, and the final impact.`);
+      const persona = getPersona(isPlayground);
+      const effectiveSummary = resumeSummary || storedResume?.rawText?.slice(0, 100) || (storedResume?.skills?.length ? `Skills: ${storedResume.skills.slice(0, 4).join(', ')}` : '');
+
+      let questionPrompt = '';
+      if (track === 'RESUME_BASED' || effectiveSummary) {
+        if (effectiveSummary) {
+          questionPrompt = `Hello ${candidateName}, I am ${persona.name}, ${persona.title}. In this session, we will explore your technical background and decision-making (approx. 30–45 minutes).\n\nLooking at your resume highlights (${effectiveSummary.slice(0, 100)}...), could you walk me through one of your most challenging architectural decisions and the tradeoffs you navigated?`;
+        } else {
+          questionPrompt = `Hello ${candidateName}, I am ${persona.name}, ${persona.title}. In this session, we will explore your technical background and engineering tradeoffs (approx. 30–45 minutes).\n\nSince no resume was uploaded, let's start with your recent engineering work: could you describe a complex system you designed or scaled, and what key tradeoffs you made?`;
+        }
+      } else {
+        questionPrompt = `Hello ${candidateName}, I am ${persona.name}, ${persona.title}. In this session, we will explore your leadership and dilemma resolution (approx. 30–45 minutes).\n\n${initialQuestion?.problemStatement || 'Could you walk me through a high-stakes technical disagreement or system outage you resolved, your specific ownership, and the final impact?'}`;
+      }
 
       const greetingTurn: StageMessage = {
         id: `turn_0_${Date.now()}`,
@@ -337,6 +351,7 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
       const meta: Record<string, string> = {
         detectedIntent: dialogue.detectedIntent || 'EXPLAINING_APPROACH',
         turnSummary: dialogue.turnSummary || '',
+        interviewersRead: dialogue.turnSummary || dialogue.codeAnalysis || 'Probing architectural decision and quantitative impact.',
         recommendedAction: dialogue.recommendedAction || 'PROBE_DEEPER'
       };
 

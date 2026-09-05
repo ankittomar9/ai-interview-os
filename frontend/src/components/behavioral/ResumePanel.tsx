@@ -14,7 +14,6 @@ import {
 import type { ResumeDocument } from '../../types';
 import { Button } from '../ui/Button';
 import { Chip } from '../ui/Chip';
-import { StarGuide } from './StarGuide';
 import { updateSessionResume, uploadSessionResumeFile } from '../../services/api';
 
 interface ResumePanelProps {
@@ -32,8 +31,8 @@ export const ResumePanel: React.FC<ResumePanelProps> = ({
   sessionId,
   resume,
   onUpdateResume,
-  isPlayground = false,
-  transcriptText = '',
+  isPlayground: _isPlayground = false,
+  transcriptText: _transcriptText = '',
   className = '',
   isCollapsed = false,
   onToggleCollapse
@@ -245,12 +244,7 @@ export const ResumePanel: React.FC<ResumePanelProps> = ({
               </div>
             )}
 
-            {/* STAR Guide in Playground Mode */}
-            {isPlayground && (
-              <div className="pt-2 border-t border-border">
-                <StarGuide candidateAnswer={transcriptText} />
-              </div>
-            )}
+
           </div>
         )}
 
