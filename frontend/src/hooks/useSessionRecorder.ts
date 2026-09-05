@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { getScreenStream } from '../services/verificationStreams';
 
 export type StreamKind = 'camera' | 'screen';
 
@@ -13,14 +14,14 @@ interface UseSessionRecorderProps {
   sessionId: number;
   isPlayground?: boolean;
   onInterrupted?: (reason: string) => void;
-  recordScreen?: boolean;
+  onShareLost?: () => void;
 }
 
 export function useSessionRecorder({
   sessionId,
   isPlayground = false,
   onInterrupted,
-  recordScreen = false
+  onShareLost
 }: UseSessionRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -28,6 +29,7 @@ export function useSessionRecorder({
   const [recordingInterrupted, setRecordingInterrupted] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [screenActive, setScreenActive] = useState(false);
+  const [verificationBroken, setVerificationBroken] = useState(false);
 
   const cameraRecorderRef = useRef<MediaRecorder | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -41,9 +43,9 @@ export function useSessionRecorder({
   const failedChunksRef = useRef<Array<QueuedChunk>>([]);
 
   const createFormData = (blob: Blob, seq: number) => {
-    const formData = new FormData();
-    formData.append('chunk', blob, `chunk_${seq}.webm`);
-    return formData;
+    const fd = new FormData();
+    fd.append('chunk', blob, `chunk_${seq}.webm`);
+    return fd;
   };
 
   const reportDrop = useCallback((seq: number, kind: StreamKind, reason: string) => {
@@ -62,14 +64,14 @@ export function useSessionRecorder({
       if (res.ok) {
         setUploadedChunks((prev) => prev + 1);
       } else if (res.status === 413) {
-        console.error(`Recording ${kind} chunk ${seq} exceeds size limit. Discarding and recording drop.`);
+        console.error(`Recording ${kind} chunk ${seq} exceeds size limit. Discarding.`);
         reportDrop(seq, kind, 'PAYLOAD_TOO_LARGE_413');
       } else {
-        console.warn(`Recording ${kind} chunk ${seq} upload failed with status ${res.status}, queuing for retry`);
+        console.warn(`Recording ${kind} chunk ${seq} upload failed (${res.status})`);
         failedChunksRef.current.push({ blob, seq, kind, retries: 0 });
       }
     } catch (err) {
-      console.warn(`Recording ${kind} chunk ${seq} network notice, queuing for retry:`, err);
+      console.warn(`Recording ${kind} chunk ${seq} network notice:`, err);
       failedChunksRef.current.push({ blob, seq, kind, retries: 0 });
     }
   }, [sessionId, reportDrop]);
@@ -86,15 +88,10 @@ export function useSessionRecorder({
         });
         if (res.ok) {
           setUploadedChunks((prev) => prev + 1);
-          failedChunksRef.current = failedChunksRef.current.filter(
-            (c) => !(c.seq === chunk.seq && c.kind === chunk.kind)
-          );
+          failedChunksRef.current = failedChunksRef.current.filter((c) => !(c.seq === chunk.seq && c.kind === chunk.kind));
         } else if (res.status === 413) {
-          console.error(`Retried chunk ${chunk.seq} (${chunk.kind}) returned 413 limit. Dropping from retry queue.`);
           reportDrop(chunk.seq, chunk.kind, 'PAYLOAD_TOO_LARGE_413');
-          failedChunksRef.current = failedChunksRef.current.filter(
-            (c) => !(c.seq === chunk.seq && c.kind === chunk.kind)
-          );
+          failedChunksRef.current = failedChunksRef.current.filter((c) => !(c.seq === chunk.seq && c.kind === chunk.kind));
         } else {
           chunk.retries++;
         }
@@ -106,31 +103,19 @@ export function useSessionRecorder({
 
   useEffect(() => {
     if (isPlayground || !sessionId) return;
-    const retryInterval = setInterval(() => {
-      void retryFailedChunks();
-    }, 8000);
+    const retryInterval = setInterval(() => { void retryFailedChunks(); }, 8000);
     return () => clearInterval(retryInterval);
   }, [sessionId, isPlayground, retryFailedChunks]);
 
-  const pickMime = () => {
-    return MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-      ? 'video/webm;codecs=vp8'
-      : 'video/webm';
-  };
+  const pickMime = () => MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm';
 
-  const startScreenShare = useCallback(async () => {
-    if (!recordScreen || screenRecorderRef.current || screenActive) return;
+  const attachScreenStream = useCallback((stream: MediaStream) => {
+    if (screenRecorderRef.current && screenRecorderRef.current.state !== 'inactive') {
+      try { screenRecorderRef.current.stop(); } catch (_) {}
+    }
+    screenStreamRef.current = stream;
     try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 8 },
-        audio: false,
-        selfBrowserSurface: 'exclude'
-      } as any);
-      screenStreamRef.current = screenStream;
-      const screenRec = new MediaRecorder(screenStream, {
-        mimeType: pickMime(),
-        videoBitsPerSecond: 400000
-      });
+      const screenRec = new MediaRecorder(stream, { mimeType: pickMime(), videoBitsPerSecond: 400000 });
       screenRecorderRef.current = screenRec;
 
       screenRec.ondataavailable = (event) => {
@@ -141,28 +126,39 @@ export function useSessionRecorder({
         }
       };
 
-      screenStream.getVideoTracks()[0].onended = () => {
-        if (screenRec.state !== 'inactive') {
-          try { screenRec.stop(); } catch {}
-        }
-        screenRecorderRef.current = null;
-        screenStreamRef.current = null;
-        setScreenActive(false);
-      };
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        track.onended = () => {
+          if (screenRec.state !== 'inactive') try { screenRec.stop(); } catch (_) {}
+          screenRecorderRef.current = null;
+          screenStreamRef.current = null;
+          setScreenActive(false);
+          if (onShareLost) onShareLost();
+        };
+      }
 
       screenRec.start(5000);
       setScreenActive(true);
+      setVerificationBroken(false);
     } catch (err) {
-      console.warn('Screen recording consent denied or cancelled:', err);
+      console.warn('Failed to start screen recorder on stream:', err);
       setScreenActive(false);
+      setVerificationBroken(true);
     }
-  }, [recordScreen, screenActive, uploadChunk]);
+  }, [uploadChunk, onShareLost]);
 
   useEffect(() => {
     if (isPlayground || !sessionId) return;
-
     let timer: any;
     let isCancelled = false;
+
+    const preScreen = getScreenStream();
+    if (preScreen && preScreen.active && preScreen.getVideoTracks().some((t) => t.readyState === 'live')) {
+      attachScreenStream(preScreen);
+    } else {
+      setVerificationBroken(true);
+      if (onInterrupted) onInterrupted('VERIFICATION_STREAM_MISSING');
+    }
 
     const startRecording = async () => {
       try {
@@ -170,17 +166,13 @@ export function useSessionRecorder({
           video: { width: 640, height: 360, frameRate: 15 },
           audio: true
         });
-
         if (isCancelled) {
           cameraStream.getTracks().forEach((t) => t.stop());
           return;
         }
 
         cameraStreamRef.current = cameraStream;
-        const cameraRec = new MediaRecorder(cameraStream, {
-          mimeType: pickMime(),
-          videoBitsPerSecond: 400000
-        });
+        const cameraRec = new MediaRecorder(cameraStream, { mimeType: pickMime(), videoBitsPerSecond: 400000 });
         cameraRecorderRef.current = cameraRec;
 
         cameraRec.ondataavailable = (event) => {
@@ -197,19 +189,14 @@ export function useSessionRecorder({
           if (onInterrupted) onInterrupted('Camera recording error');
         };
 
-        cameraRec.onstop = () => {
-          setCameraActive(false);
-        };
-
+        cameraRec.onstop = () => { setCameraActive(false); };
         cameraRec.start(5000);
         setCameraActive(true);
         setIsRecording(true);
 
-        timer = setInterval(() => {
-          setRecordingSeconds((prev) => prev + 1);
-        }, 1000);
+        timer = setInterval(() => { setRecordingSeconds((prev) => prev + 1); }, 1000);
       } catch (err: any) {
-        console.warn('Session camera recording initial capture notice:', err);
+        console.warn('Session camera recording capture notice:', err);
         setRecordingInterrupted(true);
         if (onInterrupted) onInterrupted(err.message || 'Webcam feed unavailable for recording');
       }
@@ -221,14 +208,10 @@ export function useSessionRecorder({
       isCancelled = true;
       clearInterval(timer);
       [cameraRecorderRef, screenRecorderRef].forEach((ref) => {
-        if (ref.current && ref.current.state !== 'inactive') {
-          try { ref.current.stop(); } catch {}
-        }
+        if (ref.current && ref.current.state !== 'inactive') try { ref.current.stop(); } catch (_) {}
       });
       [cameraStreamRef, screenStreamRef].forEach((ref) => {
-        if (ref.current) {
-          ref.current.getTracks().forEach((t) => t.stop());
-        }
+        if (ref.current) ref.current.getTracks().forEach((t) => t.stop());
       });
       screenRecorderRef.current = null;
       screenStreamRef.current = null;
@@ -236,7 +219,7 @@ export function useSessionRecorder({
       setCameraActive(false);
       setScreenActive(false);
     };
-  }, [sessionId, isPlayground, onInterrupted, uploadChunk]);
+  }, [sessionId, isPlayground, onInterrupted, uploadChunk, attachScreenStream]);
 
   return {
     isRecording,
@@ -245,6 +228,7 @@ export function useSessionRecorder({
     recordingInterrupted,
     cameraActive,
     screenActive,
-    startScreenShare
+    verificationBroken,
+    attachScreenStream
   };
 }
