@@ -7,6 +7,7 @@ import { useProctoring } from './hooks/useProctoring';
 import { useCoachVoice } from './hooks/useCoachVoice';
 import { useSessionRecorder } from '../../hooks/useSessionRecorder';
 import { ArenaShell } from './ArenaShell';
+import { ShareLostOverlay } from '../ShareLostOverlay';
 import { getPersona } from '../../lib/personas';
 import { mergeSalvageText } from '../../lib/salvage-dedup';
 import type { InterviewStage } from '../StageStepper';
@@ -20,7 +21,6 @@ interface ArenaRoomProps {
   apiKey: string;
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   candidateName?: string;
-  recordScreen?: boolean;
   plan?: SessionPlan;
   onFinish: () => void;
 }
@@ -33,7 +33,6 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   apiKey,
   sessionMode = 'INTERVIEW',
   candidateName,
-  recordScreen = false,
   plan,
   onFinish
 }) => {
@@ -43,6 +42,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const navSections = useMemo(() => buildNavSections(plan?.sections, initialQuestion.track), [plan?.sections, initialQuestion.track]);
   const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
   const [pendingStageSwitch, setPendingStageSwitch] = useState<{ stage: InterviewStage; targetTrack: InterviewTrack; targetIndex?: number } | null>(null);
+  const [isShareLost, setIsShareLost] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
     try { return localStorage.getItem('interview-os:focus-mode') === 'true'; } catch { return false; }
   });
@@ -106,7 +106,11 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   });
 
   // 7. Session Video Recording Engine
-  const recorder = useSessionRecorder({ sessionId, isPlayground, recordScreen });
+  const recorder = useSessionRecorder({
+    sessionId,
+    isPlayground,
+    onShareLost: () => { if (!isPlayground) setIsShareLost(true); }
+  });
 
   // Handlers
   const handleRunCode = async () => { await runCode(code, language); };
@@ -162,8 +166,19 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const handleCancelStageSwitch = useCallback(() => setPendingStageSwitch(null), []);
 
   return (
-    <ArenaShell
-      sessionId={sessionId}
+    <>
+      {isShareLost && !isPlayground && (
+        <ShareLostOverlay
+          sessionId={sessionId}
+          onRestored={(newStream) => {
+            recorder.attachScreenStream(newStream);
+            setIsShareLost(false);
+          }}
+          onAborted={onFinish}
+        />
+      )}
+      <ArenaShell
+        sessionId={sessionId}
       track={activeTrack}
       sections={plan?.sections}
       activeSectionIndex={dialogue.activeSectionIndex}
@@ -225,10 +240,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       recordingInterrupted={recorder.recordingInterrupted}
       cameraActive={recorder.cameraActive}
       screenActive={recorder.screenActive}
-      recordScreen={recordScreen}
-      onStartScreenShare={recorder.startScreenShare}
+      verificationBroken={recorder.verificationBroken}
       isFocusMode={isFocusMode}
       onToggleFocusMode={toggleFocusMode}
     />
+  </>
   );
 };

@@ -79,10 +79,9 @@ interface ArenaShellProps {
   isRecording?: boolean;
   recordingSeconds?: number;
   recordingInterrupted?: boolean;
-  cameraActive?: boolean; screenActive?: boolean; recordScreen?: boolean;
+  cameraActive?: boolean; screenActive?: boolean; verificationBroken?: boolean;
   sections?: PlannedSection[]; activeSectionIndex?: number; onSectionClick?: (index: number, stage: InterviewStage) => void;
   salvageHint?: string | null;
-  onStartScreenShare?: () => void;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
 }
@@ -98,8 +97,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
     voiceOutputEnabled, onToggleVoice, onMicToggle, interimTranscript = '', micError = null,
     onClearMicError, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
-    isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive, recordScreen,
-    onStartScreenShare, isFocusMode = false, onToggleFocusMode
+    isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive, verificationBroken = false,
+    isFocusMode = false, onToggleFocusMode
   } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
@@ -150,13 +149,10 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
               <span className={`w-2 h-2 rounded-full ${recordingInterrupted ? 'bg-danger animate-ping' : isRecording ? 'bg-danger animate-pulse' : 'bg-text-3'}`} />
               <span className="font-bold text-text-2">{recordingInterrupted ? 'REC INTERRUPTED' : isRecording ? 'REC' : 'STANDBY'}</span>
               {isRecording && <span className="text-text-3">({Math.floor((recordingSeconds || 0) / 60)}:{String((recordingSeconds || 0) % 60).padStart(2, '0')})</span>}
-              {isRecording && (cameraActive || screenActive) && (
+              {isRecording && (
                 <span className="text-text-3 border-l border-border pl-1.5 ml-0.5">
-                  {cameraActive && '🎥 Cam'} {screenActive && '· 🖥️ Screen'}
+                  {cameraActive && '🎥 Cam'} {screenActive ? '· 🖥️ Screen' : verificationBroken ? '· ⚠ Unverified' : ''}
                 </span>
-              )}
-              {isRecording && recordScreen && !screenActive && onStartScreenShare && (
-                <button type="button" onClick={onStartScreenShare} className="ml-1 px-1.5 py-0.5 text-[10px] rounded bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30 transition-colors cursor-pointer" title="Share Screen">Share Screen</button>
               )}
             </div>
           )}
