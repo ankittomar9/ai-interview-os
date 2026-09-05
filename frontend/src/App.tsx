@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, PlannedSection } from './types';
 import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession } from './services/api';
@@ -37,6 +37,7 @@ export function App() {
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [playlistQuestions, setPlaylistQuestions] = useState<GenerateQuestionResponse[]>([]);
   const [sectionQuestions, setSectionQuestions] = useState<GenerateQuestionResponse[][]>([]);
+  const finishRecorderRef = useRef<(() => Promise<void>) | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -225,6 +226,13 @@ export function App() {
 
   const handleFinishInterview = async () => {
     if (!sessionId) return;
+    if (finishRecorderRef.current) {
+      try {
+        await finishRecorderRef.current();
+      } catch (err) {
+        console.warn('Recorder flush notice:', err);
+      }
+    }
     clearVerificationStreams();
 
     if (sessionMode === 'PLAYGROUND') {
@@ -318,6 +326,7 @@ export function App() {
           candidateName={candidateName}
           plan={sessionPlan}
           onFinish={handleFinishInterview}
+          onRegisterFinishRecorder={(fn) => { finishRecorderRef.current = fn; }}
         />
       )}
 

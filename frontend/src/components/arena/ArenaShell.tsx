@@ -79,6 +79,7 @@ interface ArenaShellProps {
   isRecording?: boolean;
   recordingSeconds?: number;
   recordingInterrupted?: boolean;
+  failedChunkCount?: number;
   cameraActive?: boolean; screenActive?: boolean; verificationBroken?: boolean;
   sections?: PlannedSection[]; activeSectionIndex?: number; onSectionClick?: (index: number, stage: InterviewStage) => void;
   sectionQuestions?: GenerateQuestionResponse[][];
@@ -98,7 +99,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
     voiceOutputEnabled, onToggleVoice, onMicToggle, interimTranscript = '', micError = null,
     onClearMicError, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
-    isRecording, recordingSeconds, recordingInterrupted, cameraActive, screenActive, verificationBroken = false,
+    isRecording, recordingSeconds, recordingInterrupted, failedChunkCount = 0, cameraActive, screenActive, verificationBroken = false,
     isFocusMode = false, onToggleFocusMode, sectionQuestions
   } = props;
   const isPlayground = sessionMode === 'PLAYGROUND';
@@ -147,8 +148,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
           </Chip>
           {!isPlayground && (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-elevated border border-border text-[11px] font-mono">
-              <span className={`w-2 h-2 rounded-full ${recordingInterrupted ? 'bg-danger animate-ping' : isRecording ? 'bg-danger animate-pulse' : 'bg-text-3'}`} />
-              <span className="font-bold text-text-2">{recordingInterrupted ? 'REC INTERRUPTED' : isRecording ? 'REC' : 'STANDBY'}</span>
+              <span className={`w-2 h-2 rounded-full ${recordingInterrupted ? 'bg-danger animate-ping' : failedChunkCount > 0 ? 'bg-amber-500 animate-pulse' : isRecording ? 'bg-danger animate-pulse' : 'bg-text-3'}`} />
+              <span className="font-bold text-text-2">{recordingInterrupted ? 'REC INTERRUPTED' : failedChunkCount > 0 ? `REC ⚠ ${failedChunkCount} unsent` : isRecording ? 'REC' : 'STANDBY'}</span>
               {isRecording && <span className="text-text-3">({Math.floor((recordingSeconds || 0) / 60)}:{String((recordingSeconds || 0) % 60).padStart(2, '0')})</span>}
               {isRecording && (
                 <span className="text-text-3 border-l border-border pl-1.5 ml-0.5">
