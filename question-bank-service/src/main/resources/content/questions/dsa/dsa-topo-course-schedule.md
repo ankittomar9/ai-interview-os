@@ -39,6 +39,20 @@ editorial: |
   2. Add in-degree 0 nodes to queue.
   3. Dequeue, add to topological order, and decrement neighbor in-degrees.
   4. If processed count < N, a cycle exists -> output -1.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement topological sort course schedule
+      public static List<Integer> findOrder(int n, int[][] prereqs) { return new ArrayList<>(); }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), m = sc.nextInt(), prereqs[][] = new int[m][2];
+          for (int i = 0; i < m; i++) { prereqs[i][0] = sc.nextInt(); prereqs[i][1] = sc.nextInt(); }
+          List<Integer> order = findOrder(n, prereqs);
+          System.out.println(order.isEmpty() ? "-1" : "0");
+      }
+  }
 solutionCode: |
   import java.util.*;
 

@@ -25,6 +25,27 @@ hints:
 editorial: |
   ### Trie Prefix Tree
   Insert traverses character by character, creating child nodes. Prefix match checks if the path exists; search checks path existence AND `isEndOfWord`.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      static class Trie {
+          void insert(String word) {} // TODO: implement
+          boolean search(String word) { return false; } // TODO: implement
+          boolean startsWith(String prefix) { return false; } // TODO: implement
+      }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int q = sc.nextInt();
+          Trie trie = new Trie();
+          while (q-- > 0 && sc.hasNext()) {
+              String op = sc.next(), word = sc.next();
+              if ("insert".equalsIgnoreCase(op)) trie.insert(word);
+              else if ("search".equalsIgnoreCase(op)) System.out.println(trie.search(word));
+              else if ("startsWith".equalsIgnoreCase(op)) System.out.println(trie.startsWith(word));
+          }
+      }
+  }
 solutionCode: |
   import java.util.*;
 

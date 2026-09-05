@@ -33,6 +33,19 @@ constraints:
 editorial: |
   ### Partitioned Binary Search
   Identify whether `left..mid` or `mid..right` is sorted. Check if `target` falls within the sorted portion.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement search in rotated sorted array
+      public static int search(int[] nums, int target) { return -1; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), target = sc.nextInt(), nums[] = new int[n];
+          for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
+          System.out.println(search(nums, target));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

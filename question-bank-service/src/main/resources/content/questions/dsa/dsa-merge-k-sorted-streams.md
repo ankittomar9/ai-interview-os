@@ -28,6 +28,25 @@ hints:
 editorial: |
   ### Min-Heap K-Way Merge
   Push the first element of each stream into a Min-Heap. Repeatedly extract the minimum and push the next element from that stream. Time Complexity: O(N log K).
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement merge k sorted lists
+      public static List<Integer> mergeKLists(List<List<Integer>> lists) { return new ArrayList<>(); }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int k = sc.nextInt();
+          List<List<Integer>> lists = new ArrayList<>();
+          for (int i = 0; i < k; i++) {
+              int len = sc.nextInt();
+              List<Integer> list = new ArrayList<>(len);
+              for (int j = 0; j < len; j++) list.add(sc.nextInt());
+              lists.add(list);
+          }
+          for (int v : mergeKLists(lists)) System.out.print(v + " ");
+      }
+  }
 solutionCode: |
   import java.util.*;
 
