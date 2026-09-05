@@ -31,6 +31,19 @@ constraints:
 editorial: |
   ### Two Pointer Water Trapping
   The water trapped at index `i` is `min(max_left, max_right) - height[i]`. We can process inwards from the smaller boundary.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement trapping rain water
+      public static int trap(int[] height) { return 0; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), height[] = new int[n];
+          for (int i = 0; i < n; i++) height[i] = sc.nextInt();
+          System.out.println(trap(height));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

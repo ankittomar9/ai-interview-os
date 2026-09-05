@@ -28,6 +28,21 @@ hints:
 editorial: |
   ### Dynamic Programming Prefix Check
   `dp[i] = true` if there is a `j < i` such that `dp[j] == true` and `s.substring(j, i)` is in the word set.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement word break dictionary check
+      public static boolean wordBreak(String s, Set<String> dict) { return false; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNext()) return;
+          String s = sc.next();
+          int dictSize = sc.nextInt();
+          Set<String> dict = new HashSet<>();
+          for (int i = 0; i < dictSize; i++) dict.add(sc.next());
+          System.out.println(wordBreak(s, dict));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

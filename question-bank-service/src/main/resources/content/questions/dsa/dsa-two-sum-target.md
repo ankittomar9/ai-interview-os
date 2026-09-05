@@ -45,6 +45,20 @@ coaching:
 editorial: |
   ### Target Sum Index Pair
   We scan the array once using a Hash Map `num -> index`. For each item `x`, we check if `target - x` is already in the map.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement two sum target pair finding
+      public static int[] twoSum(int[] nums, int target) { return new int[]{-1, -1}; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), target = sc.nextInt(), nums[] = new int[n];
+          for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
+          int[] res = twoSum(nums, target);
+          System.out.println(res[0] + " " + res[1]);
+      }
+  }
 solutionCode: |
   import java.util.*;
 

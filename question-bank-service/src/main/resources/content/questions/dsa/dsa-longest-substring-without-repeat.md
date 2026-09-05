@@ -32,6 +32,17 @@ hints:
 editorial: |
   ### Sliding Window with Index Lookup
   Whenever a duplicate character is encountered inside the current window, move `left` to `lastIndex + 1`.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement length of longest substring without repeating characters
+      public static int lengthOfLongestSubstring(String s) { return 0; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNext()) { System.out.println("0"); return; }
+          System.out.println(lengthOfLongestSubstring(sc.next()));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

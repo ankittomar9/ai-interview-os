@@ -32,6 +32,19 @@ hints:
 editorial: |
   ### K-Group Linked List Reversal
   Iterate in chunks of size k. Reverse pointers within each chunk and stitch to the previous and next group.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement reverse in k-group
+      public static int[] reverseKGroup(int[] arr, int k) { return arr; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), k = sc.nextInt(), arr[] = new int[n];
+          for (int i = 0; i < n; i++) arr[i] = sc.nextInt();
+          for (int v : reverseKGroup(arr, k)) System.out.print(v + " ");
+      }
+  }
 solutionCode: |
   import java.util.*;
 

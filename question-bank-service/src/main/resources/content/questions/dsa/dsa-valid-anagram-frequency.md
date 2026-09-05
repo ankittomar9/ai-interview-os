@@ -35,6 +35,17 @@ coaching:
 editorial: |
   ### Anagram Verification
   Count frequency differences using a fixed `int[26]` buffer. Increment for string S, decrement for string T.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement valid anagram check
+      public static boolean isAnagram(String s, String t) { return false; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNext()) return;
+          System.out.println(isAnagram(sc.next(), sc.next()));
+      }
+  }
 solutionCode: |
   import java.util.*;
 
