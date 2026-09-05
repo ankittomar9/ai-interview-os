@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AlertTriangle, Monitor, ShieldAlert } from 'lucide-react';
 import { Button } from './ui/Button';
 import { abortSession, sendTelemetryEvent } from '../services/api';
-import { setScreenStream } from '../services/verificationStreams';
+import { setScreenStream, clearVerificationStreams } from '../services/verificationStreams';
 
 interface ShareLostOverlayProps {
   sessionId: number;
@@ -45,6 +45,7 @@ export const ShareLostOverlay: React.FC<ShareLostOverlayProps> = ({
 
   const handleAbort = async (reason: string) => {
     setIsAborting(true);
+    clearVerificationStreams();
     try {
       await abortSession(sessionId, reason);
     } catch (e) {

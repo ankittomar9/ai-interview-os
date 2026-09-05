@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getScreenStream } from '../services/verificationStreams';
+import { getScreenStream, clearVerificationStreams } from '../services/verificationStreams';
 
 export type StreamKind = 'camera' | 'screen';
 
@@ -218,6 +218,7 @@ export function useSessionRecorder({
       setIsRecording(false);
       setCameraActive(false);
       setScreenActive(false);
+      clearVerificationStreams();
     };
   }, [sessionId, isPlayground, onInterrupted, uploadChunk, attachScreenStream]);
 
