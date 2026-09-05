@@ -234,6 +234,7 @@ export const processDialogueTurn = async (payload: {
     sectionIndex?: number;
     totalSections?: number;
     softTimeBudgetMinutes?: number;
+    sectionQuestionTitle?: string;
     sectionNote?: string;
     latestExecution?: {
         status: string;

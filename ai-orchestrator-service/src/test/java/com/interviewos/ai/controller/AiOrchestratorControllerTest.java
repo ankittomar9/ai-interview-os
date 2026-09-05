@@ -1,6 +1,8 @@
 package com.interviewos.ai.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interviewos.ai.dto.AiDialogueRequest;
+import com.interviewos.ai.dto.AiDialogueResponse;
 import com.interviewos.ai.dto.GenerateQuestionRequest;
 import com.interviewos.ai.dto.GenerateQuestionResponse;
 import com.interviewos.ai.model.DifficultyLevel;
@@ -182,5 +184,27 @@ class AiOrchestratorControllerTest {
                 .andExpect(jsonPath("$.text").value("We use Kafka and React"))
                 .andExpect(jsonPath("$.provider").value("WHISPER_CPP_LOCAL"))
                 .andExpect(jsonPath("$.promptUsed").value("true"));
+    }
+
+    @Test
+    @DisplayName("POST /dialogue accepts sectionQuestionTitle and passes to service")
+    void testProcessDialogueWithSectionQuestionTitle() throws Exception {
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Reverse a string")
+                .candidateExplanation("I will use two pointers")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("DSA")
+                .sectionQuestionTitle("Reverse a String")
+                .sectionNote("Evaluate time complexity")
+                .build();
+
+        AiDialogueResponse mockResponse = new AiDialogueResponse("Good approach", "What is complexity?", false, null, List.of(), List.of());
+        when(orchestratorService.processDialogue(any())).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/v1/ai/dialogue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.interviewerReply").value("Good approach"));
     }
 }
