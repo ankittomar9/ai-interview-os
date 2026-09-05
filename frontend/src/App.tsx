@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan } from './types';
 import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession } from './services/api';
+import { clearVerificationStreams } from './services/verificationStreams';
 import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
 import { ArenaRoom } from './components/arena/ArenaRoom';
@@ -176,6 +177,7 @@ export function App() {
 
   const handleFinishInterview = async () => {
     if (!sessionId) return;
+    clearVerificationStreams();
 
     if (sessionMode === 'PLAYGROUND') {
       setView('PRACTICE_SUMMARY');
@@ -273,8 +275,12 @@ export function App() {
       {view === 'PRACTICE_SUMMARY' && (
         <PracticeSummary
           questions={playlistQuestions}
-          onReturnHome={() => setView('SETUP')}
+          onReturnHome={() => {
+            clearVerificationStreams();
+            setView('SETUP');
+          }}
           onBrowseCatalog={() => {
+            clearVerificationStreams();
             setView('SETUP');
             setIsCatalogOpen(true);
           }}
@@ -284,7 +290,10 @@ export function App() {
       {view === 'REPORT' && report && (
         <DiagnosticReportView
           report={report}
-          onRestart={() => setView('SETUP')}
+          onRestart={() => {
+            clearVerificationStreams();
+            setView('SETUP');
+          }}
         />
       )}
     </div>

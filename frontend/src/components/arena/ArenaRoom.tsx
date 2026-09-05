@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan } from '../../types';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
 import { useExecution } from './hooks/useExecution';
@@ -8,6 +8,7 @@ import { useCoachVoice } from './hooks/useCoachVoice';
 import { useSessionRecorder } from '../../hooks/useSessionRecorder';
 import { ArenaShell } from './ArenaShell';
 import { ShareLostOverlay } from '../ShareLostOverlay';
+import { clearVerificationStreams } from '../../services/verificationStreams';
 import { getPersona } from '../../lib/personas';
 import { mergeSalvageText } from '../../lib/salvage-dedup';
 import type { InterviewStage } from '../StageStepper';
@@ -47,6 +48,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     try { return localStorage.getItem('interview-os:focus-mode') === 'true'; } catch { return false; }
   });
 
+  useEffect(() => {
+    return () => { clearVerificationStreams(); };
+  }, []);
+
   const toggleFocusMode = useCallback(() => {
     setIsFocusMode((prev) => {
       const next = !prev;
@@ -61,13 +66,9 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   // 2. Code State (Keyed per slug to eliminate A10 cross-question bleed)
   const activeSlug = activeQuestion.problemSlug || activeQuestion.slug || `q_${activeQuestionIndex}`;
-  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({
-    [activeSlug]: activeQuestion.starterCode || ''
-  }));
+  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({ [activeSlug]: activeQuestion.starterCode || '' }));
   const code = codeMap[activeSlug] ?? (activeQuestion.starterCode || '');
-  const setCode = useCallback((newCode: string) => {
-    setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode }));
-  }, [activeSlug]);
+  const setCode = useCallback((newCode: string) => { setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode })); }, [activeSlug]);
   const [language, setLanguage] = useState(activeTrack === 'SQL' ? 'sql' : 'java');
 
   // 3. Execution Engine
@@ -107,9 +108,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   // 7. Session Video Recording Engine
   const recorder = useSessionRecorder({
-    sessionId,
-    isPlayground,
-    onShareLost: () => { if (!isPlayground) setIsShareLost(true); }
+    sessionId, isPlayground, onShareLost: () => { if (!isPlayground) setIsShareLost(true); }
   });
 
   // Handlers
