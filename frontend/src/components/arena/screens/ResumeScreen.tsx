@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { GenerateQuestionResponse, ModelProvider } from '../../../types';
 import { BehavioralStudio } from '../../behavioral/BehavioralStudio';
+import { getSessionResume } from '../../../services/api';
 
 interface ResumeScreenProps {
   sessionId: number;
@@ -10,6 +11,8 @@ interface ResumeScreenProps {
   isPlayground?: boolean;
   onFinish: () => void;
   candidateName?: string;
+  resumeSummary?: string;
+  resumeText?: string;
 }
 
 export const ResumeScreen: React.FC<ResumeScreenProps> = ({
@@ -19,20 +22,43 @@ export const ResumeScreen: React.FC<ResumeScreenProps> = ({
   apiKey,
   isPlayground = false,
   onFinish,
-  candidateName
+  candidateName,
+  resumeSummary,
+  resumeText
 }) => {
+  const [activeResumeSummary, setActiveResumeSummary] = useState<string>(resumeSummary || '');
+  const [activeResumeText, setActiveResumeText] = useState<string>(resumeText || '');
+
+  useEffect(() => {
+    if (!activeResumeSummary && !activeResumeText && sessionId) {
+      getSessionResume(sessionId)
+        .then((doc) => {
+          if (doc) {
+            if (doc.rawText) setActiveResumeText(doc.rawText);
+            const summary = doc.projectExperiences && doc.projectExperiences.length > 0
+              ? `Key projects: ${doc.projectExperiences.join(', ')}. Skills: ${doc.skills?.join(', ') || 'N/A'}`
+              : (doc.skills?.join(', ') || '');
+            if (summary) setActiveResumeSummary(summary);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [sessionId, activeResumeSummary, activeResumeText]);
+
   return (
     <BehavioralStudio
       sessionId={sessionId}
       track="RESUME_BASED"
       difficulty={initialQuestion?.difficulty || 'SENIOR'}
-      roleTitle="Senior Backend & Distributed Systems Engineer"
+      roleTitle="Senior Software Engineer & Architect"
       isPlayground={isPlayground}
       provider={provider}
       apiKey={apiKey}
       initialQuestion={initialQuestion}
       candidateName={candidateName}
       onFinish={onFinish}
+      resumeSummary={activeResumeSummary}
+      resumeText={activeResumeText}
     />
   );
 };
