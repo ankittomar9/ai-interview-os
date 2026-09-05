@@ -136,7 +136,7 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
               language={monacoLanguage}
               theme={getMonacoTheme(resolvedTheme)}
               beforeMount={defineMonacoThemes}
-              value={code}
+              value={code || '// No starter code shipped for this problem — report to operator'}
               onChange={(val) => onChangeCode(val || '')}
               onMount={(editor) => {
                 editor.onDidChangeCursorPosition((e) => {

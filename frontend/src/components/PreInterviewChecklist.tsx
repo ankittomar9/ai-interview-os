@@ -197,7 +197,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
     try {
       setScreenError(null);
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: 8 } as any,
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, min: 15 } } as any,
         audio: false,
         selfBrowserSurface: 'exclude'
       } as any);

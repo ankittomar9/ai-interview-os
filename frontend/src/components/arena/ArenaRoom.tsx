@@ -26,6 +26,7 @@ interface ArenaRoomProps {
   candidateName?: string;
   plan?: SessionPlan;
   onFinish: () => void;
+  onRegisterFinishRecorder?: (fn: () => Promise<void>) => void;
 }
 
 export const ArenaRoom: React.FC<ArenaRoomProps> = ({
@@ -38,7 +39,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   sessionMode = 'INTERVIEW',
   candidateName,
   plan,
-  onFinish
+  onFinish,
+  onRegisterFinishRecorder
 }) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
@@ -79,8 +81,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   // 2. Code State (Keyed per slug to eliminate A10 cross-question bleed)
   const activeSlug = activeQuestion.problemSlug || activeQuestion.slug || `q_${activeQuestionIndex}`;
-  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({ [activeSlug]: activeQuestion.starterCode || '' }));
-  const code = codeMap[activeSlug] ?? (activeQuestion.starterCode || '');
+  const dsaPlaceholder = '// No starter code shipped for this problem — report to operator';
+  const fallbackStarter = activeQuestion.starterCode || ((activeQuestion.track === 'ALGORITHMS_DATA_STRUCTURES' || activeQuestion.track === 'SQL') ? dsaPlaceholder : '');
+  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({ [activeSlug]: fallbackStarter }));
+  const code = codeMap[activeSlug] ?? fallbackStarter;
   const setCode = useCallback((newCode: string) => { setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode })); }, [activeSlug]);
   const [language, setLanguage] = useState(activeTrack === 'SQL' ? 'sql' : 'java');
 
@@ -125,6 +129,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const recorder = useSessionRecorder({
     sessionId, isPlayground, onShareLost: () => { if (!isPlayground) setIsShareLost(true); }
   });
+
+  useEffect(() => {
+    onRegisterFinishRecorder?.(recorder.finish);
+  }, [onRegisterFinishRecorder, recorder.finish]);
 
   // Handlers
   const handleRunCode = async () => { await runCode(code, language); };
@@ -213,7 +221,14 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       onNextStage={handleNextStage}
       questionsList={questionsList}
       activeQuestionIndex={activeQuestionIndex}
-      onSelectQuestion={(idx) => { selectQuestion(idx); const nextQ = questionsList[idx]; if (nextQ?.starterCode) setCode(nextQ.starterCode); }}
+      onSelectQuestion={(idx) => {
+        selectQuestion(idx);
+        const nextQ = questionsList[idx];
+        const qFallback = (nextQ?.track === 'ALGORITHMS_DATA_STRUCTURES' || nextQ?.track === 'SQL') && !nextQ?.starterCode
+          ? '// No starter code shipped for this problem — report to operator'
+          : (nextQ?.starterCode || '');
+        if (qFallback) setCode(qFallback);
+      }}
       questionStatusMap={questionStatusMap}
       code={code}
       onChangeCode={setCode}
@@ -262,6 +277,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       isRecording={recorder.isRecording}
       recordingSeconds={recorder.recordingSeconds}
       recordingInterrupted={recorder.recordingInterrupted}
+      failedChunkCount={recorder.failedChunkCount}
       cameraActive={recorder.cameraActive}
       screenActive={recorder.screenActive}
       verificationBroken={recorder.verificationBroken}
