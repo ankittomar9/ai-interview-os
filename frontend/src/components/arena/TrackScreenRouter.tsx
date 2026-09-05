@@ -1,5 +1,6 @@
 import React from "react";
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider } from "../../types";
+import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SectionType } from "../../types";
+import { IntroScreen } from "./screens/IntroScreen";
 import { DsaScreen } from "./screens/DsaScreen";
 import { SqlScreen } from "./screens/SqlScreen";
 import { LldScreen } from "./screens/LldScreen";
@@ -11,6 +12,7 @@ import { ScreenErrorBoundary } from "./ScreenErrorBoundary";
 import type { ExecutionResult } from "../ide/TestcasePanel";
 
 interface TrackScreenRouterProps {
+  sectionType?: SectionType;
   track: InterviewTrack;
   sessionId: number;
   question: GenerateQuestionResponse;
@@ -57,108 +59,119 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   onSelectTrack,
   onBrowseCatalog
 }) => {
+  const resolveSectionType = (): SectionType => {
+    if (sectionType) return sectionType;
+    switch (track) {
+      case 'SQL': return 'SQL';
+      case 'SPRING_LLD':
+      case 'JAVA_SPRING_BOOT':
+      case 'LLD_HLD': return 'LLD';
+      case 'SYSTEM_DESIGN': return 'SYSTEM_DESIGN';
+      case 'BEHAVIORAL_STAR': return 'BEHAVIORAL';
+      case 'RESUME_BASED': return 'RESUME';
+      case 'ALGORITHMS_DATA_STRUCTURES':
+      case 'DSA_LLD':
+      case 'DSA_LLD_HLD':
+      case 'FULL_LOOP': return 'DSA';
+      default: return 'DSA';
+    }
+  };
+
+  const effectiveSection = resolveSectionType();
+
   const renderScreen = () => {
-    // 1. BEHAVIORAL STAR Track — Always bypass EmptyTrackState
-    if (track === "BEHAVIORAL_STAR") {
-      return (
-        <BehavioralScreen
-          sessionId={sessionId}
-          initialQuestion={question}
-          provider={provider}
-          apiKey={apiKey}
-          isPlayground={isPlayground}
-          onFinish={onFinish}
-          candidateName={candidateName}
-        />
-      );
+    if (questionsCount === 0 && (effectiveSection === 'DSA' || effectiveSection === 'SQL' || effectiveSection === 'LLD' || effectiveSection === 'SYSTEM_DESIGN')) {
+      return <EmptyTrackState track={track} onSelectTrack={onSelectTrack} onBrowseCatalog={onBrowseCatalog} />;
     }
 
-    // 2. RESUME BASED Track — Always bypass EmptyTrackState
-    if (track === "RESUME_BASED") {
-      return (
-        <ResumeScreen
-          sessionId={sessionId}
-          initialQuestion={question}
-          provider={provider}
-          apiKey={apiKey}
-          isPlayground={isPlayground}
-          onFinish={onFinish}
-          candidateName={candidateName}
-        />
-      );
-    }
+    switch (effectiveSection) {
+      case 'INTRODUCTION':
+        return <IntroScreen candidateName={candidateName} onNextStage={onNextStage} />;
 
-    // Empty state applies strictly to DSA, SQL, LLD, HLD
-    if (questionsCount === 0) {
-      return (
-        <EmptyTrackState
-          track={track}
-          onSelectTrack={onSelectTrack}
-          onBrowseCatalog={onBrowseCatalog}
-        />
-      );
-    }
+      case 'BEHAVIORAL':
+        return (
+          <BehavioralScreen
+            sessionId={sessionId}
+            initialQuestion={question}
+            provider={provider}
+            apiKey={apiKey}
+            isPlayground={isPlayground}
+            onFinish={onFinish}
+            candidateName={candidateName}
+          />
+        );
 
-    // 3. SQL Track
-    if (track === "SQL") {
-      return (
-        <SqlScreen
-          sessionId={sessionId}
-          question={question}
-          code={code}
-          onChangeCode={onChangeCode}
-          onRunCode={onRunCode}
-          onSubmitSolution={onSubmitSolution}
-          isExecuting={isExecuting}
-          executionResult={executionResult}
-          isPlayground={isPlayground}
-          onNextQuestion={onNextQuestion}
-          onNextStage={onNextStage}
-        />
-      );
-    }
+      case 'RESUME':
+        return (
+          <ResumeScreen
+            sessionId={sessionId}
+            initialQuestion={question}
+            provider={provider}
+            apiKey={apiKey}
+            isPlayground={isPlayground}
+            onFinish={onFinish}
+            candidateName={candidateName}
+          />
+        );
 
-    // 4. LLD Track
-    if (track === "SPRING_LLD" || (question.starterFiles && Object.keys(question.starterFiles).length > 0)) {
-      return (
-        <LldScreen
-          sessionId={sessionId}
-          question={question}
-          onSubmitProject={onSubmitSolution}
-        />
-      );
-    }
+      case 'SQL':
+        return (
+          <SqlScreen
+            sessionId={sessionId}
+            question={question}
+            code={code}
+            onChangeCode={onChangeCode}
+            onRunCode={onRunCode}
+            onSubmitSolution={onSubmitSolution}
+            isExecuting={isExecuting}
+            executionResult={executionResult}
+            isPlayground={isPlayground}
+            onNextQuestion={onNextQuestion}
+            onNextStage={onNextStage}
+          />
+        );
 
-    // 5. HLD System Design Track
-    if (track === "SYSTEM_DESIGN") {
-      return (
-        <HldScreen
-          sessionId={sessionId}
-          question={question}
-          provider={provider}
-          apiKey={apiKey}
-        />
-      );
-    }
+      case 'LLD':
+        return (
+          <LldScreen
+            sessionId={sessionId}
+            question={question}
+            onSubmitProject={onSubmitSolution}
+          />
+        );
 
-    // 6. Default DSA Track
-    return (
-      <DsaScreen
-        sessionId={sessionId}
-        question={question}
-        code={code}
-        onChangeCode={onChangeCode}
-        language={language}
-        onChangeLanguage={onChangeLanguage}
-        onRunCode={onRunCode}
-        onSubmitSolution={onSubmitSolution}
-        isExecuting={isExecuting}
-        executionResult={executionResult}
-        isPlayground={isPlayground}
-        onNextQuestion={onNextQuestion}
-        onNextStage={onNextStage}
-      />
-    );
+      case 'SYSTEM_DESIGN':
+        return (
+          <HldScreen
+            sessionId={sessionId}
+            question={question}
+            provider={provider}
+            apiKey={apiKey}
+          />
+        );
+
+      case 'DSA':
+        return (
+          <DsaScreen
+            sessionId={sessionId}
+            question={question}
+            code={code}
+            onChangeCode={onChangeCode}
+            language={language}
+            onChangeLanguage={onChangeLanguage}
+            onRunCode={onRunCode}
+            onSubmitSolution={onSubmitSolution}
+            isExecuting={isExecuting}
+            executionResult={executionResult}
+            isPlayground={isPlayground}
+            onNextQuestion={onNextQuestion}
+            onNextStage={onNextStage}
+          />
+        );
+
+      default:
+        return <EmptyTrackState track={track} onSelectTrack={onSelectTrack} onBrowseCatalog={onBrowseCatalog} />;
+    }
   };
 
   return <ScreenErrorBoundary>{renderScreen()}</ScreenErrorBoundary>;
