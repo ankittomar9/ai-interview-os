@@ -89,4 +89,35 @@ class ProctorSentinelControllerTest {
                 .andExpect(jsonPath("$.integrityScore").value(95))
                 .andExpect(jsonPath("$.riskLevel").value("CLEAN"));
     }
+
+    @Test
+    @DisplayName("POST /api/v1/proctor/events with VERIFY_CAMERA_OK should return 201 and isFlagged false")
+    void testRecordVerifyCameraOkEvent() throws Exception {
+        RecordTelemetryRequest request = new RecordTelemetryRequest(
+                1L,
+                TelemetryEventType.VERIFY_CAMERA_OK,
+                null,
+                null,
+                "VERIFY_CAMERA_OK"
+        );
+
+        TelemetrySummaryResponse.TelemetryEventResponse mockResponse = new TelemetrySummaryResponse.TelemetryEventResponse(
+                2L,
+                TelemetryEventType.VERIFY_CAMERA_OK,
+                null,
+                null,
+                "VERIFY_CAMERA_OK",
+                false,
+                Instant.now()
+        );
+
+        when(proctorService.recordEvent(any(RecordTelemetryRequest.class))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/v1/proctor/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.eventType").value("VERIFY_CAMERA_OK"))
+                .andExpect(jsonPath("$.isFlagged").value(false));
+    }
 }
