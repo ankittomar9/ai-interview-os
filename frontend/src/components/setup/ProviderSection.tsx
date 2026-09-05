@@ -1,12 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Cpu, Key, Zap } from 'lucide-react';
 import type { ModelProvider } from '../../types';
-import { getStoredApiKey, setStoredApiKey } from '../../services/api';
+import { getStoredApiKey, setStoredApiKey, fetchProvidersStatus, type ProviderStatusItem } from '../../services/api';
 
 interface ProviderOption {
   provider: ModelProvider;
   name: string;
-  latencyBadge: string;
   desc: string;
   recommended?: boolean;
 }
@@ -15,26 +14,22 @@ const PROVIDERS: ProviderOption[] = [
   {
     provider: 'GROQ',
     name: 'Groq Cloud',
-    latencyBadge: '< 200ms',
     desc: 'Ultra-low latency conversational dialogue + Whisper speech-to-text.',
     recommended: true
   },
   {
     provider: 'GEMINI',
     name: 'Google Gemini',
-    latencyBadge: 'Flash 2.0',
     desc: 'Native multimodal vision architecture evaluation & rubric synthesis.'
   },
   {
     provider: 'OPENAI',
-    name: 'Frontier (OpenAI-compatible)',
-    latencyBadge: 'High Quality',
-    desc: 'Highest quality interviewer. Uses cloud — purity badge will show egress.'
+    name: 'Frontier (OpenAI / GLM compatible)',
+    desc: 'Highest quality interviewer. Compatible with OpenAI, GLM, and OpenRouter.'
   },
   {
     provider: 'OLLAMA',
     name: 'Ollama (Local)',
-    latencyBadge: 'Offline',
     desc: 'Air-gapped local model inference running directly on host machine.'
   }
 ];
@@ -52,16 +47,47 @@ export const ProviderSection: React.FC<ProviderSectionProps> = ({
   apiKey,
   onChangeApiKey
 }) => {
+  const [providersStatus, setProvidersStatus] = useState<ProviderStatusItem[] | null>(null);
+  const [orchestratorDown, setOrchestratorDown] = useState(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadProvidersStatus = useCallback(async (byokKey?: string, targetProvider?: string) => {
+    try {
+      const data = await fetchProvidersStatus(byokKey, targetProvider);
+      setProvidersStatus(data);
+      setOrchestratorDown(false);
+    } catch {
+      setOrchestratorDown(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProvidersStatus();
+    const interval = setInterval(() => {
+      void loadProvidersStatus();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [loadProvidersStatus]);
+
   const handleProviderClick = (prov: ModelProvider) => {
     onSelectProvider(prov);
     localStorage.setItem('app.provider', prov);
     const stored = getStoredApiKey(prov.toLowerCase());
     onChangeApiKey(stored);
+    if (stored && stored.trim().length >= 20) {
+      void loadProvidersStatus(stored.trim(), prov);
+    }
   };
 
   const handleKeyInput = (val: string) => {
     onChangeApiKey(val);
     setStoredApiKey(selectedProvider.toLowerCase(), val);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    if (val.trim().length >= 20) {
+      debounceTimerRef.current = setTimeout(() => {
+        void loadProvidersStatus(val.trim(), selectedProvider);
+      }, 800);
+    }
   };
 
   return (
@@ -77,6 +103,7 @@ export const ProviderSection: React.FC<ProviderSectionProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {PROVIDERS.map((p) => {
           const isSelected = selectedProvider === p.provider;
+          const prov = providersStatus?.find((ps) => ps.provider === p.provider);
           return (
             <div
               key={p.provider}
@@ -101,8 +128,20 @@ export const ProviderSection: React.FC<ProviderSectionProps> = ({
               </div>
 
               <div className="mt-2 pt-1 border-t border-border/60 flex items-center justify-between text-[10px] text-text-3 font-mono">
-                <span>Latency</span>
-                <span className="text-primary font-semibold">{p.latencyBadge}</span>
+                <span>Status</span>
+                {orchestratorDown ? (
+                  <span className="text-text-3 truncate">◌ UNKNOWN — orchestrator down</span>
+                ) : !providersStatus ? (
+                  <span className="text-text-3">◌ UNKNOWN (probing)</span>
+                ) : prov && prov.state === 'READY' ? (
+                  <span className="text-success font-semibold truncate flex items-center gap-1">● {prov.state === 'READY' ? `READY · ${prov.configuredModel || ''}` : ''}</span>
+                ) : prov?.state === 'NOT_CONFIGURED' ? (
+                  <span className="text-text-3 font-semibold">○ NOT CONFIGURED</span>
+                ) : prov?.state === 'UNREACHABLE' ? (
+                  <span className="text-danger font-semibold truncate" title={prov?.reason || undefined}>● UNREACHABLE</span>
+                ) : (
+                  <span className="text-danger font-semibold truncate" title={prov?.reason || undefined}>● ERROR: {prov?.reason || 'Failed'}</span>
+                )}
               </div>
             </div>
           );

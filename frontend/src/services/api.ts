@@ -268,6 +268,36 @@ export const evaluateArchitectureDesign = async (
     return res.json();
 };
 
+export interface ProviderStatusItem {
+    provider: string;
+    configPresent: boolean;
+    keySource: 'ENV' | 'BYOK' | 'NONE';
+    state: 'READY' | 'NOT_CONFIGURED' | 'ERROR' | 'UNREACHABLE';
+    configuredModel?: string;
+    modelListed?: boolean | null;
+    reason?: string | null;
+    lastKnown?: { outcome: string; httpStatus?: number; at: number } | null;
+    checkedAt: number;
+}
+
+export const fetchProvidersStatus = async (
+    byokKey?: string,
+    provider?: string
+): Promise<ProviderStatusItem[]> => {
+    const headers: Record<string, string> = {};
+    if (byokKey) headers['X-InterviewOS-Key'] = byokKey;
+    const query = provider ? `?provider=${encodeURIComponent(provider)}` : '';
+    const res = await fetch(`${AI_API}/providers/status${query}`, { headers });
+    if (!res.ok) throw new Error('Failed to fetch provider status');
+    return res.json();
+};
+
+export const refreshProvidersStatus = async (): Promise<ProviderStatusItem[]> => {
+    const res = await fetch(`${AI_API}/providers/status/refresh`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to refresh provider status');
+    return res.json();
+};
+
 // --- Groq / Local Whisper Speech-To-Text Transcription Endpoint (:8082) ---
 export const transcribeAudio = async (
     audioBlob: Blob,

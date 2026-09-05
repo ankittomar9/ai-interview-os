@@ -25,6 +25,7 @@ ai:
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}
       default-model: ${OLLAMA_MODEL:qwen2.5-coder:7b}
+    # D8: GLM & OpenAI-compatible endpoints: Set OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4/chat/completions + OPENAI_MODEL_* + key
     openai:
       endpoint: ${OPENAI_BASE_URL:https://api.openai.com/v1/chat/completions}
       default-model: ${OPENAI_MODEL_DIALOGUE:gpt-4o}
