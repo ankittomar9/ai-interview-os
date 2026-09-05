@@ -25,7 +25,7 @@ export const ShareLostOverlay: React.FC<ShareLostOverlayProps> = ({
   useEffect(() => {
     void sendTelemetryEvent({
       sessionId,
-      eventType: 'TAB_BLUR',
+      eventType: 'SHARE_LOST',
       metadataDetails: `SHARE_LOST at=${Date.now()}`
     });
 
@@ -76,7 +76,7 @@ export const ShareLostOverlay: React.FC<ShareLostOverlayProps> = ({
         setErrorMsg('Window or tab sharing is not accepted. You must share your entire screen/monitor.');
         void sendTelemetryEvent({
           sessionId,
-          eventType: 'TAB_BLUR',
+          eventType: 'VERIFY_SCREEN_REJECTED',
           metadataDetails: `SHARE_SCOPE_REJECTED scope=${displaySurface}`
         });
         return;
@@ -85,7 +85,7 @@ export const ShareLostOverlay: React.FC<ShareLostOverlayProps> = ({
       setScreenStream(stream);
       void sendTelemetryEvent({
         sessionId,
-        eventType: 'TAB_BLUR',
+        eventType: 'SHARE_RESTORED',
         metadataDetails: `SHARE_RESTORED at=${Date.now()}`
       });
 

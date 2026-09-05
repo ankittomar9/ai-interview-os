@@ -31,7 +31,7 @@ export const PhoneProctorView: React.FC<Props> = ({ sessionId }) => {
 
         sendTelemetryEvent({
           sessionId,
-          eventType: 'TAB_FOCUS',
+          eventType: 'SECONDARY_CAMERA_CONNECTED',
           metadataDetails: 'Secondary Mobile Companion Camera Connected and Streaming.'
         });
       } catch (err: any) {

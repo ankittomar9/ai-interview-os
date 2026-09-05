@@ -28,7 +28,21 @@ export type MessageType = 'QUESTION' | 'EXPLANATION' | 'CODE_SUBMISSION' | 'HINT
 
 export type HiringVerdict = 'STRONG_HIRE' | 'HIRE' | 'LEAN_HIRE' | 'NO_HIRE';
 
-export type TelemetryEventType = 'TAB_BLUR' | 'TAB_FOCUS' | 'PASTE_DUMP' | 'KEYSTROKE_BURST' | 'IDLE_TIMEOUT' | 'COPY_ATTEMPT';
+export type TelemetryEventType =
+    | 'TAB_BLUR'
+    | 'TAB_FOCUS'
+    | 'PASTE_DUMP'
+    | 'KEYSTROKE_BURST'
+    | 'IDLE_TIMEOUT'
+    | 'COPY_ATTEMPT'
+    | 'VERIFY_CAMERA_OK'
+    | 'VERIFY_MIC_OK'
+    | 'VERIFY_SCREEN_OK'
+    | 'VERIFY_SCREEN_REJECTED'
+    | 'SHARE_LOST'
+    | 'SHARE_RESTORED'
+    | 'SECONDARY_CAMERA_CONNECTED'
+    | 'SINGLE_CAMERA_ACKNOWLEDGED';
 
 export interface IntegritySignals {
     keystrokeCount?: number;

@@ -145,7 +145,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
           cameraTelemetrySent.current = true;
           void sendTelemetryEvent({
             sessionId,
-            eventType: 'TAB_BLUR',
+            eventType: 'VERIFY_CAMERA_OK',
             metadataDetails: 'VERIFY_CAMERA_OK'
           });
         }
@@ -172,7 +172,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
                 micTelemetrySent.current = true;
                 void sendTelemetryEvent({
                   sessionId,
-                  eventType: 'TAB_BLUR',
+                  eventType: 'VERIFY_MIC_OK',
                   metadataDetails: 'VERIFY_MIC_OK'
                 });
               }
@@ -229,17 +229,17 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         }
         void sendTelemetryEvent({
           sessionId,
-          eventType: 'TAB_BLUR',
+          eventType: 'VERIFY_SCREEN_OK',
           metadataDetails: 'VERIFY_SCREEN_OK scope=MONITOR'
         });
       } else if (displaySurface === 'window' || displaySurface === 'browser') {
         track.stop();
         setScreenOk(false);
         setScreenScope(displaySurface === 'window' ? 'WINDOW' : 'BROWSER');
-        setScreenError('Window/tab sharing is not accepted â€” share your entire screen.');
+        setScreenError('Window/tab sharing is not accepted — share your entire screen.');
         void sendTelemetryEvent({
           sessionId,
-          eventType: 'TAB_BLUR',
+          eventType: 'VERIFY_SCREEN_REJECTED',
           metadataDetails: `SHARE_SCOPE_REJECTED scope=${displaySurface}`
         });
         return;
@@ -255,7 +255,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         }
         void sendTelemetryEvent({
           sessionId,
-          eventType: 'TAB_BLUR',
+          eventType: 'VERIFY_SCREEN_OK',
           metadataDetails: 'VERIFY_SCREEN_OK scope=UNKNOWN'
         });
       }
@@ -272,7 +272,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
       if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
         void sendTelemetryEvent({
           sessionId,
-          eventType: 'TAB_BLUR',
+          eventType: 'VERIFY_SCREEN_REJECTED',
           metadataDetails: 'VERIFY_SCREEN_DENIED'
         });
       } else {
@@ -302,7 +302,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
       if (!secondaryCameraConnected && singleCameraAcknowledged) {
         void sendTelemetryEvent({
           sessionId,
-          eventType: 'TAB_BLUR',
+          eventType: 'SINGLE_CAMERA_ACKNOWLEDGED',
           metadataDetails: 'SINGLE_CAMERA_ONLY_ACKNOWLEDGED: Candidate completed interview with single front camera; 45-degree angle unmonitored.'
         });
       }
@@ -341,7 +341,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   };
 
   const isSecondarySatisfied = !isInterview || secondaryCameraConnected || singleCameraAcknowledged;
-  const allChecksPassed = !isInterview || (cameraOk && micOk && screenOk && isSecondarySatisfied && consentGiven && networkOk);
+  const allChecksPassed = !isInterview || (cameraOk && micOk && screenOk && isSecondarySatisfied && consentGiven);
 
   return (
     <div className="min-h-screen bg-bg text-text py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center select-text">
@@ -755,7 +755,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
         {!allChecksPassed && envMode === 'prod' && (
           <div className="bg-elevated border border-warning/30 p-3 rounded-lg flex items-center gap-2 text-xs text-warning">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>Please complete all checklist gates above (Webcam, Mic, Full-Screen Share, Secondary Camera/Acknowledgement, Consent, Network) to proceed.</span>
+            <span>Please complete all checklist gates above (Webcam, Mic, Full-Screen Share, Secondary Camera/Acknowledgement, Consent) to proceed.</span>
           </div>
         )}
 
