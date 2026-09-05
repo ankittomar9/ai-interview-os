@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
-import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan } from './types';
+import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, PlannedSection } from './types';
 import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession } from './services/api';
 import { clearVerificationStreams } from './services/verificationStreams';
 import { SetupScreen } from './components/SetupScreen';
@@ -36,6 +36,7 @@ export function App() {
   const [sessionPlan, setSessionPlan] = useState<SessionPlan | undefined>(undefined);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [playlistQuestions, setPlaylistQuestions] = useState<GenerateQuestionResponse[]>([]);
+  const [sectionQuestions, setSectionQuestions] = useState<GenerateQuestionResponse[][]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -95,35 +96,82 @@ export function App() {
 
       let initialQ: GenerateQuestionResponse;
       let plannedList: GenerateQuestionResponse[] = [];
+      let mappedSectionQuestions: GenerateQuestionResponse[][] = [];
 
-      if (chosenMode === 'INTERVIEW' && session.plannedSlugs && session.plannedSlugs.length > 0) {
-        try {
-          plannedList = await listQuestions({
-            slugs: session.plannedSlugs,
-            sessionMode: 'INTERVIEW',
-            sessionId: session.id
-          });
-        } catch (e) {
-          console.debug('Notice fetching planned questions list:', e);
+      if (chosenMode === 'INTERVIEW' && session.plan?.sections) {
+        const allSlugs = (session.plannedSlugs && session.plannedSlugs.length > 0)
+          ? session.plannedSlugs
+          : session.plan.sections.flatMap((s: PlannedSection) => s.problemSlugs || []);
+
+        const fetchedMap = new Map<string, GenerateQuestionResponse>();
+        if (allSlugs.length > 0) {
+          try {
+            const fetched = await listQuestions({
+              slugs: allSlugs,
+              sessionMode: 'INTERVIEW',
+              sessionId: session.id
+            });
+            for (const q of fetched) {
+              if (q.slug) fetchedMap.set(q.slug, q);
+            }
+          } catch (e) {
+            console.debug('Notice fetching planned questions list:', e);
+          }
         }
-      }
 
-      if (plannedList.length > 0) {
-        initialQ = plannedList[0];
-      } else {
-        initialQ = await generateQuestion({
-          roleTitle: config.roleTitle,
-          track: config.track,
-          difficulty: config.difficulty,
-          jobDescription: config.jobDescription,
-          modelProvider: config.provider,
-          apiKey: config.apiKey
+        mappedSectionQuestions = session.plan.sections.map((sec: PlannedSection) => {
+          const slugs: string[] = sec.problemSlugs || [];
+          return slugs.map((s: string) => fetchedMap.get(s)).filter((q: GenerateQuestionResponse | undefined): q is GenerateQuestionResponse => Boolean(q));
         });
-        plannedList = [initialQ];
+
+        const firstAvailableQ = mappedSectionQuestions.find((sq) => sq.length > 0)?.[0];
+        if (firstAvailableQ) {
+          initialQ = firstAvailableQ;
+          plannedList = mappedSectionQuestions.flat();
+        } else {
+          initialQ = await generateQuestion({
+            roleTitle: config.roleTitle,
+            track: config.track,
+            difficulty: config.difficulty,
+            jobDescription: config.jobDescription,
+            modelProvider: config.provider,
+            apiKey: config.apiKey
+          });
+          mappedSectionQuestions = [[initialQ]];
+          plannedList = [initialQ];
+        }
+      } else {
+        if (session.plannedSlugs && session.plannedSlugs.length > 0) {
+          try {
+            plannedList = await listQuestions({
+              slugs: session.plannedSlugs,
+              sessionMode: 'PLAYGROUND',
+              sessionId: session.id
+            });
+          } catch (e) {
+            console.debug('Notice fetching planned questions list:', e);
+          }
+        }
+
+        if (plannedList.length > 0) {
+          initialQ = plannedList[0];
+        } else {
+          initialQ = await generateQuestion({
+            roleTitle: config.roleTitle,
+            track: config.track,
+            difficulty: config.difficulty,
+            jobDescription: config.jobDescription,
+            modelProvider: config.provider,
+            apiKey: config.apiKey
+          });
+          plannedList = [initialQ];
+        }
+        mappedSectionQuestions = [plannedList];
       }
 
       setQuestion(initialQ);
       setPlaylistQuestions(plannedList);
+      setSectionQuestions(mappedSectionQuestions);
 
       if (chosenMode === 'PLAYGROUND') {
         // Spec: Skip PreInterviewChecklist in Playground mode
@@ -263,6 +311,7 @@ export function App() {
           sessionId={sessionId}
           question={question}
           initialQuestionsList={playlistQuestions}
+          sectionQuestions={sectionQuestions}
           provider={provider}
           apiKey={apiKey}
           sessionMode={sessionMode}

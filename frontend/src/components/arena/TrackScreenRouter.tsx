@@ -13,6 +13,7 @@ import type { ExecutionResult } from "../ide/TestcasePanel";
 
 interface TrackScreenRouterProps {
   sectionType?: SectionType;
+  sectionQuestions?: GenerateQuestionResponse[][];
   track: InterviewTrack;
   sessionId: number;
   question: GenerateQuestionResponse;
@@ -38,6 +39,7 @@ interface TrackScreenRouterProps {
 
 export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   sectionType,
+  sectionQuestions: _sectionQuestions,
   track,
   sessionId,
   question,
