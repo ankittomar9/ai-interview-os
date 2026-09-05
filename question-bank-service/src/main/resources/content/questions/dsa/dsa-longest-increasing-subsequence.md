@@ -28,6 +28,19 @@ hints:
 editorial: |
   ### Patience Sorting with Binary Search
   Maintain a dynamic array of smallest tail elements of all increasing subsequences of various lengths.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement length of longest increasing subsequence
+      public static int lengthOfLIS(int[] nums) { return 0; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), nums[] = new int[n];
+          for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
+          System.out.println(lengthOfLIS(nums));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

@@ -28,6 +28,7 @@ class ContentValidatorTest {
                 .difficulty("MID")
                 .problemStatement("Given an array of integers, find the sum of all elements.")
                 .solutionCode("public class Main { public static void main(String[] args) {} }")
+                .starterCode("public class Main { public static void main(String[] args) {} }")
                 .sampleTests(List.of(new QuestionDocument.TestCase("Sample 1", "1 2", "3")))
                 .hiddenTests(List.of(new QuestionDocument.HiddenTestCase("Hidden 1", "0 0", "0", 50)))
                 .build();
@@ -48,6 +49,7 @@ class ContentValidatorTest {
                 .track("ALGORITHMS_DATA_STRUCTURES")
                 .difficulty("MID")
                 .problemStatement("Given an array of integers, find the sum of all elements.")
+                .starterCode("public class Main { public static void main(String[] args) {} }")
                 .sampleTests(List.of(new QuestionDocument.TestCase("Sample 1", "1 2", "3")))
                 .build();
 
@@ -56,5 +58,26 @@ class ContentValidatorTest {
         assertFalse(result.isValid());
         assertEquals("DRAFT", result.status());
         assertFalse(result.errors().isEmpty());
+    }
+
+    @Test
+    @DisplayName("DSA question with missing starterCode lands in DRAFT status")
+    void testMissingStarterCodeLandsInDraft() {
+        QuestionDocument doc = QuestionDocument.builder()
+                .slug("dsa-no-starter")
+                .title("No Starter")
+                .track("ALGORITHMS_DATA_STRUCTURES")
+                .difficulty("MID")
+                .problemStatement("Given an array of integers, find the sum of all elements.")
+                .solutionCode("public class Main { public static void main(String[] args) {} }")
+                .sampleTests(List.of(new QuestionDocument.TestCase("Sample 1", "1 2", "3")))
+                .hiddenTests(List.of(new QuestionDocument.HiddenTestCase("Hidden 1", "0 0", "0", 50)))
+                .build();
+
+        ContentValidator.ValidationResult result = validator.validate(doc, "markdown");
+
+        assertFalse(result.isValid());
+        assertEquals("DRAFT", result.status());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("starterCode")));
     }
 }

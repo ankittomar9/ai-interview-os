@@ -28,6 +28,19 @@ hints:
 editorial: |
   ### Bottom-up Dynamic Programming
   For each amount `i` from 1 to `amount`, iterate over each coin: `dp[i] = min(dp[i], dp[i - coin] + 1)`.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement minimum coin change
+      public static int coinChange(int[] coins, int amount) { return -1; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), amount = sc.nextInt(), coins[] = new int[n];
+          for (int i = 0; i < n; i++) coins[i] = sc.nextInt();
+          System.out.println(coinChange(coins, amount));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

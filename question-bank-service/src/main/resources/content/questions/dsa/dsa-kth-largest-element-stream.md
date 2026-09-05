@@ -25,6 +25,23 @@ hints:
 editorial: |
   ### Min-Heap of Size K
   Keep exactly K elements in the heap. If heap size > K, remove the smallest element (`poll`). Root is the Kth largest.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      static class KthLargest {
+          public KthLargest(int k, int[] nums) {}
+          public int add(int val) { return -1; } // TODO: implement
+      }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int k = sc.nextInt(), n = sc.nextInt(), nums[] = new int[n];
+          for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
+          KthLargest kth = new KthLargest(k, nums);
+          int q = sc.nextInt();
+          while (q-- > 0 && sc.hasNextInt()) System.out.println(kth.add(sc.nextInt()));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

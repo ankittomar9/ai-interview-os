@@ -65,6 +65,9 @@ public class ContentValidator {
                     }
                 }
             }
+            if (doc.getStarterCode() == null || doc.getStarterCode().isBlank()) {
+                errors.add("DSA Question requires valid starterCode");
+            }
 
             int testCount = (doc.getSampleTests() != null ? doc.getSampleTests().size() : 0) +
                             (doc.getHiddenTests() != null ? doc.getHiddenTests().size() : 0);

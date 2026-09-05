@@ -28,6 +28,19 @@ hints:
 editorial: |
   ### Binary Search on Inflection Point
   Whenever `nums[mid] > nums[right]`, we know the pivot/minimum lies strictly in `mid + 1 .. right`.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement find minimum in rotated sorted array
+      public static int findMin(int[] nums) { return 0; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), nums[] = new int[n];
+          for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
+          System.out.println(findMin(nums));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

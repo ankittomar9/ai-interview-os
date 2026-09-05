@@ -28,6 +28,17 @@ hints:
 editorial: |
   ### Post-Order Tree Traversal
   At each node: calculate `localMax = node.val + max(0, leftGain) + max(0, rightGain)` and update global max. Return `node.val + max(0, max(leftGain, rightGain))` to the parent.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement binary tree maximum path sum
+      public static int maxPathSum(String treeData) { return 0; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextLine()) return;
+          System.out.println(maxPathSum(sc.nextLine().trim()));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

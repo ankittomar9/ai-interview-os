@@ -24,6 +24,25 @@ hints:
 editorial: |
   ### Dual Heap Stream Balancing
   Maintain maxHeap size >= minHeap size. The median is either the top of maxHeap (odd) or the average of both tops (even).
+starterCode: |
+  import java.util.*;
+  public class Main {
+      static class MedianFinder {
+          public void addNum(int num) {} // TODO: implement
+          public double findMedian() { return 0.0; } // TODO: implement
+      }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int q = sc.nextInt();
+          MedianFinder mf = new MedianFinder();
+          while (q-- > 0 && sc.hasNext()) {
+              String op = sc.next();
+              if ("add".equalsIgnoreCase(op)) mf.addNum(sc.nextInt());
+              else if ("find".equalsIgnoreCase(op)) System.out.printf(Locale.US, "%.1f\n", mf.findMedian());
+          }
+      }
+  }
 solutionCode: |
   import java.util.*;
 

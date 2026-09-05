@@ -28,6 +28,19 @@ hints:
 editorial: |
   ### Dijkstra's Shortest Path Algorithm
   Compute the minimum transmission time from the source node `K` to all `N` nodes. The answer is `max(dist)`. If any node remains unreachable, return `-1`.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement network delay time
+      public static int networkDelayTime(int n, int[][] times, int k) { return -1; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNextInt()) return;
+          int n = sc.nextInt(), m = sc.nextInt(), edges[][] = new int[m][3];
+          for (int i = 0; i < m; i++) for (int j = 0; j < 3; j++) edges[i][j] = sc.nextInt();
+          System.out.println(networkDelayTime(n, edges, sc.nextInt()));
+      }
+  }
 solutionCode: |
   import java.util.*;
 

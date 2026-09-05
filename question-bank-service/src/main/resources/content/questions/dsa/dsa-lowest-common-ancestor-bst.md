@@ -28,6 +28,18 @@ hints:
 editorial: |
   ### BST Value Navigation
   Starting from root: if `p < root.val && q < root.val` walk left. If `p > root.val && q > root.val` walk right. Otherwise, the current node is the LCA.
+starterCode: |
+  import java.util.*;
+  public class Main {
+      // TODO: implement lowest common ancestor in BST
+      public static int lowestCommonAncestor(String treeData, int p, int q) { return -1; }
+      public static void main(String[] args) {
+          Scanner sc = new Scanner(System.in);
+          if (!sc.hasNext()) return;
+          String treeLine = sc.nextLine().trim();
+          System.out.println(lowestCommonAncestor(treeLine, sc.nextInt(), sc.nextInt()));
+      }
+  }
 solutionCode: |
   import java.util.*;
 
