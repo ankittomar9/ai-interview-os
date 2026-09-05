@@ -13,6 +13,15 @@
 - New endpoints under /api/v1/...; new config keys in config-repo with ${ENV:default} overrides
 - Match the existing *ControllerTest style per module for new tests
 
+## Multi-Machine & Multi-Session Sync (MANDATORY FIRST STEP)
+Development occurs across multiple laptops and independent Antigravity sessions with local execution:
+- **ALWAYS fetch and merge remote before touching code**: As the very first action of ANY fix, task, or SPEC implementation:
+  1. `git fetch origin master`
+  2. If on `master`: merge/fast-forward incoming remote commits (`git pull --ff-only origin master` or `git merge origin/master`).
+  3. If creating a feature/spec branch: branch directly from updated `origin/master` (e.g. `git checkout -b <branch> origin/master`).
+  4. Verify the baseline commit matches `origin/master` and the working tree is clean.
+- **NEVER work on stale local refs**: Another laptop or session may have pushed updates. Starting from stale state leads to baseline drift, merge conflicts, and lost progress. Always sync first.
+
 ## Guardrails — DO NOT
 - Add top-level Maven modules or change ports without asking
 - Use H2 for any new feature; new persistent data → MongoDB (existing) or PostgreSQL (target)
@@ -31,7 +40,8 @@
 - Run ONE shell command per invocation. Never concatenate commands on a single line.
 - NEVER use Remove-Item / rm with wildcards inside the repository.
   If cleanup is needed, delete exact named paths only.
-- Git workflow: `git add -u`, then `git commit -m "..."`, then `git push origin <branch>` — three separate invocations.
+- Pre-task sync: `git fetch origin master` and merge incoming remote changes before editing any files.
+- Git workflow: `git add <files>`, then `git commit -m "..."`, then `git push origin <branch>` — separate invocations.
 - If a command prompts for confirmation, treat that as a FAILED command and stop.
 
 ## Docker hygiene

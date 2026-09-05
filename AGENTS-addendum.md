@@ -18,6 +18,9 @@ This document specifies mandatory development practices and guardrails for human
 
 ## 📋 Task Enforcement & Workflow Rules
 
+0. **Sync Remote First (Multi-Machine / Multi-Session Rule)**:
+   - Development is actively split across multiple laptops and local Antigravity agent sessions.
+   - **FIRST ACTION OF ANY TASK OR SPEC**: Run `git fetch origin master` and merge incoming remote changes (`git merge origin/master` or branch from `origin/master`). Never implement fixes or specs against stale local state.
 1. **One Spec $\to$ One Commit**:
    - Work is organized by SPEC ID (e.g. `SPEC-002`, `SPEC-003`).
    - Each spec task must be implemented and committed atomically. Never bundle unrelated features into a single commit.
