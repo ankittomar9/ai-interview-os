@@ -1,6 +1,6 @@
-# SPEC-PLAN-2 Verification Log & Audit Trail
+# SPEC-PLAN-1 Verification Log & Audit Trail
 
-This append-only verification log records the evidence, automated test runs, line counts, and commit hashes for each batch executed under **SPEC-PLAN-2**.
+This append-only verification log records the evidence, automated test runs, line counts, and commit hashes for each batch executed under **SPEC-PLAN-1**.
 
 ---
 
@@ -38,7 +38,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 1.62s
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS (Commit candidate ready for master merge)
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -68,7 +68,7 @@ This append-only verification log records the evidence, automated test runs, lin
   - `HumanTranscriptPdfGeneratorTest.testPdfGenerationWithMeta`: verifies PDF rendering directly from `TranscriptPdfMeta`.
   - `AiRubricClientTest.testEvaluateRubric_FallbackOn415`: verifies fallback metric increment with `reason=UNSUPPORTED_MEDIA_TYPE_415`.
   - `AiRubricClientTest.testEvaluateRubric_FallbackOnTimeout`: verifies fallback metric increment with `reason=TIMEOUT_OR_NETWORK`.
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -100,7 +100,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 1.09s
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -142,11 +142,21 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 1.15s
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
 ## Batch 5: [A4] — Whisper WER Reversion, Real Multi-Speaker Dataset & Proper Noun Biasing
+
+> [!CAUTION]
+> **RETRACTION NOTE (Per REMEDIATION-HOTFIX-1 §0)**:
+> The previous claims in this batch of "verified WER gates", "0.79% WER", and "+98.05% relative reduction" were produced via simulation (`--simulate-biased`) and author-generated hypothesis text, not live speech-to-text decodes. Those simulated reports (`wer_report.json` and `baseline_wer.json`) have been retracted from `origin/master` in `hotfix/h1-stt-integrity`.
+> Authentic live-measured evaluation was executed in H1.3 through `ai-orchestrator-service` (port 8082) calling a live `whisper-sidecar` container (port 8178), logged with per-clip timestamps at `scripts/eval/logs/wer_live_2026-09-05.log`:
+> - **Arm A (Baseline)**: Corpus WER = **7.14%** (18/252 words), Avg Latency = **3840.7ms**, `gate_absolute_wer_le_8pct`: **PASS**.
+> - **Arm B (Biased)**: Corpus WER = **4.76%** (12/252 words), Avg Latency = **3977.8ms**, Relative WER Reduction = **+33.33%**.
+> - **Gates**: `gate_absolute_wer_le_8pct`: **PASS** | `gate_relative_reduction_ge_40pct`: **FAIL (+33.33%)** (reported honestly as-is).
+> Acceptance WER of the STT stream is governed by H3 human clips (`scripts/eval/manifest_user.csv`), not synthetic TTS.
+
 
 - **Branch**: `fix/ledger-a4`
 - **Scope**:
@@ -185,7 +195,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 855ms
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -221,7 +231,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 1.05s
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -254,7 +264,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 1.05s
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -298,7 +308,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 924ms
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -335,7 +345,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 1.11s
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -392,7 +402,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 1.22s
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -439,7 +449,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 738ms
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -477,7 +487,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 836ms
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -526,7 +536,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 884ms
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -568,6 +578,8 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 811ms
     Exit Code: 0
     ```
+- **Implementer Status**: claim submitted, pending blob review
+
 ---
 
 ## Batch 15: [C3] — Setup Plan Preview + Level Auto-Suggest
@@ -621,7 +633,7 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 787ms
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS
+- **Implementer Status**: claim submitted, pending blob review
 
 ---
 
@@ -689,4 +701,28 @@ This append-only verification log records the evidence, automated test runs, lin
     ✓ built in 761ms
     Exit Code: 0
     ```
-- **Reviewer Status**: PASS (Commit candidate ready for master merge)
+- **Implementer Status**: claim submitted, pending blob review
+
+---
+
+## SPEC-PLAN-1 Final Batch Summary & Audit Ledger
+
+| Batch | Code | Scope / Merge Description | Merge Commit | Implementer Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | `[A1+A10+A11]` | Speech Salvage, Editor Sync, Workspace Clean Starter | `4aebd6d` | claim submitted, pending blob review |
+| **2** | `[A2+A3]` | Evaluation PDF LOB Detachment & Rubric Fallback Telemetry | `7b95efc` | claim submitted, pending blob review |
+| **3** | `[A15]` | Run vs. Submit Server-Side Contract & Submissions Ledger | `79b13c4` | claim submitted, pending blob review |
+| **4** | `[A16+A6]` | Recording Chunk Upload Bug, 413 Drop Telemetry, Replay Honesty | `0290995` | claim submitted, pending blob review |
+| **5** | `[A4]` | Whisper WER Reversion, Real Multi-Speaker Dataset & Proper Noun Biasing *(Retracted as evidence; replaced by H1 live run)* | `8349bd4` | claim submitted, pending blob review |
+| **6** | `[A5+A14]` | Sidecar Dockerfile Scoping & Docs/Hygiene | `6d0dc2c` | claim submitted, pending blob review |
+| **7** | `[A7]` | Primary Groq rubric purity gate & egress tracking | `446e13b` | claim submitted, pending blob review |
+| **8** | `[A8]` | Tri-state readiness probe, 5s timeout/poll, honest warm-up banner | `a6772ae` | claim submitted, pending blob review |
+| **9** | `[A9]` | Difficulty ladder provenance, family-key mapping, 28-combo suite | `bbfd03d` | claim submitted, pending blob review |
+| **10** | `[A12]` | Section transitions & evidence-less stage completion | `ab68e20` | claim submitted, pending blob review |
+| **11** | `[A13+A18]` | Report integrity signals & honest elapsed duration | `00c7fa2` | claim submitted, pending blob review |
+| **12** | `[C0]` | Schema Evolution & Contract Foundation | `ceb3142` | claim submitted, pending blob review |
+| **13** | `[C1]` | Deterministic Plan Resolver & Question Allocator | `776ad3c` | claim submitted, pending blob review |
+| **14** | `[C2]` | State Machine & Dialogue Scoping | `2f18695` | claim submitted, pending blob review |
+| **15** | `[C3]` | Setup Plan Preview + Level Auto-Suggest | `45f3223` | claim submitted, pending blob review |
+| **16** | `[C4]` | Evaluation Scoping + Plan-vs-Actual Breakdown | `f989c63` | claim submitted, pending blob review |
+
