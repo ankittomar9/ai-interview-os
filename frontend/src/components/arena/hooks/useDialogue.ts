@@ -4,6 +4,7 @@ import { processDialogueTurn, addMessageToSession, recordSectionTransition } fro
 import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
 import { buildNavSections, type StageNavInfo } from "../../../lib/plan-navigation";
 import { isEchoOverlap } from "../../../lib/echo-overlap-filter";
+import { buildCandidateTurnPayload } from "../../../lib/turnPayload";
 import { toast } from "../../../hooks/useToast";
 
 export interface DialogueMessage {
@@ -202,25 +203,34 @@ export function useDialogue({
         echoFilteredCount: echoFilteredCountRef.current
       };
 
+      const resolvedQuestionContext = getQuestionContext ? getQuestionContext() : (questionContext || "");
+      const resolvedSectionTitle = getSectionQuestionTitle ? getSectionQuestionTitle() : sectionQuestionTitle;
+
+      const payload = buildCandidateTurnPayload({
+        sectionType: currentNavSection.sectionType,
+        textToSend,
+        codeSnapshot,
+        questionContext: resolvedQuestionContext,
+        problemSlug,
+        sectionQuestionTitle: resolvedSectionTitle
+      });
+
       await addMessageToSession(sessionId, {
         senderRole: "CANDIDATE",
-        content: textToSend,
-        codeSnippet: codeSnapshot,
+        content: payload.candidateExplanation,
+        codeSnippet: payload.codeSnippet,
         messageType: "EXPLANATION",
         metadata: { stage: currentStage, sectionType: String(currentNavSection.sectionType) },
         integritySignals: integrity
       });
 
-      const resolvedQuestionContext = getQuestionContext ? getQuestionContext() : (questionContext || "");
-      const resolvedSectionTitle = getSectionQuestionTitle ? getSectionQuestionTitle() : sectionQuestionTitle;
-
       const aiResponse = await processDialogueTurn({
         sessionId,
-        questionContext: resolvedQuestionContext,
-        sectionQuestionTitle: resolvedSectionTitle,
-        problemSlug,
-        candidateExplanation: textToSend,
-        candidateCode: codeSnapshot,
+        questionContext: payload.questionContext,
+        sectionQuestionTitle: payload.sectionQuestionTitle,
+        problemSlug: payload.problemSlug,
+        candidateExplanation: payload.candidateExplanation,
+        candidateCode: payload.candidateCode,
         modelProvider: provider,
         apiKey,
         sessionMode: isPlayground ? "PLAYGROUND" : "INTERVIEW",
@@ -258,6 +268,24 @@ export function useDialogue({
 
       setMessages((prev) => [...prev, aiMsg]);
       setHasUnread(true);
+
+      // SPEC-PLAN-3 D3: Persist interviewer turns to the persistent audit trail
+      try {
+        await addMessageToSession(sessionId, {
+          senderRole: "AI",
+          content: fullText,
+          messageType: "EXPLANATION",
+          metadata: {
+            stage: currentStage,
+            sectionType: String(currentNavSection.sectionType),
+            provider,
+            model: (aiResponse as any).model ?? ""
+          },
+          integritySignals: integrity
+        });
+      } catch (saveErr) {
+        console.warn("[useDialogue] Failed to persist AI message:", saveErr);
+      }
 
       if (aiResponse.recommendedAction === "ADVANCE_STAGE") {
         if (activeSectionIndex < navSections.length - 1) {
@@ -305,6 +333,30 @@ export function useDialogue({
 
       setMessages((prev) => [...prev, fallbackMsg]);
       setHasUnread(true);
+
+      // SPEC-PLAN-3 D3: Honest-transcript doctrine - persist rendered fallback with metadata.error = "true"
+      try {
+        const baseIntegrity = getIntegritySignals ? getIntegritySignals() : undefined;
+        const errIntegrity: IntegritySignals = {
+          ...(baseIntegrity || {}),
+          echoFilteredCount: echoFilteredCountRef.current
+        };
+        await addMessageToSession(sessionId, {
+          senderRole: "AI",
+          content: fallbackMsg.content,
+          messageType: "EXPLANATION",
+          metadata: {
+            stage: currentStage,
+            sectionType: String(currentNavSection.sectionType),
+            provider,
+            error: "true",
+            offlineFallback: "true"
+          },
+          integritySignals: errIntegrity
+        });
+      } catch (saveErr) {
+        console.warn("[useDialogue] Failed to persist fallback AI message:", saveErr);
+      }
     } finally {
       setIsAiResponding(false);
     }

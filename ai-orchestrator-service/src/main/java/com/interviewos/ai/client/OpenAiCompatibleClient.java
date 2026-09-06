@@ -86,7 +86,7 @@ public class OpenAiCompatibleClient implements AiClient {
                     ? resolvedFromConfig
                     : ((customModel != null && !customModel.isBlank()) ? customModel : (config != null && config.defaultModel() != null ? config.defaultModel() : "openai/gpt-oss-120b"));
 
-            List<String> fallbacks = List.of("openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b", "groq/compound-mini");
+            List<String> fallbacks = List.of("qwen/qwen3-32b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant");
             List<String> list = new java.util.ArrayList<>();
             list.add(requested);
             for (String fb : fallbacks) {
@@ -95,6 +95,7 @@ public class OpenAiCompatibleClient implements AiClient {
                 }
             }
             modelCandidates = list;
+            log.info("provider=GROQ model={}", requested);
             log.info("🎯 GROQ Model Routing — Task/Requested: '{}', Effective Model: '{}', Fallback Chain: {}",
                     customModel != null ? customModel : "default", requested, modelCandidates);
         } else {
