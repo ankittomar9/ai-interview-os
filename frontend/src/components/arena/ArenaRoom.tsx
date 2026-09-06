@@ -6,6 +6,7 @@ import { useDialogue } from './hooks/useDialogue';
 import { useProctoring } from './hooks/useProctoring';
 import { useCoachVoice } from './hooks/useCoachVoice';
 import { useSessionRecorder } from '../../hooks/useSessionRecorder';
+import { useMicRecorder } from '../../hooks/useMicRecorder';
 import { ArenaShell } from './ArenaShell';
 import { ShareLostOverlay } from '../ShareLostOverlay';
 import { clearVerificationStreams } from '../../services/verificationStreams';
@@ -130,9 +131,18 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     sessionId, isPlayground, onShareLost: () => { if (!isPlayground) setIsShareLost(true); }
   });
 
+  // 8. Dedicated Candidate Voice Track Engine (SPEC-AUDIO-1 D1)
+  const audioConsent = isPlayground || sessionStorage.getItem('interview.audioConsent') !== 'false';
+  const micRecorder = useMicRecorder({
+    sessionId,
+    enabled: !isPlayground && audioConsent
+  });
+
   useEffect(() => {
-    onRegisterFinishRecorder?.(recorder.finish);
-  }, [onRegisterFinishRecorder, recorder.finish]);
+    onRegisterFinishRecorder?.(async () => {
+      await Promise.allSettled([recorder.finish(), micRecorder.finish()]);
+    });
+  }, [onRegisterFinishRecorder, recorder.finish, micRecorder.finish]);
 
   // Handlers
   const handleRunCode = async () => { await runCode(code, language); };
@@ -281,6 +291,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       cameraActive={recorder.cameraActive}
       screenActive={recorder.screenActive}
       verificationBroken={recorder.verificationBroken}
+      isVoiceRecording={micRecorder.isRecording}
+      voiceUnsentCount={micRecorder.unsentCount}
+      voiceLostAt={micRecorder.lostAt}
+      audioConsent={audioConsent}
       isFocusMode={isFocusMode}
       onToggleFocusMode={toggleFocusMode}
     />
