@@ -18,7 +18,9 @@ import {
   HelpCircle,
   Award,
   Video,
-  VideoOff
+  VideoOff,
+  Mic,
+  MicOff
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
@@ -50,6 +52,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
     streams?: {
       camera?: { chunks: number; bytes: number; startedAt?: string; endedAt?: string; summary?: any };
       screen?: { chunks: number; bytes: number; startedAt?: string; endedAt?: string; summary?: any };
+      'mic-audio'?: { chunks: number; bytes: number; startedAt?: string; endedAt?: string; summary?: any };
     };
     droppedChunks?: Array<{ seq: number; kind: string; reason: string; timestamp?: string }>;
   } | null>(null);
@@ -227,7 +230,11 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
       if (verificationReceipt.outcome === 'DEV_BYPASS') {
         vLine = `Verification: DEV_BYPASS (bypassed at ${verificationReceipt.verifiedAt || 'N/A'})\n`;
       } else {
-        vLine = `Verification: Camera=${verificationReceipt.cameraStatus || 'OK'} Mic=${verificationReceipt.micStatus || 'OK'} Screen=${verificationReceipt.screenScope || 'MONITOR'} Consent=${verificationReceipt.consent ? 'OK' : 'NO'} (verified ${verificationReceipt.verifiedAt || 'N/A'}, outcome=${verificationReceipt.outcome})\n`;
+        const audioConsentStr = verificationReceipt.consent ? 'OK' : 'NO';
+        const camChunks = manifest?.streams?.camera?.chunks ?? 0;
+        const scrChunks = manifest?.streams?.screen?.chunks ?? 0;
+        const micChunks = manifest?.streams?.['mic-audio']?.chunks ?? 0;
+        vLine = `Verification: Camera=${verificationReceipt.cameraStatus || 'OK'} Mic=${verificationReceipt.micStatus || 'OK'} Screen=${verificationReceipt.screenScope || 'MONITOR'} Consent=${audioConsentStr} AudioConsent=${audioConsentStr} Chunks(Camera=${camChunks}, Screen=${scrChunks}, MicAudio=${micChunks}) (verified ${verificationReceipt.verifiedAt || 'N/A'}, outcome=${verificationReceipt.outcome})\n`;
       }
     }
     content += vLine;
@@ -677,6 +684,24 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                     <span className="font-semibold text-text">{report.integrity?.workspaceProvenance ?? 'LOCAL_SANDBOX'}</span>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-elevated/50 p-3 rounded-lg border border-border/50 text-xs mt-3">
+                  <div>
+                    <span className="text-text-3 block">Camera Stream:</span>
+                    <span className="font-semibold text-text">{manifest?.streams?.camera?.chunks ?? 0} chunks</span>
+                  </div>
+                  <div>
+                    <span className="text-text-3 block">Screen Capture:</span>
+                    <span className="font-semibold text-text">{manifest?.streams?.screen?.chunks ?? 0} chunks</span>
+                  </div>
+                  <div>
+                    <span className="text-text-3 block">Voice Track:</span>
+                    <span className="font-semibold text-text">{manifest?.streams?.['mic-audio']?.chunks ?? 0} chunks</span>
+                  </div>
+                  <div>
+                    <span className="text-text-3 block">Audio Consent:</span>
+                    <span className="font-semibold text-text">{verificationReceipt?.consent !== false ? 'Confirmed' : 'No Consent'}</span>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -888,6 +913,57 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                   </div>
                 );
               })()}
+
+              {/* Candidate Dedicated Voice Track ("thinking-aloud" audio) (SPEC-AUDIO-1 D3) */}
+              <div className="border border-border rounded-lg p-4 bg-surface space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-emerald-500" />
+                    <h3 className="text-sm font-semibold text-text">Candidate Voice Track (Thinking-Aloud)</h3>
+                    {manifest && (manifest.streams?.['mic-audio']?.chunks ?? 0) > 0 ? (
+                      <Chip variant="success" size="sm">
+                        Verified ({manifest.streams?.['mic-audio']?.chunks} chunks · {Math.round((manifest.streams?.['mic-audio']?.bytes ?? 0) / 1024)} KB)
+                      </Chip>
+                    ) : (
+                      <Chip variant="neutral" size="sm">
+                        No voice track stored
+                      </Chip>
+                    )}
+                  </div>
+                  {manifest && (manifest.streams?.['mic-audio']?.chunks ?? 0) > 0 ? (
+                    <a
+                      href={`/api/v1/sessions/${report.sessionId}/recordings/download?kind=mic-audio`}
+                      download={`session-${report.sessionId}-mic-audio-recording.webm`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-primary text-on-accent hover:bg-primary/90 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Voice .webm</span>
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded bg-surface text-text-3 border border-border opacity-60 cursor-not-allowed"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>No audio stored</span>
+                    </button>
+                  )}
+                </div>
+
+                {manifest && (manifest.streams?.['mic-audio']?.chunks ?? 0) > 0 ? (
+                  <audio
+                    controls
+                    className="w-full"
+                    src={`/api/v1/sessions/${report.sessionId}/recordings/stream?kind=mic-audio`}
+                  />
+                ) : (
+                  <div className="p-3 bg-elevated/40 rounded border border-border/60 text-xs text-text-3 flex items-center gap-2">
+                    <MicOff className="w-4 h-4 shrink-0 text-text-3" />
+                    <span>No thinking-aloud audio chunks were stored for this session.</span>
+                  </div>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <div className="bg-elevated p-3 rounded border border-border space-y-1">

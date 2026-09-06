@@ -245,3 +245,5 @@ export interface ResumeDocument {
     summary?: string;
     uploadedAt?: string;
 }
+
+export type StreamKind = 'camera' | 'screen' | 'mic-audio';

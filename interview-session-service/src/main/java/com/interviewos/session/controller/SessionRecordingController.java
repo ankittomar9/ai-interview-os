@@ -38,8 +38,8 @@ public class SessionRecordingController {
             return ResponseEntity.badRequest().body(Map.of("error", "seq must be an integer"));
         }
 
-        if (!"camera".equals(kind) && !"screen".equals(kind)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "kind must be camera|screen"));
+        if (!"camera".equals(kind) && !"screen".equals(kind) && !"mic-audio".equals(kind)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "kind must be camera|screen|mic-audio"));
         }
         try {
             recordingService.saveChunk(id, seq, kind, chunk);
@@ -69,6 +69,10 @@ public class SessionRecordingController {
             seq = Integer.parseInt(rawSeq != null ? rawSeq.split(",")[0].trim() : "0");
         } catch (NumberFormatException ignored) {}
 
+        if (!"camera".equals(kind) && !"screen".equals(kind) && !"mic-audio".equals(kind)) {
+            kind = "camera";
+        }
+
         recordingService.recordDroppedChunk(id, seq, kind, reason);
         return ResponseEntity.ok().build();
     }
@@ -92,8 +96,9 @@ public class SessionRecordingController {
             }
         };
 
+        String contentType = "mic-audio".equalsIgnoreCase(kind) ? "audio/webm" : "video/webm";
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, "video/webm")
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
                 .header(HttpHeaders.PRAGMA, "no-cache")
                 .header(HttpHeaders.EXPIRES, "0")
@@ -111,14 +116,21 @@ public class SessionRecordingController {
                 return ResponseEntity.notFound().build();
             }
 
+            String contentType = "mic-audio".equalsIgnoreCase(kind) ? "audio/webm" : "video/webm";
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, "video/webm")
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"session-" + id + "-" + kind + "-recording.webm\"")
                     .body(bytes);
         } catch (Exception e) {
             log.error("Download failed for session {} kind {}: {}", id, kind, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @GetMapping("/{id}/recordings/summary")
+    public ResponseEntity<Map<String, SessionRecordingService.StreamMeta>> getSummary(@PathVariable Long id) {
+        RecordingManifest manifest = recordingService.getManifest(id);
+        return ResponseEntity.ok(manifest.getStreams());
     }
 
     @PostMapping("/{id}/recordings/summary")
