@@ -246,7 +246,7 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - GROQ_MODEL_DIALOGUE=${GROQ_MODEL_DIALOGUE:-openai/gpt-oss-120b}
       - GROQ_MODEL_FAST=${GROQ_MODEL_FAST:-openai/gpt-oss-20b}
-      - GROQ_MODEL_EVAL=${GROQ_MODEL_EVAL:-qwen/qwen3.8-27b}
+      - GROQ_MODEL_EVAL=${GROQ_MODEL_EVAL:-qwen/qwen3-32b}
       - GROQ_MODEL_STT=${GROQ_MODEL_STT:-whisper-large-v3-turbo}
       - WHISPER_ENDPOINT=${WHISPER_ENDPOINT:-http://whisper-sidecar:8178/inference}
     extra_hosts:
