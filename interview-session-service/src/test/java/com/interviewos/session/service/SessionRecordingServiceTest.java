@@ -63,6 +63,18 @@ class SessionRecordingServiceTest {
     }
 
     @Test
+    void testSaveChunkStoresInGridFsWithMicAudioKind() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("chunk", "audio.webm", "audio/webm", new byte[]{9, 10, 11});
+        when(gridFsTemplate.store(any(), anyString(), anyString(), any(Document.class))).thenReturn(new ObjectId());
+
+        recordingService.saveChunk(42L, 2, "mic-audio", file);
+
+        verify(gridFsTemplate, times(1)).store(any(), eq("rec_42_mic-audio_chunk_00002.webm"), eq("audio/webm"), argThat(doc ->
+                "mic-audio".equals(doc.get("kind")) && Integer.valueOf(2).equals(doc.get("seq"))
+        ));
+    }
+
+    @Test
     void testGetManifestEmptyChunks() {
         GridFSFindIterable mockIterable = mock(GridFSFindIterable.class);
         @SuppressWarnings("unchecked")

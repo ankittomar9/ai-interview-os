@@ -6,7 +6,7 @@ import {
   QUALITY_PRESETS
 } from '../lib/recording-quality';
 
-export type StreamKind = 'camera' | 'screen';
+export type StreamKind = 'camera' | 'screen' | 'mic-audio';
 
 interface QueuedChunk {
   blob: Blob;

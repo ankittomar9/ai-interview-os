@@ -111,13 +111,22 @@ public class SessionRecordingService {
         private String note;
     }
 
+    public String sanitizeKind(String kind) {
+        if (kind == null) return "camera";
+        String lower = kind.trim().toLowerCase();
+        if ("screen".equals(lower)) return "screen";
+        if ("mic-audio".equals(lower)) return "mic-audio";
+        return "camera";
+    }
+
     public void saveChunk(Long sessionId, int seq, String kind, MultipartFile file) throws Exception {
         if (file == null || file.isEmpty()) {
             log.warn("Received empty recording chunk for session {} seq {} kind {}", sessionId, seq, kind);
             return;
         }
 
-        String safeKind = (kind != null && "screen".equalsIgnoreCase(kind)) ? "screen" : "camera";
+        String safeKind = sanitizeKind(kind);
+        String contentType = "mic-audio".equals(safeKind) ? "audio/webm" : "video/webm";
         String filename = String.format("rec_%d_%s_chunk_%05d.webm", sessionId, safeKind, seq);
 
         // Remove any previous attempt of the same chunk seq and kind
@@ -137,7 +146,7 @@ public class SessionRecordingService {
         meta.put("uploadedAt", Instant.now().toString());
 
         try (InputStream in = file.getInputStream()) {
-            ObjectId id = gridFsTemplate.store(in, filename, "video/webm", meta);
+            ObjectId id = gridFsTemplate.store(in, filename, contentType, meta);
             log.info("📹 Stored {} recording chunk {} for session {} ({} bytes, id: {})", safeKind, seq, sessionId, file.getSize(), id);
         }
     }
@@ -147,7 +156,7 @@ public class SessionRecordingService {
     }
 
     public List<GridFSFile> getSortedChunks(Long sessionId, String kind) {
-        String targetKind = (kind != null && "screen".equalsIgnoreCase(kind)) ? "screen" : "camera";
+        String targetKind = sanitizeKind(kind);
         List<GridFSFile> chunkList = new ArrayList<>();
         GridFSFindIterable files = gridFSBucket.find(
                 new Document("metadata.sessionId", sessionId)
@@ -174,7 +183,7 @@ public class SessionRecordingService {
     }
 
     public void recordDroppedChunk(Long sessionId, int seq, String kind, String reason) {
-        String safeKind = (kind != null && "screen".equalsIgnoreCase(kind)) ? "screen" : "camera";
+        String safeKind = sanitizeKind(kind);
         String safeReason = (reason != null && !reason.isBlank()) ? reason : "PAYLOAD_TOO_LARGE_413";
         log.warn("⚠️ Recording dropped chunk: session={}, seq={}, kind={}, reason={}", sessionId, seq, safeKind, safeReason);
 
@@ -212,7 +221,7 @@ public class SessionRecordingService {
 
     public void saveSummary(Long sessionId, RecordingSummaryInfo summary) {
         if (summary == null || sessionId == null) return;
-        String safeKind = (summary.getKind() != null && "screen".equalsIgnoreCase(summary.getKind())) ? "screen" : "camera";
+        String safeKind = sanitizeKind(summary.getKind());
         gridFsTemplate.delete(new Query(
                 Criteria.where("metadata.sessionId").is(sessionId)
                         .and("metadata.type").is("RECORDING_SUMMARY")
@@ -242,31 +251,31 @@ public class SessionRecordingService {
     public RecordingManifest getManifest(Long sessionId) {
         List<GridFSFile> cameraChunks = getSortedChunks(sessionId, "camera");
         List<GridFSFile> screenChunks = getSortedChunks(sessionId, "screen");
+        List<GridFSFile> micAudioChunks = getSortedChunks(sessionId, "mic-audio");
 
         Map<String, StreamMeta> streams = new LinkedHashMap<>();
 
-        if (!cameraChunks.isEmpty()) {
-            long bytes = cameraChunks.stream().mapToLong(GridFSFile::getLength).sum();
-            String startedAt = cameraChunks.get(0).getUploadDate().toInstant().toString();
-            String endedAt = cameraChunks.get(cameraChunks.size() - 1).getUploadDate().toInstant().toString();
-            streams.put("camera", StreamMeta.builder()
-                    .chunks(cameraChunks.size())
-                    .bytes(bytes)
-                    .startedAt(startedAt)
-                    .endedAt(endedAt)
-                    .build());
-        }
-
-        if (!screenChunks.isEmpty()) {
-            long bytes = screenChunks.stream().mapToLong(GridFSFile::getLength).sum();
-            String startedAt = screenChunks.get(0).getUploadDate().toInstant().toString();
-            String endedAt = screenChunks.get(screenChunks.size() - 1).getUploadDate().toInstant().toString();
-            streams.put("screen", StreamMeta.builder()
-                    .chunks(screenChunks.size())
-                    .bytes(bytes)
-                    .startedAt(startedAt)
-                    .endedAt(endedAt)
-                    .build());
+        boolean hasChunks = !cameraChunks.isEmpty() || !screenChunks.isEmpty() || !micAudioChunks.isEmpty();
+        if (hasChunks) {
+            for (String k : List.of("camera", "screen", "mic-audio")) {
+                List<GridFSFile> chunks = "camera".equals(k) ? cameraChunks : ("screen".equals(k) ? screenChunks : micAudioChunks);
+                if (!chunks.isEmpty()) {
+                    long bytes = chunks.stream().mapToLong(GridFSFile::getLength).sum();
+                    String startedAt = chunks.get(0).getUploadDate().toInstant().toString();
+                    String endedAt = chunks.get(chunks.size() - 1).getUploadDate().toInstant().toString();
+                    streams.put(k, StreamMeta.builder()
+                            .chunks(chunks.size())
+                            .bytes(bytes)
+                            .startedAt(startedAt)
+                            .endedAt(endedAt)
+                            .build());
+                } else {
+                    streams.put(k, StreamMeta.builder()
+                            .chunks(0)
+                            .bytes(0L)
+                            .build());
+                }
+            }
         }
 
         try {
@@ -277,7 +286,7 @@ public class SessionRecordingService {
             for (GridFSFile f : summaryFiles) {
                 Document meta = f.getMetadata();
                 if (meta != null) {
-                    String k = meta.getString("kind");
+                    String k = sanitizeKind(meta.getString("kind"));
                     @SuppressWarnings("unchecked")
                     List<Integer> failed = (List<Integer>) meta.get("failedSeqs");
                     RecordingSummaryInfo s = RecordingSummaryInfo.builder()
@@ -328,8 +337,8 @@ public class SessionRecordingService {
             log.warn("Could not query dropped chunks for session {}: {}", sessionId, e.getMessage());
         }
 
-        boolean isComplete = !streams.isEmpty();
-        int totalChunks = cameraChunks.size() + screenChunks.size();
+        int totalChunks = cameraChunks.size() + screenChunks.size() + micAudioChunks.size();
+        boolean isComplete = totalChunks > 0;
         long totalBytes = streams.values().stream().mapToLong(StreamMeta::getBytes).sum();
 
         return RecordingManifest.builder()

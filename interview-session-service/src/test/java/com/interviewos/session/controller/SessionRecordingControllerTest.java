@@ -37,6 +37,15 @@ class SessionRecordingControllerTest {
     }
 
     @Test
+    @DisplayName("uploadChunk saves mic-audio chunk successfully")
+    void testUploadChunkMicAudioSuccess() throws Exception {
+        MockMultipartFile chunk = new MockMultipartFile("chunk", "test.webm", "audio/webm", new byte[]{1, 2, 3});
+        ResponseEntity<Map<String, Object>> response = controller.uploadChunk(1L, "0", "mic-audio", chunk);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(recordingService).saveChunk(1L, 0, "mic-audio", chunk);
+    }
+
+    @Test
     @DisplayName("uploadChunk defensively sanitizes duplicated seq and kind (e.g. seq='0,0', kind='camera,camera')")
     void testUploadChunkDuplicatedParamsSanitization() throws Exception {
         MockMultipartFile chunk = new MockMultipartFile("chunk", "test.webm", "video/webm", new byte[]{1, 2, 3});
