@@ -174,19 +174,60 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
       </div>
       {!isFocusMode && <StageStepper currentStage={currentStage} currentSectionIndex={props.activeSectionIndex} sections={props.sections} isPlayground={isPlayground} onStageClick={onStageClick} onSectionClick={props.onSectionClick} stageTurnCounts={stageTurnCounts} stageTransitionReasons={stageTransitionReasons} />}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
+        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode || (!isPlayground && (props.sections?.[props.activeSectionIndex ?? 0]?.sectionType === 'INTRODUCTION' || currentStage === 'INTRODUCTION')) ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           <Group orientation="horizontal" id="arena-shell-group" className="h-full w-full flex-1 min-w-0">
             <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
-              <ProblemPanel
-                question={question}
-                sessionId={sessionId}
-                isPracticeMode={isPlayground}
-                hasRunAttempt={executionResult !== null}
-                isSolved={questionStatusMap[activeSlug] === 'PASSED'} isBookmarked={!!bookmarkedMap[activeSlug]}
-                onToggleBookmark={() => setBookmarkedMap((p) => ({ ...p, [activeSlug]: !p[activeSlug] }))}
-                hintsRevealed={hintsRevealed[activeSlug] || 0} onRevealHint={() => setHintsRevealed((p) => ({ ...p, [activeSlug]: (p[activeSlug] || 0) + 1 }))}
-              />
+              {!isPlayground && (props.sections?.[props.activeSectionIndex ?? 0]?.sectionType === 'INTRODUCTION' || currentStage === 'INTRODUCTION') ? (
+                <div className="flex flex-col h-full bg-surface border-r border-border p-6 overflow-y-auto space-y-6 text-text select-none">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                      <span className="text-xs font-mono font-semibold uppercase tracking-wider text-primary">Stage 1 · Warm-Up</span>
+                    </div>
+                    <h2 className="text-lg font-bold tracking-tight text-text">Session Introduction</h2>
+                    <p className="text-xs text-text-3">Get settled, verify your environment, and introduce yourself to the AI interviewer.</p>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-elevated/60 border border-border space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-text-2 font-mono">Session Plan</h3>
+                    <div className="space-y-2 text-xs">
+                      {props.sections?.map((s, idx) => (
+                        <div key={idx} className={`flex items-center justify-between py-1.5 px-2.5 rounded ${idx === props.activeSectionIndex ? 'bg-primary/10 border border-primary/30 text-primary font-medium' : 'text-text-3'}`}>
+                          <span>{idx + 1}. {s.note || s.sectionType}</span>
+                          <span className="font-mono text-[11px]">{s.softTimeBudgetMinutes ? `${s.softTimeBudgetMinutes} min` : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-elevated/60 border border-border space-y-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-text-2 font-mono">Readiness Summary</h3>
+                    <ul className="space-y-1.5 text-xs text-text-2 list-disc list-inside">
+                      <li>Microphone & audio input verified</li>
+                      <li>Screen share monitoring active</li>
+                      <li>AI dialogue pipeline connected</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-elevated/60 border border-border space-y-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-text-2 font-mono">What Happens Next</h3>
+                    <p className="text-xs text-text-3 leading-relaxed">
+                      Speak naturally with the AI interviewer to discuss your background and experience. Once the introduction concludes, you will advance to the technical evaluation rounds.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <ProblemPanel
+                  question={question}
+                  sessionId={sessionId}
+                  isPracticeMode={isPlayground}
+                  hasRunAttempt={executionResult !== null}
+                  isSolved={questionStatusMap[activeSlug] === 'PASSED'} isBookmarked={!!bookmarkedMap[activeSlug]}
+                  onToggleBookmark={() => setBookmarkedMap((p) => ({ ...p, [activeSlug]: !p[activeSlug] }))}
+                  hintsRevealed={hintsRevealed[activeSlug] || 0} onRevealHint={() => setHintsRevealed((p) => ({ ...p, [activeSlug]: (p[activeSlug] || 0) + 1 }))}
+                />
+              )}
             </Panel>
             <Separator className="w-[3px] bg-border/60 hover:bg-primary/60 cursor-col-resize relative flex items-center justify-center z-10 select-none" />
             <Panel defaultSize="68%" minSize="50%" id="router-screen-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
@@ -217,7 +258,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         </div>
       </div>
       {!isPlayground && !isFocusMode && <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />}
-      <VoiceCoachIndicator problemTitle={question.title} currentTrack={track} voiceEnabled={voiceOutputEnabled} />
+      <VoiceCoachIndicator problemTitle={!isPlayground && (props.sections?.[props.activeSectionIndex ?? 0]?.sectionType === 'INTRODUCTION' || currentStage === 'INTRODUCTION') ? "Session Introduction" : question.title} currentTrack={track} voiceEnabled={voiceOutputEnabled} />
       <FloatingAiOrb isOpen={isAiPanelOpen} onToggle={onToggleAiPanel} isAiSpeaking={isAiSpeaking} isListening={isListening} hasUnread={hasUnreadAi} sessionMode={sessionMode} />
       <AiAssistantPanel
         open={isAiPanelOpen}
