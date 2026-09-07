@@ -4,7 +4,8 @@ import {
   computeSandboxStatus,
   computeIntelligenceStatus,
   computeDataStatus,
-  computeOverallStatus
+  computeOverallStatus,
+  computePillStatus
 } from './systemStatusAggregate.ts';
 
 test('Sandbox aggregate: DOWN wins if any engine is DOWN', () => {
@@ -69,3 +70,156 @@ test('Overall status: OFFLINE when backend not connected', () => {
   assert.equal(computeOverallStatus(true, 'ONLINE', 'ONLINE', 'ONLINE'), 'ONLINE');
   assert.equal(computeOverallStatus(true, 'DOWN', 'ONLINE', 'ONLINE'), 'DEGRADED');
 });
+
+test('Pill status: CHECKING… when poll is in flight and initial load', () => {
+  const result = computePillStatus({
+    isChecking: true,
+    backendOk: false,
+    capabilities: null
+  });
+  assert.equal(result.status, 'CHECKING…');
+  assert.deepEqual(result.failingServices, []);
+  assert.equal(result.tooltipLines.length, 1);
+  assert.match(result.tooltipLines[0], /checking/i);
+});
+
+test('Pill status: OFFLINE when backend is unreachable', () => {
+  const result = computePillStatus({
+    isChecking: false,
+    backendOk: false,
+    capabilities: null
+  });
+  assert.equal(result.status, 'OFFLINE');
+  assert.deepEqual(result.failingServices, ['API Gateway']);
+  assert.equal(result.tooltipLines.length, 1);
+  assert.match(result.tooltipLines[0], /API Gateway/);
+});
+
+const healthyCapabilities = {
+  engines: {
+    dsa: { ready: true, state: 'ONLINE', detail: 'Judge0 online' },
+    lld: { ready: true, state: 'ONLINE', detail: 'Docker online' },
+    sql: { ready: true, state: 'ONLINE', detail: 'SQL runner online' }
+  },
+  services: {
+    postgres: true,
+    mongo: true,
+    orchestrator: true,
+    proctor: true,
+    questionBank: true,
+    eureka: false // note: eureka is ignored as non-core
+  },
+  checkedAt: new Date().toISOString()
+};
+
+test('Pill status: ONLINE when all core microservices and engines are ready', () => {
+  const result = computePillStatus({
+    isChecking: false,
+    backendOk: true,
+    capabilities: healthyCapabilities
+  });
+  assert.equal(result.status, 'ONLINE');
+  assert.deepEqual(result.failingServices, []);
+  assert.equal(result.tooltipLines.length, 1);
+  assert.match(result.tooltipLines[0], /All core services healthy/);
+});
+
+test('Pill status: DEGRADED when question-bank-service is down', () => {
+  const cap = {
+    ...healthyCapabilities,
+    services: {
+      ...healthyCapabilities.services,
+      questionBank: false
+    }
+  };
+  const result = computePillStatus({
+    isChecking: false,
+    backendOk: true,
+    capabilities: cap
+  });
+  assert.equal(result.status, 'DEGRADED');
+  assert.deepEqual(result.failingServices, ['Question Bank Service']);
+  assert.equal(result.tooltipLines.length, 1);
+  assert.equal(result.tooltipLines[0], 'Question Bank Service unreachable');
+});
+
+test('Pill status: DEGRADED when DSA sandbox engine is down', () => {
+  const cap = {
+    ...healthyCapabilities,
+    engines: {
+      ...healthyCapabilities.engines,
+      dsa: { ready: false, state: 'DOWN', detail: 'Judge0 unreachable' }
+    }
+  };
+  const result = computePillStatus({
+    isChecking: false,
+    backendOk: true,
+    capabilities: cap
+  });
+  assert.equal(result.status, 'DEGRADED');
+  assert.deepEqual(result.failingServices, ['DSA Sandbox (Judge0)']);
+  assert.equal(result.tooltipLines.length, 1);
+  assert.equal(result.tooltipLines[0], 'DSA Sandbox (Judge0): Judge0 unreachable');
+});
+
+test('Pill status: DEGRADED when postgres database is down', () => {
+  const cap = {
+    ...healthyCapabilities,
+    services: {
+      ...healthyCapabilities.services,
+      postgres: false
+    }
+  };
+  const result = computePillStatus({
+    isChecking: false,
+    backendOk: true,
+    capabilities: cap
+  });
+  assert.equal(result.status, 'DEGRADED');
+  assert.deepEqual(result.failingServices, ['PostgreSQL Database']);
+  assert.equal(result.tooltipLines.length, 1);
+  assert.equal(result.tooltipLines[0], 'PostgreSQL Database down');
+});
+
+test('Pill status: lists multiple failing services, one line each', () => {
+  const cap = {
+    ...healthyCapabilities,
+    services: {
+      ...healthyCapabilities.services,
+      questionBank: false,
+      postgres: false
+    },
+    engines: {
+      ...healthyCapabilities.engines,
+      sql: { ready: false, state: 'DOWN', detail: 'Docker socket unavailable' }
+    }
+  };
+  const result = computePillStatus({
+    isChecking: false,
+    backendOk: true,
+    capabilities: cap
+  });
+  assert.equal(result.status, 'DEGRADED');
+  assert.equal(result.failingServices.length, 3);
+  assert.equal(result.tooltipLines.length, 3);
+  assert.equal(result.tooltipLines[0], 'Question Bank Service unreachable');
+  assert.equal(result.tooltipLines[1], 'PostgreSQL Database down');
+  assert.equal(result.tooltipLines[2], 'SQL Sandbox: Docker socket unavailable');
+});
+
+test('Pill status: eureka false does NOT cause DEGRADED state', () => {
+  const cap = {
+    ...healthyCapabilities,
+    services: {
+      ...healthyCapabilities.services,
+      eureka: false
+    }
+  };
+  const result = computePillStatus({
+    isChecking: false,
+    backendOk: true,
+    capabilities: cap
+  });
+  assert.equal(result.status, 'ONLINE');
+});
+
