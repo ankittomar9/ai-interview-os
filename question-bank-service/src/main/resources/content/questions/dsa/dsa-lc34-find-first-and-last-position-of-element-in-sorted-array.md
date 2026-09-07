@@ -2,7 +2,9 @@
 slug: dsa-lc34-find-first-and-last-position-of-element-in-sorted-array
 title: Find First and Last Position of Element in Sorted Array
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [binary-search, arrays]
+est_minutes: 25
 tags:
 - binary-search
 - mid

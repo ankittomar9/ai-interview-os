@@ -2,7 +2,9 @@
 slug: dsa-lc312-burst-balloons
 title: Burst Balloons
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [dp]
+est_minutes: 40
 tags:
 - dynamic-programming
 - senior

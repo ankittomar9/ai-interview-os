@@ -2,7 +2,9 @@
 slug: dsa-lc31-next-permutation
 title: Next Permutation
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - arrays
 - mid

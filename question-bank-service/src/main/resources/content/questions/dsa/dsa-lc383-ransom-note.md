@@ -2,7 +2,9 @@
 slug: dsa-lc383-ransom-note
 title: Ransom Note
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [hashing]
+est_minutes: 15
 tags:
 - hash-map
 - junior

@@ -2,7 +2,9 @@
 slug: dsa-lc28-find-the-index-of-the-first-occurrence-in-a-string
 title: Find the Index of the First Occurrence in a String
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [strings]
+est_minutes: 15
 tags:
 - strings
 - junior

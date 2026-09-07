@@ -2,7 +2,9 @@
 slug: dsa-lc290-word-pattern
 title: Word Pattern
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [hashing, strings]
+est_minutes: 15
 tags:
 - hash-map
 - junior
