@@ -325,6 +325,9 @@ services:
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
       - EUREKA_ENABLED=false
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/questionbank
+      - GROQ_MODEL=${GROQ_MODEL:-qwen/qwen3-32b}
+      - GROQ_FALLBACK_MODELS=${GROQ_FALLBACK_MODELS:-llama-3.1-8b-instant}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
     depends_on:
       mongodb:
         condition: service_healthy
