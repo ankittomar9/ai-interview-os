@@ -2,7 +2,9 @@
 slug: dsa-check-palindrome-string-using-recursion
 title: Check Palindrome string using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [two-pointers, strings, recursion]
+est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
 - mid

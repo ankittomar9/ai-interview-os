@@ -2,7 +2,9 @@
 slug: dsa-check-if-an-array-is-a-subset-of-another-array
 title: Check if an array is a Subset of another array.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

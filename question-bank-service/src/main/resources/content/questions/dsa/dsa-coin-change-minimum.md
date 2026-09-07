@@ -2,7 +2,9 @@
 slug: dsa-coin-change-minimum
 title: Minimum Coin Combination Denominations
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp]
+est_minutes: 25
 tags: [dynamic-programming, dp-tabulation, knapsack]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/dp-coin-change

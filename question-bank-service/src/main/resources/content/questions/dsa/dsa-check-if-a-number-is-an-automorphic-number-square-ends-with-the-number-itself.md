@@ -2,7 +2,9 @@
 slug: dsa-check-if-a-number-is-an-automorphic-number-square-ends-with-the-number-itself
 title: Check if a number is an Automorphic Number (Square ends with the number itself).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math]
+est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
 - junior

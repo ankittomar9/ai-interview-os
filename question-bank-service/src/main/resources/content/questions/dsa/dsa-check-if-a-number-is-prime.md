@@ -2,7 +2,9 @@
 slug: dsa-check-if-a-number-is-prime
 title: Check if a number is Prime.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math]
+est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
 - junior

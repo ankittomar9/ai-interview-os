@@ -2,7 +2,9 @@
 slug: dsa-check-if-a-string-is-a-palindrome
 title: Check if a string is a Palindrome.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [two-pointers, strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid
