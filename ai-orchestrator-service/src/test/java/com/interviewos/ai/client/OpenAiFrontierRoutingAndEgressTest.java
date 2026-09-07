@@ -18,6 +18,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -153,5 +154,99 @@ class OpenAiFrontierRoutingAndEgressTest {
         verify(bodySpec).body(bodyCaptor.capture());
         Map<?, ?> payload = (Map<?, ?>) bodyCaptor.getValue();
         assertEquals("gpt-4o", payload.get("model"));
+    }
+
+    @Test
+    @DisplayName("H1: Groq routing uses config-driven fallback ladder when primary fails")
+    void testGroqModelRoutingWithConfiguredFallbackLadder() {
+        AiProviderProperties.ProviderConfig groqConfig = new AiProviderProperties.ProviderConfig(
+                "https://api.groq.com/openai/v1",
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "openai/gpt-oss-120b",
+                "whisper-large-v3-turbo",
+                "gsk-test-key",
+                List.of("openai/gpt-oss-20b", "qwen/qwen3.8-27b")
+        );
+
+        AiProviderProperties props = new AiProviderProperties(Map.of("groq", groqConfig));
+        OpenAiCompatibleClient groqClient = new OpenAiCompatibleClient(
+                restClientBuilder,
+                props,
+                objectMapper,
+                egressTracker
+        );
+
+        when(restClientBuilder.build()).thenReturn(restClient);
+        when(restClient.post()).thenReturn(uriSpec);
+        when(uriSpec.uri(anyString())).thenReturn(bodySpec);
+        when(bodySpec.header(anyString(), anyString())).thenReturn(bodySpec);
+        when(bodySpec.contentType(any())).thenReturn(bodySpec);
+        doReturn(bodySpec).when(bodySpec).body(any(Object.class));
+        when(bodySpec.retrieve()).thenReturn(responseSpec);
+
+        // First attempt (primary: openai/gpt-oss-120b) fails with exception, second (fallback 1: openai/gpt-oss-20b) succeeds
+        when(responseSpec.body(String.class))
+                .thenThrow(new RuntimeException("Primary model unavailable"))
+                .thenReturn("{\"choices\":[{\"message\":{\"content\":\"Hello from fallback\"}}]}");
+
+        String result = groqClient.generateCompletion(
+                ModelProvider.GROQ,
+                "system",
+                "user",
+                "gsk-test-key",
+                null
+        );
+
+        assertEquals("Hello from fallback", result);
+
+        ArgumentCaptor<Object> bodyCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(bodySpec, times(2)).body(bodyCaptor.capture());
+        List<Object> captured = bodyCaptor.getAllValues();
+        assertEquals("openai/gpt-oss-120b", ((Map<?, ?>) captured.get(0)).get("model"));
+        assertEquals("openai/gpt-oss-20b", ((Map<?, ?>) captured.get(1)).get("model"));
+    }
+
+    @Test
+    @DisplayName("H1: Groq routing with absent fallback config defaults to primary model only (empty ladder)")
+    void testGroqModelRoutingWithoutFallbackModels() {
+        AiProviderProperties.ProviderConfig groqConfig = new AiProviderProperties.ProviderConfig(
+                "https://api.groq.com/openai/v1",
+                "openai/gpt-oss-120b",
+                null,
+                null,
+                null,
+                null,
+                "gsk-test-key"
+                // No fallbackModels provided
+        );
+
+        AiProviderProperties props = new AiProviderProperties(Map.of("groq", groqConfig));
+        OpenAiCompatibleClient groqClient = new OpenAiCompatibleClient(
+                restClientBuilder,
+                props,
+                objectMapper,
+                egressTracker
+        );
+
+        when(restClientBuilder.build()).thenReturn(restClient);
+        when(restClient.post()).thenReturn(uriSpec);
+        when(uriSpec.uri(anyString())).thenReturn(bodySpec);
+        when(bodySpec.header(anyString(), anyString())).thenReturn(bodySpec);
+        when(bodySpec.contentType(any())).thenReturn(bodySpec);
+        doReturn(bodySpec).when(bodySpec).body(any(Object.class));
+        when(bodySpec.retrieve()).thenReturn(responseSpec);
+
+        when(responseSpec.body(String.class))
+                .thenThrow(new RuntimeException("Single model failed"));
+
+        assertThrows(RuntimeException.class, () ->
+                groqClient.generateCompletion(ModelProvider.GROQ, "system", "user", "gsk-test-key", null)
+        );
+
+        ArgumentCaptor<Object> bodyCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(bodySpec, times(1)).body(bodyCaptor.capture());
+        assertEquals("openai/gpt-oss-120b", ((Map<?, ?>) bodyCaptor.getValue()).get("model"));
     }
 }

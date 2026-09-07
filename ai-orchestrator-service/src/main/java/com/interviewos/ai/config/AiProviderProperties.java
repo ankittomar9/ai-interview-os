@@ -18,8 +18,43 @@ public record AiProviderProperties(Map<String, ProviderConfig> providers) {
             String modelFast,
             String modelEval,
             String modelStt,
-            String apiKey
+            String apiKey,
+            java.util.List<String> fallbackModels,
+            java.util.List<String> allowedModels
     ) {
+        public ProviderConfig {
+            if (fallbackModels == null) {
+                fallbackModels = java.util.List.of();
+            }
+            if (allowedModels == null) {
+                allowedModels = java.util.List.of();
+            }
+        }
+
+        public ProviderConfig(
+                String endpoint,
+                String defaultModel,
+                String modelDialogue,
+                String modelFast,
+                String modelEval,
+                String modelStt,
+                String apiKey
+        ) {
+            this(endpoint, defaultModel, modelDialogue, modelFast, modelEval, modelStt, apiKey, java.util.List.of(), java.util.List.of());
+        }
+
+        public ProviderConfig(
+                String endpoint,
+                String defaultModel,
+                String modelDialogue,
+                String modelFast,
+                String modelEval,
+                String modelStt,
+                String apiKey,
+                java.util.List<String> fallbackModels
+        ) {
+            this(endpoint, defaultModel, modelDialogue, modelFast, modelEval, modelStt, apiKey, fallbackModels, java.util.List.of());
+        }
         public String getEffectiveModelFor(String task) {
             if ("dialogue".equalsIgnoreCase(task) || "conversation".equalsIgnoreCase(task)) {
                 return (modelDialogue != null && !modelDialogue.isBlank()) ? modelDialogue : defaultModel;

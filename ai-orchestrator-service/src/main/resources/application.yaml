@@ -19,8 +19,10 @@ ai:
       default-model: ${GROQ_MODEL_DIALOGUE:openai/gpt-oss-120b}
       model-dialogue: ${GROQ_MODEL_DIALOGUE:openai/gpt-oss-120b}
       model-fast: ${GROQ_MODEL_FAST:openai/gpt-oss-20b}
-      model-eval: ${GROQ_MODEL_EVAL:qwen/qwen3-32b}
+      model-eval: ${GROQ_MODEL_EVAL:openai/gpt-oss-120b}
       model-stt: ${GROQ_MODEL_STT:whisper-large-v3-turbo}
+      fallback-models: ${GROQ_FALLBACK_MODELS:openai/gpt-oss-20b,qwen/qwen3.8-27b}
+      allowed-models: ${GROQ_ALLOWED_MODELS:openai/gpt-oss-120b,openai/gpt-oss-20b,qwen/qwen3.8-27b,qwen/qwen3.6-27b,whisper-large-v3,whisper-large-v3-turbo}
       api-key: ${GROQ_API_KEY:}
     ollama:
       endpoint: ${OLLAMA_ENDPOINT:http://host.docker.internal:11434/api/generate}

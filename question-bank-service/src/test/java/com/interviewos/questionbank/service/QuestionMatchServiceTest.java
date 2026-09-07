@@ -139,16 +139,16 @@ class QuestionMatchServiceTest {
     @Test
     @DisplayName("buildGroqModelLadder should build deduplicated ladder from primary and fallback models")
     void testBuildGroqModelLadder() {
-        matchService.setGroqModel("qwen/qwen3-32b");
-        matchService.setGroqFallbackModels("llama-3.1-8b-instant, qwen/qwen3-32b, meta/llama-3.2-3b-instruct");
+        matchService.setGroqModel("openai/gpt-oss-120b");
+        matchService.setGroqFallbackModels("openai/gpt-oss-20b, openai/gpt-oss-120b, qwen/qwen3.8-27b");
 
         List<String> ladder = matchService.buildGroqModelLadder();
 
         assertNotNull(ladder);
         assertEquals(3, ladder.size());
-        assertEquals("qwen/qwen3-32b", ladder.get(0));
-        assertEquals("llama-3.1-8b-instant", ladder.get(1));
-        assertEquals("meta/llama-3.2-3b-instruct", ladder.get(2));
+        assertEquals("openai/gpt-oss-120b", ladder.get(0));
+        assertEquals("openai/gpt-oss-20b", ladder.get(1));
+        assertEquals("qwen/qwen3.8-27b", ladder.get(2));
     }
 
     @Test
@@ -161,7 +161,7 @@ class QuestionMatchServiceTest {
 
         assertNotNull(ladder);
         assertEquals(1, ladder.size());
-        assertEquals("qwen/qwen3-32b", ladder.get(0));
+        assertEquals("openai/gpt-oss-120b", ladder.get(0));
     }
 
     @Test
