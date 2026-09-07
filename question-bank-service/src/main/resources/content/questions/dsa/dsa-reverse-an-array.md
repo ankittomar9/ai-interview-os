@@ -2,7 +2,9 @@
 slug: dsa-reverse-an-array
 title: Reverse an array.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [arrays]
+est_minutes: 15
 tags:
 - 2-arrays-the-core--40-questions
 - junior

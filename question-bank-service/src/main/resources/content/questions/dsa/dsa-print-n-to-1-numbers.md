@@ -2,7 +2,9 @@
 slug: dsa-print-n-to-1-numbers
 title: Print N To 1 Numbers
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - recursion
 - mid
