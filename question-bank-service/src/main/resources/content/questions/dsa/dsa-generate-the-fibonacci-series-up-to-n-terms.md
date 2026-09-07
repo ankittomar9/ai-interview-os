@@ -2,7 +2,9 @@
 slug: dsa-generate-the-fibonacci-series-up-to-n-terms
 title: Generate the Fibonacci Series up to N terms.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math]
+est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
 - junior

@@ -2,7 +2,9 @@
 slug: dsa-insert-interval-sorted
 title: Insert and Merge Disjoint Interval
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags: [intervals, arrays, linear-scan]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/insert-interval

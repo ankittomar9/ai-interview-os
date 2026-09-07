@@ -2,7 +2,9 @@
 slug: dsa-find-the-repeating-element-in-an-array
 title: Find the Repeating element in an array.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

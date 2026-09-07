@@ -2,7 +2,9 @@
 slug: dsa-find-the-longest-palindromic-substring-basic-approach
 title: Find the Longest Palindromic Substring (Basic approach).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

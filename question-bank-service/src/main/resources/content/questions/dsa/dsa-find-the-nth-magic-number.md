@@ -2,7 +2,9 @@
 slug: dsa-find-the-nth-magic-number
 title: Find The Nth Magic Number
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior

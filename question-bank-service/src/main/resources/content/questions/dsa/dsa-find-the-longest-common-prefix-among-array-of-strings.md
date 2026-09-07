@@ -2,7 +2,9 @@
 slug: dsa-find-the-longest-common-prefix-among-array-of-strings
 title: Find the Longest Common Prefix among array of strings.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings, arrays]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

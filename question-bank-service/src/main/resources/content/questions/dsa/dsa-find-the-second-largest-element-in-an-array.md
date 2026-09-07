@@ -2,7 +2,9 @@
 slug: dsa-find-the-second-largest-element-in-an-array
 title: Find the Second Largest element in an array.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [arrays]
+est_minutes: 15
 tags:
 - 2-arrays-the-core--40-questions
 - junior
