@@ -2,7 +2,9 @@
 slug: dsa-square-star-pattern
 title: Square Star Pattern.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [arrays]
+est_minutes: 15
 tags:
 - 5-patterns--printing-15-questions
 - junior

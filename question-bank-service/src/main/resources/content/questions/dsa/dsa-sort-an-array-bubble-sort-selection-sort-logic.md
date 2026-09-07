@@ -2,7 +2,9 @@
 slug: dsa-sort-an-array-bubble-sort-selection-sort-logic
 title: Sort an array (Bubble Sort / Selection Sort logic).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

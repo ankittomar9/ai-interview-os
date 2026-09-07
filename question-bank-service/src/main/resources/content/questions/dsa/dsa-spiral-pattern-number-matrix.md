@@ -2,7 +2,9 @@
 slug: dsa-spiral-pattern-number-matrix
 title: Spiral Pattern (Number Matrix).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [matrix]
+est_minutes: 25
 tags:
 - 5-patterns--printing-15-questions
 - mid

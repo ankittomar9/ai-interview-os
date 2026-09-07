@@ -2,7 +2,9 @@
 slug: dsa-reverse-number-using-recursion-v2
 title: Reverse Number Using Recursion V2
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - recursion
 - mid

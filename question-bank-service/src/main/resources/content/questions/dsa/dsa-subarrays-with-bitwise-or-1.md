@@ -2,7 +2,9 @@
 slug: dsa-subarrays-with-bitwise-or-1
 title: Subarrays With Bitwise Or 1
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation, arrays]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior

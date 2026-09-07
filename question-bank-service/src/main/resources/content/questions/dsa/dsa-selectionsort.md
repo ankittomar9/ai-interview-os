@@ -2,7 +2,9 @@
 slug: dsa-selectionsort
 title: Selectionsort
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - sorting--searching
 - mid

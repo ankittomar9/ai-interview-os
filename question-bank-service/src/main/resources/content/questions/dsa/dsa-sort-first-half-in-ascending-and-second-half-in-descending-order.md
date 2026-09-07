@@ -2,7 +2,9 @@
 slug: dsa-sort-first-half-in-ascending-and-second-half-in-descending-order
 title: Sort first half in Ascending and second half in Descending order.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-reverse-words-in-a-given-string
 title: Reverse words in a given string.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid
