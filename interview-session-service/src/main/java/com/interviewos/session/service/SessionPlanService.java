@@ -89,7 +89,7 @@ public class SessionPlanService {
             case BEHAVIORAL_STAR -> "BEHAVIORAL";
             case RESUME_BASED -> "AI-from-resume";
             case ALGORITHMS_DATA_STRUCTURES, DSA_LLD, DSA_LLD_HLD -> "ALGORITHMS_DATA_STRUCTURES";
-            case FULL_LOOP -> "FULL_LOOP";
+            case FULL_LOOP, CUSTOM -> "FULL_LOOP";
         };
     }
 
@@ -113,6 +113,12 @@ public class SessionPlanService {
                 case SENIOR -> 55;
                 case STAFF -> 52;
             };
+        } else if (track == InterviewTrack.CUSTOM) {
+            List<com.interviewos.session.dto.CustomDomainConfig> defaultCustom = List.of(
+                    new com.interviewos.session.dto.CustomDomainConfig(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, 30),
+                    new com.interviewos.session.dto.CustomDomainConfig(InterviewTrack.SYSTEM_DESIGN, 30)
+            );
+            return buildCustomPlan(difficulty, defaultCustom, seed, source);
         } else if (track == InterviewTrack.DSA_LLD) {
             sections = buildDsaLldSections(difficulty, seed);
             plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
@@ -479,6 +485,57 @@ public class SessionPlanService {
         return sections;
     }
 
+    public SessionPlan buildCustomPlan(
+            DifficultyLevel difficulty,
+            List<com.interviewos.session.dto.CustomDomainConfig> customDomains,
+            long seed,
+            String source
+    ) {
+        if (difficulty == null) difficulty = DifficultyLevel.MID;
+        if (source == null || source.isBlank()) source = "CUSTOM_BUILDER";
+
+        if (customDomains == null || customDomains.isEmpty()) {
+            throw new IllegalArgumentException("Custom interview plan must specify at least one domain");
+        }
+
+        for (var config : customDomains) {
+            if (config == null || config.domain() == null) {
+                throw new IllegalArgumentException("Custom domain cannot be null");
+            }
+            if (config.durationMinutes() < 10 || config.durationMinutes() > 60) {
+                throw new IllegalArgumentException("Domain duration must be between 10 and 60 minutes (domain: " + config.domain() + ", duration: " + config.durationMinutes() + ")");
+            }
+        }
+
+        int totalMinutes = customDomains.stream().mapToInt(com.interviewos.session.dto.CustomDomainConfig::durationMinutes).sum();
+        if (totalMinutes > 120) {
+            throw new IllegalArgumentException("Total custom interview duration cannot exceed 120 minutes (requested: " + totalMinutes + " minutes)");
+        }
+
+        Set<String> seenSlugs = new HashSet<>();
+        List<PlannedSection> sections = new ArrayList<>();
+        long sectionSeed = seed;
+
+        for (var config : customDomains) {
+            InterviewTrack domainTrack = config.domain();
+            SectionType sectionType = mapTrackToSectionType(domainTrack);
+            int itemCount = config.durationMinutes() >= 30 ? 2 : 1;
+            List<String> slugs = buildPlannedSlugsForTrack(domainTrack, difficulty, itemCount, sectionSeed, seenSlugs);
+            seenSlugs.addAll(slugs);
+            sections.add(new PlannedSection(
+                    sectionType,
+                    domainTrack,
+                    itemCount,
+                    config.durationMinutes(),
+                    domainTrack.name() + " custom assessment",
+                    slugs
+            ));
+            sectionSeed += 1;
+        }
+
+        return new SessionPlan(source, difficulty, sections, totalMinutes);
+    }
+
     private SectionType mapTrackToSectionType(InterviewTrack track) {
         if (track == null) return SectionType.DSA;
         return switch (track) {
@@ -488,7 +545,7 @@ public class SessionPlanService {
             case SYSTEM_DESIGN -> SectionType.SYSTEM_DESIGN;
             case BEHAVIORAL_STAR -> SectionType.BEHAVIORAL;
             case RESUME_BASED -> SectionType.RESUME;
-            case FULL_LOOP -> SectionType.CORE_TECH;
+            case FULL_LOOP, CUSTOM -> SectionType.CORE_TECH;
         };
     }
 

@@ -7,6 +7,7 @@ import com.interviewos.session.dto.SectionTransitionRequest;
 import com.interviewos.session.dto.SessionResponse;
 import com.interviewos.session.entity.InterviewSession;
 import com.interviewos.session.entity.SessionMessage;
+import com.interviewos.session.model.InterviewTrack;
 import com.interviewos.session.model.SessionStatus;
 import com.interviewos.session.repository.InterviewSessionMongoRepository;
 import com.interviewos.session.repository.InterviewSessionRepository;
@@ -97,7 +98,11 @@ public class InterviewSessionService {
             long seed = Math.abs((long) (request.candidateId() != null ? request.candidateId().hashCode() : 42) * 31
                     + (request.track() != null ? request.track().name().hashCode() : 0)
                     + (request.difficulty() != null ? request.difficulty().name().hashCode() : 0));
-            plan = sessionPlanService.buildPlan(request.track(), request.difficulty(), seed, request.getEffectivePlanSource());
+            if (request.track() == InterviewTrack.CUSTOM && request.customDomains() != null && !request.customDomains().isEmpty()) {
+                plan = sessionPlanService.buildCustomPlan(request.difficulty(), request.customDomains(), seed, request.getEffectivePlanSource());
+            } else {
+                plan = sessionPlanService.buildPlan(request.track(), request.difficulty(), seed, request.getEffectivePlanSource());
+            }
             try {
                 planJson = objectMapper.writeValueAsString(plan);
             } catch (Exception e) {
