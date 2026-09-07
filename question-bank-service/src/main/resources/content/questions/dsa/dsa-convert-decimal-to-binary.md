@@ -2,7 +2,9 @@
 slug: dsa-convert-decimal-to-binary
 title: Convert Decimal to Binary.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation, math]
+est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
 - junior

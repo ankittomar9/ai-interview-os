@@ -2,7 +2,9 @@
 slug: dsa-determine-the-length-of-a-string-without-length
 title: Determine the Length of a string without `length()`.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

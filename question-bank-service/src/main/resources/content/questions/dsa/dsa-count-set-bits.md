@@ -2,7 +2,9 @@
 slug: dsa-count-set-bits
 title: Count Set Bits
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior
