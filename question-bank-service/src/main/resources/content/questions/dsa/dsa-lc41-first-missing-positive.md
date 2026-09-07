@@ -2,7 +2,9 @@
 slug: dsa-lc41-first-missing-positive
 title: First Missing Positive
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [arrays]
+est_minutes: 40
 tags:
 - arrays
 - senior

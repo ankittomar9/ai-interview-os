@@ -2,7 +2,9 @@
 slug: dsa-lc5-longest-palindromic-substring
 title: Longest Palindromic Substring
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp, two-pointers, strings]
+est_minutes: 25
 tags:
 - two-pointers--dp
 - mid

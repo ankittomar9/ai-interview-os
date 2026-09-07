@@ -2,7 +2,9 @@
 slug: dsa-lc45-jump-game-ii
 title: Jump Game II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [greedy]
+est_minutes: 25
 tags:
 - greedy
 - mid

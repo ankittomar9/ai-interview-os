@@ -2,7 +2,9 @@
 slug: dsa-lc58-length-of-last-word
 title: Length of Last Word
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [strings]
+est_minutes: 15
 tags:
 - strings
 - junior

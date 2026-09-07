@@ -2,7 +2,9 @@
 slug: dsa-lc392-is-subsequence
 title: Is Subsequence
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [dp, two-pointers]
+est_minutes: 15
 tags:
 - two-pointers
 - junior

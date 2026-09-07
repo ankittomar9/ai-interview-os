@@ -2,7 +2,9 @@
 slug: dsa-lc55-jump-game
 title: Jump Game
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [greedy]
+est_minutes: 25
 tags:
 - greedy
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-lc452-minimum-number-of-arrows-to-burst-balloons
 title: Minimum Number of Arrows to Burst Balloons
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - intervals
 - mid
