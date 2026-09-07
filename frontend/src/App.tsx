@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, PlannedSection } from './types';
 import { createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession } from './services/api';
@@ -10,9 +10,10 @@ import { DiagnosticReportView } from './components/DiagnosticReportView';
 import { PhoneProctorView } from './components/PhoneProctorView';
 import { QuestionCatalog } from './components/QuestionCatalog';
 import { PracticeSummary } from './components/PracticeSummary';
+import { LearnView } from './components/learn/LearnView';
 import { Toaster } from './components/ui/Toaster';
 
-type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY';
+type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN';
 
 export function App() {
   const [sessionId, setSessionId] = useState<number | null>(() => {
@@ -28,6 +29,9 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     if (window.location.pathname.includes('phone-proctor') || params.get('session')) {
       return 'PHONE_PROCTOR';
+    }
+    if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
+      return 'LEARN';
     }
     return 'SETUP';
   });
@@ -53,6 +57,71 @@ export function App() {
     const p = (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
     return getStoredApiKey(p);
   });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
+        setView('LEARN');
+      } else if (window.location.pathname === '/' || window.location.pathname === '') {
+        setView('SETUP');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigateToLearn = () => {
+    window.history.pushState({}, '', '/learn');
+    setView('LEARN');
+  };
+
+  const handleBackToSetup = () => {
+    window.history.pushState({}, '', '/');
+    setView('SETUP');
+  };
+
+  const handleSolveFromLearn = async (slug: string) => {
+    setIsLoading(true);
+    setSessionMode('PLAYGROUND');
+
+    const activeProvider = provider || (localStorage.getItem('app.provider') as ModelProvider) || 'GROQ';
+    const activeApiKey = apiKey || getStoredApiKey(activeProvider);
+    setProvider(activeProvider);
+    setApiKey(activeApiKey);
+
+    try {
+      const fetched = await listQuestions({
+        slugs: [slug],
+        sessionMode: 'PLAYGROUND'
+      });
+      const q = fetched.length > 0 ? fetched[0] : null;
+      if (!q) {
+        throw new Error(`Problem '${slug}' not found in catalog.`);
+      }
+
+      const session = await createSession({
+        candidateId: 'practitioner-01',
+        candidateName: candidateName || 'Local Practitioner',
+        roleTitle: `Practice: ${q.title}`,
+        track: q.track || 'ALGORITHMS_DATA_STRUCTURES',
+        difficulty: (q.difficulty?.toUpperCase() as DifficultyLevel) || 'MID',
+        mode: 'PLAYGROUND'
+      });
+
+      setSessionId(session.id);
+      setSessionPlan(undefined);
+      await startSession(session.id);
+
+      setQuestion(q);
+      setPlaylistQuestions([q]);
+      setSectionQuestions([[q]]);
+      setView('ROOM');
+    } catch (err: any) {
+      alert(`Error launching playground practice: ${err.message || 'Service unreachable'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleStartInterview = async (config: {
     candidateId: string;
@@ -236,7 +305,8 @@ export function App() {
     clearVerificationStreams();
 
     if (sessionMode === 'PLAYGROUND') {
-      setView('PRACTICE_SUMMARY');
+      window.history.pushState({}, '', '/learn');
+      setView('LEARN');
       return;
     }
 
@@ -301,6 +371,14 @@ export function App() {
           onStart={handleStartInterview}
           isLoading={isLoading}
           onOpenCatalog={() => setIsCatalogOpen(true)}
+          onNavigateToLearn={handleNavigateToLearn}
+        />
+      )}
+
+      {view === 'LEARN' && (
+        <LearnView
+          onBackToSetup={handleBackToSetup}
+          onSolveQuestion={handleSolveFromLearn}
         />
       )}
 
@@ -339,8 +417,7 @@ export function App() {
           }}
           onBrowseCatalog={() => {
             clearVerificationStreams();
-            setView('SETUP');
-            setIsCatalogOpen(true);
+            handleNavigateToLearn();
           }}
         />
       )}
