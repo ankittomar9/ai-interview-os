@@ -105,4 +105,87 @@ class QuestionMarkdownParserTest {
         String md = "No frontmatter at all";
         assertThrows(IllegalArgumentException.class, () -> parser.parse(md, "invalid.md"));
     }
+
+    @Test
+    @DisplayName("Canary: Parse and validate HLD and LLD ingested questions from classpath")
+    void testParseCanaryQuestions() throws Exception {
+        ContentValidator validator = new ContentValidator();
+        var resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+
+        // 1. Canary HLD
+        var hldRes = resolver.getResource("classpath:content/questions/hld/hld-consistent-hashing.md");
+        assertTrue(hldRes.exists(), "Canary HLD question file must exist on classpath");
+        String hldContent = new String(hldRes.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        QuestionDocument hldDoc = parser.parse(hldContent, "hld-consistent-hashing.md");
+        assertNotNull(hldDoc);
+        assertEquals("hld-consistent-hashing", hldDoc.getSlug());
+        assertEquals("SYSTEM_DESIGN", hldDoc.getTrack());
+        assertEquals("MID", hldDoc.getDifficulty());
+        var hldVal = validator.validate(hldDoc, hldContent);
+        assertTrue(hldVal.isValid(), "Canary HLD must pass ContentValidator: " + hldVal.errors());
+        assertEquals("PUBLISHED", hldVal.status());
+
+        // 2. Canary LLD
+        var lldRes = resolver.getResource("classpath:content/questions/lld/lld-parking-lot.md");
+        assertTrue(lldRes.exists(), "Canary LLD question file must exist on classpath");
+        String lldContent = new String(lldRes.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        QuestionDocument lldDoc = parser.parse(lldContent, "lld-parking-lot.md");
+        assertNotNull(lldDoc);
+        assertEquals("lld-parking-lot", lldDoc.getSlug());
+        assertEquals("SPRING_LLD", lldDoc.getTrack());
+        assertEquals("MID", lldDoc.getDifficulty());
+        assertNotNull(lldDoc.getStarterCode(), "LLD requires starterCode");
+        assertNotNull(lldDoc.getSolutionCode(), "LLD requires solutionCode");
+        var lldVal = validator.validate(lldDoc, lldContent);
+        assertTrue(lldVal.isValid(), "Canary LLD must pass ContentValidator: " + lldVal.errors());
+        assertEquals("PUBLISHED", lldVal.status());
+    }
+
+    @Test
+    @DisplayName("Guard: All HLD and LLD catalog markdown questions parse, validate, and have unique slugs")
+    void testAllCatalogMarkdownQuestionsPassValidation() throws Exception {
+        ContentValidator validator = new ContentValidator();
+        var resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+        var hldResources = resolver.getResources("classpath*:content/questions/hld/*.md");
+        var lldResources = resolver.getResources("classpath*:content/questions/lld/*.md");
+
+        assertEquals(27, hldResources.length, "Expected exactly 27 HLD questions in catalog");
+        assertEquals(11, lldResources.length, "Expected exactly 11 LLD questions in catalog");
+
+        java.util.Set<String> seenSlugs = new java.util.HashSet<>();
+
+        for (var res : hldResources) {
+            String filename = res.getFilename() != null ? res.getFilename() : "unknown.md";
+            String content = new String(res.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+
+            QuestionDocument doc = parser.parse(content, filename);
+            assertNotNull(doc, "Parsed doc cannot be null for " + filename);
+            assertFalse(seenSlugs.contains(doc.getSlug()), "Duplicate slug found in catalog: " + doc.getSlug());
+            seenSlugs.add(doc.getSlug());
+
+            ContentValidator.ValidationResult valResult = validator.validate(doc, content);
+            assertTrue(valResult.isValid(), "Question '" + doc.getSlug() + "' failed validation: " + valResult.errors());
+            assertEquals("PUBLISHED", doc.getStatus(), "Question '" + doc.getSlug() + "' should be PUBLISHED");
+            assertEquals("SYSTEM_DESIGN", doc.getTrack());
+        }
+
+        for (var res : lldResources) {
+            String filename = res.getFilename() != null ? res.getFilename() : "unknown.md";
+            String content = new String(res.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+
+            QuestionDocument doc = parser.parse(content, filename);
+            assertNotNull(doc, "Parsed doc cannot be null for " + filename);
+            assertFalse(seenSlugs.contains(doc.getSlug()), "Duplicate slug found in catalog: " + doc.getSlug());
+            seenSlugs.add(doc.getSlug());
+
+            ContentValidator.ValidationResult valResult = validator.validate(doc, content);
+            assertTrue(valResult.isValid(), "Question '" + doc.getSlug() + "' failed validation: " + valResult.errors());
+            assertEquals("PUBLISHED", doc.getStatus(), "Question '" + doc.getSlug() + "' should be PUBLISHED");
+            assertEquals("SPRING_LLD", doc.getTrack());
+            assertNotNull(doc.getStarterCode(), "LLD requires starterCode for " + doc.getSlug());
+            assertNotNull(doc.getSolutionCode(), "LLD requires solutionCode for " + doc.getSlug());
+        }
+
+        assertEquals(38, seenSlugs.size(), "Expected exactly 38 unique HLD + LLD slugs");
+    }
 }
