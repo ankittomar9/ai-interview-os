@@ -2,7 +2,9 @@
 slug: dsa-lc172-factorial-trailing-zeroes
 title: Factorial Trailing Zeroes
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [math]
+est_minutes: 25
 tags:
 - math
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-lc20-valid-parentheses
 title: Valid Parentheses
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [stacks-queues]
+est_minutes: 15
 tags:
 - stack
 - junior

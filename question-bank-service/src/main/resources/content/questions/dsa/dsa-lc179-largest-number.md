@@ -2,7 +2,9 @@
 slug: dsa-lc179-largest-number
 title: Largest Number
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [greedy]
+est_minutes: 25
 tags:
 - greedy
 - mid
