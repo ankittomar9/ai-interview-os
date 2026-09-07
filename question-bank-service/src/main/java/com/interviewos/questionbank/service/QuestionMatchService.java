@@ -133,13 +133,24 @@ public class QuestionMatchService {
             }
 
             // Difficulty match bonus
-            if (request.difficulty() != null && request.difficulty().equalsIgnoreCase(doc.getDifficulty())) {
+            if (matchesDifficulty(request.difficulty(), doc.getDifficulty())) {
                 score += 3.0;
             }
 
             results.add(new ScoredCandidate(doc, score));
         }
         return results;
+    }
+
+    private boolean matchesDifficulty(String reqDiff, String docDiff) {
+        if (reqDiff == null || docDiff == null) return false;
+        if (reqDiff.equalsIgnoreCase(docDiff)) return true;
+        String r = reqDiff.toUpperCase();
+        String d = docDiff.toUpperCase();
+        if ((r.equals("JUNIOR") || r.equals("EASY")) && (d.equals("JUNIOR") || d.equals("EASY"))) return true;
+        if ((r.equals("MID") || r.equals("MEDIUM")) && (d.equals("MID") || d.equals("MEDIUM"))) return true;
+        if ((r.equals("SENIOR") || r.equals("STAFF") || r.equals("HARD")) && (d.equals("SENIOR") || d.equals("STAFF") || d.equals("HARD"))) return true;
+        return false;
     }
 
     private Optional<LlmDecision> invokeLlmReranker(List<ScoredCandidate> topCandidates, QuestionMatchRequest req) {

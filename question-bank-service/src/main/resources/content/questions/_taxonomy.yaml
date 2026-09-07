@@ -1,0 +1,70 @@
+topics:
+  - id: arrays
+    name: Arrays
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: strings
+    name: Strings
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: linked-list
+    name: Linked List
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: trees
+    name: Trees
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: graphs
+    name: Graphs
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: dp
+    name: Dynamic Programming
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: hashing
+    name: Hashing
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: two-pointers
+    name: Two Pointers
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: sliding-window
+    name: Sliding Window
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: stacks-queues
+    name: Stacks & Queues
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: binary-search
+    name: Binary Search
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: bit-manipulation
+    name: Bit Manipulation
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: recursion
+    name: Recursion
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: greedy
+    name: Greedy
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: heap
+    name: Heap
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: trie
+    name: Trie
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: design
+    name: Design
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: math
+    name: Math
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: matrix
+    name: Matrix
+    track: ALGORITHMS_DATA_STRUCTURES
+  - id: sql
+    name: SQL
+    track: SQL
+  - id: system-design
+    name: System Design
+    track: SYSTEM_DESIGN
+  - id: lld
+    name: Low-Level Design
+    track: SPRING_LLD
+  - id: behavioral
+    name: Behavioral
+    track: BEHAVIORAL_STAR

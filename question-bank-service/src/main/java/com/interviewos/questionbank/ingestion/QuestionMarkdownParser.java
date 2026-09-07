@@ -58,6 +58,13 @@ public class QuestionMarkdownParser {
             boolean ordered = getBoolean(yamlMap, "ordered", false);
 
             List<String> tags = getStringList(yamlMap, "tags");
+            List<String> topics = getStringList(yamlMap, "topics");
+            Integer estMinutes = getInteger(yamlMap, "est_minutes");
+            if (estMinutes == null) {
+                estMinutes = getInteger(yamlMap, "estMinutes");
+            }
+            String solutionVideoUrl = getString(yamlMap, "solution_video_url", getString(yamlMap, "solutionVideoUrl", null));
+
             List<String> hints = getStringList(yamlMap, "hints");
             List<String> evaluationCriteria = getStringList(yamlMap, "evaluationCriteria");
             List<String> constraints = getStringList(yamlMap, "constraints");
@@ -79,6 +86,9 @@ public class QuestionMarkdownParser {
                     .title(title)
                     .track(track)
                     .difficulty(difficulty)
+                    .topics(topics)
+                    .estMinutes(estMinutes)
+                    .solutionVideoUrl(solutionVideoUrl)
                     .tags(tags)
                     .problemStatement(bodyBlock.isEmpty() ? title : bodyBlock)
                     .starterCode(starterCode)
@@ -122,6 +132,18 @@ public class QuestionMarkdownParser {
         if (val instanceof Boolean b) return b;
         if (val != null) return Boolean.parseBoolean(val.toString());
         return defaultVal;
+    }
+
+    private Integer getInteger(Map<String, Object> map, String key) {
+        if (map == null || !map.containsKey(key)) return null;
+        Object val = map.get(key);
+        if (val instanceof Number n) return n.intValue();
+        if (val != null) {
+            try {
+                return Integer.parseInt(val.toString().trim());
+            } catch (NumberFormatException ignored) {}
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

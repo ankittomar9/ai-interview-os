@@ -12,6 +12,9 @@ public record QuestionPublicView(
         String title,
         String track,
         String difficulty,
+        List<String> topics,
+        Integer estMinutes,
+        String solutionVideoUrl,
         List<String> tags,
         String problemStatement,
         String starterCode,
@@ -45,6 +48,9 @@ public record QuestionPublicView(
                 .title(doc.getTitle())
                 .track(doc.getTrack())
                 .difficulty(doc.getDifficulty())
+                .topics(doc.getTopics())
+                .estMinutes(doc.getEstMinutes())
+                .solutionVideoUrl(doc.getSolutionVideoUrl())
                 .tags(doc.getTags())
                 .problemStatement(doc.getProblemStatement())
                 .starterCode(doc.getStarterCode())

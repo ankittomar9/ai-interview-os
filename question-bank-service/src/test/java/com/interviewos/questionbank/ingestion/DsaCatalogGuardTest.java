@@ -28,13 +28,25 @@ class DsaCatalogGuardTest {
     @DisplayName("Assert DSA catalog has >= 300 questions and 100% pass content validation")
     void testDsaCatalogIntegrityAndGuards() throws IOException {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        var taxonomyRes = resolver.getResource("classpath:content/questions/_taxonomy.yaml");
+        assertTrue(taxonomyRes.exists(), "_taxonomy.yaml must exist");
+        String taxonomyContent = new String(taxonomyRes.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        Set<String> validTopics = new HashSet<>();
+        for (String line : taxonomyContent.split("\\R")) {
+            line = line.trim();
+            if (line.startsWith("- id:")) {
+                validTopics.add(line.substring("- id:".length()).trim());
+            }
+        }
+        assertFalse(validTopics.isEmpty(), "Taxonomy topics must not be empty");
+
         var dsaResources = resolver.getResources("classpath*:content/questions/dsa/*.md");
 
         assertTrue(dsaResources.length >= 300,
                 "Expected at least 300 DSA questions in catalog, but found: " + dsaResources.length);
 
         Set<String> seenSlugs = new HashSet<>();
-        Set<String> validDifficulties = Set.of("JUNIOR", "MID", "SENIOR", "STAFF");
+        Set<String> validDifficulties = Set.of("EASY", "MEDIUM", "HARD");
 
         for (var res : dsaResources) {
             String filename = res.getFilename() != null ? res.getFilename() : "unknown.md";
@@ -53,6 +65,15 @@ class DsaCatalogGuardTest {
 
             assertTrue(validDifficulties.contains(doc.getDifficulty()),
                     "Question '" + slug + "' has invalid difficulty: " + doc.getDifficulty());
+
+            assertNotNull(doc.getTopics(), "Question '" + slug + "' missing topics list");
+            assertFalse(doc.getTopics().isEmpty(), "Question '" + slug + "' must have at least 1 topic");
+            for (String t : doc.getTopics()) {
+                assertTrue(validTopics.contains(t), "Question '" + slug + "' has topic '" + t + "' not in _taxonomy.yaml");
+            }
+
+            assertNotNull(doc.getEstMinutes(), "Question '" + slug + "' missing est_minutes");
+            assertTrue(doc.getEstMinutes() > 0, "Question '" + slug + "' est_minutes must be > 0, found: " + doc.getEstMinutes());
 
             assertNotNull(doc.getStarterCode(), "Question '" + slug + "' missing starterCode");
             assertFalse(doc.getStarterCode().trim().isEmpty(), "Question '" + slug + "' starterCode is empty");
