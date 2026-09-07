@@ -2,7 +2,9 @@
 slug: dsa-find-the-factorial-of-a-number-iterative-recursive
 title: Find the Factorial of a number (Iterative & Recursive).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math, recursion]
+est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
 - junior

@@ -2,7 +2,9 @@
 slug: dsa-find-majority-element-element-appearing-n-2-times
 title: Find Majority Element (element appearing > N/2 times).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

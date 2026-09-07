@@ -2,7 +2,9 @@
 slug: dsa-find-all-permutations-of-a-string
 title: Find all Permutations of a string.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

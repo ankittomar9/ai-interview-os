@@ -2,7 +2,9 @@
 slug: dsa-find-the-ascii-value-of-a-character
 title: Find the ASCII value of a character.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [strings]
+est_minutes: 15
 tags:
 - 3-strings-the-tricky-part--35-questions
 - junior

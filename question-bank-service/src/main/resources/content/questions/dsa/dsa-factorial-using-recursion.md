@@ -2,7 +2,9 @@
 slug: dsa-factorial-using-recursion
 title: Factorial using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math, recursion]
+est_minutes: 15
 tags:
 - 4-recursion--series-20-questions
 - junior

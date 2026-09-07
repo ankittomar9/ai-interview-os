@@ -2,7 +2,9 @@
 slug: dsa-fibonacci-series-using-recursion
 title: Fibonacci Series Using Recursion
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [math, recursion]
+est_minutes: 25
 tags:
 - recursion
 - mid
