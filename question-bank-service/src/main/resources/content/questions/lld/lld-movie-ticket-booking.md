@@ -2,7 +2,9 @@
 slug: lld-movie-ticket-booking
 title: Design a Movie Ticket Booking System
 track: SPRING_LLD
-difficulty: SENIOR
+difficulty: HARD
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

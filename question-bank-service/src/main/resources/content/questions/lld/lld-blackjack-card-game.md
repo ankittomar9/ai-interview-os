@@ -2,7 +2,9 @@
 slug: lld-blackjack-card-game
 title: Design a Blackjack Card Game
 track: SPRING_LLD
-difficulty: MID
+difficulty: MEDIUM
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

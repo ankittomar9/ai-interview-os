@@ -2,7 +2,9 @@
 slug: hld-url-shortener-bitly
 title: Scalable High-Throughput URL Shortener
 track: SYSTEM_DESIGN
-difficulty: MID
+difficulty: MEDIUM
+topics: [system-design]
+est_minutes: 45
 tags: [system-design, base62, distributed-id, bloom-filter, caching]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-hld/url-shortener

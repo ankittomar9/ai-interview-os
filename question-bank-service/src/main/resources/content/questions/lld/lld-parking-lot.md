@@ -2,7 +2,9 @@
 slug: lld-parking-lot
 title: Design a Parking Lot
 track: SPRING_LLD
-difficulty: MID
+difficulty: MEDIUM
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

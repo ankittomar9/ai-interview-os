@@ -2,7 +2,9 @@
 slug: lld-atm-system
 title: Design an Automated Teller Machine (ATM)
 track: SPRING_LLD
-difficulty: SENIOR
+difficulty: HARD
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

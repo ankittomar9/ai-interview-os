@@ -2,7 +2,9 @@
 slug: hld-web-crawler
 title: Distributed Scalable Web Crawler
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - distributed-systems
 - web-crawler

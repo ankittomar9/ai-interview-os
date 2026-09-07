@@ -2,7 +2,9 @@
 slug: sql-duplicate-email-detection
 title: Identify and Deduplicate Duplicate User Emails
 track: SQL
-difficulty: JUNIOR
+difficulty: EASY
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, group-by, having, aggregation]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/duplicate-emails

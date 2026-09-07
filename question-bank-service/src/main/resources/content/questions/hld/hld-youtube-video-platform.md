@@ -2,7 +2,9 @@
 slug: hld-youtube-video-platform
 title: YouTube Video Streaming Platform
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - video-streaming
 - transcoding

@@ -2,7 +2,9 @@
 slug: hld-stock-exchange
 title: Ultra-Low-Latency Stock Exchange Matching Engine
 track: SYSTEM_DESIGN
-difficulty: STAFF
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - trading
 - order-matching

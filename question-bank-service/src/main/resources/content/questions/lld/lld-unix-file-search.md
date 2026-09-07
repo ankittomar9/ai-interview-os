@@ -2,7 +2,9 @@
 slug: lld-unix-file-search
 title: Design a Unix File Search Command (find)
 track: SPRING_LLD
-difficulty: MID
+difficulty: MEDIUM
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

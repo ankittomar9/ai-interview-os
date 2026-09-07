@@ -2,7 +2,9 @@
 slug: hld-unique-id-generator
 title: Distributed Unique ID Generator (Snowflake)
 track: SYSTEM_DESIGN
-difficulty: MID
+difficulty: MEDIUM
+topics: [system-design]
+est_minutes: 45
 tags:
 - distributed-systems
 - id-generation

@@ -2,7 +2,9 @@
 slug: lld-grocery-store-system
 title: Design a Grocery Store Checkout System
 track: SPRING_LLD
-difficulty: MID
+difficulty: MEDIUM
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

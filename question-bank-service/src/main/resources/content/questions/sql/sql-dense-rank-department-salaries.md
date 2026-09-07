@@ -2,7 +2,9 @@
 slug: sql-dense-rank-department-salaries
 title: Department Top 3 Earners via DENSE_RANK
 track: SQL
-difficulty: SENIOR
+difficulty: HARD
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, window-functions, dense-rank, joins]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/dense-rank-salaries
