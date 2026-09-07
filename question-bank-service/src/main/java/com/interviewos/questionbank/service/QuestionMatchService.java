@@ -31,6 +31,15 @@ public class QuestionMatchService {
     @org.springframework.beans.factory.annotation.Value("${gemini.api.endpoint:${GEMINI_ENDPOINT:https://generativelanguage.googleapis.com/v1beta/models/}}")
     private String geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/";
 
+    @org.springframework.beans.factory.annotation.Value("${groq.api.model:${GROQ_MODEL:qwen/qwen3-32b}}")
+    private String groqModel = "qwen/qwen3-32b";
+
+    @org.springframework.beans.factory.annotation.Value("${groq.api.fallback-models:${GROQ_FALLBACK_MODELS:llama-3.1-8b-instant}}")
+    private String groqFallbackModels = "llama-3.1-8b-instant";
+
+    @org.springframework.beans.factory.annotation.Value("${openai.api.model:${OPENAI_MODEL:gpt-4o-mini}}")
+    private String openAiModel = "gpt-4o-mini";
+
     public QuestionMatchResponse matchQuestion(QuestionMatchRequest request) {
         String track = request.track() != null ? request.track().trim() : "ALGORITHMS_DATA_STRUCTURES";
         String difficulty = request.difficulty() != null ? request.difficulty().trim() : "JUNIOR";
@@ -175,35 +184,74 @@ public class QuestionMatchService {
                 String url = "GROQ".equalsIgnoreCase(provider)
                         ? "https://api.groq.com/openai/v1/chat/completions"
                         : "https://api.openai.com/v1/chat/completions";
-                String model = "GROQ".equalsIgnoreCase(provider) ? "llama-3.3-70b-versatile" : "gpt-4o-mini";
+                List<String> modelLadder = "GROQ".equalsIgnoreCase(provider)
+                        ? buildGroqModelLadder()
+                        : List.of(openAiModel);
 
-                Map<String, Object> body = Map.of(
-                        "model", model,
-                        "messages", List.of(
-                                Map.of("role", "system", "content", "You are an expert technical interviewer assistant. Return valid JSON."),
-                                Map.of("role", "user", "content", prompt.toString())
-                        ),
-                        "temperature", 0.1
-                );
+                for (String model : modelLadder) {
+                    try {
+                        Map<String, Object> body = Map.of(
+                                "model", model,
+                                "messages", List.of(
+                                        Map.of("role", "system", "content", "You are an expert technical interviewer assistant. Return valid JSON."),
+                                        Map.of("role", "user", "content", prompt.toString())
+                                ),
+                                "temperature", 0.1
+                        );
 
-                String rawJson = client.post()
-                        .uri(url)
-                        .header("Authorization", "Bearer " + apiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(body)
-                        .retrieve()
-                        .body(String.class);
+                        String rawJson = client.post()
+                                .uri(url)
+                                .header("Authorization", "Bearer " + apiKey)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body(body)
+                                .retrieve()
+                                .body(String.class);
 
-                JsonNode root = objectMapper.readTree(rawJson);
-                String text = root.path("choices").get(0).path("message").path("content").asText();
-                JsonNode parsed = objectMapper.readTree(cleanJson(text));
-                return Optional.of(new LlmDecision(parsed.path("chosenSlug").asText(), parsed.path("rationale").asText()));
+                        JsonNode root = objectMapper.readTree(rawJson);
+                        String text = root.path("choices").get(0).path("message").path("content").asText();
+                        JsonNode parsed = objectMapper.readTree(cleanJson(text));
+                        return Optional.of(new LlmDecision(parsed.path("chosenSlug").asText(), parsed.path("rationale").asText()));
+                    } catch (Exception modelEx) {
+                        log.warn("⚠️ Provider {} model {} invocation failed: {}. Continuing fallback ladder...", provider, model, modelEx.getMessage());
+                    }
+                }
             }
 
         } catch (Exception e) {
             log.warn("⚠️ LLM question re-ranking skipped/failed: {}. Falling back to deterministic scoring.", e.getMessage());
         }
         return Optional.empty();
+    }
+
+    public List<String> buildGroqModelLadder() {
+        LinkedHashSet<String> ladder = new LinkedHashSet<>();
+        if (groqModel != null && !groqModel.isBlank()) {
+            ladder.add(groqModel.trim());
+        }
+        if (groqFallbackModels != null && !groqFallbackModels.isBlank()) {
+            for (String fb : groqFallbackModels.split(",")) {
+                String clean = fb.trim();
+                if (!clean.isEmpty()) {
+                    ladder.add(clean);
+                }
+            }
+        }
+        if (ladder.isEmpty()) {
+            ladder.add("qwen/qwen3-32b");
+        }
+        return new ArrayList<>(ladder);
+    }
+
+    public void setGroqModel(String groqModel) {
+        this.groqModel = groqModel;
+    }
+
+    public void setGroqFallbackModels(String groqFallbackModels) {
+        this.groqFallbackModels = groqFallbackModels;
+    }
+
+    public void setOpenAiModel(String openAiModel) {
+        this.openAiModel = openAiModel;
     }
 
     private String cleanJson(String text) {
