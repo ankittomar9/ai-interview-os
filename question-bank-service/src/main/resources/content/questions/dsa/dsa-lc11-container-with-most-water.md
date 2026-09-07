@@ -2,7 +2,9 @@
 slug: dsa-lc11-container-with-most-water
 title: Container With Most Water
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [two-pointers]
+est_minutes: 25
 tags:
 - two-pointers
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-lc135-candy
 title: Candy
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [greedy]
+est_minutes: 40
 tags:
 - greedy
 - senior

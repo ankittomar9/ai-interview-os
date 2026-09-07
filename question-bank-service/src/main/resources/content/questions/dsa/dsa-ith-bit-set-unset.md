@@ -2,7 +2,9 @@
 slug: dsa-ith-bit-set-unset
 title: Ith Bit Set Unset
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior

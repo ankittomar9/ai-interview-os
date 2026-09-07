@@ -2,7 +2,9 @@
 slug: dsa-lc122-best-time-to-buy-and-sell-stock-ii
 title: Best Time to Buy and Sell Stock II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - arrays
 - mid

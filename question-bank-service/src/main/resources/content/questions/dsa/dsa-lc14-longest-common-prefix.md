@@ -2,7 +2,9 @@
 slug: dsa-lc14-longest-common-prefix
 title: Longest Common Prefix
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [strings]
+est_minutes: 15
 tags:
 - strings
 - junior

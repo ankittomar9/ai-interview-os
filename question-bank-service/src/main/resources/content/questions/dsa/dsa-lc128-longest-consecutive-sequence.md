@@ -2,7 +2,9 @@
 slug: dsa-lc128-longest-consecutive-sequence
 title: Longest Consecutive Sequence
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [hashing, arrays]
+est_minutes: 25
 tags:
 - arrays--hashing
 - mid

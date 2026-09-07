@@ -2,7 +2,9 @@
 slug: dsa-kth-element-in-linked-list
 title: Kth Element In Linked List
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [linked-list]
+est_minutes: 25
 tags:
 - linked-list
 - mid

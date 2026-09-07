@@ -2,7 +2,9 @@
 slug: dsa-lc123-best-time-to-buy-and-sell-stock-iii
 title: Best Time to Buy and Sell Stock III
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [dp]
+est_minutes: 40
 tags:
 - dynamic-programming
 - senior
