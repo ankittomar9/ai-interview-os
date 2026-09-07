@@ -2,7 +2,9 @@
 slug: dsa-find-the-kth-smallest-largest-element-quickselect-logic
 title: Find the Kth Smallest/Largest element (QuickSelect logic).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

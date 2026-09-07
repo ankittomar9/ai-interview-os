@@ -2,7 +2,9 @@
 slug: hld-ad-click-event-aggregation
 title: Real-Time Ad Click Event Aggregation Pipeline
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - stream-processing
 - ad-tech

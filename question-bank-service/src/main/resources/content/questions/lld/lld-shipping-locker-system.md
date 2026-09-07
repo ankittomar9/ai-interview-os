@@ -2,7 +2,9 @@
 slug: lld-shipping-locker-system
 title: Design an Amazon-Style Shipping Locker System
 track: SPRING_LLD
-difficulty: SENIOR
+difficulty: HARD
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

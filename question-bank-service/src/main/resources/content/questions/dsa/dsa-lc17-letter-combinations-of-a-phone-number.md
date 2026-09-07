@@ -2,7 +2,9 @@
 slug: dsa-lc17-letter-combinations-of-a-phone-number
 title: Letter Combinations of a Phone Number
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - backtracking
 - mid

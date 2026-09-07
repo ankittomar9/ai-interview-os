@@ -2,7 +2,9 @@
 slug: dsa-lc141-linked-list-cycle
 title: Linked List Cycle
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [linked-list]
+est_minutes: 15
 tags:
 - linked-list
 - junior

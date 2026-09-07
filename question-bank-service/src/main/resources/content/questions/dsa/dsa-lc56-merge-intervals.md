@@ -2,7 +2,9 @@
 slug: dsa-lc56-merge-intervals
 title: Merge Intervals
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - intervals
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-check-if-array-is-sorted-or-not
 title: Check If Array Is Sorted Or Not
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion, arrays]
+est_minutes: 25
 tags:
 - recursion
 - mid

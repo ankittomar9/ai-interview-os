@@ -2,7 +2,9 @@
 slug: sql-user-cohort-retention
 title: Monthly Customer Signup Cohort Retention Matrix
 track: SQL
-difficulty: SENIOR
+difficulty: HARD
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, cohort-analysis, date-trunc, self-join]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/cohort-retention

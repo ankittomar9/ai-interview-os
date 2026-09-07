@@ -2,7 +2,9 @@
 slug: dsa-lc29-divide-two-integers
 title: Divide Two Integers
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [bit-manipulation]
+est_minutes: 25
 tags:
 - bit-manipulation
 - mid

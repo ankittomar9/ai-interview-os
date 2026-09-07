@@ -2,7 +2,9 @@
 slug: dsa-check-if-two-strings-match-where-one-string-contains-wildcard-characters
 title: Check if two strings match where one string contains wildcard characters.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

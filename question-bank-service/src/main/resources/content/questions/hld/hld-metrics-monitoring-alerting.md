@@ -2,7 +2,9 @@
 slug: hld-metrics-monitoring-alerting
 title: Distributed Metrics Monitoring & Alerting System
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - monitoring
 - time-series-db

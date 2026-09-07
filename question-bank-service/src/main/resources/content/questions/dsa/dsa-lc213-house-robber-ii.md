@@ -2,7 +2,9 @@
 slug: dsa-lc213-house-robber-ii
 title: House Robber II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp]
+est_minutes: 25
 tags:
 - dynamic-programming
 - mid

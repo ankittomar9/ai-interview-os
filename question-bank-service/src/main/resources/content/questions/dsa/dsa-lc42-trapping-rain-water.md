@@ -2,7 +2,9 @@
 slug: dsa-lc42-trapping-rain-water
 title: Trapping Rain Water
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [two-pointers]
+est_minutes: 40
 tags:
 - two-pointers
 - senior

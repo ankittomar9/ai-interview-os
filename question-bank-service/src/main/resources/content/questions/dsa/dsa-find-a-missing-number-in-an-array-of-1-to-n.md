@@ -2,7 +2,9 @@
 slug: dsa-find-a-missing-number-in-an-array-of-1-to-n
 title: Find a Missing Number in an array of 1 to N.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

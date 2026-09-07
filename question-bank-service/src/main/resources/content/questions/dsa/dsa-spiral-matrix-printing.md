@@ -2,7 +2,9 @@
 slug: dsa-spiral-matrix-printing
 title: Spiral Matrix Printing
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [matrix]
+est_minutes: 25
 tags:
 - matrix
 - mid

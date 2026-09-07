@@ -2,7 +2,9 @@
 slug: dsa-maximum-subarray-sum-kadane-s-algorithm
 title: "Maximum Subarray Sum (Kadane\u2019s Algorithm)."
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-lc152-maximum-product-subarray
 title: Maximum Product Subarray
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp, arrays]
+est_minutes: 25
 tags:
 - dynamic-programming
 - mid

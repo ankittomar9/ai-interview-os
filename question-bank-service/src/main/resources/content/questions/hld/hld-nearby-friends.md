@@ -2,7 +2,9 @@
 slug: hld-nearby-friends
 title: Real-Time Nearby Friends Tracking
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - geospatial
 - pub-sub

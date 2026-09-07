@@ -2,7 +2,9 @@
 slug: dsa-lc22-generate-parentheses
 title: Generate Parentheses
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [stacks-queues, recursion]
+est_minutes: 25
 tags:
 - backtracking
 - mid

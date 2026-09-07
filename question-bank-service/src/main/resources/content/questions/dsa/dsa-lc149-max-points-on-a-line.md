@@ -2,7 +2,9 @@
 slug: dsa-lc149-max-points-on-a-line
 title: Max Points on a Line
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [math]
+est_minutes: 40
 tags:
 - math
 - senior

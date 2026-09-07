@@ -2,7 +2,9 @@
 slug: dsa-lc347-top-k-frequent-elements
 title: Top K Frequent Elements
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [heap]
+est_minutes: 25
 tags:
 - heap
 - mid

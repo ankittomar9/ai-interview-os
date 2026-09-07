@@ -2,7 +2,9 @@
 slug: dsa-lc704-binary-search
 title: Binary Search
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [binary-search]
+est_minutes: 15
 tags:
 - binary-search
 - junior

@@ -2,7 +2,9 @@
 slug: dsa-decimal-to-binary-using-recursion
 title: Decimal to Binary using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [bit-manipulation, recursion]
+est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
 - mid

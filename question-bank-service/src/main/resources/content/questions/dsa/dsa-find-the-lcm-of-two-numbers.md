@@ -2,7 +2,9 @@
 slug: dsa-find-the-lcm-of-two-numbers
 title: Find the LCM of two numbers.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math]
+est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
 - junior

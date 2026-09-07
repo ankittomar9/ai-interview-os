@@ -2,7 +2,9 @@
 slug: hld-distributed-cache-lfu
 title: Consistent Hashed LFU Distributed Caching Layer
 track: SYSTEM_DESIGN
-difficulty: STAFF
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags: [caching, consistent-hashing, lfu, eviction, replication]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-hld/distributed-cache

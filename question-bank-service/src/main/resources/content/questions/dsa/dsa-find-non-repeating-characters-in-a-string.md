@@ -2,7 +2,9 @@
 slug: dsa-find-non-repeating-characters-in-a-string
 title: Find Non-repeating characters in a string.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

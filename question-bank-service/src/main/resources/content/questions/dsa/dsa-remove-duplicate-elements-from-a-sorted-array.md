@@ -2,7 +2,9 @@
 slug: dsa-remove-duplicate-elements-from-a-sorted-array
 title: Remove Duplicate elements from a sorted array.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [hashing, arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

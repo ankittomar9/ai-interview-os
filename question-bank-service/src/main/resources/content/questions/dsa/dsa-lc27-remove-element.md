@@ -2,7 +2,9 @@
 slug: dsa-lc27-remove-element
 title: Remove Element
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [arrays]
+est_minutes: 15
 tags:
 - arrays
 - junior

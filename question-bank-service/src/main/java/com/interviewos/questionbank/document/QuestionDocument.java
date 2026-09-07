@@ -33,7 +33,13 @@ public class QuestionDocument {
 
     private String track; // ALGORITHMS_DATA_STRUCTURES, SPRING_LLD, SYSTEM_DESIGN, BEHAVIORAL_STAR
 
-    private String difficulty; // JUNIOR, MID, SENIOR, STAFF
+    private String difficulty; // JUNIOR, MID, SENIOR, STAFF or EASY, MEDIUM, HARD
+
+    private List<String> topics;
+
+    private Integer estMinutes;
+
+    private String solutionVideoUrl;
 
     private List<String> tags;
 

@@ -2,7 +2,9 @@
 slug: dsa-lc75-sort-colors
 title: Sort Colors
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [two-pointers, arrays]
+est_minutes: 25
 tags:
 - two-pointers
 - mid

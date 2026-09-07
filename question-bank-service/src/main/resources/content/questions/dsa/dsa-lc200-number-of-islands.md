@@ -2,7 +2,9 @@
 slug: dsa-lc200-number-of-islands
 title: Number of Islands
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [graphs]
+est_minutes: 25
 tags:
 - graph
 - mid

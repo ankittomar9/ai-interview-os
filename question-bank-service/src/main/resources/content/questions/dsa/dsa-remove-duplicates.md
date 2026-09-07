@@ -2,7 +2,9 @@
 slug: dsa-remove-duplicates
 title: Remove Duplicates
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [linked-list, hashing]
+est_minutes: 25
 tags:
 - linked-list
 - mid

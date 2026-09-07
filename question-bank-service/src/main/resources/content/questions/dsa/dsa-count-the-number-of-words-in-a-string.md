@@ -2,7 +2,9 @@
 slug: dsa-count-the-number-of-words-in-a-string
 title: Count the number of words in a string.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

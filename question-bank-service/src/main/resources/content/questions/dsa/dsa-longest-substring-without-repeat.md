@@ -2,7 +2,9 @@
 slug: dsa-longest-substring-without-repeat
 title: Longest Non-Repeating Substring
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [sliding-window, strings, hashing]
+est_minutes: 25
 tags: [strings, sliding-window, hash-table]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/sliding-window-substring

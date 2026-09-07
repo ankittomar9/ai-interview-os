@@ -2,7 +2,9 @@
 slug: hld-distributed-rate-limiter
 title: Multi-Tier Distributed Token Bucket Rate Limiter
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags: [distributed-systems, rate-limiting, redis, concurrency, lua]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-hld/distributed-rate-limiter

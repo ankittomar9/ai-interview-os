@@ -2,7 +2,9 @@
 slug: dsa-count-common-subsequence-in-two-strings
 title: Count common subsequence in two strings.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp, strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

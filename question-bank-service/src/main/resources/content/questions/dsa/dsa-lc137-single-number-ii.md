@@ -2,7 +2,9 @@
 slug: dsa-lc137-single-number-ii
 title: Single Number II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [bit-manipulation]
+est_minutes: 25
 tags:
 - bit-manipulation
 - mid

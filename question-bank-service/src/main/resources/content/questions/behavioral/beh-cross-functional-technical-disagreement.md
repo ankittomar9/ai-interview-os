@@ -2,7 +2,9 @@
 slug: beh-cross-functional-technical-disagreement
 title: Engineering Leadership: Resolving Architectural Deadlock with Product
 track: BEHAVIORAL_STAR
-difficulty: SENIOR
+difficulty: HARD
+topics: [behavioral]
+est_minutes: 20
 tags: [leadership, communication, star, conflict-resolution, trade-offs]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-behavioral/conflict-resolution

@@ -2,7 +2,9 @@
 slug: dsa-print-1-to-100-without-using-loop
 title: Print 1 to 100 without using loop.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [recursion]
+est_minutes: 15
 tags:
 - 4-recursion--series-20-questions
 - junior

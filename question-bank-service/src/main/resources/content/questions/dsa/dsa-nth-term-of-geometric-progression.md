@@ -2,7 +2,9 @@
 slug: dsa-nth-term-of-geometric-progression
 title: Nth term of Geometric Progression.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
 - mid

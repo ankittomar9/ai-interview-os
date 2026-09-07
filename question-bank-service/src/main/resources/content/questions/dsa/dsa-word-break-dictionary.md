@@ -2,7 +2,9 @@
 slug: dsa-word-break-dictionary
 title: Dictionary Word Segmentation
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp, trie]
+est_minutes: 25
 tags: [dynamic-programming, strings, hash-set]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/dp-word-break

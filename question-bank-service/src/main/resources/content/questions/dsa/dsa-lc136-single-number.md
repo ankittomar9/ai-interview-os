@@ -2,7 +2,9 @@
 slug: dsa-lc136-single-number
 title: Single Number
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior

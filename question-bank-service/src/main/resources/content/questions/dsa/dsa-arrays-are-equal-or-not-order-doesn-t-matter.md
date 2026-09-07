@@ -2,7 +2,9 @@
 slug: dsa-arrays-are-equal-or-not-order-doesn-t-matter
 title: Arrays are Equal or Not (Order doesn't matter).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

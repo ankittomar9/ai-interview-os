@@ -2,7 +2,9 @@
 slug: hld-distributed-message-queue
 title: Distributed Message Queue (Kafka-Style)
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - message-queue
 - log-structured

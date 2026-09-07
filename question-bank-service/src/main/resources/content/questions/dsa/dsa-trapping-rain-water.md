@@ -2,7 +2,9 @@
 slug: dsa-trapping-rain-water
 title: Elevation Map Rainwater Retention
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [two-pointers, stacks-queues]
+est_minutes: 40
 tags: [two-pointers, dynamic-programming, stack, monotonic-stack]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/trapping-rain-water

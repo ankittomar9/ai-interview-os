@@ -2,7 +2,9 @@
 slug: dsa-rotate-elements-of-an-array-left-right-by-k-positions
 title: Rotate elements of an array (Left/Right) by K positions.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

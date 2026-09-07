@@ -2,7 +2,9 @@
 slug: dsa-lc4-median-of-two-sorted-arrays
 title: Median of Two Sorted Arrays
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [binary-search, arrays]
+est_minutes: 40
 tags:
 - binary-search
 - senior

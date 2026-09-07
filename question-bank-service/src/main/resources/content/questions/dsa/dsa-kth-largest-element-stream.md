@@ -2,7 +2,9 @@
 slug: dsa-kth-largest-element-stream
 title: Kth Largest Element in Continuous Stream
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [heap, design]
+est_minutes: 15
 tags: [heap, priority-queue, streams]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/kth-largest-stream

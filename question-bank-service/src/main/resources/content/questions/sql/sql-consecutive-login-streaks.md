@@ -2,7 +2,9 @@
 slug: sql-consecutive-login-streaks
 title: Active User 3-Day Consecutive Login Streaks
 track: SQL
-difficulty: SENIOR
+difficulty: HARD
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, window-functions, gaps-and-islands, lead-lag]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/consecutive-streaks

@@ -2,7 +2,9 @@
 slug: dsa-lc85-maximal-rectangle
 title: Maximal Rectangle
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [stacks-queues]
+est_minutes: 40
 tags:
 - stack
 - senior

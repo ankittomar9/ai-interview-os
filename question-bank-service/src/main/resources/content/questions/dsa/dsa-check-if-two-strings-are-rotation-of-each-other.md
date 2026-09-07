@@ -2,7 +2,9 @@
 slug: dsa-check-if-two-strings-are-rotation-of-each-other
 title: Check if two strings are Rotation of each other.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

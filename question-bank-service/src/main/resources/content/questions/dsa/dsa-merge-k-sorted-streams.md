@@ -2,7 +2,9 @@
 slug: dsa-merge-k-sorted-streams
 title: Merge K Sorted Data Streams
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [heap, linked-list]
+est_minutes: 40
 tags: [heap, priority-queue, divide-and-conquer, streams]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/merge-k-sorted

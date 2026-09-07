@@ -2,7 +2,9 @@
 slug: dsa-lc275-h-index-ii
 title: H-Index II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [binary-search]
+est_minutes: 25
 tags:
 - binary-search
 - mid

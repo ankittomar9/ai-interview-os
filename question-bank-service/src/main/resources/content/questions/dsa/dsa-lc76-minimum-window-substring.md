@@ -2,7 +2,9 @@
 slug: dsa-lc76-minimum-window-substring
 title: Minimum Window Substring
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [sliding-window, strings]
+est_minutes: 40
 tags:
 - sliding-window
 - senior

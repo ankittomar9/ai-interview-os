@@ -2,7 +2,9 @@
 slug: dsa-lc174-dungeon-game
 title: Dungeon Game
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [dp]
+est_minutes: 40
 tags:
 - dynamic-programming
 - senior

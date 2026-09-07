@@ -2,7 +2,9 @@
 slug: lld-tic-tac-toe
 title: Design a Tic Tac Toe Game
 track: SPRING_LLD
-difficulty: JUNIOR
+difficulty: EASY
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

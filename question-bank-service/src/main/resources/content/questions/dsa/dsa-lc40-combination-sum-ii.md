@@ -2,7 +2,9 @@
 slug: dsa-lc40-combination-sum-ii
 title: Combination Sum II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - backtracking
 - mid

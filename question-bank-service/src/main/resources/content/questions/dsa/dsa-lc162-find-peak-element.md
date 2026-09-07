@@ -2,7 +2,9 @@
 slug: dsa-lc162-find-peak-element
 title: Find Peak Element
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [binary-search]
+est_minutes: 25
 tags:
 - binary-search
 - mid

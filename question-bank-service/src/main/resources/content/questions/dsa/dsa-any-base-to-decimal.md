@@ -2,7 +2,9 @@
 slug: dsa-any-base-to-decimal
 title: Any Base To Decimal
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior

@@ -2,7 +2,9 @@
 slug: dsa-remove-characters-from-a-string-except-alphabets
 title: Remove characters from a string except alphabets.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

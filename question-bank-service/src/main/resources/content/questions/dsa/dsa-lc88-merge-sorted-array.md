@@ -2,7 +2,9 @@
 slug: dsa-lc88-merge-sorted-array
 title: Merge Sorted Array
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [arrays]
+est_minutes: 15
 tags:
 - arrays
 - junior

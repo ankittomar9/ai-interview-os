@@ -2,7 +2,9 @@
 slug: dsa-lc188-best-time-to-buy-and-sell-stock-iv
 title: Best Time to Buy and Sell Stock IV
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [dp]
+est_minutes: 40
 tags:
 - dynamic-programming
 - senior

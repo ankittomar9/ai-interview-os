@@ -2,7 +2,9 @@
 slug: dsa-set-ith-bit
 title: Set Ith Bit
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior

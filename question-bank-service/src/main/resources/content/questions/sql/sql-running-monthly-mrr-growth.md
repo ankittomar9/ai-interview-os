@@ -2,7 +2,9 @@
 slug: sql-running-monthly-mrr-growth
 title: Cumulative Monthly Subscription Revenue & MoM Growth
 track: SQL
-difficulty: SENIOR
+difficulty: HARD
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, window-functions, running-total, lag, ctes]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/mrr-growth

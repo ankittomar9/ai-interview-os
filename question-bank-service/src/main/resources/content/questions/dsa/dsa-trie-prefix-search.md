@@ -2,7 +2,9 @@
 slug: dsa-trie-prefix-search
 title: Autocomplete Trie Prefix Dictionary
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [trie, design]
+est_minutes: 25
 tags: [trie, strings, prefix-tree, design]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/trie-prefix

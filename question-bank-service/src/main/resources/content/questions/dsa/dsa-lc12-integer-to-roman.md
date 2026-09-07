@@ -2,7 +2,9 @@
 slug: dsa-lc12-integer-to-roman
 title: Integer to Roman
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [math]
+est_minutes: 25
 tags:
 - math
 - mid

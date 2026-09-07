@@ -8,7 +8,7 @@ import { ResumeSection } from "./setup/ResumeSection";
 import { ProviderSection } from "./setup/ProviderSection";
 import { Button } from "./ui/Button";
 import { ThemeToggle } from "./ui/ThemeToggle";
-import { Compass, Play, ShieldAlert, Award, TrendingUp } from "lucide-react";
+import { Compass, Play, ShieldAlert, Award, TrendingUp, BookOpen } from "lucide-react";
 import { FloatingAiOrb } from "./ai/FloatingAiOrb";
 import { AiAssistantPanel } from "./ai/AiAssistantPanel";
 import { ProgressChart } from "./ProgressChart";
@@ -29,12 +29,14 @@ interface SetupScreenProps {
   }) => void;
   isLoading: boolean;
   onOpenCatalog?: () => void;
+  onNavigateToLearn?: () => void;
 }
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({
   onStart,
   isLoading,
-  onOpenCatalog
+  onOpenCatalog,
+  onNavigateToLearn
 }) => {
   const [candidateId, setCandidateId] = useState("candidate-01");
   const [candidateName, setCandidateName] = useState("Ankit Singh Tomar");
@@ -170,7 +172,18 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
             {/* Action Bar */}
             <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/80">
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                {onOpenCatalog && (
+                {onNavigateToLearn ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={onNavigateToLearn}
+                    className="text-xs"
+                  >
+                    <BookOpen className="w-4 h-4 mr-1.5 text-primary" />
+                    <span>Practice Center (/learn)</span>
+                  </Button>
+                ) : onOpenCatalog && (
                   <Button
                     type="button"
                     variant="secondary"

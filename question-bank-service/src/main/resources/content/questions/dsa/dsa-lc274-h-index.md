@@ -2,7 +2,9 @@
 slug: dsa-lc274-h-index
 title: H-Index
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - arrays
 - mid

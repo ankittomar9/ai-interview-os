@@ -41,6 +41,9 @@ class CodeExecutionServiceTest {
     @Mock
     private org.springframework.beans.factory.ObjectProvider<com.interviewos.session.workspace.service.WorkspaceProvisionerService> workspaceProvisionerProvider;
 
+    @Mock
+    private com.interviewos.session.service.PracticeTrackingService practiceTrackingService;
+
     private CodeExecutionService codeExecutionService;
 
     @BeforeEach
@@ -49,7 +52,8 @@ class CodeExecutionServiceTest {
                 List.of(trackRunner),
                 questionBankClient,
                 sessionMongoRepository,
-                workspaceProvisionerProvider
+                workspaceProvisionerProvider,
+                practiceTrackingService
         );
     }
 

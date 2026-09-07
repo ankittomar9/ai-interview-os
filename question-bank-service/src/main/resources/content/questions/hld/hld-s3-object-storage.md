@@ -2,7 +2,9 @@
 slug: hld-s3-object-storage
 title: S3-Compatible Object Storage Service
 track: SYSTEM_DESIGN
-difficulty: STAFF
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - object-storage
 - blob-storage

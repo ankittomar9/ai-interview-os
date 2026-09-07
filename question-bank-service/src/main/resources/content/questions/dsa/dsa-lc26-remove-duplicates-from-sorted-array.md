@@ -2,7 +2,9 @@
 slug: dsa-lc26-remove-duplicates-from-sorted-array
 title: Remove Duplicates from Sorted Array
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [hashing, arrays]
+est_minutes: 15
 tags:
 - arrays
 - junior

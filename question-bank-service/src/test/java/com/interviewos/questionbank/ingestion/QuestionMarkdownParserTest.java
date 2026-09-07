@@ -120,7 +120,7 @@ class QuestionMarkdownParserTest {
         assertNotNull(hldDoc);
         assertEquals("hld-consistent-hashing", hldDoc.getSlug());
         assertEquals("SYSTEM_DESIGN", hldDoc.getTrack());
-        assertEquals("MID", hldDoc.getDifficulty());
+        assertEquals("MEDIUM", hldDoc.getDifficulty());
         var hldVal = validator.validate(hldDoc, hldContent);
         assertTrue(hldVal.isValid(), "Canary HLD must pass ContentValidator: " + hldVal.errors());
         assertEquals("PUBLISHED", hldVal.status());
@@ -133,7 +133,7 @@ class QuestionMarkdownParserTest {
         assertNotNull(lldDoc);
         assertEquals("lld-parking-lot", lldDoc.getSlug());
         assertEquals("SPRING_LLD", lldDoc.getTrack());
-        assertEquals("MID", lldDoc.getDifficulty());
+        assertEquals("MEDIUM", lldDoc.getDifficulty());
         assertNotNull(lldDoc.getStarterCode(), "LLD requires starterCode");
         assertNotNull(lldDoc.getSolutionCode(), "LLD requires solutionCode");
         var lldVal = validator.validate(lldDoc, lldContent);

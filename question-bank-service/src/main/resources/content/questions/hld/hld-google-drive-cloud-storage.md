@@ -2,7 +2,9 @@
 slug: hld-google-drive-cloud-storage
 title: Google Drive Cloud Storage & File Sync
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - cloud-storage
 - chunking

@@ -2,7 +2,9 @@
 slug: dsa-run-length-encoding-string-compression-a3b2
 title: Run Length Encoding (String Compression "a3b2").
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

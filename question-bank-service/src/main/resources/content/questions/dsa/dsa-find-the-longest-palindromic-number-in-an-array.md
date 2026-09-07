@@ -2,7 +2,9 @@
 slug: dsa-find-the-longest-palindromic-number-in-an-array
 title: Find the Longest Palindromic Number in an array.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

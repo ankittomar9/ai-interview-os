@@ -2,7 +2,9 @@
 slug: dsa-lc84-largest-rectangle-in-histogram
 title: Largest Rectangle in Histogram
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [stacks-queues]
+est_minutes: 40
 tags:
 - stack
 - senior

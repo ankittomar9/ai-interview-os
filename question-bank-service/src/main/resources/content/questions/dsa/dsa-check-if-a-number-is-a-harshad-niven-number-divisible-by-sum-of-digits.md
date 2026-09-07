@@ -2,7 +2,9 @@
 slug: dsa-check-if-a-number-is-a-harshad-niven-number-divisible-by-sum-of-digits
 title: Check if a number is a Harshad/Niven Number (Divisible by sum of digits).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math]
+est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
 - junior

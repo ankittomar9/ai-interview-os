@@ -2,7 +2,9 @@
 slug: hld-notification-system
 title: Scalable Multi-Channel Notification Engine
 track: SYSTEM_DESIGN
-difficulty: MID
+difficulty: MEDIUM
+topics: [system-design]
+est_minutes: 45
 tags:
 - notification-system
 - message-queue

@@ -2,7 +2,9 @@
 slug: dsa-binary-search-recursive
 title: Binary Search (Recursive).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [binary-search, recursion]
+est_minutes: 15
 tags:
 - 6-sorting--searching-15-questions
 - junior

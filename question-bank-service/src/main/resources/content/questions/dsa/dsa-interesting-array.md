@@ -2,7 +2,9 @@
 slug: dsa-interesting-array
 title: Interesting Array
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [bit-manipulation, arrays]
+est_minutes: 15
 tags:
 - bit-manipulation
 - junior

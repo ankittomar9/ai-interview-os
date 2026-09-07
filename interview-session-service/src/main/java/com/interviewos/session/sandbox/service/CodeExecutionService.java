@@ -27,6 +27,7 @@ public class CodeExecutionService {
     private final QuestionBankClient questionBankClient;
     private final InterviewSessionMongoRepository sessionMongoRepository;
     private final org.springframework.beans.factory.ObjectProvider<com.interviewos.session.workspace.service.WorkspaceProvisionerService> workspaceProvisionerProvider;
+    private final com.interviewos.session.service.PracticeTrackingService practiceTrackingService;
 
     /**
      * Executes single-file DSA / algorithm submissions (backward compatible).
@@ -46,6 +47,7 @@ public class CodeExecutionService {
 
         ExecutionResultResponse result = runner.run(sessionId, problem, candidateFiles, request.language());
         recordExecution(sessionId, request.problemSlug(), result, request.codeSnippet(), Boolean.TRUE.equals(request.submit()));
+        recordPracticeAttempt(problem, request, result);
         return result;
     }
 
@@ -81,6 +83,7 @@ public class CodeExecutionService {
             recordExecution(sessionId, request.problemSlug(), result, "[Multi-file Project Submission]", isSubmit);
         }
 
+        recordPracticeAttempt(problem, request.problemSlug(), result, 62);
         return result;
     }
 
@@ -171,5 +174,58 @@ public class CodeExecutionService {
                 .compilerOutput("")
                 .testResults(List.of())
                 .build();
+    }
+
+    private void recordPracticeAttempt(ProblemDocument problem, ExecuteCodeRequest request, ExecutionResultResponse result) {
+        try {
+            if (practiceTrackingService != null && problem != null && result != null) {
+                int languageId = 62;
+                for (TrackRunner r : trackRunners) {
+                    if (r instanceof com.interviewos.session.runner.DsaJudge0Runner dsaRunner) {
+                        try {
+                            languageId = dsaRunner.resolveLanguageId(request.language());
+                        } catch (Exception ignored) {}
+                        break;
+                    }
+                }
+                int runtimeMs = (int) Math.round(result.executionTimeMs());
+                int memoryKb = (int) Math.round(result.memoryUsedMb() * 1024);
+                practiceTrackingService.recordAttempt(
+                        "local",
+                        problem.getProblemSlug(),
+                        problem.getTrack(),
+                        languageId,
+                        result.status(),
+                        result.passedTests(),
+                        result.totalTests(),
+                        runtimeMs,
+                        memoryKb
+                );
+            }
+        } catch (Exception e) {
+            log.warn("Failed to record practice attempt for {}: {}", problem != null ? problem.getProblemSlug() : "unknown", e.getMessage());
+        }
+    }
+
+    private void recordPracticeAttempt(ProblemDocument problem, String problemSlug, ExecutionResultResponse result, int languageId) {
+        try {
+            if (practiceTrackingService != null && problem != null && result != null) {
+                int runtimeMs = (int) Math.round(result.executionTimeMs());
+                int memoryKb = (int) Math.round(result.memoryUsedMb() * 1024);
+                practiceTrackingService.recordAttempt(
+                        "local",
+                        problemSlug,
+                        problem.getTrack(),
+                        languageId,
+                        result.status(),
+                        result.passedTests(),
+                        result.totalTests(),
+                        runtimeMs,
+                        memoryKb
+                );
+            }
+        } catch (Exception e) {
+            log.warn("Failed to record practice attempt for {}: {}", problemSlug, e.getMessage());
+        }
     }
 }

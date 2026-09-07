@@ -2,7 +2,9 @@
 slug: dsa-lc154-find-minimum-in-rotated-sorted-array-ii
 title: Find Minimum in Rotated Sorted Array II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [binary-search, arrays]
+est_minutes: 40
 tags:
 - binary-search
 - senior

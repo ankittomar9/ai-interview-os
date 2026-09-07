@@ -2,7 +2,9 @@
 slug: dsa-lc15-3sum
 title: 3Sum
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [two-pointers]
+est_minutes: 25
 tags:
 - two-pointers
 - mid

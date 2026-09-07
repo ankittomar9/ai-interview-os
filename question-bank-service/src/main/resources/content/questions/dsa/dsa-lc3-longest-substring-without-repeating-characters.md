@@ -2,7 +2,9 @@
 slug: dsa-lc3-longest-substring-without-repeating-characters
 title: Longest Substring Without Repeating Characters
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [sliding-window, strings]
+est_minutes: 25
 tags:
 - sliding-window
 - mid

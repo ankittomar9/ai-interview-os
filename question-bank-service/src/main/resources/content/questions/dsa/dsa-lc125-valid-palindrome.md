@@ -2,7 +2,9 @@
 slug: dsa-lc125-valid-palindrome
 title: Valid Palindrome
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [two-pointers, strings]
+est_minutes: 15
 tags:
 - strings
 - junior

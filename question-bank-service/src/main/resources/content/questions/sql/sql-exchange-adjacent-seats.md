@@ -2,7 +2,9 @@
 slug: sql-exchange-adjacent-seats
 title: Auditorium Adjacent Seat Number Swap
 track: SQL
-difficulty: MID
+difficulty: MEDIUM
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, case-when, modulo, window-functions]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/seat-exchange

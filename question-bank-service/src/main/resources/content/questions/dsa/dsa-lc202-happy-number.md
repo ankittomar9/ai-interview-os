@@ -2,7 +2,9 @@
 slug: dsa-lc202-happy-number
 title: Happy Number
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math, hashing]
+est_minutes: 15
 tags:
 - math--hash-map
 - junior

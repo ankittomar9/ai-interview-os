@@ -2,7 +2,9 @@
 slug: hld-news-feed-system
 title: Social Media News Feed System
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - news-feed
 - fanout-on-write

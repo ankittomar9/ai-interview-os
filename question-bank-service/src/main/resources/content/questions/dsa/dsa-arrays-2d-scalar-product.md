@@ -2,7 +2,9 @@
 slug: dsa-arrays-2d-scalar-product
 title: Arrays 2D Scalar Product
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [matrix, arrays]
+est_minutes: 25
 tags:
 - matrix
 - mid

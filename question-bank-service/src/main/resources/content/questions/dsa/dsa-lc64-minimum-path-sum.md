@@ -2,7 +2,9 @@
 slug: dsa-lc64-minimum-path-sum
 title: Minimum Path Sum
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp]
+est_minutes: 25
 tags:
 - dynamic-programming
 - mid

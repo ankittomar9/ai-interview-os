@@ -2,7 +2,9 @@
 slug: dsa-lc51-n-queens
 title: N-Queens
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [recursion]
+est_minutes: 40
 tags:
 - backtracking
 - senior

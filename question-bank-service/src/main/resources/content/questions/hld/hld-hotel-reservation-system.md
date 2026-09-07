@@ -2,7 +2,9 @@
 slug: hld-hotel-reservation-system
 title: Hotel Reservation & Booking Platform
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - concurrency
 - booking-system

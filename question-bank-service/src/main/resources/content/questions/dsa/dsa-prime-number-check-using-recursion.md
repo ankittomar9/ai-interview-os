@@ -2,7 +2,9 @@
 slug: dsa-prime-number-check-using-recursion
 title: Prime number check using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [math, recursion]
+est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
 - mid

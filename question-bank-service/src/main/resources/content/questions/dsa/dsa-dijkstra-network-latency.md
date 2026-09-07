@@ -2,7 +2,9 @@
 slug: dsa-dijkstra-network-latency
 title: Network Delay Time & Shortest Latency
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [graphs, heap]
+est_minutes: 25
 tags: [graphs, dijkstra, shortest-path, priority-queue]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/network-latency

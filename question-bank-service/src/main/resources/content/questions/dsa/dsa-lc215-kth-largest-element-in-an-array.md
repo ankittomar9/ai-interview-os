@@ -2,7 +2,9 @@
 slug: dsa-lc215-kth-largest-element-in-an-array
 title: Kth Largest Element in an Array
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [heap, arrays]
+est_minutes: 25
 tags:
 - heap
 - mid

@@ -2,7 +2,9 @@
 slug: lld-restaurant-management-system
 title: Design a Restaurant Management System
 track: SPRING_LLD
-difficulty: SENIOR
+difficulty: HARD
+topics: [lld]
+est_minutes: 35
 tags:
 - object-oriented-design
 - lld

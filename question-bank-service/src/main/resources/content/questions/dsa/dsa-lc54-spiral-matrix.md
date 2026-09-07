@@ -2,7 +2,9 @@
 slug: dsa-lc54-spiral-matrix
 title: Spiral Matrix
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [matrix]
+est_minutes: 25
 tags:
 - matrix
 - mid

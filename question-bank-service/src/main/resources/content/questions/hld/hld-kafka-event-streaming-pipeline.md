@@ -2,7 +2,9 @@
 slug: hld-kafka-event-streaming-pipeline
 title: High-Volume Event Ingestion & Partitioning Pipeline
 track: SYSTEM_DESIGN
-difficulty: STAFF
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags: [kafka, event-driven, partitioning, exactly-once, flink]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-hld/event-streaming

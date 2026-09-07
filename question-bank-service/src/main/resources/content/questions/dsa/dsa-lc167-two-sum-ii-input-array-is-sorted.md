@@ -2,7 +2,9 @@
 slug: dsa-lc167-two-sum-ii-input-array-is-sorted
 title: Two Sum II - Input Array Is Sorted
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [two-pointers, arrays]
+est_minutes: 25
 tags:
 - two-pointers
 - mid

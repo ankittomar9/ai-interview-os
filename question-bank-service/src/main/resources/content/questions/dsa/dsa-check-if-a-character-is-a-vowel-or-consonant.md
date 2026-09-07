@@ -2,7 +2,9 @@
 slug: dsa-check-if-a-character-is-a-vowel-or-consonant
 title: Check if a Character is a Vowel or Consonant.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [strings]
+est_minutes: 15
 tags:
 - 3-strings-the-tricky-part--35-questions
 - junior

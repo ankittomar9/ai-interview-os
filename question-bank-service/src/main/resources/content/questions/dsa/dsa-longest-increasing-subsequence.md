@@ -2,7 +2,9 @@
 slug: dsa-longest-increasing-subsequence
 title: Longest Increasing Subsequence Length
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [dp, binary-search]
+est_minutes: 25
 tags: [dynamic-programming, binary-search, patience-sorting]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/dp-lis

@@ -2,7 +2,9 @@
 slug: dsa-lc260-single-number-iii
 title: Single Number III
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [bit-manipulation]
+est_minutes: 25
 tags:
 - bit-manipulation
 - mid

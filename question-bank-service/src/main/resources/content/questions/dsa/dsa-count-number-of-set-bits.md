@@ -2,7 +2,9 @@
 slug: dsa-count-number-of-set-bits
 title: Count number of set bits
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [bit-manipulation]
+est_minutes: 25
 tags:
 - bit-manipulation-8
 - mid

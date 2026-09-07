@@ -2,7 +2,9 @@
 slug: dsa-remove-brackets-from-an-algebraic-expression
 title: Remove Brackets from an algebraic expression.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

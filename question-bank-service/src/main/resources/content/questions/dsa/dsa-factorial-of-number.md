@@ -2,7 +2,9 @@
 slug: dsa-factorial-of-number
 title: Factorial Of Number
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [math, recursion]
+est_minutes: 25
 tags:
 - recursion
 - mid

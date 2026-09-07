@@ -2,7 +2,9 @@
 slug: dsa-lc13-roman-to-integer
 title: Roman to Integer
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [math]
+est_minutes: 15
 tags:
 - math
 - junior

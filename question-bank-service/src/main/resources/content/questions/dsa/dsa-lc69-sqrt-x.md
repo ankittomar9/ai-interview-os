@@ -2,7 +2,9 @@
 slug: dsa-lc69-sqrt-x
 title: Sqrt(x)
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [binary-search]
+est_minutes: 15
 tags:
 - binary-search
 - junior

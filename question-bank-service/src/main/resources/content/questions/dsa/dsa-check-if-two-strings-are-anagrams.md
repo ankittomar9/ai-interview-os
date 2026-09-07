@@ -2,7 +2,9 @@
 slug: dsa-check-if-two-strings-are-anagrams
 title: Check if two strings are anagrams
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [hashing, strings]
+est_minutes: 25
 tags:
 - strings-10
 - mid

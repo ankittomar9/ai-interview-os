@@ -595,3 +595,137 @@ export const getQuestionBySlug = async (slug: string): Promise<GenerateQuestionR
         timeoutMs: 15000
     });
 };
+
+// --- Batch P1.1: Practice Persistence & Tracking (:8081) ---
+export interface PracticeAttempt {
+    id: number;
+    userId: string;
+    questionId: string;
+    track: string;
+    languageId: number;
+    verdict: 'PASSED' | 'FAILED' | 'ERROR' | string;
+    testsPassed: number;
+    testsTotal: number;
+    runtimeMs?: number;
+    memoryKb?: number;
+    attemptSeq: number;
+    createdAt: string;
+}
+
+export interface QuestionProgress {
+    userId: string;
+    questionId: string;
+    attemptCount: number;
+    solveCount: number;
+    firstSolvedAt?: string;
+    lastAttemptedAt?: string;
+}
+
+export const getPracticeProgress = async (userId: string = 'local'): Promise<Record<string, QuestionProgress>> => {
+    return fetchJson<Record<string, QuestionProgress>>(`${GATEWAY_BASE}/practice/progress?userId=${encodeURIComponent(userId)}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
+};
+
+export const getPracticeAttempts = async (slug: string, userId: string = 'local'): Promise<PracticeAttempt[]> => {
+    return fetchJson<PracticeAttempt[]>(`${GATEWAY_BASE}/practice/attempts/${encodeURIComponent(slug)}?userId=${encodeURIComponent(userId)}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
+};
+
+// --- Batch P1.2: Problem Catalog (:8086) ---
+export interface CatalogTopicSummary {
+    topic: string;
+    total: number;
+    solved: number;
+    displayName: string;
+}
+
+export interface CatalogQuestionSummary {
+    id: string;
+    slug: string;
+    title: string;
+    track: string;
+    difficulty: string;
+    topics: string[];
+    estMinutes: number;
+    solutionVideoUrl?: string;
+}
+
+export interface CatalogPagedResponse<T> {
+    content: T[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+}
+
+export interface HiddenTestCaseMeta {
+    index: number;
+    description: string;
+}
+
+export interface CatalogQuestionDetail {
+    id: string;
+    slug: string;
+    title: string;
+    track: string;
+    difficulty: string;
+    topics: string[];
+    estMinutes: number;
+    statement: string;
+    examples: string[];
+    constraints: string[];
+    starterCode?: string;
+    solution?: string;
+    solutionMasked: boolean;
+    solutionVideoUrl?: string;
+    testCasesCount: number;
+    visibleTestCases: any[];
+    hiddenTestCasesMeta: HiddenTestCaseMeta[];
+}
+
+export const getCatalogTopics = async (track?: string): Promise<CatalogTopicSummary[]> => {
+    const query = track && track !== 'ALL' ? `?track=${encodeURIComponent(track)}` : '';
+    return fetchJson<CatalogTopicSummary[]>(`${GATEWAY_BASE}/catalog/topics${query}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
+};
+
+export const getCatalogQuestions = async (params?: {
+    track?: string;
+    topic?: string;
+    difficulty?: string;
+    q?: string;
+    page?: number;
+    size?: number;
+}): Promise<CatalogPagedResponse<CatalogQuestionSummary>> => {
+    const query = new URLSearchParams();
+    if (params?.track && params.track !== 'ALL') query.append('track', params.track);
+    if (params?.topic && params.topic !== 'ALL') query.append('topic', params.topic);
+    if (params?.difficulty && params.difficulty !== 'ALL') query.append('difficulty', params.difficulty);
+    if (params?.q) query.append('q', params.q);
+    if (params?.page !== undefined) query.append('page', String(params.page));
+    if (params?.size !== undefined) query.append('size', String(params.size));
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return fetchJson<CatalogPagedResponse<CatalogQuestionSummary>>(`${GATEWAY_BASE}/catalog/questions${queryString}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
+};
+
+export const getCatalogQuestionDetail = async (
+    slug: string,
+    revealSolution = false
+): Promise<CatalogQuestionDetail> => {
+    return fetchJson<CatalogQuestionDetail>(
+        `${GATEWAY_BASE}/catalog/questions/${encodeURIComponent(slug)}?revealSolution=${revealSolution}`,
+        {
+            method: 'GET',
+            timeoutMs: 15000
+        }
+    );
+};

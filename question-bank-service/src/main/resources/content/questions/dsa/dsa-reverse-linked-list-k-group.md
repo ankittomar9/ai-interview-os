@@ -2,7 +2,9 @@
 slug: dsa-reverse-linked-list-k-group
 title: Reverse Linked List in k-Groups
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [linked-list, recursion]
+est_minutes: 40
 tags: [linked-list, recursion, two-pointers]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/k-group-reversal

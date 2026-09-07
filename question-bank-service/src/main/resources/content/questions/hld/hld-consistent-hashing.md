@@ -2,7 +2,9 @@
 slug: hld-consistent-hashing
 title: Design Consistent Hashing
 track: SYSTEM_DESIGN
-difficulty: MID
+difficulty: MEDIUM
+topics: [system-design]
+est_minutes: 45
 tags:
 - distributed-systems
 - hashing

@@ -2,7 +2,9 @@
 slug: dsa-lc21-merge-two-sorted-lists
 title: Merge Two Sorted Lists
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [linked-list, arrays]
+est_minutes: 15
 tags:
 - linked-list
 - junior

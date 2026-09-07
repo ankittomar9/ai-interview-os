@@ -2,7 +2,9 @@
 slug: dsa-find-all-pairs-in-an-array-with-a-given-sum
 title: Find all Pairs in an array with a given Sum.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

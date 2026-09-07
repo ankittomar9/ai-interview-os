@@ -2,7 +2,9 @@
 slug: dsa-search-element-in-the-linkedlist
 title: Search Element In The Linkedlist
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [linked-list]
+est_minutes: 25
 tags:
 - linked-list
 - mid
