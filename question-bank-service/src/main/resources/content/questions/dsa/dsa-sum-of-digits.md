@@ -2,7 +2,9 @@
 slug: dsa-sum-of-digits
 title: Sum Of Digits
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [math, recursion]
+est_minutes: 25
 tags:
 - recursion
 - mid

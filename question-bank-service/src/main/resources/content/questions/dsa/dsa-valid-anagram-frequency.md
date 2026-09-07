@@ -2,7 +2,9 @@
 slug: dsa-valid-anagram-frequency
 title: Anagram Character Frequency Matcher
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [strings, hashing]
+est_minutes: 15
 tags: [strings, hash-table, frequency-array]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/strings-anagram

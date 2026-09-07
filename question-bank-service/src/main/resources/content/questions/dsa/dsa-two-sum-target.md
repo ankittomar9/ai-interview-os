@@ -2,7 +2,9 @@
 slug: dsa-two-sum-target
 title: Target Sum Index Pair
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [arrays, hashing]
+est_minutes: 15
 tags: [arrays, hash-table, two-pointers]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/arrays-two-sum

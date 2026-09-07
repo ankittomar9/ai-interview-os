@@ -2,7 +2,9 @@
 slug: dsa-sum-of-array-elements-using-recursion
 title: Sum of array elements using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion, arrays]
+est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
 - mid

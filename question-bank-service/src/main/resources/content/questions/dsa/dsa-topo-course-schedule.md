@@ -2,7 +2,9 @@
 slug: dsa-topo-course-schedule
 title: Course Prerequisites & Deadlock Scheduler
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [graphs]
+est_minutes: 25
 tags: [graphs, topological-sort, bfs, kahn-algorithm]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/topo-sort
