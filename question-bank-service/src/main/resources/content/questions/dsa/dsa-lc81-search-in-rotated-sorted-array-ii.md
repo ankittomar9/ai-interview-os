@@ -2,7 +2,9 @@
 slug: dsa-lc81-search-in-rotated-sorted-array-ii
 title: Search in Rotated Sorted Array II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [binary-search, arrays]
+est_minutes: 25
 tags:
 - binary-search
 - mid

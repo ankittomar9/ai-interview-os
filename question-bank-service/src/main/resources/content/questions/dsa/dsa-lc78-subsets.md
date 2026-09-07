@@ -2,7 +2,9 @@
 slug: dsa-lc78-subsets
 title: Subsets
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - backtracking
 - mid

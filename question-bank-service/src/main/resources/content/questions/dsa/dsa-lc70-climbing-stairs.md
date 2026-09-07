@@ -2,7 +2,9 @@
 slug: dsa-lc70-climbing-stairs
 title: Climbing Stairs
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [dp]
+est_minutes: 15
 tags:
 - dynamic-programming
 - junior

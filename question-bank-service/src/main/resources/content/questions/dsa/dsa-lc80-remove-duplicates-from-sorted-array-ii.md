@@ -2,7 +2,9 @@
 slug: dsa-lc80-remove-duplicates-from-sorted-array-ii
 title: Remove Duplicates from Sorted Array II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [hashing, arrays]
+est_minutes: 25
 tags:
 - arrays
 - mid

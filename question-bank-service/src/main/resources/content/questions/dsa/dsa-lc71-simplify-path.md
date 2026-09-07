@@ -2,7 +2,9 @@
 slug: dsa-lc71-simplify-path
 title: Simplify Path
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [stacks-queues]
+est_minutes: 25
 tags:
 - stack
 - mid
