@@ -29,6 +29,13 @@ class DsaJudge0RunnerTest {
         assertEquals(54, runner.resolveLanguageId("c++"));
 
         assertEquals(50, runner.resolveLanguageId("c"));
+        assertEquals(62, runner.resolveLanguageId(""));
+        assertEquals(62, runner.resolveLanguageId("   "));
+
+        assertThrows(IllegalArgumentException.class, () -> runner.resolveLanguageId("typescript"));
+        assertThrows(IllegalArgumentException.class, () -> runner.resolveLanguageId("ts"));
+        assertThrows(IllegalArgumentException.class, () -> runner.resolveLanguageId("ruby"));
+        assertThrows(IllegalArgumentException.class, () -> runner.resolveLanguageId("rust"));
     }
 
     @Test

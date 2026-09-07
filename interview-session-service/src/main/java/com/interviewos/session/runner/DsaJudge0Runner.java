@@ -237,14 +237,15 @@ public class DsaJudge0Runner implements TrackRunner {
     }
 
     public int resolveLanguageId(String language) {
-        if (language == null) return 62; // Java 13/17/21 default
+        if (language == null || language.isBlank()) return 62; // Java 13/17/21 default
         String lang = language.trim().toLowerCase();
         return switch (lang) {
+            case "java" -> 62; // Java (OpenJDK 13.0.1)
             case "python", "python3", "py" -> 71; // Python (3.8.1)
             case "javascript", "js", "node" -> 63; // JavaScript (Node.js 12.14.0)
             case "cpp", "c++" -> 54; // C++ (GCC 9.2.0)
             case "c" -> 50; // C (GCC 9.2.0)
-            default -> 62; // Java (OpenJDK 13.0.1)
+            default -> throw new IllegalArgumentException("Unsupported DSA language: " + language);
         };
     }
 
