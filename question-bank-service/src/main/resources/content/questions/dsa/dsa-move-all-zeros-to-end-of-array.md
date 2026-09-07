@@ -2,7 +2,9 @@
 slug: dsa-move-all-zeros-to-end-of-array
 title: Move all Zeros to end of array.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

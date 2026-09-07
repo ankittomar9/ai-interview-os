@@ -2,7 +2,9 @@
 slug: dsa-merge-overlapping-intervals
 title: Merge Overlapping Time Intervals
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags: [intervals, sorting, greedy]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/merge-intervals

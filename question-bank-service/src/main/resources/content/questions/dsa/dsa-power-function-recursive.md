@@ -2,7 +2,9 @@
 slug: dsa-power-function-recursive
 title: Power Function Recursive
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - recursion
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-number-pattern-1-1-12-123
 title: Number Pattern 1 (1, 12, 123...).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 5-patterns--printing-15-questions
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-median-of-running-data-stream
 title: Real-Time Running Stream Median
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [heap, design]
+est_minutes: 40
 tags: [heap, priority-queue, streams, design]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/stream-median

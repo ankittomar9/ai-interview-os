@@ -2,7 +2,9 @@
 slug: dsa-nth-term-of-arithmetic-progression
 title: Nth term of Arithmetic Progression.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
 - mid
