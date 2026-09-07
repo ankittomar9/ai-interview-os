@@ -2,7 +2,9 @@
 slug: hld-digital-wallet
 title: High-Throughput Digital Wallet (Ledger)
 track: SYSTEM_DESIGN
-difficulty: STAFF
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - fintech
 - double-entry-bookkeeping

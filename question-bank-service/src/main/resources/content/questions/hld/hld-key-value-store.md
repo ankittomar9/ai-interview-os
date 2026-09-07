@@ -2,7 +2,9 @@
 slug: hld-key-value-store
 title: Distributed Key-Value Store (Dynamo-Style)
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - distributed-storage
 - cap-theorem

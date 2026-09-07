@@ -2,7 +2,9 @@
 slug: hld-search-autocomplete
 title: Real-Time Search Autocomplete System
 track: SYSTEM_DESIGN
-difficulty: MID
+difficulty: MEDIUM
+topics: [system-design]
+est_minutes: 45
 tags:
 - typeahead
 - trie

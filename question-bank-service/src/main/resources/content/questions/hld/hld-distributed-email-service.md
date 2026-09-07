@@ -2,7 +2,9 @@
 slug: hld-distributed-email-service
 title: Distributed Email Service (Gmail-Scale)
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - email-system
 - smtp

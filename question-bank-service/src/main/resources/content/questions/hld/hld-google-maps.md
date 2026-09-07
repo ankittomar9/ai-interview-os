@@ -2,7 +2,9 @@
 slug: hld-google-maps
 title: Google Maps Navigation & Routing Engine
 track: SYSTEM_DESIGN
-difficulty: STAFF
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - maps
 - graph-algorithms

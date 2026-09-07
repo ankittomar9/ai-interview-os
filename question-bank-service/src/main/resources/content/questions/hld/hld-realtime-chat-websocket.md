@@ -2,7 +2,9 @@
 slug: hld-realtime-chat-websocket
 title: Global Multi-Region WebSocket Real-Time Chat System
 track: SYSTEM_DESIGN
-difficulty: SENIOR
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags: [websockets, real-time, pubsub, redis, cassandra]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-hld/realtime-chat

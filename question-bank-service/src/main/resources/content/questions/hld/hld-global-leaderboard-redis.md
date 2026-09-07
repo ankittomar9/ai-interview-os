@@ -2,7 +2,9 @@
 slug: hld-global-leaderboard-redis
 title: Real-Time Gaming Leaderboard with Redis Sorted Sets
 track: SYSTEM_DESIGN
-difficulty: MID
+difficulty: MEDIUM
+topics: [system-design]
+est_minutes: 45
 tags: [redis, sorted-sets, gaming, real-time, leaderboard]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-hld/global-leaderboard

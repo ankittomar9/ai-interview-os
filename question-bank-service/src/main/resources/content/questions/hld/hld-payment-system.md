@@ -2,7 +2,9 @@
 slug: hld-payment-system
 title: Fault-Tolerant Payment System
 track: SYSTEM_DESIGN
-difficulty: STAFF
+difficulty: HARD
+topics: [system-design]
+est_minutes: 45
 tags:
 - fintech
 - payment-gateway
