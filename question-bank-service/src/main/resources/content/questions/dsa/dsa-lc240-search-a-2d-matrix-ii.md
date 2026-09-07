@@ -2,7 +2,9 @@
 slug: dsa-lc240-search-a-2d-matrix-ii
 title: Search a 2D Matrix II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [matrix, binary-search]
+est_minutes: 25
 tags:
 - binary-search
 - mid

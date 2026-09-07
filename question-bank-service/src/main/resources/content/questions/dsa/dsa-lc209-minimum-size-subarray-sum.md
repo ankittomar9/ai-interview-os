@@ -2,7 +2,9 @@
 slug: dsa-lc209-minimum-size-subarray-sum
 title: Minimum Size Subarray Sum
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [sliding-window, arrays]
+est_minutes: 25
 tags:
 - sliding-window
 - mid

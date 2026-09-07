@@ -2,7 +2,9 @@
 slug: dsa-lc219-contains-duplicate-ii
 title: Contains Duplicate II
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [hashing, arrays]
+est_minutes: 15
 tags:
 - arrays--hashing
 - junior

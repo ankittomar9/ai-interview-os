@@ -2,7 +2,9 @@
 slug: dsa-lc239-sliding-window-maximum
 title: Sliding Window Maximum
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [stacks-queues, sliding-window]
+est_minutes: 40
 tags:
 - sliding-window--monotonic-queue
 - senior

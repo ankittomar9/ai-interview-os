@@ -2,7 +2,9 @@
 slug: dsa-lc224-basic-calculator
 title: Basic Calculator
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: SENIOR
+difficulty: HARD
+topics: [stacks-queues]
+est_minutes: 40
 tags:
 - stack
 - senior

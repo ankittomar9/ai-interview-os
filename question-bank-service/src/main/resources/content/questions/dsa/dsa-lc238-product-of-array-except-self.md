@@ -2,7 +2,9 @@
 slug: dsa-lc238-product-of-array-except-self
 title: Product of Array Except Self
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - arrays
 - mid

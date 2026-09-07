@@ -2,7 +2,9 @@
 slug: dsa-lc228-summary-ranges
 title: Summary Ranges
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [arrays]
+est_minutes: 15
 tags:
 - arrays
 - junior

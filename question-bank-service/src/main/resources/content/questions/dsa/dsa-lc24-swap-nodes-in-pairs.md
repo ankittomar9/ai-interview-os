@@ -2,7 +2,9 @@
 slug: dsa-lc24-swap-nodes-in-pairs
 title: Swap Nodes in Pairs
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [linked-list]
+est_minutes: 25
 tags:
 - linked-list
 - mid

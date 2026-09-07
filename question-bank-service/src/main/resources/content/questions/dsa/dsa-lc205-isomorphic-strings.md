@@ -2,7 +2,9 @@
 slug: dsa-lc205-isomorphic-strings
 title: Isomorphic Strings
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [hashing, strings]
+est_minutes: 15
 tags:
 - strings--hash-map
 - junior
