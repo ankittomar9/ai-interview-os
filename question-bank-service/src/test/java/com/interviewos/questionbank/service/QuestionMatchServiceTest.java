@@ -163,4 +163,66 @@ class QuestionMatchServiceTest {
         assertEquals(1, ladder.size());
         assertEquals("qwen/qwen3-32b", ladder.get(0));
     }
+
+    @Test
+    @DisplayName("matchQuestion should match newly added LLD question for SPRING_LLD track")
+    void testMatchLldQuestion() {
+        QuestionDocument parkingLot = QuestionDocument.builder()
+                .slug("lld-parking-lot")
+                .title("Design a Parking Lot")
+                .track("SPRING_LLD")
+                .difficulty("MID")
+                .tags(List.of("object-oriented-design", "lld", "java", "design-patterns", "strategy-pattern"))
+                .status("PUBLISHED")
+                .build();
+
+        when(questionRepository.findByTrackAndDifficultyAndStatus(eq("SPRING_LLD"), eq("MID"), eq("PUBLISHED")))
+                .thenReturn(List.of(parkingLot));
+
+        QuestionMatchRequest req = new QuestionMatchRequest(
+                "SPRING_LLD",
+                "MID",
+                List.of("strategy-pattern", "lld"),
+                "Mid-Level Software Engineer",
+                null,
+                null
+        );
+
+        QuestionMatchResponse response = matchService.matchQuestion(req);
+
+        assertNotNull(response);
+        assertEquals("lld-parking-lot", response.question().slug());
+        assertEquals("SPRING_LLD", response.question().track());
+    }
+
+    @Test
+    @DisplayName("matchQuestion should match newly added HLD question for SYSTEM_DESIGN track")
+    void testMatchHldQuestion() {
+        QuestionDocument consistentHashing = QuestionDocument.builder()
+                .slug("hld-consistent-hashing")
+                .title("Design Consistent Hashing")
+                .track("SYSTEM_DESIGN")
+                .difficulty("MID")
+                .tags(List.of("distributed-systems", "hashing", "virtual-nodes"))
+                .status("PUBLISHED")
+                .build();
+
+        when(questionRepository.findByTrackAndDifficultyAndStatus(eq("SYSTEM_DESIGN"), eq("MID"), eq("PUBLISHED")))
+                .thenReturn(List.of(consistentHashing));
+
+        QuestionMatchRequest req = new QuestionMatchRequest(
+                "SYSTEM_DESIGN",
+                "MID",
+                List.of("distributed-systems", "hashing"),
+                "Senior Backend Engineer",
+                null,
+                null
+        );
+
+        QuestionMatchResponse response = matchService.matchQuestion(req);
+
+        assertNotNull(response);
+        assertEquals("hld-consistent-hashing", response.question().slug());
+        assertEquals("SYSTEM_DESIGN", response.question().track());
+    }
 }
