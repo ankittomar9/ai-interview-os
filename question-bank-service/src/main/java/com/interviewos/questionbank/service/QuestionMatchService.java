@@ -31,11 +31,11 @@ public class QuestionMatchService {
     @org.springframework.beans.factory.annotation.Value("${gemini.api.endpoint:${GEMINI_ENDPOINT:https://generativelanguage.googleapis.com/v1beta/models/}}")
     private String geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/";
 
-    @org.springframework.beans.factory.annotation.Value("${groq.api.model:${GROQ_MODEL:qwen/qwen3-32b}}")
-    private String groqModel = "qwen/qwen3-32b";
+    @org.springframework.beans.factory.annotation.Value("${groq.api.model:${GROQ_MODEL:openai/gpt-oss-120b}}")
+    private String groqModel = "openai/gpt-oss-120b";
 
-    @org.springframework.beans.factory.annotation.Value("${groq.api.fallback-models:${GROQ_FALLBACK_MODELS:llama-3.1-8b-instant}}")
-    private String groqFallbackModels = "llama-3.1-8b-instant";
+    @org.springframework.beans.factory.annotation.Value("${groq.api.fallback-models:${GROQ_FALLBACK_MODELS:openai/gpt-oss-20b,qwen/qwen3.8-27b}}")
+    private String groqFallbackModels = "openai/gpt-oss-20b,qwen/qwen3.8-27b";
 
     @org.springframework.beans.factory.annotation.Value("${openai.api.model:${OPENAI_MODEL:gpt-4o-mini}}")
     private String openAiModel = "gpt-4o-mini";
@@ -237,7 +237,7 @@ public class QuestionMatchService {
             }
         }
         if (ladder.isEmpty()) {
-            ladder.add("qwen/qwen3-32b");
+            ladder.add("openai/gpt-oss-120b");
         }
         return new ArrayList<>(ladder);
     }

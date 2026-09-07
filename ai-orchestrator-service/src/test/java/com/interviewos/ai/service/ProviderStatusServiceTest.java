@@ -129,4 +129,55 @@ class ProviderStatusServiceTest {
         assertEquals("OK", gemini.lastKnown().outcome());
         assertEquals(200, gemini.lastKnown().httpStatus());
     }
+
+    @Test
+    @DisplayName("H4: validateGroqConfiguredModels returns zero warnings when all configured models are in LADDER-v2026-09-08")
+    void testValidateGroqConfiguredModelsAllValid() {
+        AiProviderProperties validProps = new AiProviderProperties(Map.of(
+                "groq", new AiProviderProperties.ProviderConfig(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        "openai/gpt-oss-120b",
+                        "openai/gpt-oss-120b",
+                        "openai/gpt-oss-20b",
+                        "openai/gpt-oss-120b",
+                        "whisper-large-v3-turbo",
+                        "test-key",
+                        java.util.List.of("openai/gpt-oss-20b", "qwen/qwen3.8-27b"),
+                        java.util.List.of("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b")
+                )
+        ));
+        ProviderStatusService checkService = new ProviderStatusService(validProps, objectMapper);
+        java.util.List<String> warnings = checkService.validateGroqConfiguredModels();
+
+        assertNotNull(warnings);
+        assertTrue(warnings.isEmpty(), "Expected 0 warnings for valid LADDER-v2026-09-08 models but got: " + warnings);
+    }
+
+    @Test
+    @DisplayName("H4: validateGroqConfiguredModels logs and returns GROQ_EVAL_MODEL_DEAD warning on retired/unallowed model")
+    void testValidateGroqConfiguredModelsDetectsDeadModel() {
+        AiProviderProperties deadProps = new AiProviderProperties(Map.of(
+                "groq", new AiProviderProperties.ProviderConfig(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        "openai/gpt-oss-120b",
+                        "openai/gpt-oss-120b",
+                        "openai/gpt-oss-20b",
+                        "retired/model-eval-legacy", // RETIRED MODEL
+                        "whisper-large-v3-turbo",
+                        "test-key",
+                        java.util.List.of("retired/model-fallback-legacy"), // RETIRED MODEL
+                        java.util.List.of("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b")
+                )
+        ));
+        ProviderStatusService checkService = new ProviderStatusService(deadProps, objectMapper);
+        java.util.List<String> warnings = checkService.validateGroqConfiguredModels();
+
+        assertNotNull(warnings);
+        assertFalse(warnings.isEmpty(), "Expected warnings for retired Groq models");
+        assertEquals(2, warnings.size());
+        assertTrue(warnings.get(0).contains("GROQ_EVAL_MODEL_DEAD"));
+        assertTrue(warnings.get(0).contains("retired/model-eval-legacy"));
+        assertTrue(warnings.get(1).contains("GROQ_EVAL_MODEL_DEAD"));
+        assertTrue(warnings.get(1).contains("retired/model-fallback-legacy"));
+    }
 }

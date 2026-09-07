@@ -86,12 +86,19 @@ public class OpenAiCompatibleClient implements AiClient {
                     ? resolvedFromConfig
                     : ((customModel != null && !customModel.isBlank()) ? customModel : (config != null && config.defaultModel() != null ? config.defaultModel() : "openai/gpt-oss-120b"));
 
-            List<String> fallbacks = List.of("qwen/qwen3-32b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant");
+            List<String> rawFallbacks = (config != null && config.fallbackModels() != null)
+                    ? config.fallbackModels()
+                    : List.of();
             List<String> list = new java.util.ArrayList<>();
             list.add(requested);
-            for (String fb : fallbacks) {
-                if (!list.contains(fb)) {
-                    list.add(fb);
+            for (String fb : rawFallbacks) {
+                if (fb != null && !fb.isBlank()) {
+                    for (String part : fb.split(",")) {
+                        String clean = part.trim();
+                        if (!clean.isEmpty() && !list.contains(clean)) {
+                            list.add(clean);
+                        }
+                    }
                 }
             }
             modelCandidates = list;

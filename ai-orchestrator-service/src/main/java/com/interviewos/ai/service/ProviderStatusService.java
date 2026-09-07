@@ -43,6 +43,7 @@ public class ProviderStatusService {
         factory.setConnectTimeout(Duration.ofSeconds(4));
         factory.setReadTimeout(Duration.ofSeconds(6));
         this.restClient = RestClient.builder().requestFactory(factory).build();
+        validateGroqConfiguredModels();
         try { refresh(); } catch (Exception e) { log.debug("Initial providers/status probe notice: {}", e.getMessage()); }
     }
 
@@ -186,5 +187,93 @@ public class ProviderStatusService {
         if ("GEMINI".equalsIgnoreCase(provider)) return "gemini-3.5-flash";
         if ("GROQ".equalsIgnoreCase(provider)) return "openai/gpt-oss-120b";
         return "gpt-4o-mini";
+    }
+
+    public List<String> validateGroqConfiguredModels() {
+        List<String> warnings = new ArrayList<>();
+        AiProviderProperties.ProviderConfig cfg = providerProperties != null
+                ? providerProperties.getConfigFor(ModelProvider.GROQ)
+                : null;
+        if (cfg == null) {
+            return warnings;
+        }
+
+        Set<String> allowed = new HashSet<>();
+        if (cfg.allowedModels() != null && !cfg.allowedModels().isEmpty()) {
+            for (String m : cfg.allowedModels()) {
+                if (m != null && !m.isBlank()) {
+                    for (String part : m.split(",")) {
+                        String clean = part.trim();
+                        if (!clean.isEmpty()) allowed.add(clean);
+                    }
+                }
+            }
+        }
+        if (allowed.isEmpty()) {
+            allowed.addAll(List.of(
+                    "openai/gpt-oss-120b",
+                    "openai/gpt-oss-20b",
+                    "qwen/qwen3.8-27b",
+                    "qwen/qwen3.6-27b",
+                    "whisper-large-v3",
+                    "whisper-large-v3-turbo"
+            ));
+        }
+
+        Map<String, String> modelsToCheck = new LinkedHashMap<>();
+        if (cfg.defaultModel() != null && !cfg.defaultModel().isBlank()) {
+            modelsToCheck.put("defaultModel", cfg.defaultModel().trim());
+        }
+        if (cfg.modelDialogue() != null && !cfg.modelDialogue().isBlank()) {
+            modelsToCheck.put("modelDialogue", cfg.modelDialogue().trim());
+        }
+        if (cfg.modelFast() != null && !cfg.modelFast().isBlank()) {
+            modelsToCheck.put("modelFast", cfg.modelFast().trim());
+        }
+        if (cfg.modelEval() != null && !cfg.modelEval().isBlank()) {
+            modelsToCheck.put("modelEval", cfg.modelEval().trim());
+        }
+
+        if (cfg.modelStt() != null && !cfg.modelStt().isBlank()) {
+            String stt = cfg.modelStt().trim();
+            Set<String> allowedStt = Set.of("whisper-large-v3", "whisper-large-v3-turbo");
+            if (!allowed.contains(stt) && !allowedStt.contains(stt)) {
+                String msg = String.format(
+                        "GROQ_EVAL_MODEL_DEAD: Configured Groq STT model '%s' is outside allowed STT models: %s",
+                        stt, allowedStt
+                );
+                log.warn("⚠️ {}", msg);
+                warnings.add(msg);
+            }
+        }
+
+        if (cfg.fallbackModels() != null) {
+            int idx = 1;
+            for (String fb : cfg.fallbackModels()) {
+                if (fb != null && !fb.isBlank()) {
+                    for (String part : fb.split(",")) {
+                        String clean = part.trim();
+                        if (!clean.isEmpty()) {
+                            modelsToCheck.put("fallbackModel[" + idx++ + "]", clean);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (Map.Entry<String, String> entry : modelsToCheck.entrySet()) {
+            String role = entry.getKey();
+            String model = entry.getValue();
+            if (!allowed.contains(model)) {
+                String msg = String.format(
+                        "GROQ_EVAL_MODEL_DEAD: Configured Groq model '%s' for '%s' is outside the allowed model list: %s. This model is confirmed retired or invalid!",
+                        model, role, allowed
+                );
+                log.warn("⚠️ {}", msg);
+                warnings.add(msg);
+            }
+        }
+
+        return warnings;
     }
 }
