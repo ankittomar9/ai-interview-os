@@ -5,6 +5,7 @@ import type {
     DiagnosticReportResponse,
     InterviewTrack,
     DifficultyLevel,
+    CustomDomainConfig,
     TelemetryEventType,
     AttachmentUploadResponse,
     DesignEvaluateRequest,
@@ -46,6 +47,8 @@ export const createSession = async (payload: {
     jobDescription?: string;
     mode?: 'INTERVIEW' | 'PLAYGROUND';
     planSource?: 'SETUP_SELECTION' | 'RESUME_INFERRED_CONFIRMED';
+    customDomains?: CustomDomainConfig[];
+    persona?: 'TECH' | 'NON_TECH';
 }): Promise<SessionResponse> => {
     return fetchJson<SessionResponse>(SESSION_API, {
         method: 'POST',

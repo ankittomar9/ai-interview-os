@@ -1,4 +1,57 @@
-import type { DifficultyLevel, InterviewTrack, SectionType } from '../types';
+import type { DifficultyLevel, InterviewTrack, SectionType, CustomDomainConfig } from '../types';
+
+export interface CustomDomainItem {
+  domain: InterviewTrack;
+  name: string;
+  subtitle: string;
+  defaultMinutes: number;
+  isTechOnly: boolean;
+}
+
+export const CUSTOM_AVAILABLE_DOMAINS: CustomDomainItem[] = [
+  { domain: 'ALGORITHMS_DATA_STRUCTURES', name: 'DSA', subtitle: 'Algorithms & sandbox coding', defaultMinutes: 30, isTechOnly: true },
+  { domain: 'SPRING_LLD', name: 'LLD', subtitle: 'Object-oriented low-level design', defaultMinutes: 20, isTechOnly: true },
+  { domain: 'SYSTEM_DESIGN', name: 'HLD', subtitle: 'System architecture & trade-offs', defaultMinutes: 30, isTechOnly: true },
+  { domain: 'SQL', name: 'SQL', subtitle: 'Window functions, joins & database sandbox', defaultMinutes: 20, isTechOnly: true },
+  { domain: 'RESUME_BASED', name: 'Others', subtitle: 'Resume-grounded AI-led interview', defaultMinutes: 20, isTechOnly: false },
+];
+
+export const CUSTOM_PRESETS: Record<'ALL' | 'DSA_HLD' | 'DSA_LLD', CustomDomainConfig[]> = {
+  ALL: [
+    { domain: 'ALGORITHMS_DATA_STRUCTURES', durationMinutes: 20 },
+    { domain: 'SPRING_LLD', durationMinutes: 20 },
+    { domain: 'SYSTEM_DESIGN', durationMinutes: 20 },
+    { domain: 'SQL', durationMinutes: 20 },
+    { domain: 'RESUME_BASED', durationMinutes: 20 }
+  ],
+  DSA_HLD: [
+    { domain: 'ALGORITHMS_DATA_STRUCTURES', durationMinutes: 30 },
+    { domain: 'SYSTEM_DESIGN', durationMinutes: 30 }
+  ],
+  DSA_LLD: [
+    { domain: 'ALGORITHMS_DATA_STRUCTURES', durationMinutes: 30 },
+    { domain: 'SPRING_LLD', durationMinutes: 30 }
+  ]
+};
+
+export function formatCustomPlanPreview(customDomains: CustomDomainConfig[]): string {
+  if (!customDomains || customDomains.length === 0) return 'Select at least one domain';
+  const parts = customDomains.map(d => {
+    const label = d.domain === 'ALGORITHMS_DATA_STRUCTURES' ? 'DSA'
+      : d.domain === 'SPRING_LLD' ? 'LLD'
+      : d.domain === 'SYSTEM_DESIGN' ? 'HLD'
+      : d.domain === 'SQL' ? 'SQL'
+      : d.domain === 'RESUME_BASED' ? 'Others'
+      : d.domain;
+    return `${label} (${d.durationMinutes}m)`;
+  });
+  const total = customDomains.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+  return `${parts.join(' · ')} · ≈${total} min`;
+}
+
+export function calculateCustomTotal(customDomains: CustomDomainConfig[]): number {
+  return customDomains.reduce((acc, curr) => acc + curr.durationMinutes, 0);
+}
 
 export interface PlanPresetSection {
   sectionType: SectionType;
@@ -205,6 +258,18 @@ export const getPlanPreset = (track: InterviewTrack, difficulty: DifficultyLevel
         sections: [
           { sectionType: 'INTRODUCTION', track, itemCount: 1, softTimeBudgetMinutes: 5, note: 'Candidate introduction & warm-up' },
           { sectionType: 'BEHAVIORAL', track, itemCount: items, softTimeBudgetMinutes: items * 8, note: 'STAR behavioral evaluation' }
+        ]
+      };
+    }
+    case 'CUSTOM': {
+      return {
+        track,
+        difficulty,
+        plannedTotalMinutes: 60,
+        preview: 'DSA (30m) · HLD (30m) · ≈60 min',
+        sections: [
+          { sectionType: 'DSA', track: 'ALGORITHMS_DATA_STRUCTURES', itemCount: 2, softTimeBudgetMinutes: 30, note: 'Algorithms and problem solving' },
+          { sectionType: 'SYSTEM_DESIGN', track: 'SYSTEM_DESIGN', itemCount: 1, softTimeBudgetMinutes: 30, note: 'System architecture' }
         ]
       };
     }
