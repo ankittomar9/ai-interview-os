@@ -1,13 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Sparkles, CheckCircle2, Terminal, Cpu, Shield, Database } from "lucide-react";
-import {
-  computeSandboxStatus,
-  computeIntelligenceStatus,
-  computeDataStatus,
-  computeOverallStatus,
-  type SystemCapabilitiesData,
-  type ProviderStatusItem
-} from "../../lib/systemStatusAggregate";
+import React from "react";
+import { Sparkles, CheckCircle2 } from "lucide-react";
+import { SystemStatusPill } from "./SystemStatusPill";
 
 const LIFECYCLE_STAGES = [
   { num: "1", title: "Calibration & Role Fit", desc: "Identity & grounding" },
@@ -18,47 +11,6 @@ const LIFECYCLE_STAGES = [
 ];
 
 export const SetupHeroSidebar: React.FC = () => {
-  const [capabilities, setCapabilities] = useState<SystemCapabilitiesData | null>(null);
-  const [providers, setProviders] = useState<ProviderStatusItem[] | null>(null);
-  const [backendOk, setBackendOk] = useState(false);
-
-  const fetchStatus = useCallback(async () => {
-    const host = window.location.hostname || "localhost";
-    try {
-      const capResp = await fetch(`http://${host}:8080/api/v1/system/capabilities`);
-      if (capResp.ok) {
-        setCapabilities(await capResp.json());
-        setBackendOk(true);
-      } else {
-        setBackendOk(false);
-      }
-    } catch {
-      setBackendOk(false);
-    }
-
-    try {
-      const provResp = await fetch(`http://${host}:8082/api/v1/ai/providers/status`);
-      if (provResp.ok) {
-        setProviders(await provResp.json());
-      }
-    } catch {
-      // Orchestrator failure leaves providers as null
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchStatus();
-    const timer = setInterval(() => { void fetchStatus(); }, 60000);
-    return () => clearInterval(timer);
-  }, [fetchStatus]);
-
-  const sandbox = computeSandboxStatus(capabilities?.engines);
-  const intelligence = computeIntelligenceStatus(capabilities?.services?.orchestrator, providers);
-  const proctorOnline = Boolean(capabilities?.services?.proctor);
-  const dataStatus = computeDataStatus(capabilities?.services);
-  const overall = computeOverallStatus(backendOk, sandbox.state, intelligence.state, dataStatus);
-  const checkedTime = capabilities?.checkedAt ? new Date(capabilities.checkedAt).toLocaleTimeString() : "";
-
   return (
     <div className="lg:col-span-4 bg-sidebar-bg border-b lg:border-b-0 lg:border-r border-sidebar-accent p-6 sm:p-8 flex flex-col space-y-6 select-none">
       <div className="space-y-6">
@@ -111,78 +63,12 @@ export const SetupHeroSidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* SYSTEM STATUS live panel directly below Lifecycle (D1) */}
-        <div className="p-3.5 rounded-xl bg-sidebar-accent/80 border border-sidebar-accent space-y-2 text-[11px]">
-          <div className="flex items-center justify-between text-sidebar-text-3 font-mono text-[10px]">
-            <span className="font-bold tracking-wider">SYSTEM STATUS</span>
-            {!backendOk ? (
-              <span className="text-sidebar-text-3 font-semibold">OFFLINE — backend unreachable</span>
-            ) : (
-              <span className="flex items-center gap-1 font-semibold">
-                <span className={overall === 'ONLINE' ? 'text-success' : 'text-warning'}>
-                  ● {overall}
-                </span>
-                {checkedTime && <span className="text-sidebar-text-3 font-normal">· {checkedTime}</span>}
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-1.5 text-sidebar-text font-mono text-[10px]">
-            {/* Sandbox */}
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-sidebar-text-3">
-                <Terminal className="w-3 h-3" />Sandbox
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <span className={`w-1.5 h-1.5 rounded-full ${!backendOk ? 'bg-sidebar-text-3' : (sandbox.state === 'ONLINE' ? 'bg-success' : sandbox.state === 'STARTING' ? 'bg-warning' : 'bg-danger')}`} />
-                <span className={!backendOk ? 'text-sidebar-text-3' : (sandbox.state === 'ONLINE' ? 'text-sidebar-text-2' : sandbox.state === 'STARTING' ? 'text-warning' : 'text-danger')}>
-                  {backendOk ? sandbox.state : 'OFFLINE'}
-                </span>
-              </span>
-            </div>
-            {sandbox.state === 'DOWN' && sandbox.detail && backendOk && (
-              <p className="text-[9px] text-danger truncate pl-4.5">{sandbox.detail}</p>
-            )}
-
-            {/* Intelligence */}
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-sidebar-text-3">
-                <Cpu className="w-3 h-3" />Intelligence
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <span className={`w-1.5 h-1.5 rounded-full ${!backendOk ? 'bg-sidebar-text-3' : (intelligence.state === 'ONLINE' ? 'bg-success' : intelligence.state === 'CHECKING' ? 'bg-sidebar-text-3' : 'bg-danger')}`} />
-                <span className={!backendOk ? 'text-sidebar-text-3' : (intelligence.state === 'ONLINE' ? 'text-sidebar-text-2' : intelligence.state === 'CHECKING' ? 'text-sidebar-text-3' : 'text-danger')}>
-                  {backendOk ? intelligence.text : 'OFFLINE'}
-                </span>
-              </span>
-            </div>
-
-            {/* Proctoring */}
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-sidebar-text-3">
-                <Shield className="w-3 h-3" />Proctoring
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <span className={`w-1.5 h-1.5 rounded-full ${!backendOk ? 'bg-sidebar-text-3' : (proctorOnline ? 'bg-success' : 'bg-danger')}`} />
-                <span className={!backendOk ? 'text-sidebar-text-3' : (proctorOnline ? 'text-sidebar-text-2' : 'text-danger')}>
-                  {backendOk ? (proctorOnline ? 'ONLINE' : 'DOWN') : 'OFFLINE'}
-                </span>
-              </span>
-            </div>
-
-            {/* Data */}
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-sidebar-text-3">
-                <Database className="w-3 h-3" />Data
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <span className={`w-1.5 h-1.5 rounded-full ${!backendOk ? 'bg-sidebar-text-3' : (dataStatus === 'ONLINE' ? 'bg-success' : dataStatus === 'DEGRADED' ? 'bg-warning' : 'bg-danger')}`} />
-                <span className={!backendOk ? 'text-sidebar-text-3' : (dataStatus === 'ONLINE' ? 'text-sidebar-text-2' : dataStatus === 'DEGRADED' ? 'text-warning' : 'text-danger')}>
-                  {backendOk ? dataStatus : 'OFFLINE'}
-                </span>
-              </span>
-            </div>
-          </div>
+        {/* Status Pill (P3) */}
+        <div className="pt-2 border-t border-sidebar-accent/60 flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-sidebar-text-3 font-mono">
+            SYSTEM STATUS
+          </span>
+          <SystemStatusPill />
         </div>
       </div>
 

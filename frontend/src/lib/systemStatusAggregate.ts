@@ -68,3 +68,116 @@ export function computeOverallStatus(
   if (sandboxState === 'ONLINE' && intelligenceState === 'ONLINE' && dataState === 'ONLINE') return 'ONLINE';
   return 'DEGRADED';
 }
+
+export type PillStatus = 'ONLINE' | 'CHECKING…' | 'DEGRADED' | 'OFFLINE';
+
+export interface PillEvaluation {
+  status: PillStatus;
+  failingServices: string[];
+  tooltipLines: string[];
+}
+
+/**
+ * Evaluates core platform services and returns a single status pill state
+ * along with one-line-per-service failing diagnostics.
+ *
+ * Core microservices:
+ * - questionBank (Question Bank Service)
+ * - postgres (PostgreSQL DB)
+ * - mongo (MongoDB Storage)
+ * - orchestrator (AI Orchestrator Service)
+ * - proctor (Proctor Sentinel Service)
+ *
+ * Core execution engines:
+ * - dsa (Judge0 CE execution engine)
+ * - lld (Docker LLD runner)
+ * - sql (Docker PostgreSQL runner)
+ */
+export function computePillStatus({
+  isChecking = false,
+  backendOk,
+  capabilities
+}: {
+  isChecking?: boolean;
+  backendOk: boolean;
+  capabilities?: SystemCapabilitiesData | null;
+}): PillEvaluation {
+  if (isChecking && !capabilities && !backendOk) {
+    return {
+      status: 'CHECKING…',
+      failingServices: [],
+      tooltipLines: ['Checking system capabilities…']
+    };
+  }
+
+  if (!backendOk || !capabilities) {
+    return {
+      status: isChecking ? 'CHECKING…' : 'OFFLINE',
+      failingServices: ['API Gateway'],
+      tooltipLines: ['API Gateway / Backend unreachable (http://localhost:8080)']
+    };
+  }
+
+  const failingServices: string[] = [];
+  const tooltipLines: string[] = [];
+
+  // Core microservices evaluation
+  const services = capabilities.services || {};
+
+  if (services.questionBank !== true) {
+    failingServices.push('Question Bank Service');
+    tooltipLines.push('Question Bank Service unreachable');
+  }
+
+  if (services.postgres !== true) {
+    failingServices.push('PostgreSQL Database');
+    tooltipLines.push('PostgreSQL Database down');
+  }
+
+  if (services.mongo !== true) {
+    failingServices.push('MongoDB Storage');
+    tooltipLines.push('MongoDB Storage down');
+  }
+
+  if (services.orchestrator !== true) {
+    failingServices.push('AI Orchestrator Service');
+    tooltipLines.push('AI Orchestrator Service down');
+  }
+
+  if (services.proctor !== true) {
+    failingServices.push('Proctor Sentinel Service');
+    tooltipLines.push('Proctor Sentinel Service down');
+  }
+
+  // Core sandbox engines evaluation
+  const engines = capabilities.engines || {};
+
+  if (!engines.dsa || !engines.dsa.ready || engines.dsa.state === 'DOWN') {
+    failingServices.push('DSA Sandbox (Judge0)');
+    tooltipLines.push(`DSA Sandbox (Judge0): ${engines.dsa?.detail || 'unreachable'}`);
+  }
+
+  if (!engines.lld || !engines.lld.ready || engines.lld.state === 'DOWN') {
+    failingServices.push('LLD Sandbox (Docker)');
+    tooltipLines.push(`LLD Sandbox (Docker): ${engines.lld?.detail || 'unavailable'}`);
+  }
+
+  if (!engines.sql || !engines.sql.ready || engines.sql.state === 'DOWN') {
+    failingServices.push('SQL Sandbox (PostgreSQL)');
+    tooltipLines.push(`SQL Sandbox: ${engines.sql?.detail || 'unavailable'}`);
+  }
+
+  if (failingServices.length > 0) {
+    return {
+      status: isChecking ? 'CHECKING…' : 'DEGRADED',
+      failingServices,
+      tooltipLines
+    };
+  }
+
+  return {
+    status: isChecking ? 'CHECKING…' : 'ONLINE',
+    failingServices: [],
+    tooltipLines: ['All core services healthy (Judge0, PostgreSQL, MongoDB, Orchestrator, Question Bank, Proctor)']
+  };
+}
