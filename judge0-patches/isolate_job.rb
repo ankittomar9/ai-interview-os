@@ -103,7 +103,6 @@ class IsolateJob < ApplicationJob
     "
 
     puts "[#{DateTime.now}] Extracting archive for submission #{submission.token} (#{submission.id}):"
-    File.open("/tmp/isolate_cmd.log", "a") { |f| f.puts command.gsub(/\s+/, " ") }
     puts
 
     `#{command}`
@@ -161,7 +160,6 @@ class IsolateJob < ApplicationJob
     "
 
     puts "[#{DateTime.now}] Compiling submission #{submission.token} (#{submission.id}):"
-    File.open("/tmp/isolate_cmd.log", "a") { |f| f.puts command.gsub(/\s+/, " ") }
     puts
 
     `#{command}`
@@ -242,7 +240,6 @@ class IsolateJob < ApplicationJob
     "
 
     puts "[#{DateTime.now}] Running submission #{submission.token} (#{submission.id}):"
-    File.open("/tmp/isolate_cmd.log", "a") { |f| f.puts command.gsub(/\s+/, " ") }
     puts
 
     `#{command}`
