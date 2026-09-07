@@ -2,7 +2,9 @@
 slug: dsa-leaders-in-an-array-element-all-elements-to-its-right
 title: Leaders in an array (Element > all elements to its right).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

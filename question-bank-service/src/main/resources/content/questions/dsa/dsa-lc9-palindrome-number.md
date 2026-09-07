@@ -2,7 +2,9 @@
 slug: dsa-lc9-palindrome-number
 title: Palindrome Number
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [two-pointers, math]
+est_minutes: 15
 tags:
 - math
 - junior

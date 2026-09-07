@@ -2,7 +2,9 @@
 slug: dsa-linear-search-using-recursion
 title: Linear Search Using Recursion
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - recursion
 - mid

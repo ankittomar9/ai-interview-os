@@ -2,7 +2,9 @@
 slug: dsa-maximize-profit-by-buying-and-selling-stocks-one-transaction
 title: Maximize profit by buying and selling stocks (One transaction).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [arrays]
+est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
 - mid

@@ -2,7 +2,9 @@
 slug: dsa-lcm-using-recursion
 title: LCM using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [recursion]
+est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
 - mid
