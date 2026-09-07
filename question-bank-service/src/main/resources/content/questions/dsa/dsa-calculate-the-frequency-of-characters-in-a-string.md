@@ -2,7 +2,9 @@
 slug: dsa-calculate-the-frequency-of-characters-in-a-string
 title: Calculate the Frequency of characters in a string.
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [hashing, strings]
+est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
 - mid

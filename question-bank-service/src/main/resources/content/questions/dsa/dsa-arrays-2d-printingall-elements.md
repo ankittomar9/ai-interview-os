@@ -2,7 +2,9 @@
 slug: dsa-arrays-2d-printingall-elements
 title: Arrays 2D Printingall Elements
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: MID
+difficulty: MEDIUM
+topics: [matrix, arrays]
+est_minutes: 25
 tags:
 - matrix
 - mid

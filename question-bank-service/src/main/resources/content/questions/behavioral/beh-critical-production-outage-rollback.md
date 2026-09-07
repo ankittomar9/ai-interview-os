@@ -2,7 +2,9 @@
 slug: beh-critical-production-outage-rollback
 title: Incident Management: Cascading Database Outage & Blameless Post-Mortem
 track: BEHAVIORAL_STAR
-difficulty: STAFF
+difficulty: HARD
+topics: [behavioral]
+est_minutes: 20
 tags: [leadership, incident-response, star, production-outage, post-mortem]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-behavioral/outage-management

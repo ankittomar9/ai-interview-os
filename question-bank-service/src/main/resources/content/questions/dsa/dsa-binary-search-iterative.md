@@ -2,7 +2,9 @@
 slug: dsa-binary-search-iterative
 title: Binary Search (Iterative).
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: JUNIOR
+difficulty: EASY
+topics: [binary-search]
+est_minutes: 15
 tags:
 - 6-sorting--searching-15-questions
 - junior

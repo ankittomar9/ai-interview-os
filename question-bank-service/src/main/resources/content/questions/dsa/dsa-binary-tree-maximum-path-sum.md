@@ -2,7 +2,9 @@
 slug: dsa-binary-tree-maximum-path-sum
 title: Binary Tree Maximum Path Sum
 track: ALGORITHMS_DATA_STRUCTURES
-difficulty: STAFF
+difficulty: HARD
+topics: [trees, dp]
+est_minutes: 40
 tags: [binary-tree, dfs, recursion, dynamic-programming]
 buildProfile: judge0
 source: inspired-by:kingsgambitlab/academy-dsa/tree-path-sum
