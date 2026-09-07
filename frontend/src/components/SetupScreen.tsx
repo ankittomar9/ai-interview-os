@@ -1,17 +1,17 @@
 import React, { useState } from "react";
-import type { DifficultyLevel, InterviewTrack, ModelProvider } from "../types";
+import type { DifficultyLevel, InterviewTrack, ModelProvider, CustomDomainConfig } from "../types";
 import { getStoredApiKey } from "../services/api";
 import { SetupHeroSidebar } from "./setup/SetupHeroSidebar";
 import { IdentityGrid } from "./setup/IdentityGrid";
 import { TrackGrid } from "./setup/TrackGrid";
-import { ResumeSection } from "./setup/ResumeSection";
-import { ProviderSection } from "./setup/ProviderSection";
+import { SettingsDrawer } from "./setup/SettingsDrawer";
 import { Button } from "./ui/Button";
 import { ThemeToggle } from "./ui/ThemeToggle";
-import { Compass, Play, ShieldAlert, Award, TrendingUp, BookOpen } from "lucide-react";
+import { Compass, Play, ShieldAlert, Award, TrendingUp, BookOpen, Settings } from "lucide-react";
 import { FloatingAiOrb } from "./ai/FloatingAiOrb";
 import { AiAssistantPanel } from "./ai/AiAssistantPanel";
 import { ProgressChart } from "./ProgressChart";
+import { calculateCustomTotal, CUSTOM_PRESETS } from "../lib/plan-presets";
 
 interface SetupScreenProps {
   onStart: (config: {
@@ -26,6 +26,8 @@ interface SetupScreenProps {
     apiKey: string;
     mode?: "INTERVIEW" | "PLAYGROUND";
     planSource?: "SETUP_SELECTION" | "RESUME_INFERRED_CONFIRMED";
+    customDomains?: CustomDomainConfig[];
+    persona?: "TECH" | "NON_TECH";
   }) => void;
   isLoading: boolean;
   onOpenCatalog?: () => void;
@@ -43,13 +45,17 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   const [roleTitle, setRoleTitle] = useState("Senior Java Backend Engineer");
   const [targetCompany, setTargetCompany] = useState("Google");
   const [jobDescription, setJobDescription] = useState("");
+  const [persona, setPersona] = useState<"TECH" | "NON_TECH">("TECH");
   const [track, setTrack] = useState<InterviewTrack>("ALGORITHMS_DATA_STRUCTURES");
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("SENIOR");
-  const [suggestedDifficulty, setSuggestedDifficulty] = useState<DifficultyLevel | null>(null);
-  const [suggestedExperienceYears, setSuggestedExperienceYears] = useState<number | null>(null);
+  const [suggestedDifficulty] = useState<DifficultyLevel | null>(null);
+  const [suggestedExperienceYears] = useState<number | null>(null);
   const [isDifficultyOverridden, setIsDifficultyOverridden] = useState(false);
   const [planSource, setPlanSource] = useState<"SETUP_SELECTION" | "RESUME_INFERRED_CONFIRMED">("SETUP_SELECTION");
   const [sessionMode, setSessionMode] = useState<"INTERVIEW" | "PLAYGROUND">("INTERVIEW");
+  const [customDomains, setCustomDomains] = useState<CustomDomainConfig[]>(() =>
+    CUSTOM_PRESETS.DSA_HLD.map((item) => ({ ...item }))
+  );
 
   const [provider, setProvider] = useState<ModelProvider>(() => {
     return (localStorage.getItem("app.provider") as ModelProvider) || "GROQ";
@@ -60,8 +66,10 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
     return getStoredApiKey(p.toLowerCase());
   });
 
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSelectDifficulty = (diff: DifficultyLevel) => {
     setDifficulty(diff);
@@ -69,8 +77,45 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
     setPlanSource("SETUP_SELECTION");
   };
 
+  const handlePersonaChange = (newPersona: "TECH" | "NON_TECH") => {
+    setPersona(newPersona);
+    setErrorMessage(null);
+    if (newPersona === "NON_TECH") {
+      if (track !== "RESUME_BASED" && track !== "CUSTOM") {
+        setTrack("RESUME_BASED");
+      }
+      if (track === "CUSTOM") {
+        setCustomDomains([{ domain: "RESUME_BASED", durationMinutes: 30 }]);
+      }
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    if (!candidateName.trim()) {
+      setErrorMessage("Candidate full name is required.");
+      return;
+    }
+
+    if (!track) {
+      setErrorMessage("Please select an evaluation track.");
+      return;
+    }
+
+    if (track === "CUSTOM") {
+      if (!customDomains || customDomains.length === 0) {
+        setErrorMessage("Please select at least one domain for your custom interview.");
+        return;
+      }
+      const total = calculateCustomTotal(customDomains);
+      if (total > 120) {
+        setErrorMessage(`Total custom interview duration (${total} min) cannot exceed 120 minutes.`);
+        return;
+      }
+    }
+
     onStart({
       candidateId,
       candidateName,
@@ -82,7 +127,9 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
       provider,
       apiKey,
       mode: sessionMode,
-      planSource
+      planSource,
+      customDomains: track === "CUSTOM" ? customDomains : undefined,
+      persona
     });
   };
 
@@ -94,7 +141,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
 
         {/* Right Light Form Panel */}
         <div className="lg:col-span-8 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto space-y-6">
-          {/* Top Header Row: Segmented Mode Switcher + Theme Toggle */}
+          {/* Top Header Row: Segmented Mode Switcher + Settings Drawer Toggle + Theme Toggle */}
           <div className="flex items-center gap-3">
             <div className="flex-1 grid grid-cols-2 gap-2 bg-elevated p-1.5 rounded-xl border border-border">
               <button
@@ -114,11 +161,30 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
                 <span>Playground Practice</span>
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 rounded-lg bg-surface border border-border text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+              title="Intelligence Provider & BYOK Settings"
+            >
+              <Settings className="w-4 h-4 text-primary" />
+              <span className="hidden sm:inline">Settings</span>
+            </button>
+
             <ThemeToggle size="md" />
           </div>
 
           {/* Form Sections */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {errorMessage && (
+              <div className="p-3 rounded-lg bg-danger/10 border border-danger/40 text-danger text-xs font-medium flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Identity Grid: Identifier, Full Name, Role, Company, JD (all optional except name + track) */}
             <IdentityGrid
               candidateId={candidateId}
               onChangeCandidateId={setCandidateId}
@@ -132,6 +198,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               onChangeJobDescription={setJobDescription}
             />
 
+            {/* 6 Track Cards + Persona Toggle + Custom Builder */}
             <TrackGrid
               selectedTrack={track}
               onSelectTrack={setTrack}
@@ -140,34 +207,11 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               suggestedDifficulty={suggestedDifficulty}
               suggestedExperienceYears={suggestedExperienceYears}
               isDifficultyOverridden={isDifficultyOverridden}
+              persona={persona}
+              onChangePersona={handlePersonaChange}
+              customDomains={customDomains}
+              onChangeCustomDomains={setCustomDomains}
             />
-
-            <ResumeSection
-              candidateId={candidateId}
-              candidateName={candidateName}
-              onResumeUploaded={(resume) => {
-                if (resume.candidateName && (!candidateName || candidateName === "Candidate" || candidateName === "Ankit Singh Tomar")) {
-                  setCandidateName(resume.candidateName);
-                }
-                const rawLevel = (resume.suggestedDifficulty || resume.inferredRoleLevel || "").toUpperCase();
-                if (['JUNIOR', 'MID', 'SENIOR', 'STAFF'].includes(rawLevel)) {
-                  const level = rawLevel as DifficultyLevel;
-                  setSuggestedDifficulty(level);
-                  setSuggestedExperienceYears(resume.yearsOfExperience ?? 4);
-                  setDifficulty(level);
-                  setIsDifficultyOverridden(false);
-                  setPlanSource("RESUME_INFERRED_CONFIRMED");
-                }
-              }}
-            />
-
-            <ProviderSection
-              selectedProvider={provider}
-              onSelectProvider={setProvider}
-              apiKey={apiKey}
-              onChangeApiKey={setApiKey}
-            />
-
 
             {/* Action Bar */}
             <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/80">
@@ -245,6 +289,16 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* Settings Drawer (BYOK & Model Provider selection moved here from main screen) */}
+      <SettingsDrawer
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        selectedProvider={provider}
+        onSelectProvider={setProvider}
+        apiKey={apiKey}
+        onChangeApiKey={setApiKey}
+      />
 
       <FloatingAiOrb
         isOpen={isAiPanelOpen}

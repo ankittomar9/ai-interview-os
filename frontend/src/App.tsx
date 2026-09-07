@@ -135,6 +135,8 @@ export function App() {
     apiKey: string;
     mode?: 'INTERVIEW' | 'PLAYGROUND';
     planSource?: 'SETUP_SELECTION' | 'RESUME_INFERRED_CONFIRMED';
+    customDomains?: import('./types').CustomDomainConfig[];
+    persona?: 'TECH' | 'NON_TECH';
   }) => {
     setIsLoading(true);
     const chosenMode = config.mode || 'INTERVIEW';
@@ -155,7 +157,9 @@ export function App() {
         targetCompany: config.targetCompany,
         jobDescription: config.jobDescription,
         mode: chosenMode,
-        planSource: config.planSource
+        planSource: config.planSource,
+        customDomains: config.customDomains,
+        persona: config.persona
       });
       setSessionId(session.id);
       setSessionPlan(session.plan);

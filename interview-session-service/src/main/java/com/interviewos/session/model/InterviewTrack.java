@@ -11,5 +11,6 @@ public enum InterviewTrack {
     FULL_LOOP,
     DSA_LLD,
     DSA_LLD_HLD,
-    LLD_HLD
+    LLD_HLD,
+    CUSTOM
 }

@@ -4,6 +4,7 @@ import com.interviewos.session.model.DifficultyLevel;
 import com.interviewos.session.model.InterviewTrack;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.util.List;
 
 public record CreateSessionRequest(
         @NotBlank(message = "Candidate ID is required")
@@ -23,8 +24,24 @@ public record CreateSessionRequest(
         String targetCompany,
         String jobDescription,
         String mode,
-        String planSource
+        String planSource,
+        List<CustomDomainConfig> customDomains,
+        String persona
 ) {
+    public CreateSessionRequest(
+            String candidateId,
+            String candidateName,
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String targetCompany,
+            String jobDescription,
+            String mode,
+            String planSource
+    ) {
+        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, mode, planSource, null, "TECH");
+    }
+
     public CreateSessionRequest(
             String candidateId,
             String candidateName,
@@ -35,7 +52,7 @@ public record CreateSessionRequest(
             String jobDescription,
             String mode
     ) {
-        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, mode, "SETUP_SELECTION");
+        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, mode, "SETUP_SELECTION", null, "TECH");
     }
 
     public CreateSessionRequest(
@@ -47,7 +64,7 @@ public record CreateSessionRequest(
             String targetCompany,
             String jobDescription
     ) {
-        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, "INTERVIEW", "SETUP_SELECTION");
+        this(candidateId, candidateName, roleTitle, track, difficulty, targetCompany, jobDescription, "INTERVIEW", "SETUP_SELECTION", null, "TECH");
     }
 
     public String getEffectiveMode() {
@@ -56,5 +73,9 @@ public record CreateSessionRequest(
 
     public String getEffectivePlanSource() {
         return (planSource != null && !planSource.isBlank()) ? planSource.trim() : "SETUP_SELECTION";
+    }
+
+    public String getEffectivePersona() {
+        return (persona != null && !persona.isBlank()) ? persona.trim().toUpperCase() : "TECH";
     }
 }
