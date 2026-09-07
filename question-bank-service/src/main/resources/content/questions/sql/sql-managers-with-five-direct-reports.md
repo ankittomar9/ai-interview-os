@@ -2,7 +2,9 @@
 slug: sql-managers-with-five-direct-reports
 title: Engineering Managers with >= 5 Direct Reports
 track: SQL
-difficulty: MID
+difficulty: MEDIUM
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, joins, self-join, group-by]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/managers-reports

@@ -2,7 +2,9 @@
 slug: sql-second-highest-salary-safe
 title: Null-Safe Second Highest Compensation
 track: SQL
-difficulty: JUNIOR
+difficulty: EASY
+topics: [sql]
+est_minutes: 20
 tags: [postgresql, subqueries, limit-offset, null-handling]
 buildProfile: sql-postgres
 source: inspired-by:kingsgambitlab/academy-sql/second-highest-salary
