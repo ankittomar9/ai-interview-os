@@ -104,7 +104,7 @@ Run entirely on your laptop with zero cloud bills and complete data privacy:
 - All AI dialogue & question personalized generation (Ollama)
 - All speech-to-text (Whisper.cpp / Web Speech API)
 - All rubric scoring & feedback analysis (Ollama)
-- All code compilation & sandboxed execution (Judge0 CE / Postgres / Maven)
+- All code compilation & sandboxed execution (Judge0 CE supporting Java, Python, C++, and TypeScript / Postgres / Maven)
 - All databases & file attachments (Local Postgres & MongoDB)
 
 ---
@@ -170,7 +170,7 @@ The assessment cockpit delivers a distraction-free, high-density 3-zone VS Code 
 
 | Track | Execution engine | Workspace Format |
 |---|---|---|
-| **Algorithms & Data Structures** | Judge0 CE (stdin/stdout, hidden fixtures) | Single-file Monaco IDE with ActivityBar & StatusBar |
+| **Algorithms & Data Structures** | Judge0 CE (stdin/stdout, hidden fixtures; Java, Python 3, C++, TypeScript) | Single-file Monaco IDE with ActivityBar & StatusBar |
 | **Spring Boot LLD** | Isolated Docker Maven runner (JUnit 5, hidden suites) | Multi-file workspace (Explorer + Tabs + Read-only Locks) |
 | **High-Level System Design** | React Flow canvas + multimodal vision eval | Drag/drop architecture nodes, protocol handles, PNG export |
 | **Behavioral & Leadership** | Neural dialogue engine | STAR-method voice conversation with live audio waveform |
@@ -183,7 +183,7 @@ The platform ships with a curated catalog of **364 questions (316 DSA + 27 HLD +
 
 ## 🔒 Sandbox & Security Model
 
-- **Judge0 (DSA):** Zero-trust ptrace/cgroup containers, strict CPU/memory/time limits, per-test stdin/expected-output loops.
+- **Judge0 (DSA & Polyglot Execution):** Zero-trust ptrace/cgroup containers, strict CPU/memory/time limits, per-test stdin/expected-output loops. Supports Java (OpenJDK), Python 3, C++, and TypeScript (Node.js/TS 5.0, Judge0 Language ID 74) with compile/run sandboxing and per-test stdin/stdout verification.
 - **Maven runner (LLD):** Ephemeral `--network none` containers (768 MB / 2 CPU), pre-warmed `~/.m2`, candidate edits confined to an `editablePaths` whitelist, hidden JUnit suites injected server-side.
 - **Docker socket** is mounted exclusively into `interview-session-service`. For production, proxy it (e.g. `tecnativa/docker-socket-proxy`) allowing only create/start/wait/delete.
 - **Proctoring:** Frontal webcam HUD, tab-blur + paste-dump telemetry, single-monitor check, optional dual-camera phone link (QR), focus-loss lockout.
