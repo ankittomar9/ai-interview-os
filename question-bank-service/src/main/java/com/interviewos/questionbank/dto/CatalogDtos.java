@@ -13,7 +13,8 @@ public class CatalogDtos {
             String name,
             String track,
             int total,
-            int solved
+            int solved,
+            List<QuestionDocument.ResourceItem> resources
     ) {}
 
     @Builder
@@ -64,7 +65,8 @@ public class CatalogDtos {
             String solutionCode,
             String buildProfile,
             List<String> hints,
-            List<String> constraints
+            List<String> constraints,
+            List<QuestionDocument.ResourceItem> resources
     ) {
         public record HiddenTestCaseMeta(String name, int weight) {}
 
@@ -90,6 +92,7 @@ public class CatalogDtos {
                     .buildProfile(doc.getBuildProfile())
                     .hints(doc.getHints())
                     .constraints(doc.getConstraints())
+                    .resources(doc.getResources() != null ? doc.getResources() : List.of())
                     .build();
         }
     }

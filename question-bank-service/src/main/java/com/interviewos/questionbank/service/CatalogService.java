@@ -24,7 +24,7 @@ public class CatalogService {
     private final QuestionRepository questionRepository;
     private final List<TopicMetadata> taxonomyTopics = new ArrayList<>();
 
-    public record TopicMetadata(String id, String name, String track) {}
+    public record TopicMetadata(String id, String name, String track, List<QuestionDocument.ResourceItem> resources) {}
 
     @PostConstruct
     public void initTaxonomy() {
@@ -41,7 +41,19 @@ public class CatalogService {
                                 String id = m.get("id") != null ? m.get("id").toString() : "";
                                 String name = m.get("name") != null ? m.get("name").toString() : id;
                                 String track = m.get("track") != null ? m.get("track").toString() : "ALGORITHMS_DATA_STRUCTURES";
-                                taxonomyTopics.add(new TopicMetadata(id, name, track));
+                                List<QuestionDocument.ResourceItem> resources = new ArrayList<>();
+                                if (m.get("resources") instanceof List<?> rList) {
+                                    for (Object rItem : rList) {
+                                        if (rItem instanceof Map<?, ?> rm) {
+                                            String rLabel = rm.get("label") != null ? rm.get("label").toString().trim() : "";
+                                            String rUrl = rm.get("url") != null ? rm.get("url").toString().trim() : "";
+                                            if (!rLabel.isBlank() && !rUrl.isBlank()) {
+                                                resources.add(new QuestionDocument.ResourceItem(rLabel, rUrl));
+                                            }
+                                        }
+                                    }
+                                }
+                                taxonomyTopics.add(new TopicMetadata(id, name, track, resources));
                             }
                         }
                     }
@@ -75,6 +87,7 @@ public class CatalogService {
                         .track(t.track())
                         .total(topicCounts.getOrDefault(t.id(), 0))
                         .solved(0)
+                        .resources(t.resources())
                         .build())
                 .toList();
     }

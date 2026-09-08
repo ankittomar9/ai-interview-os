@@ -39,6 +39,11 @@ constraints:
   - "-10^9 <= nums[i] <= 10^9"
   - "-10^9 <= target <= 10^9"
   - "Only one valid answer exists."
+resources:
+  - label: "LeetCode 1: Two Sum Editorial"
+    url: "https://leetcode.com/problems/two-sum/editorial/"
+  - label: "NeetCode: Two Sum Video Walkthrough"
+    url: "https://www.youtube.com/watch?v=KLlXCFG5TnA"
 coaching:
   presentationTips:
     - "Clarify if the array is guaranteed to have exactly one solution."

@@ -641,12 +641,18 @@ export const getPracticeAttempts = async (slug: string, userId: string = 'local'
 };
 
 // --- Batch P1.2: Problem Catalog (:8086) ---
+export interface QuestionResourceItem {
+    label: string;
+    url: string;
+}
+
 export interface CatalogTopicSummary {
     topic: string;
     total: number;
     solved: number;
     displayName: string;
     pressureGap?: string;
+    resources?: QuestionResourceItem[];
 }
 
 export interface CatalogQuestionSummary {
@@ -692,6 +698,7 @@ export interface CatalogQuestionDetail {
     visibleTestCases: any[];
     hiddenTestCasesMeta: HiddenTestCaseMeta[];
     hints?: string[];
+    resources?: QuestionResourceItem[];
 }
 
 export const getCatalogTopics = async (track?: string): Promise<CatalogTopicSummary[]> => {
@@ -933,6 +940,73 @@ export const getLearnTree = async (
             method: 'GET',
             timeoutMs: 10000,
             signal
+        }
+    );
+};
+
+// --- Learning Resource Center: User Notes (P8) ---
+export interface UserNoteResponse {
+    id?: number;
+    userId: string;
+    questionSlug: string;
+    body: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export const getUserNote = async (
+    slug: string,
+    userId: string = 'local'
+): Promise<UserNoteResponse | null> => {
+    try {
+        return await fetchJson<UserNoteResponse>(
+            `${GATEWAY_BASE}/learn/notes/${encodeURIComponent(slug)}?userId=${encodeURIComponent(userId)}`,
+            { method: 'GET', timeoutMs: 10000 }
+        );
+    } catch (err: any) {
+        if (err.message && err.message.includes('404')) {
+            return null;
+        }
+        throw err;
+    }
+};
+
+export const saveUserNote = async (
+    slug: string,
+    body: string,
+    userId: string = 'local'
+): Promise<UserNoteResponse> => {
+    return fetchJson<UserNoteResponse>(
+        `${GATEWAY_BASE}/learn/notes/${encodeURIComponent(slug)}?userId=${encodeURIComponent(userId)}`,
+        {
+            method: 'PUT',
+            body: JSON.stringify({ body }),
+            timeoutMs: 10000
+        }
+    );
+};
+
+export const deleteUserNote = async (
+    slug: string,
+    userId: string = 'local'
+): Promise<void> => {
+    return fetchJson<void>(
+        `${GATEWAY_BASE}/learn/notes/${encodeURIComponent(slug)}?userId=${encodeURIComponent(userId)}`,
+        {
+            method: 'DELETE',
+            timeoutMs: 10000
+        }
+    );
+};
+
+export const listUserNotes = async (
+    userId: string = 'local'
+): Promise<UserNoteResponse[]> => {
+    return fetchJson<UserNoteResponse[]>(
+        `${GATEWAY_BASE}/learn/notes?userId=${encodeURIComponent(userId)}`,
+        {
+            method: 'GET',
+            timeoutMs: 10000
         }
     );
 };

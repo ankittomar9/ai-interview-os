@@ -80,6 +80,7 @@ public class QuestionMarkdownParser {
             QuestionDocument.CoachingContent coaching = parseCoaching(yamlMap.get("coaching"));
             QuestionDocument.ExecutionLimits limits = parseLimits(yamlMap.get("limits"));
             QuestionDocument.InterviewerNotes interviewerNotes = parseInterviewerNotes(yamlMap.get("interviewerNotes"));
+            List<QuestionDocument.ResourceItem> resources = parseResources(yamlMap.get("resources"));
 
             return QuestionDocument.builder()
                     .slug(slug)
@@ -111,6 +112,7 @@ public class QuestionMarkdownParser {
                     .evaluationCriteria(evaluationCriteria.isEmpty() ? List.of("Correctness", "Time Complexity", "Clean Code") : evaluationCriteria)
                     .constraints(constraints)
                     .coaching(coaching)
+                    .resources(resources)
                     .limits(limits != null ? limits : new QuestionDocument.ExecutionLimits(256, 3000))
                     .interviewerNotes(interviewerNotes)
                     .status(status)
@@ -225,5 +227,21 @@ public class QuestionMarkdownParser {
         List<String> seeds = m.get("followUpSeeds") instanceof List<?> l ? l.stream().map(Object::toString).toList() : List.of();
         List<String> checkpoints = m.get("rubricCheckpoints") instanceof List<?> l ? l.stream().map(Object::toString).toList() : List.of();
         return new QuestionDocument.InterviewerNotes(concepts, seeds, checkpoints);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<QuestionDocument.ResourceItem> parseResources(Object obj) {
+        if (!(obj instanceof List<?> list)) return List.of();
+        List<QuestionDocument.ResourceItem> result = new ArrayList<>();
+        for (Object item : list) {
+            if (item instanceof Map<?, ?> m) {
+                String label = m.get("label") != null ? m.get("label").toString().trim() : "";
+                String url = m.get("url") != null ? m.get("url").toString().trim() : "";
+                if (!label.isBlank() && !url.isBlank()) {
+                    result.add(new QuestionDocument.ResourceItem(label, url));
+                }
+            }
+        }
+        return result;
     }
 }
