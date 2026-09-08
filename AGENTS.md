@@ -54,3 +54,33 @@ Development occurs across multiple laptops and independent Antigravity sessions 
 - **One spec → One commit**: Keep commits atomic and scoped to a single milestone or spec task.
 - **Never rebuild working subsystems**: Honor the hard constraints in `docs/architecture.md` (e.g. do not replace Judge0, do not consolidate polyglot persistence without an accepted ADR, do not bypass the API gateway).
 - **Topology changes**: Any service split or merge requires an accepted Architectural Decision Record (see [docs/ADR/](docs/ADR/)).
+
+## Operational Guardrails (SPEC-V2 §3)
+```text
+G1 — IMAGE-ONLY DEPLOY (hard prohibition)
+  Never `docker cp` application jars or build artifacts into running containers.
+  Never hot-patch a running service. The only deploy path is:
+      docker compose build <services> && docker compose up -d
+  If a container seems out of sync with master, the fix is a rebuild — never a patch.
+  No exceptions without explicit human approval recorded in the execution report.
+
+G2 — FLYWAY RECEIPTS ARE NEVER FORGED (hard prohibition)
+  Never hand-insert, hand-edit, or delete rows in flyway_schema_history.
+  Failed migration? In order: (1) fix the migration SQL and re-run;
+  (2) `flyway repair`; (3) drop & recreate the dev DB and let migrations
+  re-apply from V1. A migration that "needs a hand-forged history row to
+  apply" is a bug in the migration. Fix the SQL, not the receipt.
+
+G3 — FOUR-NUMBER TEST REPORTING (mandatory vocabulary)
+  files      = test source files executed
+  test-cases = executed test cases (node:test `test()` blocks; JUnit "Tests run")
+  assertions = actual assert/expect calls executed (node:assert.* calls;
+               JUnit: write `n/r` if the runner does not report a count —
+               NEVER substitute test-case counts into this slot)
+  failures   = failed test-cases; list errors and skipped separately
+  Report per module AND a total. A gate claim without its four numbers is
+  treated as not run.
+
+G4 — HONEST-JUDGE GATES (standing reminder)
+  Every gate: known-good → PASS and deliberately-wrong → FAIL, both pasted.
+```
