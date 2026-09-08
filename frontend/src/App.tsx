@@ -13,6 +13,7 @@ import { PracticeSummary } from './components/PracticeSummary';
 import { LearnView } from './components/learn/LearnView';
 import { DashboardView } from './components/dashboard/DashboardView';
 import { Toaster } from './components/ui/Toaster';
+import { ScreenErrorBoundary } from './components/arena/ScreenErrorBoundary';
 
 type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN' | 'DASHBOARD';
 
@@ -407,29 +408,35 @@ export function App() {
       )}
 
       {view === 'SETUP' && (
-        <SetupScreen
-          onStart={handleStartInterview}
-          isLoading={isLoading}
-          onOpenCatalog={() => setIsCatalogOpen(true)}
-          onNavigateToLearn={handleNavigateToLearn}
-          onNavigateToDashboard={handleNavigateToDashboard}
-        />
+        <ScreenErrorBoundary>
+          <SetupScreen
+            onStart={handleStartInterview}
+            isLoading={isLoading}
+            onOpenCatalog={() => setIsCatalogOpen(true)}
+            onNavigateToLearn={handleNavigateToLearn}
+            onNavigateToDashboard={handleNavigateToDashboard}
+          />
+        </ScreenErrorBoundary>
       )}
 
       {view === 'LEARN' && (
-        <LearnView
-          onBackToSetup={handleBackToSetup}
-          onSolveQuestion={handleSolveFromLearn}
-          onNavigateToDashboard={handleNavigateToDashboard}
-        />
+        <ScreenErrorBoundary>
+          <LearnView
+            onBackToSetup={handleBackToSetup}
+            onSolveQuestion={handleSolveFromLearn}
+            onNavigateToDashboard={handleNavigateToDashboard}
+          />
+        </ScreenErrorBoundary>
       )}
 
       {view === 'DASHBOARD' && (
-        <DashboardView
-          userId={candidateId || 'local'}
-          onBackToSetup={handleBackToSetup}
-          onNavigateToLearn={handleNavigateToLearn}
-        />
+        <ScreenErrorBoundary>
+          <DashboardView
+            userId={candidateId || 'local'}
+            onBackToSetup={handleBackToSetup}
+            onNavigateToLearn={handleNavigateToLearn}
+          />
+        </ScreenErrorBoundary>
       )}
 
       {view === 'CHECKLIST' && sessionId && (

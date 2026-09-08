@@ -703,10 +703,20 @@ export interface CatalogQuestionDetail {
 
 export const getCatalogTopics = async (track?: string): Promise<CatalogTopicSummary[]> => {
     const query = track && track !== 'ALL' ? `?track=${encodeURIComponent(track)}` : '';
-    return fetchJson<CatalogTopicSummary[]>(`${GATEWAY_BASE}/catalog/topics${query}`, {
+    const raw = await fetchJson<any[]>(`${GATEWAY_BASE}/catalog/topics${query}`, {
         method: 'GET',
         timeoutMs: 15000
     });
+    return (raw || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        track: t.track,
+        topic: t.topic || t.id || '',
+        displayName: t.displayName || t.name || t.id || '',
+        total: t.total ?? 0,
+        solved: t.solved ?? 0,
+        resources: t.resources || []
+    }));
 };
 
 export const getCatalogQuestions = async (params?: {

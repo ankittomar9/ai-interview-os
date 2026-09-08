@@ -19,13 +19,12 @@ export const TopicRail: React.FC<TopicRailProps> = ({
 }) => {
   const [search, setSearch] = useState('');
 
-  const filteredTopics = topics.filter((t) => {
+  const filteredTopics = (topics || []).filter((t) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return (
-      t.topic.toLowerCase().includes(q) ||
-      (t.displayName && t.displayName.toLowerCase().includes(q))
-    );
+    const topicKey = (t.topic || (t as any).id || '').toLowerCase();
+    const name = (t.displayName || (t as any).name || topicKey).toLowerCase();
+    return topicKey.includes(q) || name.includes(q);
   });
 
   return (
@@ -95,15 +94,17 @@ export const TopicRail: React.FC<TopicRailProps> = ({
 
         {/* Filtered Topic Items */}
         {filteredTopics.map((item) => {
-          const isSelected = selectedTopic === item.topic;
-          const hasSolved = item.solved > 0;
-          const isFullySolved = item.total > 0 && item.solved >= item.total;
+          const topicKey = item.topic || (item as any).id || '';
+          const isSelected = selectedTopic === topicKey;
+          const hasSolved = (item.solved || 0) > 0;
+          const isFullySolved = (item.total || 0) > 0 && item.solved >= item.total;
+          const label = item.displayName || (item as any).name || (topicKey ? topicKey.replace(/-/g, ' ') : 'Topic');
 
           return (
             <button
-              key={item.topic}
+              key={topicKey || Math.random().toString()}
               type="button"
-              onClick={() => onSelectTopic(item.topic)}
+              onClick={() => onSelectTopic(topicKey)}
               className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer group ${
                 isSelected
                   ? 'bg-primary text-on-accent font-bold shadow-sm'
@@ -126,7 +127,7 @@ export const TopicRail: React.FC<TopicRailProps> = ({
                     }`}
                   />
                   <span className="text-xs truncate font-medium">
-                    {item.displayName || item.topic.replace(/-/g, ' ')}
+                    {label}
                   </span>
                 </div>
                 {item.pressureGap && (

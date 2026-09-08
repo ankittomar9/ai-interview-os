@@ -233,12 +233,15 @@ export const LearnView: React.FC<LearnViewProps> = ({
     }
 
     return topics.map((t) => {
-      const topicQuestions = questions.filter((q) => q.topics && q.topics.includes(t.topic));
+      const topicId = t.topic || (t as any).id || '';
+      const topicQuestions = questions.filter((q) => q.topics && q.topics.includes(topicId));
       const solvedInTopic = topicQuestions.filter(
         (q) => progressMap[q.slug] && progressMap[q.slug].solveCount > 0
       ).length;
       return {
         ...t,
+        topic: topicId,
+        displayName: t.displayName || (t as any).name || (topicId ? topicId.replace(/-/g, ' ') : 'Topic'),
         solved: solvedInTopic
       };
     });

@@ -15,6 +15,8 @@ export const RetryQueueCard: React.FC<RetryQueueCardProps> = ({
   isChecking = false,
   onSelectQuestion,
 }) => {
+  const safeItems = Array.isArray(items) ? items : [];
+
   return (
     <div
       data-testid="retry-queue-card"
@@ -31,7 +33,7 @@ export const RetryQueueCard: React.FC<RetryQueueCardProps> = ({
             data-testid="retry-queue-count"
             className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30"
           >
-            {items.length}
+            {safeItems.length}
           </span>
 
           <span className="hidden sm:inline text-[11px] text-text-3 font-mono">
@@ -51,7 +53,7 @@ export const RetryQueueCard: React.FC<RetryQueueCardProps> = ({
         )}
       </div>
 
-      {items.length === 0 ? (
+      {safeItems.length === 0 ? (
         <div
           data-testid="retry-queue-empty"
           className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-surface/50 border border-border/60 text-xs font-mono text-text-3"
@@ -64,7 +66,7 @@ export const RetryQueueCard: React.FC<RetryQueueCardProps> = ({
           data-testid="retry-queue-list"
           className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin"
         >
-          {items.map((item) => {
+          {safeItems.map((item) => {
             const isFailed = item.lastVerdict === 'FAILED';
             return (
               <button
