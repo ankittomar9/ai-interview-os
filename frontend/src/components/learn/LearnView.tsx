@@ -7,7 +7,8 @@ import {
   Database,
   Layers,
   Cpu,
-  RefreshCw
+  RefreshCw,
+  BarChart3
 } from 'lucide-react';
 import {
   getCatalogTopics,
@@ -26,11 +27,13 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 interface LearnViewProps {
   onBackToSetup: () => void;
   onSolveQuestion: (slug: string) => void;
+  onNavigateToDashboard?: () => void;
 }
 
 export const LearnView: React.FC<LearnViewProps> = ({
   onBackToSetup,
-  onSolveQuestion
+  onSolveQuestion,
+  onNavigateToDashboard
 }) => {
   const [track, setTrack] = useState<string>('ALGORITHMS_DATA_STRUCTURES');
   const [topics, setTopics] = useState<CatalogTopicSummary[]>([]);
@@ -182,6 +185,17 @@ export const LearnView: React.FC<LearnViewProps> = ({
 
         {/* Right: Actions + Theme Toggle */}
         <div className="flex items-center gap-2 shrink-0">
+          {onNavigateToDashboard && (
+            <button
+              type="button"
+              onClick={onNavigateToDashboard}
+              title="Performance & Mastery Dashboard"
+              className="px-2.5 py-1.5 rounded-lg text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <BarChart3 className="w-4 h-4 text-primary" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={loadData}

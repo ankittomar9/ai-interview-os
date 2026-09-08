@@ -10,5 +10,8 @@ import java.util.List;
 public interface PracticeAttemptRepository extends JpaRepository<PracticeAttempt, Long> {
     List<PracticeAttempt> findByUserIdAndQuestionIdOrderByCreatedAtDesc(String userId, String questionId);
     List<PracticeAttempt> findByQuestionIdOrderByCreatedAtDesc(String questionId);
+    List<PracticeAttempt> findByUserIdOrderByCreatedAtDesc(String userId);
     long countByUserIdAndQuestionId(String userId, String questionId);
+    long countByUserId(String userId);
+    long countByUserIdAndVerdict(String userId, String verdict);
 }

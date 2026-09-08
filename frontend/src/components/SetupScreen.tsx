@@ -26,7 +26,8 @@ import {
   FileText,
   Upload,
   CheckCircle2,
-  X
+  X,
+  BarChart3
 } from "lucide-react";
 import { FloatingAiOrb } from "./ai/FloatingAiOrb";
 import { AiAssistantPanel } from "./ai/AiAssistantPanel";
@@ -52,13 +53,15 @@ interface SetupScreenProps {
   isLoading: boolean;
   onOpenCatalog?: () => void;
   onNavigateToLearn?: () => void;
+  onNavigateToDashboard?: () => void;
 }
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({
   onStart,
   isLoading,
   onOpenCatalog,
-  onNavigateToLearn
+  onNavigateToLearn,
+  onNavigateToDashboard
 }) => {
   const [candidateId, setCandidateId] = useState("candidate-01");
   const [candidateName, setCandidateName] = useState("Ankit Singh Tomar");
@@ -267,6 +270,30 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
                 <span>Playground Practice</span>
               </button>
             </div>
+
+            {onNavigateToLearn && (
+              <button
+                type="button"
+                onClick={onNavigateToLearn}
+                className="p-2 rounded-lg bg-surface border border-border text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                title="Practice Center"
+              >
+                <BookOpen className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">Practice</span>
+              </button>
+            )}
+
+            {onNavigateToDashboard && (
+              <button
+                type="button"
+                onClick={onNavigateToDashboard}
+                className="p-2 rounded-lg bg-surface border border-border text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                title="Performance & Mastery Dashboard"
+              >
+                <BarChart3 className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </button>
+            )}
 
             <button
               type="button"

@@ -830,4 +830,67 @@ export const uploadProfileResumeText = async (
         body: JSON.stringify({ resumeText }),
         timeoutMs: 15000
     });
-};
+};
+
+// --- Dashboard Aggregates (P6) ---
+export interface PracticeStats {
+    totalAttempts: number;
+    passedAttempts: number;
+    failedAttempts: number;
+    successRate: number;
+    questionsAttempted: number;
+    questionsSolved: number;
+    trackBreakdown: Record<string, number>;
+}
+
+export interface InterviewStats {
+    totalSessions: number;
+    completedSessions: number;
+    totalQuestions: number;
+    passedQuestions: number;
+    failedQuestions: number;
+    unattemptedQuestions: number;
+    attemptedQuestions: number;
+    successRate: number;
+}
+
+export interface OverallStats {
+    totalSolved: number;
+    totalAttempts: number;
+    overallSuccessRate: number;
+    pressureGap: string;
+}
+
+export interface RecentActivityItem {
+    id: string;
+    source: 'PRACTICE' | 'INTERVIEW';
+    questionSlug: string;
+    verdict: 'PASSED' | 'FAILED' | 'UNATTEMPTED';
+    track: string;
+    timestamp: string;
+    details: string;
+}
+
+export interface DashboardStatsResponse {
+    userId: string;
+    generatedAt: string;
+    practice: PracticeStats;
+    interview: InterviewStats;
+    overall: OverallStats;
+    recentActivity: RecentActivityItem[];
+}
+
+export const getDashboardStats = async (
+    userId: string = 'local',
+    signal?: AbortSignal
+): Promise<DashboardStatsResponse> => {
+    return fetchJson<DashboardStatsResponse>(
+        `${GATEWAY_BASE}/dashboard/stats?userId=${encodeURIComponent(userId)}`,
+        {
+            method: 'GET',
+            timeoutMs: 10000,
+            signal
+        }
+    );
+};
+
