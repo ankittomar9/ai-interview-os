@@ -12,7 +12,6 @@ public record CreateSessionRequest(
 
         String candidateName,
 
-        @NotBlank(message = "Role title is required")
         String roleTitle,
 
         @NotNull(message = "Interview track is required")
