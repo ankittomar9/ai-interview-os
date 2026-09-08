@@ -1011,4 +1011,28 @@ export const listUserNotes = async (
     );
 };
 
+// --- Retry Queue (P9) ---
+export interface RetryQueueItem {
+    slug: string;
+    title: string;
+    topic: string;
+    lastVerdict: string;
+    failCount: number;
+    lastAttemptAt: string;
+}
+
+export const getRetryQueue = async (
+    userId: string = 'local',
+    signal?: AbortSignal
+): Promise<RetryQueueItem[]> => {
+    return fetchJson<RetryQueueItem[]>(
+        `${GATEWAY_BASE}/learn/retry?userId=${encodeURIComponent(userId)}`,
+        {
+            method: 'GET',
+            timeoutMs: 10000,
+            signal
+        }
+    );
+};
+
 
