@@ -254,7 +254,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
                   sessionId={sessionId}
                   isPracticeMode={isPlayground}
                   hasRunAttempt={executionResult !== null}
-                  isSolved={questionStatusMap[activeSlug] === 'PASSED'} isBookmarked={!!bookmarkedMap[activeSlug]}
+                  isSolved={isPlayground && questionStatusMap[activeSlug] === 'PASSED'}
+                  isBookmarked={!!bookmarkedMap[activeSlug]}
                   onToggleBookmark={() => setBookmarkedMap((p) => ({ ...p, [activeSlug]: !p[activeSlug] }))}
                   hintsRevealed={hintsRevealed[activeSlug] || 0} onRevealHint={() => setHintsRevealed((p) => ({ ...p, [activeSlug]: (p[activeSlug] || 0) + 1 }))}
                 />

@@ -688,6 +688,7 @@ export interface CatalogQuestionDetail {
     testCasesCount: number;
     visibleTestCases: any[];
     hiddenTestCasesMeta: HiddenTestCaseMeta[];
+    hints?: string[];
 }
 
 export const getCatalogTopics = async (track?: string): Promise<CatalogTopicSummary[]> => {
@@ -731,4 +732,44 @@ export const getCatalogQuestionDetail = async (
             timeoutMs: 15000
         }
     );
+};
+
+// --- Addendum A: Cross-Mode Question Continuity ---
+export interface SessionQuestionItem {
+    id: number;
+    sessionId: number;
+    questionSlug: string;
+    displayOrder: number;
+    verdict: 'PASSED' | 'FAILED' | 'UNATTEMPTED';
+    attemptedAt?: string;
+    updatedAt: string;
+}
+
+export interface QuestionEncounterItem {
+    sessionId: number;
+    verdict: string;
+    attemptedAt?: string;
+}
+
+export interface QuestionEncountersResponse {
+    questionSlug: string;
+    practiceSolveCount: number;
+    interviewPassCount: number;
+    interviewAttemptCount: number;
+    pressureGap: string;
+    encounters: QuestionEncounterItem[];
+}
+
+export const getSessionQuestions = async (sessionId: string | number): Promise<SessionQuestionItem[]> => {
+    return fetchJson<SessionQuestionItem[]>(`${GATEWAY_BASE}/sessions/${sessionId}/questions`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
+};
+
+export const getQuestionEncounters = async (slug: string, userId: string = 'local'): Promise<QuestionEncountersResponse> => {
+    return fetchJson<QuestionEncountersResponse>(`${GATEWAY_BASE}/practice/questions/${encodeURIComponent(slug)}/encounters?userId=${encodeURIComponent(userId)}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
 };

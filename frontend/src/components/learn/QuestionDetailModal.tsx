@@ -10,9 +10,17 @@ import {
   FileCode2,
   Video,
   Loader2,
-  HelpCircle
+  HelpCircle,
+  History,
+  Lightbulb
 } from 'lucide-react';
-import { getCatalogQuestionDetail, type CatalogQuestionDetail, type QuestionProgress } from '../../services/api';
+import {
+  getCatalogQuestionDetail,
+  getQuestionEncounters,
+  type CatalogQuestionDetail,
+  type QuestionProgress,
+  type QuestionEncountersResponse
+} from '../../services/api';
 import { Chip } from '../ui/Chip';
 
 interface QuestionDetailModalProps {
@@ -34,9 +42,17 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [isRevealed, setIsRevealed] = useState(false);
   const [showConfirmReveal, setShowConfirmReveal] = useState(false);
   const [activeTab, setActiveTab] = useState<'statement' | 'solution'>('statement');
+  const [encounters, setEncounters] = useState<QuestionEncountersResponse | null>(null);
+  const [revealedHintIndex, setRevealedHintIndex] = useState<number>(0);
 
   const isSolved = (progress?.solveCount ?? 0) > 0;
   const canViewSolution = isSolved || isRevealed;
+
+  const attemptCount = progress?.attemptCount ?? 0;
+  const solveCount = progress?.solveCount ?? 0;
+  const failedAttempts = Math.max(0, attemptCount - solveCount);
+  const isHintLadderUnlocked = failedAttempts >= 2 || attemptCount >= 2;
+  const hints = detail?.hints || [];
 
   useEffect(() => {
     if (!slug) return;
@@ -46,6 +62,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     setIsRevealed(false);
     setShowConfirmReveal(false);
     setActiveTab('statement');
+    setRevealedHintIndex(0);
 
     getCatalogQuestionDetail(slug, isSolved)
       .then((data) => {
@@ -62,6 +79,12 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
       .finally(() => {
         if (isMounted) setLoading(false);
       });
+
+    getQuestionEncounters(slug)
+      .then((data) => {
+        if (isMounted) setEncounters(data);
+      })
+      .catch((err) => console.warn('Could not load question encounters:', err));
 
     return () => {
       isMounted = false;
@@ -239,6 +262,61 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                     </div>
                   )}
 
+                  {/* Interview Encounters Card (Addendum A3) */}
+                  <div className="bg-surface border border-border rounded-xl p-4 space-y-3" data-testid="interview-encounters-card">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <History className="w-4 h-4 text-primary" />
+                        <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-text">
+                          Interview Encounters
+                        </h4>
+                      </div>
+                      {encounters && encounters.interviewAttemptCount > 0 ? (
+                        <span className="font-mono text-xs font-bold text-primary px-2.5 py-0.5 rounded bg-primary/10 border border-primary/20" data-testid="pressure-gap-indicator">
+                          {encounters.pressureGap}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-text-3 font-mono">
+                          Not yet encountered in an interview
+                        </span>
+                      )}
+                    </div>
+
+                    {encounters && encounters.interviewAttemptCount > 0 ? (
+                      <div className="space-y-2 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {encounters.encounters.map((enc, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-elevated/40 border border-border rounded-lg p-2.5 flex items-center justify-between text-xs"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-text font-semibold truncate">
+                                  Session #{enc.sessionId}
+                                </span>
+                                {enc.attemptedAt && (
+                                  <span className="text-[11px] text-text-3 font-mono">
+                                    {new Date(enc.attemptedAt).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              <Chip
+                                variant={enc.verdict === 'PASSED' ? 'success' : enc.verdict === 'FAILED' ? 'danger' : 'default'}
+                                size="sm"
+                              >
+                                {enc.verdict}
+                              </Chip>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-text-3 bg-elevated/20 p-3 rounded-lg border border-border/50">
+                        You have not faced this question in a full mock interview session yet. Complete an assessment to see your interview performance gap tracked here.
+                      </p>
+                    )}
+                  </div>
+
                   {/* Problem Description */}
                   <div className="prose prose-sm dark:prose-invert max-w-none text-text leading-relaxed">
                     <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-text-3 mb-2">
@@ -280,6 +358,81 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                           <li key={idx}>{c}</li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+
+                  {/* Hint Ladder (Addendum A3) */}
+                  {hints.length > 0 && (
+                    <div className="bg-surface border border-border rounded-xl p-4 space-y-3" data-testid="hint-ladder-block">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <Lightbulb className="w-4 h-4 text-warning" />
+                          <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-text">
+                            Hint Ladder
+                          </h4>
+                        </div>
+                        {isHintLadderUnlocked ? (
+                          <span className="text-[11px] font-mono text-success font-semibold flex items-center gap-1">
+                            <Unlock className="w-3 h-3" />
+                            Unlocked ({failedAttempts} failed attempts)
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-mono text-text-3 flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            Unlocks after ≥2 failed attempts ({failedAttempts}/2)
+                          </span>
+                        )}
+                      </div>
+
+                      {isHintLadderUnlocked ? (
+                        <div className="space-y-2 pt-1">
+                          {hints.map((hint, idx) => {
+                            const isHintRevealed = idx <= revealedHintIndex;
+                            return (
+                              <div
+                                key={idx}
+                                className="bg-elevated/30 border border-border rounded-lg p-3 text-xs space-y-1.5"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-text-2 flex items-center gap-1.5">
+                                    <span>Hint {idx + 1}</span>
+                                    {idx === hints.length - 1 && (
+                                      <span className="text-[10px] text-text-3 uppercase tracking-wider font-mono">
+                                        (Key Insight)
+                                      </span>
+                                    )}
+                                  </span>
+                                  {!isHintRevealed && idx === revealedHintIndex + 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setRevealedHintIndex(idx)}
+                                      className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                                    >
+                                      Reveal Hint {idx + 1}
+                                    </button>
+                                  )}
+                                </div>
+                                {isHintRevealed ? (
+                                  <p className="text-text leading-relaxed bg-surface p-2.5 rounded border border-border/60">
+                                    {hint}
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] text-text-3 italic">
+                                    Hidden to encourage deliberate problem solving.
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-text-3 bg-elevated/20 p-3 rounded-lg border border-border/50 flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-text-3 shrink-0" />
+                          <span>
+                            To promote deliberate problem synthesis, hints are locked until you have made at least 2 attempts in the Playground.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 

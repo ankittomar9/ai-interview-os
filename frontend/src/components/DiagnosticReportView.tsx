@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { DiagnosticReportResponse, DimensionScore, SessionMessage } from '../types';
-import { fetchSessionTranscript, getVerification, type VerificationReceipt } from '../services/api';
+import { fetchSessionTranscript, getVerification, type VerificationReceipt, getSessionQuestions, type SessionQuestionItem } from '../services/api';
 import { ProgressChart } from './ProgressChart';
 import {
   CheckCircle2,
@@ -34,10 +34,12 @@ import { ReplayStreamToggle } from './ui/ReplayStreamToggle';
 interface Props {
   report: DiagnosticReportResponse;
   onRestart: () => void;
+  onNavigateToLearn?: (slug: string) => void;
 }
 
-export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => {
+export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNavigateToLearn }) => {
   const [activeTab, setActiveTab] = useState<'report' | 'transcript' | 'recording'>('report');
+  const [sessionQuestions, setSessionQuestions] = useState<SessionQuestionItem[]>([]);
   const [transcriptData, setTranscriptData] = useState<SessionMessage[] | {
     totalTurns?: number;
     candidateName?: string;
@@ -74,6 +76,10 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
 
   useEffect(() => {
     if (report.sessionId) {
+      getSessionQuestions(report.sessionId)
+        .then((qs) => setSessionQuestions(qs || []))
+        .catch((err) => console.warn('Could not load session questions:', err));
+
       fetchSessionTranscript(report.sessionId)
         .then((data) => setTranscriptData(data))
         .catch((err) => console.warn('Could not load transcript records:', err));
@@ -457,6 +463,77 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart }) => 
                 )}
               </div>
             </div>
+
+            {/* QUESTIONS IN THIS SESSION (Addendum A2) */}
+            {sessionQuestions && sessionQuestions.length > 0 && (
+              <div className="bg-surface border border-border rounded-lg p-6 space-y-4" data-testid="questions-in-session-block">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                      <Code2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-text">
+                        Questions in this session
+                      </h2>
+                      <p className="text-xs text-text-3">
+                        Review problems evaluated during the interview. Click any question to practice it in the Playground.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-text-3 font-mono font-semibold px-2.5 py-1 rounded bg-elevated border border-border">
+                    {sessionQuestions.length} Problem{sessionQuestions.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  {sessionQuestions.map((q) => (
+                    <div
+                      key={q.id || q.questionSlug}
+                      data-testid={`session-question-card-${q.questionSlug}`}
+                      onClick={() => {
+                        if (onNavigateToLearn) {
+                          onNavigateToLearn(q.questionSlug);
+                        } else {
+                          window.location.href = `/learn/question/${encodeURIComponent(q.questionSlug)}`;
+                        }
+                      }}
+                      className="flex items-center justify-between p-3.5 rounded-lg border border-border bg-elevated/30 hover:bg-elevated hover:border-primary/50 transition-all cursor-pointer group shadow-xs"
+                    >
+                      <div className="min-w-0 flex items-center gap-3">
+                        <span className="text-xs font-mono text-text-3 font-bold shrink-0 w-6 text-center">
+                          #{q.displayOrder + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-text group-hover:text-primary transition-colors truncate">
+                            {q.questionSlug
+                              .replace(/^(dsa-|lld-|hld-|sys-|algo-)/, '')
+                              .split('-')
+                              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                              .join(' ')}
+                          </p>
+                          <p className="text-[11px] text-text-3 font-mono truncate">
+                            {q.questionSlug}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {q.verdict === 'PASSED' && (
+                          <Chip variant="success" size="sm">PASSED</Chip>
+                        )}
+                        {q.verdict === 'FAILED' && (
+                          <Chip variant="danger" size="sm">FAILED</Chip>
+                        )}
+                        {q.verdict === 'UNATTEMPTED' && (
+                          <Chip variant="default" size="sm">UNATTEMPTED</Chip>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* C. 6-DIMENSION ROW */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

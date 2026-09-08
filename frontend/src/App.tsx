@@ -30,6 +30,9 @@ export function App() {
     if (window.location.pathname.includes('phone-proctor') || params.get('session')) {
       return 'PHONE_PROCTOR';
     }
+    if (params.get('report')) {
+      return 'REPORT';
+    }
     if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
       return 'LEARN';
     }
@@ -70,8 +73,30 @@ export function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reportParam = params.get('report');
+    if (reportParam) {
+      const sid = parseInt(reportParam, 10);
+      if (sid) {
+        setSessionId(sid);
+        generateDiagnosticReport(sid)
+          .then((rep) => {
+            setReport(rep);
+            setView('REPORT');
+          })
+          .catch((err) => console.warn('Could not load report param:', err));
+      }
+    }
+  }, []);
+
   const handleNavigateToLearn = () => {
     window.history.pushState({}, '', '/learn');
+    setView('LEARN');
+  };
+
+  const handleNavigateToLearnQuestion = (slug: string) => {
+    window.history.pushState({}, '', `/learn/question/${encodeURIComponent(slug)}`);
     setView('LEARN');
   };
 
@@ -432,6 +457,10 @@ export function App() {
           onRestart={() => {
             clearVerificationStreams();
             setView('SETUP');
+          }}
+          onNavigateToLearn={(slug) => {
+            clearVerificationStreams();
+            handleNavigateToLearnQuestion(slug);
           }}
         />
       )}
