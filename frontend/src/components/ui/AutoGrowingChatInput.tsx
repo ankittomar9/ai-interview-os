@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { Mic, MicOff, Send, Trash2, CornerDownLeft, Sparkles } from 'lucide-react';
+import { Mic, MicOff, Send, Trash2, CornerDownLeft, Sparkles, XCircle } from 'lucide-react';
 
 interface AutoGrowingChatInputProps {
   value: string;
@@ -15,6 +15,9 @@ interface AutoGrowingChatInputProps {
   placeholder?: string;
   minHeight?: number;
   maxHeight?: number;
+  onStartListening?: () => void;
+  onStopListening?: () => void;
+  onAbort?: () => void;
 }
 
 export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
@@ -30,9 +33,13 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   onClearMicError,
   placeholder = 'Speak or type your explanation...',
   minHeight = 44,
-  maxHeight = 180
+  maxHeight = 180,
+  onStartListening,
+  onStopListening,
+  onAbort
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pointerHandledRef = useRef<boolean>(false);
 
   // Dynamically readjust height based on content
   const adjustHeight = useCallback(() => {
@@ -49,6 +56,13 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   }, [value, adjustHeight]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      if (isListening || interimTranscript) {
+        e.preventDefault();
+        onAbort?.();
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (value.trim() && !isAiResponding) {
@@ -57,7 +71,24 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
     }
   };
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    pointerHandledRef.current = true;
+    if (!isListening && !isAiResponding) {
+      if (onStartListening) onStartListening();
+      else onToggleListening();
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (isListening) {
+      if (onStopListening) onStopListening();
+      else onToggleListening();
+    }
+  };
+
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+  const isTranscribing = Boolean(interimTranscript && interimTranscript.toLowerCase().includes('transcrib'));
 
   return (
     <div
@@ -83,10 +114,23 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
       {isListening && (
         <div className="flex items-center justify-between px-3 pt-2 pb-1 text-[11px] text-primary font-medium border-b border-primary/20">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
-            <span className="font-semibold">Listening…</span>
+            <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
+            <span className="font-semibold">Push-to-Talk (Whisper STT)…</span>
           </div>
-          <span className="text-[10px] text-text-3 font-normal">Click Voice / Enter to finish</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-text-3 font-normal">Release or click to finish</span>
+            {onAbort && (
+              <button
+                type="button"
+                onClick={onAbort}
+                title="Cancel recording (Esc)"
+                className="text-[10px] text-danger hover:underline font-semibold cursor-pointer flex items-center gap-1"
+              >
+                <XCircle className="w-3 h-3" />
+                <span>Cancel</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -97,7 +141,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
           ref={textareaRef}
           value={value}
           rows={1}
-          placeholder={isListening ? 'Speak your thoughts...' : placeholder}
+          placeholder={isListening ? 'Speak now (Push-to-Talk active)...' : placeholder}
           onChange={(e) => {
             onChange(e.target.value);
             adjustHeight();
@@ -107,14 +151,25 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
           className="w-full bg-transparent text-xs text-text placeholder:text-text-3 resize-none focus:outline-none leading-relaxed transition-all min-h-[44px] max-h-[180px] scrollbar-thin scrollbar-thumb-border"
         />
         {/* Streaming Interim Transcript Live Preview */}
-        {isListening && interimTranscript && (
-          <div className="mt-1 px-1 text-[11px] text-primary-2 italic animate-pulse flex items-center gap-1">
-            <span>🎙️</span>
-            <span>{interimTranscript}</span>
+        {(isListening || isTranscribing) && interimTranscript && (
+          <div className="mt-1 px-1 text-[11px] text-primary-2 italic animate-pulse flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1.5">
+              <span>🎙️</span>
+              <span>{interimTranscript}</span>
+            </div>
+            {isTranscribing && onAbort && (
+              <button
+                type="button"
+                onClick={onAbort}
+                className="text-[10px] text-danger hover:underline font-medium cursor-pointer"
+              >
+                Abort
+              </button>
+            )}
           </div>
         )}
         {/* Honest Salvage Continuation Hint */}
-        {!isListening && salvageHint && value.trim() && (
+        {!isListening && !isTranscribing && salvageHint && value.trim() && (
           <div className="mt-1 px-1 text-[10px] text-primary-2/90 italic flex items-center gap-1">
             <span>📝</span>
             <span>{salvageHint}</span>
@@ -128,26 +183,49 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onToggleListening}
-            title={isListening ? 'Listening… (Click to stop)' : 'Start Voice Input (Groq Whisper / WebSpeech)'}
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            onClick={() => {
+              if (pointerHandledRef.current) {
+                pointerHandledRef.current = false;
+                return;
+              }
+              onToggleListening();
+            }}
+            title={
+              isListening
+                ? 'Recording speech… Release to Transcribe or Click to finish'
+                : 'Push-to-Talk Voice: Hold to speak or Click to start (Whisper STT)'
+            }
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all duration-150 ${
               isListening
-                ? 'bg-primary text-on-accent ring-2 ring-primary/80 ring-offset-1 ring-offset-bg shadow-sm shadow-primary/30 animate-pulse'
+                ? 'bg-danger text-on-accent ring-2 ring-danger/80 ring-offset-1 ring-offset-bg shadow-sm shadow-danger/30 animate-pulse'
                 : 'bg-surface hover:bg-border/60 text-text-2 hover:text-text border border-border/60'
             }`}
           >
             {isListening ? (
               <>
                 <MicOff className="w-3.5 h-3.5" />
-                <span>Listening…</span>
+                <span>Release to Send</span>
               </>
             ) : (
               <>
                 <Mic className="w-3.5 h-3.5 text-primary-2" />
-                <span className="text-[11px]">Voice</span>
+                <span className="text-[11px]">PTT Voice</span>
               </>
             )}
           </button>
+
+          {isListening && onAbort && (
+            <button
+              type="button"
+              onClick={onAbort}
+              title="Abort turn without sending"
+              className="px-2 py-1 text-xs rounded-md bg-surface hover:bg-danger/10 text-danger border border-danger/30 cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
 
           {wordCount > 0 && (
             <span className="text-[10px] text-text-3 font-mono">

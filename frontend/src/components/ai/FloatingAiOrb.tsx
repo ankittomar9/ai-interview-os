@@ -110,7 +110,7 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
           aria-expanded={isOpen}
           title={
             isListening
-              ? `Listening to microphone… (Click to toggle ${personaLabel})`
+              ? `Recording speech (Push-to-Talk active)… (Click to toggle ${personaLabel})`
               : isAiSpeaking
               ? `${personaLabel} is speaking… (Click to toggle)`
               : isOpen
@@ -148,7 +148,7 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
         {/* State Tooltip / Indicator */}
         {isListening && (
           <span className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-success text-on-accent text-[10px] font-bold shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 pointer-events-none">
-            Listening…
+            PTT Recording…
           </span>
         )}
         {isAiSpeaking && (

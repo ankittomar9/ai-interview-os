@@ -69,6 +69,9 @@ interface ArenaShellProps {
   voiceOutputEnabled: boolean;
   onToggleVoice: () => void;
   onMicToggle: () => void;
+  onStartListening?: () => void;
+  onStopListening?: () => void;
+  onAbortVoice?: () => void;
   interimTranscript?: string;
   micError?: string | null;
   onClearMicError?: () => void;
@@ -101,7 +104,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     stageTransitionReasons, providerError, onRetryProvider, onClearProviderError, onOpenProviderSettings,
     pendingStageSwitch, onConfirmStageSwitch, onCancelStageSwitch, onNextQuestion, onNextStage,
     isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
-    voiceOutputEnabled, onToggleVoice, onMicToggle, interimTranscript = '', micError = null,
+    voiceOutputEnabled, onToggleVoice, onMicToggle, onStartListening, onStopListening, onAbortVoice,
+    interimTranscript = '', micError = null,
     onClearMicError, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
     isRecording, recordingSeconds, recordingInterrupted, failedChunkCount = 0, cameraActive, screenActive, verificationBroken = false,
     isVoiceRecording = false, voiceUnsentCount = 0, voiceLostAt = null, audioConsent = true,
@@ -309,6 +313,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         voiceEnabled={voiceOutputEnabled}
         onToggleVoice={onToggleVoice}
         onMicToggle={onMicToggle}
+        onStartListening={onStartListening}
+        onStopListening={onStopListening}
+        onAbortTurn={onAbortVoice}
         interimTranscript={interimTranscript}
         salvageHint={props.salvageHint}
         micError={micError}

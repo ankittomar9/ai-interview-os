@@ -164,9 +164,17 @@ public class WhisperTranscriptionService {
         }
     }
 
+    private volatile long lastSidecarCheckTime = 0;
+    private volatile boolean lastSidecarStatus = false;
+    private static final long SIDECAR_CACHE_TTL_MS = 30000;
+
     public boolean isWhisperSidecarRunning() {
         if (localWhisperEndpoint == null || localWhisperEndpoint.isBlank()) {
             return false;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastSidecarCheckTime < SIDECAR_CACHE_TTL_MS) {
+            return lastSidecarStatus;
         }
         try {
             String healthUrl = localWhisperEndpoint.replace("/inference", "") + "/health";
@@ -174,8 +182,13 @@ public class WhisperTranscriptionService {
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(800);
             conn.setReadTimeout(800);
-            return conn.getResponseCode() == 200;
+            boolean isRunning = (conn.getResponseCode() == 200);
+            lastSidecarStatus = isRunning;
+            lastSidecarCheckTime = now;
+            return isRunning;
         } catch (Exception e) {
+            lastSidecarStatus = false;
+            lastSidecarCheckTime = now;
             return false;
         }
     }

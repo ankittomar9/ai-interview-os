@@ -280,6 +280,9 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       voiceOutputEnabled={voice.voiceOutputEnabled}
       onToggleVoice={() => voice.setVoiceOutputEnabled(!voice.voiceOutputEnabled)}
       onMicToggle={voice.toggleListening}
+      onStartListening={voice.startListening}
+      onStopListening={voice.stopListening}
+      onAbortVoice={voice.abortTurn}
       hasUnreadAi={dialogue.hasUnread}
       isWindowBlurred={proctoring.isWindowBlurred}
       tabSwitches={proctoring.tabSwitches}

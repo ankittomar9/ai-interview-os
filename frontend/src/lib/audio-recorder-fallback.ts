@@ -11,6 +11,9 @@ export interface StartMediaRecorderFallbackOptions {
   isAiSpeakingRef: { current: boolean };
   audioChunksRef: { current: Blob[] };
   mediaRecorderRef: { current: MediaRecorder | null };
+  isAbortedRef?: { current: boolean };
+  abortControllerRef?: { current: AbortController | null };
+  onLatency?: (latencyMs: number) => void;
 }
 
 export async function startMediaRecorderFallback({
@@ -22,7 +25,10 @@ export async function startMediaRecorderFallback({
   onStatus,
   isAiSpeakingRef,
   audioChunksRef,
-  mediaRecorderRef
+  mediaRecorderRef,
+  isAbortedRef,
+  abortControllerRef,
+  onLatency
 }: StartMediaRecorderFallbackOptions): Promise<boolean> {
   try {
     if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) return false;
@@ -36,25 +42,40 @@ export async function startMediaRecorderFallback({
       }
     });
 
-    if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
+    if (window.speechSynthesis?.speaking || isAiSpeakingRef.current || isAbortedRef?.current) {
       stream.getTracks().forEach((t) => t.stop());
       return false;
     }
 
+    const startTime = Date.now();
     audioChunksRef.current = [];
     const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
     mediaRecorder.ondataavailable = (e) => {
-      if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) return;
+      if (window.speechSynthesis?.speaking || isAiSpeakingRef.current || isAbortedRef?.current) return;
       if (e.data.size > 0) audioChunksRef.current.push(e.data);
     };
 
     mediaRecorder.onstop = async () => {
       stream.getTracks().forEach((track) => track.stop());
+      if (isAbortedRef?.current) {
+        audioChunksRef.current = [];
+        onStatus('');
+        return;
+      }
       if (window.speechSynthesis?.speaking || isAiSpeakingRef.current) {
         audioChunksRef.current = [];
         onStatus('');
         return;
       }
+
+      // Guard: Ignore accidental micro-taps (<250ms)
+      const duration = Date.now() - startTime;
+      if (duration < 250) {
+        audioChunksRef.current = [];
+        onStatus('');
+        return;
+      }
+
       if (audioChunksRef.current.length > 0) {
         const rawBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         if (rawBlob.size > 50 * 1024 * 1024) {
@@ -67,15 +88,35 @@ export async function startMediaRecorderFallback({
         } catch (convErr) {
           console.warn('[useCoachVoice] 16kHz WAV conversion notice, uploading webm fallback:', convErr);
         }
+        if (isAbortedRef?.current) {
+          onStatus('');
+          return;
+        }
+        const abortCtrl = new AbortController();
+        if (abortControllerRef) abortControllerRef.current = abortCtrl;
+
         try {
           onStatus('Transcribing speech...');
-          const result = await transcribeAudio(uploadBlob, apiKey, promptContext, sessionId);
+          const t0 = Date.now();
+          const result = await transcribeAudio(uploadBlob, apiKey, promptContext, sessionId, 'en', abortCtrl.signal);
+          const sttLatency = Date.now() - t0;
+          onLatency?.(sttLatency);
+
+          if (isAbortedRef?.current) {
+            onStatus('');
+            return;
+          }
           const text = (result as any).transcript || (result as any).text;
           if (text && text.trim()) onTranscript(text.trim());
           else onError('No speech detected');
-        } catch {
+        } catch (err: any) {
+          if (isAbortedRef?.current || err?.name === 'AbortError') {
+            // Clean abort mid-turn: do not emit error
+            return;
+          }
           onError('Transcription failed');
         } finally {
+          if (abortControllerRef) abortControllerRef.current = null;
           onStatus('');
         }
       }
