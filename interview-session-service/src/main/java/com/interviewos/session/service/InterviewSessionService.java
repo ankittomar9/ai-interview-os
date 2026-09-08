@@ -45,6 +45,7 @@ public class InterviewSessionService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final SessionVerificationRepository verificationRepository;
     private final SessionQuestionService sessionQuestionService;
+    private final CandidateProfileService candidateProfileService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public InterviewSessionService(
@@ -55,7 +56,8 @@ public class InterviewSessionService {
             SessionPlanService sessionPlanService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.fasterxml.jackson.databind.ObjectMapper objectMapper,
             @org.springframework.beans.factory.annotation.Autowired(required = false) SessionVerificationRepository verificationRepository,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) SessionQuestionService sessionQuestionService
+            @org.springframework.beans.factory.annotation.Autowired(required = false) SessionQuestionService sessionQuestionService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) CandidateProfileService candidateProfileService
     ) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
@@ -65,6 +67,20 @@ public class InterviewSessionService {
         this.objectMapper = objectMapper != null ? objectMapper : new com.fasterxml.jackson.databind.ObjectMapper();
         this.verificationRepository = verificationRepository;
         this.sessionQuestionService = sessionQuestionService;
+        this.candidateProfileService = candidateProfileService;
+    }
+
+    public InterviewSessionService(
+            InterviewSessionRepository sessionRepository,
+            SessionMessageRepository messageRepository,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            ResumeParsingService resumeParsingService,
+            SessionPlanService sessionPlanService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+            SessionVerificationRepository verificationRepository,
+            SessionQuestionService sessionQuestionService
+    ) {
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, verificationRepository, sessionQuestionService, null);
     }
 
     public InterviewSessionService(
@@ -132,13 +148,47 @@ public class InterviewSessionService {
             }
         }
 
+        // Auto-hydrate candidate profile if available (SPEC P4)
+        com.interviewos.session.dto.CandidateProfileResponse storedProfile = null;
+        if (candidateProfileService != null) {
+            try {
+                String userId = (request.candidateId() != null && !request.candidateId().isBlank()) ? request.candidateId() : "local";
+                storedProfile = candidateProfileService.getProfile(userId);
+                if ((storedProfile == null || storedProfile.id() == null) && !"local".equals(userId)) {
+                    storedProfile = candidateProfileService.getProfile("local");
+                }
+            } catch (Exception e) {
+                log.warn("Could not retrieve candidate profile for auto-hydration: {}", e.getMessage());
+            }
+        }
+
+        String effectiveCandidateName = (request.candidateName() != null && !request.candidateName().isBlank())
+                ? request.candidateName()
+                : (storedProfile != null && storedProfile.fullName() != null && !storedProfile.fullName().isBlank()
+                    ? storedProfile.fullName()
+                    : request.candidateId());
+
+        String effectiveRoleTitle = (request.roleTitle() != null && !request.roleTitle().isBlank())
+                ? request.roleTitle()
+                : (storedProfile != null && storedProfile.targetRole() != null && !storedProfile.targetRole().isBlank()
+                    ? storedProfile.targetRole()
+                    : "Software Engineer");
+
+        String effectiveTargetCompany = (request.targetCompany() != null && !request.targetCompany().isBlank())
+                ? request.targetCompany()
+                : (storedProfile != null ? storedProfile.targetCompany() : null);
+
+        String effectiveJobDescription = (request.jobDescription() != null && !request.jobDescription().isBlank())
+                ? request.jobDescription()
+                : (storedProfile != null ? storedProfile.jobDescription() : null);
+
         InterviewSession session = InterviewSession.builder()
                 .candidateId(request.candidateId())
-                .roleTitle(request.roleTitle())
+                .roleTitle(effectiveRoleTitle)
                 .track(request.track())
                 .difficulty(request.difficulty())
-                .targetCompany(request.targetCompany())
-                .jobDescription(request.jobDescription())
+                .targetCompany(effectiveTargetCompany)
+                .jobDescription(effectiveJobDescription)
                 .status(SessionStatus.INITIALIZED)
                 .sessionMode(effectiveMode)
                 .plannedSlugs(plannedSlugs)
@@ -163,11 +213,11 @@ public class InterviewSessionService {
                     .orElseGet(() -> InterviewSessionDocument.builder()
                             .sessionId(saved.getId())
                             .candidateId(request.candidateId())
-                            .candidateName(request.candidateName() != null && !request.candidateName().isBlank() ? request.candidateName() : request.candidateId())
-                            .targetRoleTitle(request.roleTitle())
+                            .candidateName(effectiveCandidateName)
+                            .targetRoleTitle(effectiveRoleTitle)
                             .interviewTrack(request.track() != null ? request.track().name() : null)
                             .seniorityLevel(request.difficulty() != null ? request.difficulty().name() : null)
-                            .targetCompany(request.targetCompany())
+                            .targetCompany(effectiveTargetCompany)
                             .status(SessionStatus.INITIALIZED.name())
                             .sessionMode(effectiveMode)
                             .plannedSlugs(finalPlannedSlugs)
@@ -180,6 +230,24 @@ public class InterviewSessionService {
             mongoDoc.setSessionMode(effectiveMode);
             mongoDoc.setPlannedSlugs(plannedSlugs);
             mongoDoc.setPlanSections(planSectionDocs);
+
+            // Auto-attach stored profile resume if not already set on mongoDoc
+            if (mongoDoc.getParsedResume() == null && storedProfile != null && storedProfile.resumeText() != null && !storedProfile.resumeText().isBlank()) {
+                try {
+                    ResumeDocument parsedDoc = resumeParsingService.parseAndSaveText(
+                            String.valueOf(saved.getId()),
+                            effectiveCandidateName,
+                            "Stored Profile Resume",
+                            storedProfile.resumeText()
+                    );
+                    mongoDoc.setParsedResume(parsedDoc);
+                    mongoDoc.setResumeId(parsedDoc.getId());
+                    log.info("Auto-hydrated stored profile resume for session {}", saved.getId());
+                } catch (Exception e) {
+                    log.warn("Could not auto-attach stored profile resume: {}", e.getMessage());
+                }
+            }
+
             mongoSessionRepository.save(mongoDoc);
         } catch (Exception e) {
             log.warn("⚠️ Failed to mirror session to MongoDB: {}", e.getMessage());

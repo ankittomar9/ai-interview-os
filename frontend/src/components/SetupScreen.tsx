@@ -1,13 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { DifficultyLevel, InterviewTrack, ModelProvider, CustomDomainConfig } from "../types";
-import { getStoredApiKey } from "../services/api";
+import {
+  getStoredApiKey,
+  getCandidateProfile,
+  saveCandidateProfile,
+  uploadProfileResume,
+  uploadProfileResumeText,
+  type CandidateProfile
+} from "../services/api";
 import { SetupHeroSidebar } from "./setup/SetupHeroSidebar";
 import { IdentityGrid } from "./setup/IdentityGrid";
 import { TrackGrid } from "./setup/TrackGrid";
 import { SettingsDrawer } from "./setup/SettingsDrawer";
 import { Button } from "./ui/Button";
 import { ThemeToggle } from "./ui/ThemeToggle";
-import { Compass, Play, ShieldAlert, Award, TrendingUp, BookOpen, Settings } from "lucide-react";
+import {
+  Compass,
+  Play,
+  ShieldAlert,
+  Award,
+  TrendingUp,
+  BookOpen,
+  Settings,
+  UserCheck,
+  FileText,
+  Upload,
+  CheckCircle2,
+  X
+} from "lucide-react";
 import { FloatingAiOrb } from "./ai/FloatingAiOrb";
 import { AiAssistantPanel } from "./ai/AiAssistantPanel";
 import { ProgressChart } from "./ProgressChart";
@@ -71,6 +91,82 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [profile, setProfile] = useState<CandidateProfile | null>(null);
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+  const [resumeTab, setResumeTab] = useState<'upload' | 'text'>('upload');
+  const [resumeText, setResumeText] = useState('');
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [resumeUploadMessage, setResumeUploadMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCandidateProfile('local')
+      .then((data) => {
+        if (!isMounted || !data) return;
+        setProfile(data);
+        if (data.fullName && data.fullName.trim()) {
+          setCandidateName(data.fullName.trim());
+        }
+        if (data.targetRole && data.targetRole.trim()) {
+          setRoleTitle(data.targetRole.trim());
+        }
+        if (data.targetCompany && data.targetCompany.trim()) {
+          setTargetCompany(data.targetCompany.trim());
+        }
+        if (data.jobDescription && data.jobDescription.trim()) {
+          setJobDescription(data.jobDescription.trim());
+        }
+        if (data.persona === 'NON_TECH' || data.persona === 'TECH') {
+          setPersona(data.persona);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load candidate profile:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleResumeFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingResume(true);
+    setResumeUploadMessage(null);
+    try {
+      const updated = await uploadProfileResume(file, candidateId || 'local');
+      setProfile(updated);
+      setResumeUploadMessage('Resume uploaded and attached to profile.');
+      setTimeout(() => {
+        setIsResumeModalOpen(false);
+        setResumeUploadMessage(null);
+      }, 1200);
+    } catch (err: any) {
+      setResumeUploadMessage(err?.message || 'Failed to upload resume file.');
+    } finally {
+      setIsUploadingResume(false);
+    }
+  };
+
+  const handleResumeTextSubmit = async () => {
+    if (!resumeText.trim()) return;
+    setIsUploadingResume(true);
+    setResumeUploadMessage(null);
+    try {
+      const updated = await uploadProfileResumeText(resumeText.trim(), candidateId || 'local');
+      setProfile(updated);
+      setResumeUploadMessage('Resume text saved to profile.');
+      setTimeout(() => {
+        setIsResumeModalOpen(false);
+        setResumeUploadMessage(null);
+      }, 1200);
+    } catch (err: any) {
+      setResumeUploadMessage(err?.message || 'Failed to save resume text.');
+    } finally {
+      setIsUploadingResume(false);
+    }
+  };
+
   const handleSelectDifficulty = (diff: DifficultyLevel) => {
     setDifficulty(diff);
     setIsDifficultyOverridden(true);
@@ -115,6 +211,16 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
         return;
       }
     }
+
+    // Save updated profile metadata in the background (SPEC P4)
+    saveCandidateProfile({
+      userId: candidateId || 'local',
+      fullName: candidateName,
+      targetRole: roleTitle,
+      targetCompany: targetCompany,
+      jobDescription: jobDescription,
+      persona: persona
+    }).catch((err) => console.warn('Could not persist profile update:', err));
 
     onStart({
       candidateId,
@@ -181,6 +287,50 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               <div className="p-3 rounded-lg bg-danger/10 border border-danger/40 text-danger text-xs font-medium flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
                 <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Stored Candidate Profile Banner */}
+            {profile && (profile.fullName || profile.hasResume || profile.targetRole) && (
+              <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-text flex items-center gap-1.5 flex-wrap">
+                      <span className="text-text-3">Stored profile:</span>
+                      <span className="text-primary font-bold">{candidateName || profile.fullName}</span>
+                      {roleTitle && <span className="text-text-2 font-medium">• {roleTitle}</span>}
+                      {targetCompany && <span className="text-text-3">• {targetCompany}</span>}
+                    </div>
+                    <div className="text-[11px] text-text-3 flex items-center gap-2 mt-0.5">
+                      <span className={profile.hasResume ? "text-success font-semibold flex items-center gap-1" : "text-text-3"}>
+                        {profile.hasResume ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 inline" />
+                            <span>Resume on file (auto-grounded)</span>
+                          </>
+                        ) : (
+                          <span>No resume on file</span>
+                        )}
+                      </span>
+                      <span>•</span>
+                      <span className="font-mono text-[10px]">user: {profile.userId || 'local'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsResumeModalOpen(true)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border text-text hover:bg-elevated transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    <span>{profile.hasResume ? "Update Resume" : "Upload Resume"}</span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -299,6 +449,110 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
         apiKey={apiKey}
         onChangeApiKey={setApiKey}
       />
+
+      {/* Resume Management Modal (P4) */}
+      {isResumeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <h2 className="text-sm font-bold text-text">Candidate Resume &amp; Grounding</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setIsResumeModalOpen(false);
+                  setResumeUploadMessage(null);
+                }}
+                className="text-text-3 hover:text-text cursor-pointer p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex gap-2 bg-elevated p-1 rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => setResumeTab('upload')}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  resumeTab === 'upload' ? 'bg-primary text-on-accent shadow-xs' : 'text-text-3 hover:text-text'
+                }`}
+              >
+                Upload File (PDF/TXT)
+              </button>
+              <button
+                type="button"
+                onClick={() => setResumeTab('text')}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  resumeTab === 'text' ? 'bg-primary text-on-accent shadow-xs' : 'text-text-3 hover:text-text'
+                }`}
+              >
+                Paste Resume Text
+              </button>
+            </div>
+
+            {resumeUploadMessage && (
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 text-xs font-medium text-text flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                <span>{resumeUploadMessage}</span>
+              </div>
+            )}
+
+            {resumeTab === 'upload' ? (
+              <div className="border-2 border-dashed border-border hover:border-primary rounded-xl p-6 text-center space-y-3 transition-colors">
+                <Upload className="w-8 h-8 text-primary mx-auto" />
+                <div>
+                  <label className="text-xs font-semibold text-primary cursor-pointer hover:underline block">
+                    <span>Click to select PDF or text resume</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.txt,.md"
+                      onChange={handleResumeFileUpload}
+                      disabled={isUploadingResume}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-[11px] text-text-3 mt-1">Supported formats: PDF, Plain Text (.txt), Markdown</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <textarea
+                  rows={6}
+                  value={resumeText}
+                  onChange={(e) => setResumeText(e.target.value)}
+                  placeholder="Paste candidate resume text or experience highlights here..."
+                  className="w-full bg-elevated border border-border rounded-lg p-3 text-xs text-text focus:outline-none focus:border-primary font-mono resize-none"
+                />
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  loading={isUploadingResume}
+                  onClick={handleResumeTextSubmit}
+                  disabled={!resumeText.trim()}
+                  className="w-full text-xs font-semibold"
+                >
+                  Save Resume to Profile
+                </Button>
+              </div>
+            )}
+
+            <div className="text-right pt-2 border-t border-border">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setIsResumeModalOpen(false);
+                  setResumeUploadMessage(null);
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <FloatingAiOrb
         isOpen={isAiPanelOpen}

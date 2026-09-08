@@ -773,3 +773,59 @@ export const getQuestionEncounters = async (slug: string, userId: string = 'loca
         timeoutMs: 15000
     });
 };
+
+// --- Candidate Profile (P4) ---
+export interface CandidateProfile {
+    id?: number | null;
+    userId: string;
+    fullName?: string | null;
+    targetRole?: string | null;
+    targetCompany?: string | null;
+    jobDescription?: string | null;
+    resumeText?: string | null;
+    resumePdfPath?: string | null;
+    persona?: string | null;
+    hasResume?: boolean;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+}
+
+export const getCandidateProfile = async (userId: string = 'local'): Promise<CandidateProfile> => {
+    return fetchJson<CandidateProfile>(`${SESSION_API}/profile?userId=${encodeURIComponent(userId)}`, {
+        method: 'GET',
+        timeoutMs: 15000
+    });
+};
+
+export const saveCandidateProfile = async (profile: Partial<CandidateProfile>): Promise<CandidateProfile> => {
+    return fetchJson<CandidateProfile>(`${SESSION_API}/profile`, {
+        method: 'PUT',
+        body: JSON.stringify(profile),
+        timeoutMs: 15000
+    });
+};
+
+export const uploadProfileResume = async (
+    file: File,
+    userId: string = 'local'
+): Promise<CandidateProfile> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', userId);
+    return fetchJson<CandidateProfile>(`${SESSION_API}/profile/resume?userId=${encodeURIComponent(userId)}`, {
+        method: 'POST',
+        body: formData,
+        timeoutMs: 30000
+    });
+};
+
+export const uploadProfileResumeText = async (
+    resumeText: string,
+    userId: string = 'local'
+): Promise<CandidateProfile> => {
+    return fetchJson<CandidateProfile>(`${SESSION_API}/profile/resume?userId=${encodeURIComponent(userId)}`, {
+        method: 'POST',
+        body: JSON.stringify({ resumeText }),
+        timeoutMs: 15000
+    });
+};
