@@ -16,6 +16,7 @@ import {
   getCatalogQuestions,
   getPracticeProgress,
   getLearnTree,
+  getRetryQueue,
   type CatalogTopicSummary,
   type CatalogQuestionSummary,
   type QuestionProgress
@@ -24,10 +25,15 @@ import {
   learnTreePollReducer,
   createInitialLearnTreeState
 } from '../../lib/learnTree';
+import {
+  retryQueuePollReducer,
+  createInitialRetryQueueState
+} from '../../lib/retryQueue';
 import { TopicRail } from './TopicRail';
 import { QuestionTable } from './QuestionTable';
 import { SubmissionsDrawer } from './SubmissionsDrawer';
 import { QuestionDetailModal } from './QuestionDetailModal';
+import { RetryQueueCard } from './RetryQueueCard';
 import { ThemeToggle } from '../ui/ThemeToggle';
 
 interface LearnViewProps {
@@ -51,6 +57,10 @@ export const LearnView: React.FC<LearnViewProps> = ({
   // Anti-freeze learn tree state
   const [treeState, dispatchTree] = useReducer(learnTreePollReducer, undefined, createInitialLearnTreeState);
   const pollSeqRef = useRef<number>(0);
+
+  // Anti-freeze retry queue state
+  const [retryState, dispatchRetry] = useReducer(retryQueuePollReducer, undefined, createInitialRetryQueueState);
+  const retryPollSeqRef = useRef<number>(0);
 
   // Modals state
   const [detailSlug, setDetailSlug] = useState<string | null>(null);
@@ -116,12 +126,46 @@ export const LearnView: React.FC<LearnViewProps> = ({
     }
   }, []);
 
+  // Poll retry queue with anti-freeze protection
+  const pollRetry = useCallback(async () => {
+    const seq = ++retryPollSeqRef.current;
+    dispatchRetry({ type: 'POLL_START', sequenceId: seq });
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const retryItems = await getRetryQueue('local', controller.signal);
+      clearTimeout(timer);
+      dispatchRetry({
+        type: 'POLL_SUCCESS',
+        sequenceId: seq,
+        items: retryItems,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err: any) {
+      clearTimeout(timer);
+      if (err.name !== 'AbortError') {
+        dispatchRetry({
+          type: 'POLL_FAILURE',
+          sequenceId: seq,
+          error: err.message || 'Retry queue poll failed',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  }, []);
+
   // Periodic polling for live pressure & progress updates (15s interval)
   useEffect(() => {
     pollTree();
-    const interval = setInterval(pollTree, 15000);
+    pollRetry();
+    const interval = setInterval(() => {
+      pollTree();
+      pollRetry();
+    }, 15000);
     return () => clearInterval(interval);
-  }, [pollTree]);
+  }, [pollTree, pollRetry]);
 
   // Load catalog data & progress
   const loadData = useCallback(async () => {
@@ -137,12 +181,13 @@ export const LearnView: React.FC<LearnViewProps> = ({
       setQuestions(fetchedQuestions.content || []);
       setProgressMap(fetchedProgress || {});
       pollTree();
+      pollRetry();
     } catch (err) {
       console.error('Failed to load learn view data:', err);
     } finally {
       setLoading(false);
     }
-  }, [track, pollTree]);
+  }, [track, pollTree, pollRetry]);
 
   useEffect(() => {
     loadData();
@@ -343,6 +388,14 @@ export const LearnView: React.FC<LearnViewProps> = ({
           {totalSolved}/{totalQuestions} Solved ({percentage}%)
         </div>
       </div>
+
+      {/* Retry Queue (Weak-Spot Resurfacing) */}
+      <RetryQueueCard
+        items={retryState.items}
+        isStale={retryState.isStale}
+        isChecking={retryState.isChecking}
+        onSelectQuestion={handleOpenDetail}
+      />
 
       {/* Main Content: Topic Rail + Question Table */}
       <main className="flex-1 flex min-h-0 overflow-hidden">
