@@ -18,6 +18,7 @@ import java.util.Map;
 public class PracticeProgressController {
 
     private final PracticeTrackingService practiceTrackingService;
+    private final com.interviewos.session.service.SessionQuestionService sessionQuestionService;
 
     @GetMapping("/progress")
     public ResponseEntity<Map<String, QuestionProgress>> getProgress(
@@ -32,5 +33,13 @@ public class PracticeProgressController {
             @RequestParam(value = "userId", defaultValue = "local") String userId
     ) {
         return ResponseEntity.ok(practiceTrackingService.getAttempts(userId, slug));
+    }
+
+    @GetMapping("/questions/{slug}/encounters")
+    public ResponseEntity<com.interviewos.session.dto.QuestionEncountersResponse> getEncounters(
+            @PathVariable("slug") String slug,
+            @RequestParam(value = "userId", defaultValue = "local") String userId
+    ) {
+        return ResponseEntity.ok(sessionQuestionService.getQuestionEncounters(slug, userId));
     }
 }

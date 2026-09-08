@@ -44,6 +44,7 @@ public class InterviewSessionService {
     private final SessionPlanService sessionPlanService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final SessionVerificationRepository verificationRepository;
+    private final SessionQuestionService sessionQuestionService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public InterviewSessionService(
@@ -53,7 +54,8 @@ public class InterviewSessionService {
             ResumeParsingService resumeParsingService,
             SessionPlanService sessionPlanService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.fasterxml.jackson.databind.ObjectMapper objectMapper,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) SessionVerificationRepository verificationRepository
+            @org.springframework.beans.factory.annotation.Autowired(required = false) SessionVerificationRepository verificationRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) SessionQuestionService sessionQuestionService
     ) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
@@ -62,6 +64,7 @@ public class InterviewSessionService {
         this.sessionPlanService = sessionPlanService;
         this.objectMapper = objectMapper != null ? objectMapper : new com.fasterxml.jackson.databind.ObjectMapper();
         this.verificationRepository = verificationRepository;
+        this.sessionQuestionService = sessionQuestionService;
     }
 
     public InterviewSessionService(
@@ -71,7 +74,7 @@ public class InterviewSessionService {
             ResumeParsingService resumeParsingService,
             com.interviewos.session.sandbox.client.QuestionBankClient questionBankClient
     ) {
-        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, new SessionPlanService(questionBankClient), new com.fasterxml.jackson.databind.ObjectMapper(), null);
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, new SessionPlanService(questionBankClient), new com.fasterxml.jackson.databind.ObjectMapper(), null, null);
     }
 
     public InterviewSessionService(
@@ -82,7 +85,19 @@ public class InterviewSessionService {
             SessionPlanService sessionPlanService,
             com.fasterxml.jackson.databind.ObjectMapper objectMapper
     ) {
-        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, null);
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, null, null);
+    }
+
+    public InterviewSessionService(
+            InterviewSessionRepository sessionRepository,
+            SessionMessageRepository messageRepository,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            ResumeParsingService resumeParsingService,
+            SessionPlanService sessionPlanService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+            SessionVerificationRepository verificationRepository
+    ) {
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, verificationRepository, null);
     }
 
     @Transactional
@@ -390,7 +405,25 @@ public class InterviewSessionService {
             log.warn("⚠️ MongoDB sync warning on completeSession: {}", e.getMessage());
         }
 
+        // Persist session_questions (Addendum A1)
+        if (sessionQuestionService != null) {
+            try {
+                List<InterviewSessionDocument.SubmissionEntry> submissions = getSubmissions(sessionId);
+                sessionQuestionService.recordSessionQuestions(saved, submissions);
+            } catch (Exception e) {
+                log.error("Failed to record session_questions for session {}: {}", sessionId, e.getMessage(), e);
+            }
+        }
+
         return SessionResponse.fromEntity(saved);
+    }
+
+    public List<com.interviewos.session.dto.SessionQuestionResponse> getSessionQuestions(Long sessionId) {
+        findSessionOrThrow(sessionId);
+        if (sessionQuestionService != null) {
+            return sessionQuestionService.getSessionQuestions(sessionId);
+        }
+        return List.of();
     }
 
     @Transactional
