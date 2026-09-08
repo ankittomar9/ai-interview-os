@@ -37,6 +37,9 @@ export interface AiAssistantPanelProps {
   setChatInput?: (val: string) => void;
   onSend?: (forcedText?: string) => void;
   onMicToggle?: () => void;
+  onStartListening?: () => void;
+  onStopListening?: () => void;
+  onAbortTurn?: () => void;
   isListening?: boolean;
   interimTranscript?: string;
   salvageHint?: string | null;
@@ -63,6 +66,9 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
   setChatInput,
   onSend,
   onMicToggle,
+  onStartListening,
+  onStopListening,
+  onAbortTurn,
   isListening = false,
   interimTranscript = "",
   salvageHint = null,
@@ -267,6 +273,9 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             onSend={() => void onSend()}
             isListening={isListening}
             onToggleListening={onMicToggle || (() => {})}
+            onStartListening={onStartListening}
+            onStopListening={onStopListening}
+            onAbort={onAbortTurn}
             isAiResponding={isAiResponding}
             interimTranscript={interimTranscript}
             salvageHint={salvageHint}

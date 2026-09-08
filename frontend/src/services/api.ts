@@ -308,8 +308,9 @@ export const transcribeAudio = async (
     apiKey?: string,
     promptContext?: string,
     sessionId?: number,
-    lang?: string
-): Promise<{ transcript: string; durationSeconds: number; provider: string; text?: string }> => {
+    lang?: string,
+    signal?: AbortSignal
+): Promise<{ transcript?: string; durationSeconds?: number; provider?: string; text?: string; latencyMs?: string; status?: string }> => {
     const isWav = audioBlob.type.includes('wav');
     const filename = isWav ? 'candidate_speech.wav' : 'candidate_speech.webm';
     const formData = new FormData();
@@ -328,7 +329,8 @@ export const transcribeAudio = async (
     const res = await fetch(`${AI_API}/transcribe`, {
         method: 'POST',
         headers,
-        body: formData
+        body: formData,
+        signal
     });
     if (!res.ok) throw new Error('Speech transcription request failed');
     return res.json();
