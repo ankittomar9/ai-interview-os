@@ -66,6 +66,35 @@ class QuestionMarkdownParserTest {
     }
 
     @Test
+    @DisplayName("Parse resources frontmatter block")
+    void testParseResourcesBlock() {
+        String md = """
+                ---
+                slug: dsa-resources-test
+                title: Resources Test
+                track: ALGORITHMS_DATA_STRUCTURES
+                difficulty: EASY
+                resources:
+                  - label: "Official Documentation"
+                    url: "https://example.com/docs"
+                  - label: "Video Guide"
+                    url: "https://example.com/video"
+                ---
+                Problem body
+                """;
+
+        QuestionDocument doc = parser.parse(md, "resources-test.md");
+
+        assertNotNull(doc);
+        assertNotNull(doc.getResources());
+        assertEquals(2, doc.getResources().size());
+        assertEquals("Official Documentation", doc.getResources().get(0).label());
+        assertEquals("https://example.com/docs", doc.getResources().get(0).url());
+        assertEquals("Video Guide", doc.getResources().get(1).label());
+        assertEquals("https://example.com/video", doc.getResources().get(1).url());
+    }
+
+    @Test
     @DisplayName("Parse valid SQL markdown with setup and solution SQL")
     void testParseValidSqlMarkdown() {
         String md = """

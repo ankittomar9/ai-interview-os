@@ -92,6 +92,8 @@ public class QuestionDocument {
 
     private CoachingContent coaching;
 
+    private List<ResourceItem> resources;
+
     @Builder.Default
     private String version = "1.0.0";
 
@@ -146,4 +148,9 @@ public class QuestionDocument {
             this(commonMistakes, modelAnswerOutline, presentationTips, null);
         }
     }
+
+    public record ResourceItem(
+            String label,
+            String url
+    ) {}
 }
