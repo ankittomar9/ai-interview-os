@@ -20,4 +20,8 @@ public interface SessionQuestionRepository extends JpaRepository<SessionQuestion
     boolean existsBySessionId(Long sessionId);
 
     void deleteBySessionId(Long sessionId);
+
+    List<SessionQuestion> findBySessionIdInOrderByAttemptedAtDesc(List<Long> sessionIds);
+
+    List<SessionQuestion> findAllByOrderByAttemptedAtDesc();
 }

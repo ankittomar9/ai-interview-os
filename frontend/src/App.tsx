@@ -11,9 +11,10 @@ import { PhoneProctorView } from './components/PhoneProctorView';
 import { QuestionCatalog } from './components/QuestionCatalog';
 import { PracticeSummary } from './components/PracticeSummary';
 import { LearnView } from './components/learn/LearnView';
+import { DashboardView } from './components/dashboard/DashboardView';
 import { Toaster } from './components/ui/Toaster';
 
-type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN';
+type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN' | 'DASHBOARD';
 
 export function App() {
   const [sessionId, setSessionId] = useState<number | null>(() => {
@@ -32,6 +33,9 @@ export function App() {
     }
     if (params.get('report')) {
       return 'REPORT';
+    }
+    if (window.location.pathname === '/dashboard' || window.location.pathname.startsWith('/dashboard')) {
+      return 'DASHBOARD';
     }
     if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
       return 'LEARN';
@@ -63,7 +67,9 @@ export function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
+      if (window.location.pathname === '/dashboard' || window.location.pathname.startsWith('/dashboard')) {
+        setView('DASHBOARD');
+      } else if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
         setView('LEARN');
       } else if (window.location.pathname === '/' || window.location.pathname === '') {
         setView('SETUP');
@@ -89,6 +95,11 @@ export function App() {
       }
     }
   }, []);
+
+  const handleNavigateToDashboard = () => {
+    window.history.pushState({}, '', '/dashboard');
+    setView('DASHBOARD');
+  };
 
   const handleNavigateToLearn = () => {
     window.history.pushState({}, '', '/learn');
@@ -401,6 +412,7 @@ export function App() {
           isLoading={isLoading}
           onOpenCatalog={() => setIsCatalogOpen(true)}
           onNavigateToLearn={handleNavigateToLearn}
+          onNavigateToDashboard={handleNavigateToDashboard}
         />
       )}
 
@@ -408,6 +420,15 @@ export function App() {
         <LearnView
           onBackToSetup={handleBackToSetup}
           onSolveQuestion={handleSolveFromLearn}
+          onNavigateToDashboard={handleNavigateToDashboard}
+        />
+      )}
+
+      {view === 'DASHBOARD' && (
+        <DashboardView
+          userId={candidateId || 'local'}
+          onBackToSetup={handleBackToSetup}
+          onNavigateToLearn={handleNavigateToLearn}
         />
       )}
 
