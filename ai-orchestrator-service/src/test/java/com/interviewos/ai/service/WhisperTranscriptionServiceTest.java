@@ -13,8 +13,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -110,5 +113,59 @@ class WhisperTranscriptionServiceTest {
         assertTrue(prompt.contains("Ankit Singh Tomar"));
         assertTrue(prompt.contains("InterviewOS"));
         assertEquals("Ankit Singh Tomar, InterviewOS, ALGORITHMS_DATA_STRUCTURES", prompt);
+    }
+
+    @Test
+    @DisplayName("isWhisperSidecarRunning caches health probe status for 30s TTL and re-probes after expiry")
+    void testWhisperSidecarCacheTtlAndReprobe() throws Exception {
+        AtomicInteger probeCount = new AtomicInteger(0);
+        AtomicInteger responseCode = new AtomicInteger(200);
+
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/health", exchange -> {
+            probeCount.incrementAndGet();
+            int code = responseCode.get();
+            exchange.sendResponseHeaders(code, 0);
+            exchange.close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            String endpoint = "http://127.0.0.1:" + port + "/inference";
+            ReflectionTestUtils.setField(transcriptionService, "localWhisperEndpoint", endpoint);
+            ReflectionTestUtils.setField(transcriptionService, "lastSidecarCheckTime", 0L);
+            ReflectionTestUtils.setField(transcriptionService, "lastSidecarStatus", false);
+
+            // 1. First call hits probe -> true
+            boolean firstCall = transcriptionService.isWhisperSidecarRunning();
+            assertTrue(firstCall, "Initial probe should return true when server responds 200");
+            assertEquals(1, probeCount.get(), "First call must hit probe");
+
+            // 2. Second call inside TTL returns cached -> true without hitting probe
+            boolean secondCall = transcriptionService.isWhisperSidecarRunning();
+            assertTrue(secondCall, "Second call within 30s TTL should return cached true");
+            assertEquals(1, probeCount.get(), "Second call within 30s TTL should not re-probe");
+
+            // 3. Post-TTL re-probes: artificially advance lastSidecarCheckTime past 30s
+            ReflectionTestUtils.setField(transcriptionService, "lastSidecarCheckTime", System.currentTimeMillis() - 31000L);
+            boolean thirdCall = transcriptionService.isWhisperSidecarRunning();
+            assertTrue(thirdCall, "Post-TTL call should return probe response");
+            assertEquals(2, probeCount.get(), "Post-TTL call should re-probe server");
+
+            // 4. Failure path caches false
+            responseCode.set(500);
+            ReflectionTestUtils.setField(transcriptionService, "lastSidecarCheckTime", System.currentTimeMillis() - 31000L);
+            boolean fourthCall = transcriptionService.isWhisperSidecarRunning();
+            assertFalse(fourthCall, "Server returning 500 should evaluate to false");
+            assertEquals(3, probeCount.get(), "Failure call should hit probe");
+
+            // 5. Subsequent call within TTL preserves false cache
+            boolean fifthCall = transcriptionService.isWhisperSidecarRunning();
+            assertFalse(fifthCall, "Subsequent call within TTL should return cached false");
+            assertEquals(3, probeCount.get(), "Cached false must not re-probe");
+        } finally {
+            server.stop(0);
+        }
     }
 }
