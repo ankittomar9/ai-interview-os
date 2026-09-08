@@ -168,11 +168,16 @@ public class InterviewSessionService {
                     ? storedProfile.fullName()
                     : request.candidateId());
 
-        String effectiveRoleTitle = (request.roleTitle() != null && !request.roleTitle().isBlank())
-                ? request.roleTitle()
-                : (storedProfile != null && storedProfile.targetRole() != null && !storedProfile.targetRole().isBlank()
-                    ? storedProfile.targetRole()
-                    : "Software Engineer");
+        String effectiveRoleTitle;
+        if (request.roleTitle() != null && !request.roleTitle().isBlank()) {
+            effectiveRoleTitle = request.roleTitle();
+        } else if (storedProfile != null && storedProfile.targetRole() != null && !storedProfile.targetRole().isBlank()) {
+            effectiveRoleTitle = storedProfile.targetRole();
+        } else {
+            log.warn("Session creation for candidate '{}' omitted roleTitle and profile targetRole was blank; defaulting roleTitle to '{}'",
+                    request.candidateId(), "Software Engineer");
+            effectiveRoleTitle = "Software Engineer";
+        }
 
         String effectiveTargetCompany = (request.targetCompany() != null && !request.targetCompany().isBlank())
                 ? request.targetCompany()
