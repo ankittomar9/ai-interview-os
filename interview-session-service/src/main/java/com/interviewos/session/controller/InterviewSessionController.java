@@ -80,6 +80,14 @@ public class InterviewSessionController {
         return ResponseEntity.ok(submissions);
     }
 
+    @GetMapping("/{id}/questions")
+    public ResponseEntity<List<com.interviewos.session.dto.SessionQuestionResponse>> getSessionQuestions(@PathVariable Long id) {
+        log.info("Fetching session questions for session ID: {}", id);
+        List<com.interviewos.session.dto.SessionQuestionResponse> questions = sessionService.getSessionQuestions(id);
+        log.info("Retrieved {} session questions for session ID: {}", questions.size(), id);
+        return ResponseEntity.ok(questions);
+    }
+
 
     @PostMapping("/{id}/verification")
     public ResponseEntity<SessionVerificationResponse> recordVerification(

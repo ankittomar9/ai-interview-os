@@ -350,4 +350,25 @@ class InterviewSessionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ABORTED_SHARE"));
     }
+
+    @Test
+    @DisplayName("GET /api/v1/sessions/{id}/questions returns list of session questions")
+    void testGetSessionQuestions_Success() throws Exception {
+        com.interviewos.session.dto.SessionQuestionResponse q1 = new com.interviewos.session.dto.SessionQuestionResponse(
+                1L, 1L, "dsa-two-sum", 0, "PASSED", Instant.now(), Instant.now()
+        );
+        com.interviewos.session.dto.SessionQuestionResponse q2 = new com.interviewos.session.dto.SessionQuestionResponse(
+                2L, 1L, "dsa-lru-cache", 1, "UNATTEMPTED", null, Instant.now()
+        );
+
+        when(sessionService.getSessionQuestions(1L)).thenReturn(List.of(q1, q2));
+
+        mockMvc.perform(get("/api/v1/sessions/1/questions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].questionSlug").value("dsa-two-sum"))
+                .andExpect(jsonPath("$[0].verdict").value("PASSED"))
+                .andExpect(jsonPath("$[1].questionSlug").value("dsa-lru-cache"))
+                .andExpect(jsonPath("$[1].verdict").value("UNATTEMPTED"));
+    }
 }

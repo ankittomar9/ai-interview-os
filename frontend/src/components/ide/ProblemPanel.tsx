@@ -81,22 +81,24 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
             Description
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('hints')}
-            className={`px-3 py-1 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'hints'
-                ? 'border-primary text-text'
-                : 'border-transparent text-text-3 hover:text-text font-semibold'
-            }`}
-          >
-            <span>Hints</span>
-            {hintsRevealed > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-primary/20 text-primary text-[10px] font-mono font-bold">
-                {hintsRevealed}
-              </span>
-            )}
-          </button>
+          {isPracticeMode && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('hints')}
+              className={`px-3 py-1 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'hints'
+                  ? 'border-primary text-text'
+                  : 'border-transparent text-text-3 hover:text-text font-semibold'
+              }`}
+            >
+              <span>Hints</span>
+              {hintsRevealed > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-primary/20 text-primary text-[10px] font-mono font-bold">
+                  {hintsRevealed}
+                </span>
+              )}
+            </button>
+          )}
 
           <button
             type="button"
@@ -170,7 +172,7 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
           <ProblemDescriptionTab
             question={question}
             slug={slug}
-            isSolved={isSolved}
+            isSolved={isPracticeMode ? isSolved : false}
             isPracticeMode={isPracticeMode}
             hasRunAttempt={hasRunAttempt}
             hasSubmissions={submissions.length > 0}
@@ -179,7 +181,7 @@ export const ProblemPanel: React.FC<ProblemPanelProps> = ({
           />
         )}
 
-        {activeTab === 'hints' && (
+        {isPracticeMode && activeTab === 'hints' && (
           <HintsPanel hints={question.hints || tips} />
         )}
 

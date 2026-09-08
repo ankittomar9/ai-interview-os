@@ -46,6 +46,33 @@ export const LearnView: React.FC<LearnViewProps> = ({
     title: string;
   } | null>(null);
 
+  // Sync /learn/question/{slug} URL with detailSlug
+  useEffect(() => {
+    const parseUrlSlug = () => {
+      const match = window.location.pathname.match(/\/learn\/question\/([^/]+)/);
+      if (match && match[1]) {
+        setDetailSlug(decodeURIComponent(match[1]));
+      }
+    };
+    parseUrlSlug();
+    window.addEventListener('popstate', parseUrlSlug);
+    return () => window.removeEventListener('popstate', parseUrlSlug);
+  }, []);
+
+  const handleOpenDetail = (slug: string) => {
+    setDetailSlug(slug);
+    if (!window.location.pathname.includes(`/learn/question/${encodeURIComponent(slug)}`)) {
+      window.history.pushState({}, '', `/learn/question/${encodeURIComponent(slug)}`);
+    }
+  };
+
+  const handleCloseDetail = () => {
+    setDetailSlug(null);
+    if (window.location.pathname.includes('/learn/question/')) {
+      window.history.pushState({}, '', '/learn');
+    }
+  };
+
   // Load topics and progress
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -216,7 +243,7 @@ export const LearnView: React.FC<LearnViewProps> = ({
           loading={loading}
           selectedTopic={selectedTopic}
           onSolve={onSolveQuestion}
-          onOpenDetail={(slug) => setDetailSlug(slug)}
+          onOpenDetail={handleOpenDetail}
           onOpenSubmissions={(slug, title) => setSubmissionsTarget({ slug, title })}
         />
       </main>
@@ -239,9 +266,9 @@ export const LearnView: React.FC<LearnViewProps> = ({
         <QuestionDetailModal
           slug={detailSlug}
           progress={progressMap[detailSlug]}
-          onClose={() => setDetailSlug(null)}
+          onClose={handleCloseDetail}
           onSolve={(slug) => {
-            setDetailSlug(null);
+            handleCloseDetail();
             onSolveQuestion(slug);
           }}
         />

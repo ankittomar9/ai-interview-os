@@ -379,15 +379,15 @@ export const TestcasePanel: React.FC<TestcasePanelProps> = ({
                             </div>
                           )}
 
-                          {!c.passed && !c.error && c.actualOutput !== undefined && (
+                          {!c.passed && (c.expectedOutput !== undefined || c.actualOutput !== undefined) && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                               <div>
-                                <span className="text-[10px] text-text-3 block">Expected:</span>
-                                <pre className="bg-elevated p-1.5 rounded text-[11px] text-text whitespace-pre-wrap">{c.expectedOutput}</pre>
+                                <span className="text-[10px] text-text-3 block font-semibold">Expected:</span>
+                                <pre className="bg-elevated p-2 rounded text-[11px] text-text whitespace-pre-wrap font-mono border border-border/50">{c.expectedOutput || '(no expected output captured)'}</pre>
                               </div>
                               <div>
-                                <span className="text-[10px] text-danger block">Your Output:</span>
-                                <pre className="bg-elevated p-1.5 rounded text-[11px] text-danger whitespace-pre-wrap">{c.actualOutput}</pre>
+                                <span className="text-[10px] text-danger block font-semibold">Your Output:</span>
+                                <pre className="bg-elevated p-2 rounded text-[11px] text-danger whitespace-pre-wrap font-mono border border-danger/30">{c.actualOutput || '(no output produced)'}</pre>
                               </div>
                             </div>
                           )}
