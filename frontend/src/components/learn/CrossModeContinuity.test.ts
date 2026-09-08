@@ -121,13 +121,14 @@ test('Gate VA-d: Ledger arithmetic verifies practice_solves=3, interview_passes=
 test('Hint Ladder: locked until ≥2 failed attempts, then unlocked with progressive hints', () => {
   const checkUnlocked = (attempts: number, solves: number) => {
     const failedAttempts = Math.max(0, attempts - solves);
-    return failedAttempts >= 2 || attempts >= 2;
+    return failedAttempts >= 2;
   };
 
   assert.equal(checkUnlocked(0, 0), false);
   assert.equal(checkUnlocked(1, 0), false);
-  assert.equal(checkUnlocked(2, 0), true);
-  assert.equal(checkUnlocked(3, 1), true);
+  assert.equal(checkUnlocked(2, 2), false); // 2 attempts with 2 solves -> 0 failures -> LOCKED
+  assert.equal(checkUnlocked(2, 0), true);  // 2 attempts with 0 solves -> 2 failures -> UNLOCKED
+  assert.equal(checkUnlocked(3, 1), true);  // 3 attempts with 1 solve -> 2 failures -> UNLOCKED
 
   const hints = [
     'Consider using a hash map.',

@@ -51,7 +51,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const attemptCount = progress?.attemptCount ?? 0;
   const solveCount = progress?.solveCount ?? 0;
   const failedAttempts = Math.max(0, attemptCount - solveCount);
-  const isHintLadderUnlocked = failedAttempts >= 2 || attemptCount >= 2;
+  const isHintLadderUnlocked = failedAttempts >= 2;
   const hints = detail?.hints || [];
 
   useEffect(() => {
