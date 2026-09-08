@@ -64,6 +64,12 @@ spring:
           predicates:
             - Path=/api/v1/dashboard/**
 
+        # Route 1.6: Learn Tree (:8081)
+        - id: learn-route
+          uri: ${SESSION_SERVICE_URL:http://interview-session-service:8081}
+          predicates:
+            - Path=/api/v1/learn/**
+
         # Route 2: AI Orchestrator Service (:8082)
         - id: ai-orchestrator-route
           uri: ${AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}
