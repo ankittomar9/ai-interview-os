@@ -3,7 +3,7 @@ slug: dsa-right-triangle-number-pattern
 title: Right Triangle Number Pattern.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics: [patterns]
 est_minutes: 25
 tags:
 - 5-patterns--printing-15-questions

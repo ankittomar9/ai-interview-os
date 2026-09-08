@@ -3,7 +3,7 @@ slug: dsa-pyramid-star-pattern
 title: Pyramid Star Pattern.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [arrays]
+topics: [patterns]
 est_minutes: 15
 tags:
 - 5-patterns--printing-15-questions

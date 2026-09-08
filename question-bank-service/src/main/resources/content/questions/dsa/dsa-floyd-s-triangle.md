@@ -3,7 +3,7 @@ slug: dsa-floyd-s-triangle
 title: Floyd's Triangle.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics: [patterns]
 est_minutes: 25
 tags:
 - 5-patterns--printing-15-questions

@@ -3,7 +3,7 @@ slug: dsa-lc148-sort-list
 title: Sort List
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [linked-list, arrays]
+topics: [linked-list]
 est_minutes: 25
 tags:
 - linked-list

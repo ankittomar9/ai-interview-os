@@ -3,7 +3,7 @@ slug: dsa-lc82-remove-duplicates-from-sorted-list-ii
 title: Remove Duplicates from Sorted List II
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [linked-list, hashing, arrays]
+topics: [linked-list, hashing]
 est_minutes: 25
 tags:
 - linked-list

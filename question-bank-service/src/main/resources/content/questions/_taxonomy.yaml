@@ -56,6 +56,9 @@ topics:
   - id: matrix
     name: Matrix
     track: ALGORITHMS_DATA_STRUCTURES
+  - id: patterns
+    name: Patterns & Printing
+    track: ALGORITHMS_DATA_STRUCTURES
   - id: sql
     name: SQL
     track: SQL

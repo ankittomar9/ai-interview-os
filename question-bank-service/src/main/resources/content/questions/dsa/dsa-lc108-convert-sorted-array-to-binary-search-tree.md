@@ -3,7 +3,7 @@ slug: dsa-lc108-convert-sorted-array-to-binary-search-tree
 title: Convert Sorted Array to Binary Search Tree
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [trees, binary-search, arrays]
+topics: [trees, binary-search]
 est_minutes: 15
 tags:
 - binary-search-tree

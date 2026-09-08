@@ -3,7 +3,7 @@ slug: dsa-lowest-common-ancestor-bst
 title: Lowest Common Ancestor in Binary Search Tree
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics: [trees]
 est_minutes: 25
 tags: [bst, trees, recursion, divide-and-conquer]
 buildProfile: judge0
