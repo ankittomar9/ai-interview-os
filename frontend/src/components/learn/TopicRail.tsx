@@ -110,23 +110,34 @@ export const TopicRail: React.FC<TopicRailProps> = ({
                   : 'text-text-2 hover:text-text hover:bg-elevated'
               }`}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    isFullySolved
-                      ? isSelected
-                        ? 'bg-on-accent'
-                        : 'bg-success'
-                      : hasSolved
-                      ? isSelected
-                        ? 'bg-on-accent/80'
-                        : 'bg-primary'
-                      : 'bg-border'
-                  }`}
-                />
-                <span className="text-xs truncate">
-                  {item.displayName || item.topic.replace(/-/g, ' ')}
-                </span>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      isFullySolved
+                        ? isSelected
+                          ? 'bg-on-accent'
+                          : 'bg-success'
+                        : hasSolved
+                        ? isSelected
+                          ? 'bg-on-accent/80'
+                          : 'bg-primary'
+                        : 'bg-border'
+                    }`}
+                  />
+                  <span className="text-xs truncate font-medium">
+                    {item.displayName || item.topic.replace(/-/g, ' ')}
+                  </span>
+                </div>
+                {item.pressureGap && (
+                  <span
+                    className={`text-[10px] font-mono pl-3.5 truncate ${
+                      isSelected ? 'text-on-accent/80' : 'text-text-3'
+                    }`}
+                  >
+                    {item.pressureGap}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0 text-xs font-mono">

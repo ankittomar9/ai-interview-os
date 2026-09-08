@@ -646,6 +646,7 @@ export interface CatalogTopicSummary {
     total: number;
     solved: number;
     displayName: string;
+    pressureGap?: string;
 }
 
 export interface CatalogQuestionSummary {
@@ -893,4 +894,47 @@ export const getDashboardStats = async (
         }
     );
 };
+
+// --- Learn Tree & Roadmap (P7) ---
+export interface LearnQuestionNode {
+    slug: string;
+    title: string;
+    track: string;
+    difficulty: string;
+    verdict: 'PASSED' | 'FAILED' | 'UNATTEMPTED';
+}
+
+export interface LearnTopicNode {
+    topicId: string;
+    topicName: string;
+    track: string;
+    total: number | null;
+    attempted: number;
+    solved: number;
+    passed: number;
+    failed: number;
+    pressureGap: string;
+    questions: LearnQuestionNode[];
+}
+
+export interface LearnTreeResponse {
+    topics: LearnTopicNode[];
+    trackTotals: Record<string, number>;
+    stale: boolean;
+}
+
+export const getLearnTree = async (
+    userId: string = 'local',
+    signal?: AbortSignal
+): Promise<LearnTreeResponse> => {
+    return fetchJson<LearnTreeResponse>(
+        `${GATEWAY_BASE}/learn/tree?userId=${encodeURIComponent(userId)}`,
+        {
+            method: 'GET',
+            timeoutMs: 10000,
+            signal
+        }
+    );
+};
+
 
