@@ -14,6 +14,7 @@ import { Chip } from '../ui/Chip';
 interface QuestionTableProps {
   questions: CatalogQuestionSummary[];
   progressMap: Record<string, QuestionProgress>;
+  verdictMap?: Record<string, string>;
   loading: boolean;
   selectedTopic: string | null;
   onSolve: (slug: string) => void;
@@ -24,6 +25,7 @@ interface QuestionTableProps {
 export const QuestionTable: React.FC<QuestionTableProps> = ({
   questions,
   progressMap,
+  verdictMap,
   loading,
   selectedTopic,
   onSolve,
@@ -317,9 +319,33 @@ export const QuestionTable: React.FC<QuestionTableProps> = ({
                     {getDifficultyBadge(q.difficulty)}
                   </td>
 
-                  {/* Solved Status Pill */}
+                  {/* Solved / Verdict Status Pill */}
                   <td className="py-3.5 px-4">
-                    {isSolved ? (
+                    {verdictMap && verdictMap[q.slug] ? (
+                      (() => {
+                        const v = verdictMap[q.slug];
+                        if (v === 'PASSED') {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              PASSED {progress && progress.solveCount > 1 ? `×${progress.solveCount}` : ''}
+                            </span>
+                          );
+                        }
+                        if (v === 'FAILED') {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                              FAILED
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-elevated/40 text-text-3 border border-border">
+                            UNATTEMPTED
+                          </span>
+                        );
+                      })()
+                    ) : isSolved ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-success/15 text-success border border-success/30">
                         <CheckCircle2 className="w-3 h-3" />
                         Solved {progress.solveCount > 1 ? `×${progress.solveCount}` : ''}
