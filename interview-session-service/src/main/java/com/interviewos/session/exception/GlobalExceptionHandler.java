@@ -25,6 +25,13 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), "Not Found", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(org.springframework.web.server.ResponseStatusException ex, HttpServletRequest request) {
+        log.warn("Response status exception: {} for URI: {}", ex.getReason(), request.getRequestURI());
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ErrorResponse.of(ex.getStatusCode().value(), ex.getStatusCode().toString(), ex.getReason(), request.getRequestURI()));
+    }
+
         @ExceptionHandler(VerificationRequiredException.class)
     public ResponseEntity<ErrorResponse> handleVerificationRequired(VerificationRequiredException ex, HttpServletRequest request) {
         log.warn("Session verification required: {}", ex.getMessage());

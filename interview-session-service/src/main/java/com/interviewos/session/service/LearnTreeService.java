@@ -169,6 +169,15 @@ public class LearnTreeService {
         return null;
     }
 
+    public boolean isValidSlug(String slug) {
+        if (slug == null || slug.isBlank()) return false;
+        CachedCatalog catalog = getOrRefreshCatalog();
+        if (catalog != null && catalog.questions() != null && !catalog.questions().isEmpty()) {
+            return catalog.questions().stream().anyMatch(q -> slug.equals(q.slug()));
+        }
+        return slug.startsWith("dsa-") || slug.startsWith("hld-") || slug.startsWith("lld-") || slug.startsWith("sql-") || slug.startsWith("beh-");
+    }
+
     @Transactional(readOnly = true)
     public LearnTreeResponse getLearnTree(String userId) {
         String effectiveUserId = (userId != null && !userId.isBlank()) ? userId : "local";

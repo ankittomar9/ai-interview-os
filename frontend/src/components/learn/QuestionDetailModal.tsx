@@ -12,11 +12,19 @@ import {
   Loader2,
   HelpCircle,
   History,
-  Lightbulb
+  Lightbulb,
+  ExternalLink,
+  BookOpen,
+  FileText,
+  Save,
+  Trash2
 } from 'lucide-react';
 import {
   getCatalogQuestionDetail,
   getQuestionEncounters,
+  getUserNote,
+  saveUserNote,
+  deleteUserNote,
   type CatalogQuestionDetail,
   type QuestionProgress,
   type QuestionEncountersResponse
@@ -41,9 +49,35 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const [showConfirmReveal, setShowConfirmReveal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'statement' | 'solution'>('statement');
+  const [activeTab, setActiveTab] = useState<'statement' | 'solution' | 'resources' | 'notes'>('statement');
   const [encounters, setEncounters] = useState<QuestionEncountersResponse | null>(null);
   const [revealedHintIndex, setRevealedHintIndex] = useState<number>(0);
+  const [userNote, setUserNote] = useState<string>('');
+  const [initialUserNote, setInitialUserNote] = useState<string>('');
+  const [noteLoading, setNoteLoading] = useState(false);
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+  const [noteSuccess, setNoteSuccess] = useState<string | null>(null);
+  const [noteUpdatedAt, setNoteUpdatedAt] = useState<string | null>(null);
+
+  const isNoteDirty = userNote !== initialUserNote;
+
+  const handleTabChange = (newTab: 'statement' | 'solution' | 'resources' | 'notes') => {
+    if (activeTab === 'notes' && isNoteDirty) {
+      const discard = window.confirm('You have unsaved changes in your personal notes. Discard them?');
+      if (!discard) return;
+      setUserNote(initialUserNote);
+    }
+    setActiveTab(newTab);
+  };
+
+  const handleClose = () => {
+    if (isNoteDirty) {
+      const discard = window.confirm('You have unsaved changes in your personal notes. Discard them?');
+      if (!discard) return;
+    }
+    onClose();
+  };
 
   const isSolved = (progress?.solveCount ?? 0) > 0;
   const canViewSolution = isSolved || isRevealed;
@@ -86,10 +120,71 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
       })
       .catch((err) => console.warn('Could not load question encounters:', err));
 
+    setNoteLoading(true);
+    setNoteError(null);
+    setNoteSuccess(null);
+    getUserNote(slug)
+      .then((note) => {
+        if (isMounted) {
+          const body = note?.body || '';
+          setUserNote(body);
+          setInitialUserNote(body);
+          setNoteUpdatedAt(note?.updatedAt || null);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) console.warn('Could not load user note:', err);
+      })
+      .finally(() => {
+        if (isMounted) setNoteLoading(false);
+      });
+
     return () => {
       isMounted = false;
     };
   }, [slug, isSolved]);
+
+  const handleSaveNote = async () => {
+    if (!slug) return;
+    if (!userNote.trim()) {
+      setNoteError('Note body cannot be blank');
+      return;
+    }
+    setNoteSaving(true);
+    setNoteError(null);
+    setNoteSuccess(null);
+    try {
+      const saved = await saveUserNote(slug, userNote);
+      setInitialUserNote(saved.body);
+      setUserNote(saved.body);
+      setNoteUpdatedAt(saved.updatedAt || new Date().toISOString());
+      setNoteSuccess('Note saved successfully');
+      setTimeout(() => setNoteSuccess(null), 3000);
+    } catch (err: any) {
+      setNoteError(err.message || 'Failed to save note');
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
+  const handleDeleteNote = async () => {
+    if (!slug) return;
+    if (!window.confirm('Are you sure you want to delete this note?')) return;
+    setNoteSaving(true);
+    setNoteError(null);
+    try {
+      await deleteUserNote(slug);
+      setUserNote('');
+      setInitialUserNote('');
+      setNoteUpdatedAt(null);
+      setNoteSuccess('Note deleted');
+      setTimeout(() => setNoteSuccess(null), 3000);
+    } catch (err: any) {
+      setNoteError(err.message || 'Failed to delete note');
+    } finally {
+      setNoteSaving(false);
+    }
+  };
 
   const handleConfirmReveal = async () => {
     if (!slug) return;
@@ -189,7 +284,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
               Solve
             </button>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-1.5 rounded-lg text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer"
               aria-label="Close modal"
             >
@@ -201,7 +296,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 px-5 pt-3 border-b border-border bg-surface">
           <button
-            onClick={() => setActiveTab('statement')}
+            onClick={() => handleTabChange('statement')}
             className={`pb-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer ${
               activeTab === 'statement'
                 ? 'text-primary border-primary'
@@ -211,7 +306,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
             Problem Statement
           </button>
           <button
-            onClick={() => setActiveTab('solution')}
+            onClick={() => handleTabChange('solution')}
             className={`pb-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'solution'
                 ? 'text-primary border-primary'
@@ -224,6 +319,36 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
               <Lock className="w-3.5 h-3.5 text-text-3" />
             )}
             Official Solution
+          </button>
+          <button
+            onClick={() => handleTabChange('resources')}
+            className={`pb-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'resources'
+                ? 'text-primary border-primary'
+                : 'text-text-3 border-transparent hover:text-text'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-primary" />
+            Resources
+            {detail?.resources && detail.resources.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-primary/10 text-primary">
+                {detail.resources.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => handleTabChange('notes')}
+            className={`pb-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'notes'
+                ? 'text-primary border-primary'
+                : 'text-text-3 border-transparent hover:text-text'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5 text-primary" />
+            Personal Notes
+            {userNote.trim().length > 0 && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" title="Has notes" />
+            )}
           </button>
         </div>
 
@@ -541,6 +666,154 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                   )}
                 </div>
               )}
+
+              {/* Resources Tab */}
+              {activeTab === 'resources' && (
+                <div className="space-y-6" data-testid="resources-tab-content">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-primary" />
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-text">
+                        Curated Learning Resources
+                      </h3>
+                    </div>
+                    <span className="text-[11px] text-text-3 font-mono">
+                      Git-Curated Reference Material
+                    </span>
+                  </div>
+
+                  {detail.resources && detail.resources.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-text-2 leading-relaxed">
+                        The following hand-picked references, canonical write-ups, and video breakdowns are curated for this problem:
+                      </p>
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {detail.resources.map((res, idx) => (
+                          <a
+                            key={idx}
+                            href={res.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 rounded-xl bg-surface border border-border hover:border-primary/50 transition-colors group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <ExternalLink className="w-4 h-4 text-primary shrink-0 group-hover:scale-110 transition-transform" />
+                              <span className="text-xs font-semibold text-text group-hover:text-primary transition-colors truncate">
+                                {res.label}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono text-text-3 shrink-0 ml-2">
+                              Open ↗
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8 rounded-xl bg-elevated/30 border border-border text-center space-y-2">
+                      <BookOpen className="w-8 h-8 text-text-3 mx-auto opacity-50" />
+                      <p className="text-xs font-semibold text-text">No Problem-Specific Resources Yet</p>
+                      <p className="text-[11px] text-text-3 max-w-sm mx-auto">
+                        Explore canonical topic documentation or refer to standard algorithm textbooks (CLRS / EPI).
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Personal Notes Tab */}
+              {activeTab === 'notes' && (
+                <div className="space-y-4" data-testid="notes-tab-content">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" />
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-text">
+                        Personal Problem Notes
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isNoteDirty && (
+                        <span className="text-[11px] font-mono text-warning font-semibold px-2 py-0.5 rounded bg-warning/10 border border-warning/20">
+                          Unsaved Changes
+                        </span>
+                      )}
+                      {noteUpdatedAt && !isNoteDirty && (
+                        <span className="text-[11px] font-mono text-text-3">
+                          Last saved: {new Date(noteUpdatedAt).toLocaleTimeString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {noteLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-text-3 gap-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      <span className="text-xs">Loading notes...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <textarea
+                          value={userNote}
+                          onChange={(e) => setUserNote(e.target.value)}
+                          placeholder="Document key insights, edge cases, space/time complexity traps, or your personal walkthrough..."
+                          rows={12}
+                          className="w-full rounded-xl bg-surface border border-border p-4 text-xs font-mono text-text placeholder:text-text-3/60 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary leading-relaxed resize-y"
+                        />
+                        <div className="flex items-center justify-between text-[11px] font-mono text-text-3 px-1 pt-1">
+                          <span>{userNote.length} characters</span>
+                          <span className="text-text-3/80">Private: Stored locally in your personal database</span>
+                        </div>
+                      </div>
+
+                      {noteError && (
+                        <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <span>{noteError}</span>
+                        </div>
+                      )}
+
+                      {noteSuccess && (
+                        <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-success text-xs flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <span>{noteSuccess}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-2">
+                        <button
+                          type="button"
+                          onClick={handleDeleteNote}
+                          disabled={noteSaving || (!initialUserNote && !userNote)}
+                          className="px-3.5 py-2 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs font-semibold hover:bg-danger/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete Note
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSaveNote}
+                          disabled={noteSaving || !userNote.trim()}
+                          className="px-5 py-2 rounded-lg bg-primary text-on-accent text-xs font-bold hover:bg-primary-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm flex items-center gap-1.5 transition-colors"
+                        >
+                          {noteSaving ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-3.5 h-3.5" />
+                              Save Notes
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -548,7 +821,7 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
         {/* Footer */}
         <div className="p-4 border-t border-border bg-elevated/30 flex items-center justify-between">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 rounded-lg bg-elevated border border-border text-xs font-semibold text-text-2 hover:text-text cursor-pointer"
           >
             Close
