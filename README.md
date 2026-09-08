@@ -176,6 +176,9 @@ The assessment cockpit delivers a distraction-free, high-density 3-zone VS Code 
 | **Behavioral & Leadership** | Neural dialogue engine | STAR-method voice conversation with live audio waveform |
 | **Java Core & Frameworks** | QuestionBank-matched deep dive | Full dialogue + code review |
 
+### 📚 Problem Catalog
+The platform ships with a curated catalog of **364 questions (316 DSA + 27 HLD + 11 LLD + 8 SQL + 2 Behavioral)**, complete with hidden testcases, starter templates, coaching rubrics, and taxonomy metadata.
+
 ---
 
 ## 🔒 Sandbox & Security Model
