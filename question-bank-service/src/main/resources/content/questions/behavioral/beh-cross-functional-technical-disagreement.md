@@ -1,6 +1,6 @@
 ---
 slug: beh-cross-functional-technical-disagreement
-title: Engineering Leadership: Resolving Architectural Deadlock with Product
+title: "Engineering Leadership: Resolving Architectural Deadlock with Product"
 track: BEHAVIORAL_STAR
 difficulty: HARD
 topics: [behavioral]

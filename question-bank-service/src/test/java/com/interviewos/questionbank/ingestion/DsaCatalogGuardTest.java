@@ -105,4 +105,37 @@ class DsaCatalogGuardTest {
         assertTrue(seenSlugs.size() >= 300,
                 "Expected at least 300 unique DSA slugs, found: " + seenSlugs.size());
     }
+
+    @Test
+    @DisplayName("Assert all 364 questions across all tracks parse without error and are PUBLISHED")
+    void testAllCatalogQuestionsParseAndPublish() throws IOException {
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        var allResources = resolver.getResources("classpath*:content/questions/**/*.md");
+
+        assertEquals(364, allResources.length,
+                "Expected exactly 364 total questions in catalog, but found: " + allResources.length);
+
+        Set<String> allSlugs = new HashSet<>();
+        int publishedCount = 0;
+
+        for (var res : allResources) {
+            String filename = res.getFilename() != null ? res.getFilename() : "unknown.md";
+            String content = new String(res.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+            QuestionDocument doc = parser.parse(content, filename);
+            assertNotNull(doc, "Parsed doc cannot be null for " + filename);
+            assertNotNull(doc.getSlug(), "Slug cannot be null for " + filename);
+            assertFalse(allSlugs.contains(doc.getSlug()), "Duplicate slug in catalog: " + doc.getSlug());
+            allSlugs.add(doc.getSlug());
+
+            ContentValidator.ValidationResult valResult = validator.validate(doc, content);
+            assertTrue(valResult.isValid(),
+                    "Question '" + doc.getSlug() + "' failed ContentValidator: " + valResult.errors());
+            assertEquals("PUBLISHED", doc.getStatus(),
+                    "Question '" + doc.getSlug() + "' must be PUBLISHED");
+            publishedCount++;
+        }
+
+        assertEquals(364, publishedCount, "All 364 questions must be PUBLISHED");
+    }
 }
