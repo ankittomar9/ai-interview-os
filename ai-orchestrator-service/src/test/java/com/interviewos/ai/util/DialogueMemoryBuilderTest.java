@@ -157,4 +157,47 @@ class DialogueMemoryBuilderTest {
         assertTrue(DialogueMemoryBuilder.isEchoContaminated(echoText, aiText, 8, 0.80));
         assertFalse(DialogueMemoryBuilder.isEchoContaminated(partialText, aiText, 8, 0.80));
     }
+
+    @Test
+    @DisplayName("VP22: Asked-question ledger and seed filtering assembly")
+    void testVP22_AskedQuestionsAndSeedFiltering_Assembly() {
+        // 1. Test extractAskedQuestions caps at 12 and truncates at 120 chars
+        java.util.List<TranscriptTurnDto> turns = new java.util.ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            String longQuestion = "Question number " + i + " " + "X".repeat(150);
+            turns.add(new TranscriptTurnDto(
+                    (long) i,
+                    "INTERVIEWER",
+                    "FEEDBACK",
+                    "Reply " + i,
+                    null,
+                    Map.of("followUpQuestion", longQuestion, "usedFollowUpSeedIds", String.valueOf(i % 3))
+            ));
+        }
+
+        List<String> asked = DialogueMemoryBuilder.extractAskedQuestions(turns);
+        assertEquals(12, asked.size());
+        // First in asked should be question 3 (15 - 12)
+        assertTrue(asked.get(0).startsWith("Question number 3"));
+        assertTrue(asked.get(0).endsWith("..."));
+        assertEquals(123, asked.get(0).length()); // 120 chars + "..."
+
+        // 2. Test extractUsedSeedIds
+        java.util.Set<Integer> usedSeeds = DialogueMemoryBuilder.extractUsedSeedIds(turns);
+        assertEquals(java.util.Set.of(0, 1, 2), usedSeeds);
+
+        // 3. Test filterFollowUpSeeds
+        List<String> catalogSeeds = List.of("Seed 0", "Seed 1", "Seed 2", "Seed 3", "Seed 4");
+        List<DialogueMemoryBuilder.FilteredSeed> remaining = DialogueMemoryBuilder.filterFollowUpSeeds(catalogSeeds, usedSeeds);
+        assertEquals(2, remaining.size());
+        assertEquals(3, remaining.get(0).index());
+        assertEquals("Seed 3", remaining.get(0).seed());
+        assertEquals(4, remaining.get(1).index());
+        assertEquals("Seed 4", remaining.get(1).seed());
+
+        // 4. Test buildMemory integration
+        DialogueMemoryBuilder.MemoryView memory = DialogueMemoryBuilder.buildMemory(turns, "Candidate latest text", null);
+        assertEquals(12, memory.askedQuestions().size());
+        assertEquals(java.util.Set.of(0, 1, 2), memory.usedFollowUpSeedIds());
+    }
 }

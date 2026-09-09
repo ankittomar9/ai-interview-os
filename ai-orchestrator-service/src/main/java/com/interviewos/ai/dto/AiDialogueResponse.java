@@ -15,8 +15,46 @@ public record AiDialogueResponse(
         String detectedIntent,
         String turnSummary,
         String recommendedAction,
-        String approachAssessment
+        String approachAssessment,
+        List<Integer> usedFollowUpSeedIds
 ) {
+    public AiDialogueResponse {
+        if (usedFollowUpSeedIds == null) {
+            usedFollowUpSeedIds = List.of();
+        }
+        if (approachAssessment == null || approachAssessment.isBlank()) {
+            approachAssessment = "NOT_APPLICABLE";
+        }
+    }
+
+    // 10-argument constructor for backwards compatibility
+    public AiDialogueResponse(
+            String interviewerReply,
+            String followUpQuestion,
+            boolean isSolutionComplete,
+            String codeAnalysis,
+            List<String> keyStrengths,
+            List<String> areasToImprove,
+            String detectedIntent,
+            String turnSummary,
+            String recommendedAction,
+            String approachAssessment
+    ) {
+        this(
+                interviewerReply,
+                followUpQuestion,
+                isSolutionComplete,
+                codeAnalysis,
+                keyStrengths,
+                areasToImprove,
+                detectedIntent,
+                turnSummary,
+                recommendedAction,
+                approachAssessment,
+                List.of()
+        );
+    }
+
     // 9-argument constructor for backwards compatibility
     public AiDialogueResponse(
             String interviewerReply,
@@ -39,7 +77,8 @@ public record AiDialogueResponse(
                 detectedIntent,
                 turnSummary,
                 recommendedAction,
-                "NOT_APPLICABLE"
+                "NOT_APPLICABLE",
+                List.of()
         );
     }
 
@@ -62,7 +101,8 @@ public record AiDialogueResponse(
                 "EXPLAINING_APPROACH",
                 "Candidate provided technical explanation.",
                 "PROBE_DEEPER",
-                "NOT_APPLICABLE"
+                "NOT_APPLICABLE",
+                List.of()
         );
     }
 }

@@ -869,4 +869,155 @@ class AiOrchestratorServiceDialogueTest {
         assertTrue(prompt.contains("Behavioral STAR Questions"));
         assertFalse(prompt.contains("the editor unlocks once we agree on the approach"));
     }
+
+    @Test
+    @DisplayName("VP22: Deterministic 6-turn scripted conversation with identical candidate turns and seed tracking")
+    void testVP22_Deterministic6TurnScriptedConversation_NoRepeat() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        // Setup question with 6 distinct seeds
+        List<String> seeds = List.of(
+                "Binary search boundary conditions",
+                "Time complexity analysis",
+                "Space complexity trade-offs",
+                "Duplicate element handling",
+                "Concurrency and thread safety",
+                "Integer overflow hazards"
+        );
+        ProblemCatalogClient.QuestionFullDetail detail = new ProblemCatalogClient.QuestionFullDetail(
+                "two-sum",
+                "Two Sum",
+                "ALGORITHMS_DATA_STRUCTURES",
+                "MEDIUM",
+                "Problem statement",
+                new ProblemCatalogClient.InterviewerNotesDto(List.of(), seeds, List.of()),
+                null
+        );
+        when(problemCatalogClient.getFullQuestionDetail("two-sum")).thenReturn(java.util.Optional.of(detail));
+
+        List<TranscriptTurnDto> transcript = new java.util.ArrayList<>();
+        when(sessionTranscriptClient.fetchSessionTranscript(100L)).thenReturn(transcript);
+
+        List<String> distinctQuestions = List.of(
+                "How do you plan to handle the boundary condition when left equals right?",
+                "What is the Big-O time complexity of your approach?",
+                "Can we optimize the auxiliary space complexity?",
+                "How will your solution behave when there are duplicate elements?",
+                "How would this work under concurrent reads and writes?",
+                "Have you considered 32-bit integer overflow during mid calculation?"
+        );
+
+        java.util.List<String> askedQuestions = new java.util.ArrayList<>();
+        java.util.List<Integer> capturedUsedSeedIds = new java.util.ArrayList<>();
+
+        for (int turn = 0; turn < 6; turn++) {
+            final int turnIdx = turn;
+            final String qText = distinctQuestions.get(turn);
+
+            // Mock LLM response using current seed
+            String responseJson = """
+                    {
+                      "interviewerReply": "Understood your point.",
+                      "followUpQuestion": "%s",
+                      "isSolutionComplete": false,
+                      "codeAnalysis": "Approach is being formed.",
+                      "keyStrengths": ["Consistency"],
+                      "areasToImprove": ["Depth"],
+                      "detectedIntent": "EXPLAINING_APPROACH",
+                      "turnSummary": "Candidate repeated approach turn %d.",
+                      "recommendedAction": "PROBE_DEEPER",
+                      "approachAssessment": "PROBE_MORE",
+                      "usedFollowUpSeedIds": [%d]
+                    }
+                    """.formatted(qText, turn, turnIdx);
+
+            org.mockito.ArgumentCaptor<String> promptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+            when(aiClient.generateCompletion(any(), promptCaptor.capture(), any(), any(), any()))
+                    .thenReturn(responseJson);
+
+            // Candidate repeats the EXACT SAME sentence every single turn
+            AiDialogueRequest req = AiDialogueRequest.builder()
+                    .sessionId(100L)
+                    .problemSlug("two-sum")
+                    .questionContext("Find two numbers that add up to target.")
+                    .candidateExplanation("I plan to use binary search with two pointers.")
+                    .modelProvider(ModelProvider.GEMINI)
+                    .apiKey("fake-key")
+                    .sessionMode("INTERVIEW")
+                    .sectionType("DSA")
+                    .sectionIndex(0)
+                    .totalSections(3)
+                    .build();
+
+            AiDialogueResponse resp = orchestratorService.processDialogue(req);
+
+            assertNotNull(resp);
+            assertEquals(qText, resp.followUpQuestion());
+            assertEquals(List.of(turnIdx), resp.usedFollowUpSeedIds());
+            assertEquals("PROBE_MORE", resp.approachAssessment());
+
+            askedQuestions.add(resp.followUpQuestion());
+            capturedUsedSeedIds.addAll(resp.usedFollowUpSeedIds());
+
+            String capturedPrompt = promptCaptor.getValue();
+
+            if (turn == 0) {
+                // (d) ALREADY ASKED block is absent in turn 1
+                assertFalse(capturedPrompt.contains("ALREADY ASKED"));
+                // All 6 seeds present
+                assertTrue(capturedPrompt.contains("[Seed 0]: Binary search boundary conditions"));
+                assertTrue(capturedPrompt.contains("[Seed 5]: Integer overflow hazards"));
+            } else {
+                // (d) ALREADY ASKED block appears from turn 2 onward
+                assertTrue(capturedPrompt.contains("ALREADY ASKED (never repeat or paraphrase these questions):"));
+                // Contains previous turn's question
+                for (int p = 0; p < turn; p++) {
+                    assertTrue(capturedPrompt.contains(distinctQuestions.get(p)));
+                }
+                // (c) Used seeds are excluded
+                for (int p = 0; p < turn; p++) {
+                    assertFalse(capturedPrompt.contains("[Seed " + p + "]:"));
+                }
+                // Current seed is present
+                assertTrue(capturedPrompt.contains("[Seed " + turn + "]:"));
+            }
+
+            // Simulate turn persistence into session transcript for next turn
+            transcript.add(new TranscriptTurnDto(
+                    (long) (turn * 2 + 1),
+                    "CANDIDATE",
+                    "EXPLANATION",
+                    "I plan to use binary search with two pointers.",
+                    null,
+                    Map.of("sectionType", "DSA")
+            ));
+            transcript.add(new TranscriptTurnDto(
+                    (long) (turn * 2 + 2),
+                    "INTERVIEWER",
+                    "FEEDBACK",
+                    "Understood your point.",
+                    null,
+                    Map.of(
+                            "sectionType", "DSA",
+                            "followUpQuestion", resp.followUpQuestion(),
+                            "usedFollowUpSeedIds", String.valueOf(turnIdx),
+                            "turnSummary", resp.turnSummary()
+                    )
+            ));
+        }
+
+        // (a) AI asks different questions across all 6 turns
+        assertEquals(6, askedQuestions.size());
+        assertEquals(6, new java.util.HashSet<>(askedQuestions).size());
+
+        // (b) No follow-up question repeats
+        for (int i = 0; i < askedQuestions.size(); i++) {
+            for (int j = i + 1; j < askedQuestions.size(); j++) {
+                assertNotEquals(askedQuestions.get(i), askedQuestions.get(j));
+            }
+        }
+
+        // (c & e) All 6 seeds used in sequence without repetition
+        assertEquals(List.of(0, 1, 2, 3, 4, 5), capturedUsedSeedIds);
+    }
 }

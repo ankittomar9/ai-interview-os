@@ -6,6 +6,7 @@ import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
 import { buildNavSections, type StageNavInfo } from "../../../lib/plan-navigation";
 import { isEchoOverlap } from "../../../lib/echo-overlap-filter";
 import { buildCandidateTurnPayload } from "../../../lib/turnPayload";
+import { buildAiTurnMetadata } from "../../../lib/askedLedger";
 import { toast } from "../../../hooks/useToast";
 
 export interface DialogueMessage {
@@ -324,6 +325,15 @@ export function useDialogue({
       setProviderError(null);
       const replyText = aiResponse.interviewerReply || "Thank you. Let us explore the next step.";
       const fullText = replyText + (aiResponse.followUpQuestion ? "\n\n" + aiResponse.followUpQuestion : "");
+
+      const aiMetadata = buildAiTurnMetadata({
+        aiResponse,
+        stage: currentStage,
+        sectionType: String(currentNavSection.sectionType),
+        provider,
+        model: (aiResponse as any).model ?? ""
+      });
+
       const aiMsg: DialogueMessage = {
         role: "interviewer",
         content: fullText,
@@ -332,7 +342,10 @@ export function useDialogue({
           recommendedAction: aiResponse.recommendedAction || "",
           codeAnalysis: aiResponse.codeAnalysis || "",
           detectedIntent: aiResponse.detectedIntent || "",
-          turnSummary: aiResponse.turnSummary || ""
+          turnSummary: aiResponse.turnSummary || "",
+          followUpQuestion: aiResponse.followUpQuestion || "",
+          approachAssessment: aiResponse.approachAssessment || "NOT_APPLICABLE",
+          usedFollowUpSeedIds: aiMetadata.usedFollowUpSeedIds
         }
       };
 
@@ -345,12 +358,7 @@ export function useDialogue({
           senderRole: "AI",
           content: fullText,
           messageType: "EXPLANATION",
-          metadata: {
-            stage: currentStage,
-            sectionType: String(currentNavSection.sectionType),
-            provider,
-            model: (aiResponse as any).model ?? ""
-          },
+          metadata: aiMetadata,
           integritySignals: integrity
         });
       } catch (saveErr) {

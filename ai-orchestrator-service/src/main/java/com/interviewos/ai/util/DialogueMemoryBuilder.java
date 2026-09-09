@@ -18,8 +18,33 @@ public class DialogueMemoryBuilder {
             int stuckCount,
             String previousIntent,
             String currentIntentHint,
-            String adaptiveDirective
-    ) {}
+            String adaptiveDirective,
+            List<String> askedQuestions,
+            java.util.Set<Integer> usedFollowUpSeedIds
+    ) {
+        // 7-argument constructor for backwards compatibility
+        public MemoryView(
+                String recentVerbatim,
+                String runningSummary,
+                List<String> intentHistory,
+                int stuckCount,
+                String previousIntent,
+                String currentIntentHint,
+                String adaptiveDirective
+        ) {
+            this(
+                    recentVerbatim,
+                    runningSummary,
+                    intentHistory,
+                    stuckCount,
+                    previousIntent,
+                    currentIntentHint,
+                    adaptiveDirective,
+                    List.of(),
+                    java.util.Set.of()
+            );
+        }
+    }
 
     public static MemoryView buildMemory(List<TranscriptTurnDto> turns, String currentCandidateText, String coachingMistakesHint) {
         return buildMemory(turns, currentCandidateText, coachingMistakesHint, false, 0);
@@ -135,6 +160,12 @@ public class DialogueMemoryBuilder {
             adaptiveDirective = "PROBE_DEEPER: Challenge with an edge case, scalability invariant, or trade-off.";
         }
 
+        // 7. Asked Questions ledger: collect every non-blank AI-turn metadata.followUpQuestion (last 12, each <= 120 chars)
+        List<String> askedQuestions = extractAskedQuestions(turns);
+
+        // 8. Used follow-up seed IDs across prior turns
+        java.util.Set<Integer> usedFollowUpSeedIds = extractUsedSeedIds(turns);
+
         return new MemoryView(
                 recentVerbatim,
                 runningSummary,
@@ -142,7 +173,9 @@ public class DialogueMemoryBuilder {
                 stuckCount,
                 previousIntent,
                 currentIntentHint,
-                adaptiveDirective
+                adaptiveDirective,
+                askedQuestions,
+                usedFollowUpSeedIds
         );
     }
 
@@ -181,5 +214,69 @@ public class DialogueMemoryBuilder {
             if (ai5Grams.contains(g)) matched++;
         }
         return ((double) matched / candidate5Grams.size()) >= threshold;
+    }
+
+    public static List<String> extractAskedQuestions(List<TranscriptTurnDto> turns) {
+        if (turns == null || turns.isEmpty()) {
+            return List.of();
+        }
+        List<String> asked = new ArrayList<>();
+        for (TranscriptTurnDto t : turns) {
+            String role = t.senderRole() != null ? t.senderRole().toUpperCase() : "";
+            if ("INTERVIEWER".equals(role) || "AI".equals(role)) {
+                if (t.metadata() != null) {
+                    String fq = t.metadata().get("followUpQuestion");
+                    if (fq != null && !fq.isBlank()) {
+                        String q = fq.trim();
+                        if (q.length() > 120) {
+                            q = q.substring(0, 120) + "...";
+                        }
+                        asked.add(q);
+                    }
+                }
+            }
+        }
+        if (asked.size() > 12) {
+            asked = asked.subList(asked.size() - 12, asked.size());
+        }
+        return asked;
+    }
+
+    public static java.util.Set<Integer> extractUsedSeedIds(List<TranscriptTurnDto> turns) {
+        if (turns == null || turns.isEmpty()) {
+            return java.util.Set.of();
+        }
+        java.util.Set<Integer> used = new java.util.HashSet<>();
+        for (TranscriptTurnDto t : turns) {
+            if (t.metadata() != null) {
+                String raw = t.metadata().get("usedFollowUpSeedIds");
+                if (raw != null && !raw.isBlank()) {
+                    String[] tokens = raw.replaceAll("[\\[\\]\\s]", "").split(",");
+                    for (String token : tokens) {
+                        try {
+                            if (!token.isBlank()) {
+                                used.add(Integer.parseInt(token.trim()));
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+            }
+        }
+        return used;
+    }
+
+    public record FilteredSeed(int index, String seed) {}
+
+    public static List<FilteredSeed> filterFollowUpSeeds(List<String> seeds, java.util.Set<Integer> usedSeedIds) {
+        if (seeds == null || seeds.isEmpty()) {
+            return List.of();
+        }
+        List<FilteredSeed> result = new ArrayList<>();
+        for (int i = 0; i < seeds.size(); i++) {
+            if (usedSeedIds == null || !usedSeedIds.contains(i)) {
+                result.add(new FilteredSeed(i, seeds.get(i)));
+            }
+        }
+        return result;
     }
 }
