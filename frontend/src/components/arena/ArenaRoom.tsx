@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, SectionGate } from '../../types';
 import { getSession, getSessionResume } from '../../services/api';
 import { isApproachGateLocked } from '../../lib/approachGate';
+import { useLeaveGuard, isLeaveGuardActive } from '../../hooks/useLeaveGuard';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
 import { useExecution } from './hooks/useExecution';
 import { useDialogue } from './hooks/useDialogue';
@@ -83,6 +84,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const [targetCompany, setTargetCompany] = useState<string | undefined>(undefined);
   const [jobDescription, setJobDescription] = useState<string | undefined>(undefined);
   const [resumeSummary, setResumeSummary] = useState<string | undefined>(undefined);
+  const [sessionStatus, setSessionStatus] = useState<string>('IN_PROGRESS');
+
+  // P12 / IH4: Active Interview Leave Guard
+  useLeaveGuard(isLeaveGuardActive(sessionMode, sessionStatus, true));
 
   useEffect(() => {
     if (sessionId) {
@@ -91,6 +96,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
           if (res.sectionGates && res.sectionGates.length > 0) {
             setSectionGates(res.sectionGates);
           }
+          if (res.status) setSessionStatus(res.status);
           if (res.targetCompany) setTargetCompany(res.targetCompany);
           if (res.jobDescription) setJobDescription(res.jobDescription);
         })
