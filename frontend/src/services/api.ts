@@ -63,6 +63,12 @@ export const startSession = async (sessionId: number): Promise<SessionResponse> 
     });
 };
 
+export const completeSession = async (sessionId: number): Promise<SessionResponse> => {
+    return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}/complete`, {
+        method: 'POST'
+    });
+};
+
 export interface VerificationPayload {
     cameraOk: boolean;
     micOk: boolean;

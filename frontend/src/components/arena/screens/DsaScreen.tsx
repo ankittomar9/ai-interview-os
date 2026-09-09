@@ -97,10 +97,10 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
                 onChange={(e) => onChangeLanguage(e.target.value)}
                 className="bg-surface border border-border rounded px-2 py-0.5 text-xs text-text focus:outline-none focus:border-primary font-mono cursor-pointer"
               >
-                <option value="java">Java (OpenJDK 21)</option>
-                <option value="python">Python (3.11)</option>
-                <option value="cpp">C++ (GCC 13)</option>
-                <option value="javascript">JavaScript (Node 20)</option>
+                <option value="java">Java (OpenJDK 13.0.1)</option>
+                <option value="python">Python (3.8.1)</option>
+                <option value="cpp">C++ (GCC 9.2.0)</option>
+                <option value="javascript">JavaScript (Node.js 12.14.0)</option>
               </select>
             </div>
 
