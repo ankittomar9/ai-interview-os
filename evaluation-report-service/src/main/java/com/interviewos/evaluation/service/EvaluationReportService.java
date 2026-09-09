@@ -227,6 +227,14 @@ public class EvaluationReportService {
                 .count();
 
         // 4. Resolve Canonical Problem Details (P1 Fix)
+        if ((extractedProblemSlug == null || extractedProblemSlug.isBlank()) && session.plan() != null && session.plan().sections() != null) {
+            for (SessionServiceClient.PlannedSectionDto ps : session.plan().sections()) {
+                if (ps.problemSlugs() != null && !ps.problemSlugs().isEmpty()) {
+                    extractedProblemSlug = ps.problemSlugs().get(0);
+                    break;
+                }
+            }
+        }
         String canonicalProblemSlug = extractedProblemSlug != null ? extractedProblemSlug :
                 (session.roleTitle() != null ? session.roleTitle().toLowerCase().replaceAll("[^a-z0-9]+", "-") : "technical-assessment");
         String canonicalProblemStatement = "Technical assessment for " + session.roleTitle() + " (" + session.difficulty() + ")";

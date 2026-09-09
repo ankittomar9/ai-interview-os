@@ -38,8 +38,13 @@ public class OllamaClient implements AiClient {
             String customModel
     ) {
         AiProviderProperties.ProviderConfig config = providerProperties.getConfigFor(ModelProvider.OLLAMA);
-        String endpoint = config.endpoint();
+        String endpoint = (config != null && config.endpoint() != null && !config.endpoint().isBlank())
+                ? config.endpoint()
+                : "http://host.docker.internal:11434/api/generate";
         String model = (config != null) ? config.getEffectiveModelFor(customModel) : ((customModel != null && !customModel.isBlank()) ? customModel : "qwen2.5-coder:7b");
+        if (model == null || model.isBlank() || "eval".equalsIgnoreCase(model) || "dialogue".equalsIgnoreCase(model) || "fast".equalsIgnoreCase(model)) {
+            model = "qwen2.5-coder:7b";
+        }
 
         log.info("Connecting to Local Ollama at: {} | Model: {} | Prompt length: {} chars",
                 endpoint, model, (systemInstruction.length() + userPrompt.length()));

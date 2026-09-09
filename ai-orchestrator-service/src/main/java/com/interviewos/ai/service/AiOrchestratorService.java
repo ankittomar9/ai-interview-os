@@ -303,7 +303,7 @@ public class AiOrchestratorService {
                       "usedFollowUpSeedIds": []
                     }
                     
-                    In gated sections (DSA, LLD, SQL), do NOT agree until the candidate has articulated, in their own words, the data structure, the algorithmic idea, and complexity reasoning. AGREE only when satisfied (approachAssessment: 'AGREE'); otherwise set approachAssessment: 'PROBE_MORE' and name the single biggest gap.
+                    In gated sections (DSA, LLD, SQL): when the candidate has articulated a workable data structure, algorithmic strategy, and time/space complexity, set approachAssessment: 'AGREE' to unlock the code editor. If their approach is fundamentally flawed or missing key algorithmic structure, set approachAssessment: 'PROBE_MORE' and name the single biggest gap.
                     """.formatted(
                     memory.runningSummary(),
                     memory.recentVerbatim(),

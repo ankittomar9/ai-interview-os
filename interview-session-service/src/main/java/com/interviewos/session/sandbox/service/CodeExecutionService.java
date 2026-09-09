@@ -252,6 +252,23 @@ public class CodeExecutionService {
                     }
                 }
             }
+
+            // Plan-grounded check: If planned sections define a gated coding section, require that section to be explicitly OPEN
+            if (doc.getPlanSections() != null && !doc.getPlanSections().isEmpty()) {
+                for (int i = 0; i < doc.getPlanSections().size(); i++) {
+                    InterviewSessionDocument.PlannedSectionDocument ps = doc.getPlanSections().get(i);
+                    if (isGatedSectionType(ps.getSectionType())) {
+                        final int secIdx = i;
+                        boolean isOpen = progressList != null && progressList.stream()
+                                .anyMatch(p -> p.getIndex() != null && p.getIndex().equals(secIdx) && "OPEN".equalsIgnoreCase(p.getGateStatus()));
+                        if (!isOpen) {
+                            log.warn("Code execution rejected for session {}: GATE_LOCKED in planned section '{}' (idx: {})",
+                                    sessionId, ps.getSectionType(), secIdx);
+                            throw new com.interviewos.session.exception.GateLockedException("Explain your approach to the interviewer before coding.");
+                        }
+                    }
+                }
+            }
         });
     }
 

@@ -82,9 +82,13 @@ public class OpenAiCompatibleClient implements AiClient {
         List<String> modelCandidates;
         if (provider == ModelProvider.GROQ) {
             String resolvedFromConfig = config != null ? config.getEffectiveModelFor(customModel) : null;
-            String requested = (resolvedFromConfig != null && !resolvedFromConfig.isBlank())
+            String requested = (resolvedFromConfig != null && !resolvedFromConfig.isBlank() && !isTaskKeyword(resolvedFromConfig))
                     ? resolvedFromConfig
-                    : ((customModel != null && !customModel.isBlank()) ? customModel : (config != null && config.defaultModel() != null ? config.defaultModel() : "openai/gpt-oss-120b"));
+                    : ((customModel != null && !customModel.isBlank() && !isTaskKeyword(customModel))
+                            ? customModel
+                            : (config != null && config.defaultModel() != null && !isTaskKeyword(config.defaultModel())
+                                    ? config.defaultModel()
+                                    : "openai/gpt-oss-120b"));
 
             List<String> rawFallbacks = (config != null && config.fallbackModels() != null)
                     ? config.fallbackModels()
@@ -95,7 +99,7 @@ public class OpenAiCompatibleClient implements AiClient {
                 if (fb != null && !fb.isBlank()) {
                     for (String part : fb.split(",")) {
                         String clean = part.trim();
-                        if (!clean.isEmpty() && !list.contains(clean)) {
+                        if (!clean.isEmpty() && !isTaskKeyword(clean) && !list.contains(clean)) {
                             list.add(clean);
                         }
                     }
@@ -107,9 +111,13 @@ public class OpenAiCompatibleClient implements AiClient {
                     customModel != null ? customModel : "default", requested, modelCandidates);
         } else {
             String resolvedFromConfig = config != null ? config.getEffectiveModelFor(customModel) : null;
-            String requested = (resolvedFromConfig != null && !resolvedFromConfig.isBlank())
+            String requested = (resolvedFromConfig != null && !resolvedFromConfig.isBlank() && !isTaskKeyword(resolvedFromConfig))
                     ? resolvedFromConfig
-                    : ((customModel != null && !customModel.isBlank()) ? customModel : (config != null && config.defaultModel() != null ? config.defaultModel() : "gpt-4o"));
+                    : ((customModel != null && !customModel.isBlank() && !isTaskKeyword(customModel))
+                            ? customModel
+                            : (config != null && config.defaultModel() != null && !isTaskKeyword(config.defaultModel())
+                                    ? config.defaultModel()
+                                    : "gpt-4o"));
             modelCandidates = List.of(requested);
             log.info("🎯 {} Model Routing — Task/Requested: '{}', Effective Model: '{}'",
                     provider, customModel != null ? customModel : "default", requested);
@@ -195,5 +203,14 @@ public class OpenAiCompatibleClient implements AiClient {
             log.error("Failed to parse OpenAI-compatible response from {}: {}", provider, rawResponse, e);
             throw new RuntimeException("Error parsing AI response from " + provider, e);
         }
+    }
+
+    private static boolean isTaskKeyword(String s) {
+        if (s == null) return true;
+        String lower = s.trim().toLowerCase();
+        return lower.equals("dialogue") || lower.equals("conversation")
+                || lower.equals("fast") || lower.equals("hints") || lower.equals("intent")
+                || lower.equals("eval") || lower.equals("rubric") || lower.equals("report")
+                || lower.equals("stt") || lower.equals("default");
     }
 }
