@@ -265,7 +265,8 @@ public class AiOrchestratorService {
                       "areasToImprove": ["Tip 1"],
                       "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
                       "turnSummary": "Concise summary of this practice turn in <= 25 words",
-                      "recommendedAction": "OFFER_HINT | PROBE_DEEPER | ANSWER_CLARIFICATION | ADVANCE_STAGE"
+                      "recommendedAction": "OFFER_HINT | PROBE_DEEPER | ANSWER_CLARIFICATION | ADVANCE_STAGE",
+                      "usedFollowUpSeedIds": []
                     }
                     """.formatted(
                     memory.runningSummary(),
@@ -298,7 +299,8 @@ public class AiOrchestratorService {
                       "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
                       "turnSummary": "Concise summary of this candidate turn in <= 25 words",
                       "recommendedAction": "PROBE_DEEPER | OFFER_HINT | PROPOSE_STAGE_ADVANCE | ADVANCE_STAGE | ANSWER_CLARIFICATION",
-                      "approachAssessment": "NOT_APPLICABLE | PROBE_MORE | AGREE"
+                      "approachAssessment": "NOT_APPLICABLE | PROBE_MORE | AGREE",
+                      "usedFollowUpSeedIds": []
                     }
                     
                     In gated sections (DSA, LLD, SQL), do NOT agree until the candidate has articulated, in their own words, the data structure, the algorithmic idea, and complexity reasoning. AGREE only when satisfied (approachAssessment: 'AGREE'); otherwise set approachAssessment: 'PROBE_MORE' and name the single biggest gap.
@@ -395,10 +397,18 @@ public class AiOrchestratorService {
             ));
         }
 
-        if (!followUpSeeds.isEmpty()) {
+        List<DialogueMemoryBuilder.FilteredSeed> filteredSeeds = DialogueMemoryBuilder.filterFollowUpSeeds(followUpSeeds, memory.usedFollowUpSeedIds());
+        if (!filteredSeeds.isEmpty()) {
             systemInstructionBuilder.append("\nSuggested Follow-Up Topics for this challenge (probe candidate on these when appropriate):\n");
-            for (String seed : followUpSeeds) {
-                systemInstructionBuilder.append("- ").append(seed).append("\n");
+            for (DialogueMemoryBuilder.FilteredSeed fs : filteredSeeds) {
+                systemInstructionBuilder.append(String.format("- [Seed %d]: %s\n", fs.index(), fs.seed()));
+            }
+        }
+
+        if (!memory.askedQuestions().isEmpty()) {
+            systemInstructionBuilder.append("\nALREADY ASKED (never repeat or paraphrase these questions):\n");
+            for (String q : memory.askedQuestions()) {
+                systemInstructionBuilder.append("- ").append(q).append("\n");
             }
         }
 
@@ -631,6 +641,19 @@ public class AiOrchestratorService {
                 approachAssessment = "NOT_APPLICABLE";
             }
 
+            List<Integer> usedFollowUpSeedIds = new ArrayList<>();
+            if (root.has("usedFollowUpSeedIds") && root.get("usedFollowUpSeedIds").isArray()) {
+                root.get("usedFollowUpSeedIds").forEach(idNode -> {
+                    if (idNode.isInt() || idNode.isNumber()) {
+                        usedFollowUpSeedIds.add(idNode.asInt());
+                    } else if (idNode.isTextual()) {
+                        try {
+                            usedFollowUpSeedIds.add(Integer.parseInt(idNode.asText().trim()));
+                        } catch (NumberFormatException ignored) {}
+                    }
+                });
+            }
+
             return new AiDialogueResponse(
                     reply,
                     followUp,
@@ -641,7 +664,8 @@ public class AiOrchestratorService {
                     detectedIntent,
                     turnSummary,
                     recommendedAction,
-                    approachAssessment
+                    approachAssessment,
+                    usedFollowUpSeedIds
             );
         } catch (Exception e) {
             if (providerStatusService != null) {
