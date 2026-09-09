@@ -7,7 +7,6 @@ public enum ModelProvider {
     GEMINI,
     GROQ,
     OPENAI,
-    ANTHROPIC,
     QWEN,
     GLM,
     KIMI,

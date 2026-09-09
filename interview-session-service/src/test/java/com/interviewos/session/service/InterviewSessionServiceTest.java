@@ -572,4 +572,33 @@ class InterviewSessionServiceTest {
 
         assertThrows(IllegalStateException.class, () -> serviceWithVerification.addMessage(1L, msgReq));
     }
+
+    @Test
+    @DisplayName("F1: completeSession is idempotent: second call returns completed session without exception and preserves durationSeconds")
+    void testCompleteSession_Idempotent_PreservesDurationSeconds() {
+        Instant started = Instant.now().minusSeconds(120);
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .candidateId("cand-1")
+                .roleTitle("Engineer")
+                .track(InterviewTrack.SQL)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.IN_PROGRESS)
+                .startedAt(started)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        SessionResponse resp1 = serviceWithVerification.completeSession(1L);
+        assertThat(resp1.status()).isEqualTo(SessionStatus.COMPLETED);
+        assertThat(resp1.durationSeconds()).isNotNull();
+        Long originalDuration = resp1.durationSeconds();
+
+        // Second call on already completed session
+        SessionResponse resp2 = serviceWithVerification.completeSession(1L);
+        assertThat(resp2.status()).isEqualTo(SessionStatus.COMPLETED);
+        assertThat(resp2.durationSeconds()).isEqualTo(originalDuration);
+    }
 }
