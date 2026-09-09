@@ -257,6 +257,7 @@ services:
       - GROQ_MODEL_EVAL=${GROQ_MODEL_EVAL:-openai/gpt-oss-120b}
       - GROQ_MODEL_STT=${GROQ_MODEL_STT:-whisper-large-v3-turbo}
       - GROQ_FALLBACK_MODELS=${GROQ_FALLBACK_MODELS:-openai/gpt-oss-20b,qwen/qwen3.8-27b}
+      - RUBRIC_PROVIDER=${RUBRIC_PROVIDER:-groq}
       - WHISPER_ENDPOINT=${WHISPER_ENDPOINT:-http://whisper-sidecar:8178/inference}
     extra_hosts:
       - "host.docker.internal:host-gateway"

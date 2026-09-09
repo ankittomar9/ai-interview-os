@@ -80,7 +80,15 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const [secondaryCameraConnected] = useState(false);
   const [singleCameraAcknowledged, setSingleCameraAcknowledged] = useState(false);
   const [consentGiven, setConsentGiven] = useState(!isInterview);
-  const [envMode, setEnvMode] = useState<'dev' | 'prod'>('prod');
+  const [envMode, setEnvMode] = useState<'dev' | 'prod'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('dev') === 'true' || localStorage.getItem('app.env') === 'dev' || Boolean(import.meta.env?.DEV)) {
+        return 'dev';
+      }
+    }
+    return 'prod';
+  });
   const [capabilities, setCapabilities] = useState<SystemCapabilities | null>(null);
   const [isAiPanelOpen, setIsAiPanelOpen] = useState(() => sessionStorage.getItem('ai.panel.checklist') === 'true');
   const [isSubmitting, setIsSubmitting] = useState(false);

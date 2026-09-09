@@ -39,7 +39,7 @@ ai:
     allow-cloud-fallback: ${AI_RUBRIC_ALLOW_CLOUD_FALLBACK:${RUBRIC_ALLOW_CLOUD_FALLBACK:true}}
 
 rubric:
-  provider: ${RUBRIC_PROVIDER:ollama}
+  provider: ${RUBRIC_PROVIDER:groq}
   api-key: ${RUBRIC_API_KEY:}
   timeout-seconds: ${RUBRIC_TIMEOUT_SECONDS:25}
   allow-cloud-fallback: ${AI_RUBRIC_ALLOW_CLOUD_FALLBACK:${RUBRIC_ALLOW_CLOUD_FALLBACK:true}}
