@@ -109,6 +109,39 @@ public class AiOrchestratorController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/handoff")
+    public ResponseEntity<AiDialogueResponse> processHandoff(
+            @RequestHeader(value = "X-InterviewOS-Key", required = false) String headerApiKey,
+            @Valid @RequestBody com.interviewos.ai.dto.AiHandoffRequest request
+    ) {
+        long start = System.currentTimeMillis();
+        String effectiveApiKey = (headerApiKey != null && !headerApiKey.isBlank()) ? headerApiKey : request.apiKey();
+        com.interviewos.ai.dto.AiHandoffRequest effectiveRequest = (request.apiKey() == null || !request.apiKey().equals(effectiveApiKey))
+                ? com.interviewos.ai.dto.AiHandoffRequest.builder()
+                        .sessionId(request.sessionId())
+                        .fromSectionType(request.fromSectionType())
+                        .toSectionType(request.toSectionType())
+                        .toSectionTitle(request.toSectionTitle())
+                        .toSectionGated(request.toSectionGated())
+                        .candidateName(request.candidateName())
+                        .apiKey(effectiveApiKey)
+                        .modelProvider(request.modelProvider())
+                        .modelName(request.modelName())
+                        .build()
+                : request;
+
+        log.info("🎙 AI Handoff Requested: Session={}, From='{}', To='{}' ({}), Gated={}",
+                effectiveRequest.sessionId(), effectiveRequest.fromSectionType(),
+                effectiveRequest.toSectionTitle(), effectiveRequest.toSectionType(),
+                effectiveRequest.toSectionGated());
+
+        AiDialogueResponse response = orchestratorService.processHandoff(effectiveRequest);
+        long duration = System.currentTimeMillis() - start;
+
+        log.info("✅ AI Handoff Evaluated in {}ms", duration);
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * High-Speed Neural Speech-to-Text via Groq Whisper LPU.
      */

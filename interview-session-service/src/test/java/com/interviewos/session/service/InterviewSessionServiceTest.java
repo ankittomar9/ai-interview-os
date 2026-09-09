@@ -259,7 +259,7 @@ class InterviewSessionServiceTest {
 
         PlannedSection intro = plan.sections().get(0);
         assertThat(intro.sectionType()).isEqualTo(SectionType.INTRODUCTION);
-        assertThat(intro.softTimeBudgetMinutes()).isEqualTo(5);
+        assertThat(intro.softTimeBudgetMinutes()).isEqualTo(8);
         assertThat(intro.itemCount()).isEqualTo(1);
 
         PlannedSection domain = plan.sections().get(1);
@@ -279,9 +279,9 @@ class InterviewSessionServiceTest {
     @Test
     @DisplayName("C1: FULL_LOOP presets implement exact multi-stage progression and budgets")
     void testSessionPlan_FullLoop_Presets() {
-        // JUNIOR: INTRO(5) + DSA(30, 2 items) + LLD(15, 1 item) = 52 min
+        // JUNIOR: INTRO(8) + DSA(20, 2 items) + LLD(15, 1 item) = 43 min
         SessionPlan junior = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.JUNIOR, 42L);
-        assertThat(junior.plannedTotalMinutes()).isEqualTo(52);
+        assertThat(junior.plannedTotalMinutes()).isEqualTo(43);
         assertThat(junior.sections()).hasSize(3);
         assertThat(junior.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
         assertThat(junior.sections().get(1).sectionType()).isEqualTo(SectionType.DSA);
@@ -289,9 +289,9 @@ class InterviewSessionServiceTest {
         assertThat(junior.sections().get(2).sectionType()).isEqualTo(SectionType.LLD);
         assertThat(junior.sections().get(2).itemCount()).isEqualTo(1);
 
-        // MID: INTRO(5) + DSA(30, 2 items) + LLD(20, 2 items) = 58 min
+        // MID: INTRO(8) + DSA(20, 2 items) + LLD(15, 2 items) = 43 min
         SessionPlan mid = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.MID, 42L);
-        assertThat(mid.plannedTotalMinutes()).isEqualTo(58);
+        assertThat(mid.plannedTotalMinutes()).isEqualTo(43);
         assertThat(mid.sections()).hasSize(3);
         assertThat(mid.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
         assertThat(mid.sections().get(1).sectionType()).isEqualTo(SectionType.DSA);
@@ -299,18 +299,18 @@ class InterviewSessionServiceTest {
         assertThat(mid.sections().get(2).sectionType()).isEqualTo(SectionType.LLD);
         assertThat(mid.sections().get(2).itemCount()).isEqualTo(2);
 
-        // SENIOR: INTRO(5) + DSA(15, 1 item) + LLD(15, 1 item) + SD(18, 1 item) = 55 min
+        // SENIOR: INTRO(8) + DSA(20, 1 item) + LLD(15, 1 item) + SD(18, 1 item) = 61 min
         SessionPlan senior = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.SENIOR, 42L);
-        assertThat(senior.plannedTotalMinutes()).isEqualTo(55);
+        assertThat(senior.plannedTotalMinutes()).isEqualTo(61);
         assertThat(senior.sections()).hasSize(4);
         assertThat(senior.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
         assertThat(senior.sections().get(1).sectionType()).isEqualTo(SectionType.DSA);
         assertThat(senior.sections().get(2).sectionType()).isEqualTo(SectionType.LLD);
         assertThat(senior.sections().get(3).sectionType()).isEqualTo(SectionType.SYSTEM_DESIGN);
 
-        // STAFF: INTRO(5) + LLD(15, 1 item) + SD(18, 1 item) + RESUME(12, 1 item) = 52 min
+        // STAFF: INTRO(8) + LLD(15, 1 item) + SD(18, 1 item) + RESUME(12, 1 item) = 53 min
         SessionPlan staff = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.STAFF, 42L);
-        assertThat(staff.plannedTotalMinutes()).isEqualTo(52);
+        assertThat(staff.plannedTotalMinutes()).isEqualTo(53);
         assertThat(staff.sections()).hasSize(4);
         assertThat(staff.sections().get(0).sectionType()).isEqualTo(SectionType.INTRODUCTION);
         assertThat(staff.sections().get(1).sectionType()).isEqualTo(SectionType.LLD);

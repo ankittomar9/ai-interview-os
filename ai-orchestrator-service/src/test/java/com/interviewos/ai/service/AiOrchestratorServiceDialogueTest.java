@@ -7,6 +7,7 @@ import com.interviewos.ai.client.ProblemCatalogClient;
 import com.interviewos.ai.client.SessionTranscriptClient;
 import com.interviewos.ai.dto.AiDialogueRequest;
 import com.interviewos.ai.dto.AiDialogueResponse;
+import com.interviewos.ai.dto.AiHandoffRequest;
 import com.interviewos.ai.dto.TranscriptTurnDto;
 import java.util.Map;
 import com.interviewos.ai.model.ModelProvider;
@@ -670,5 +671,202 @@ class AiOrchestratorServiceDialogueTest {
         assertEquals("AGREE", response.approachAssessment());
         org.mockito.Mockito.verify(sessionTranscriptClient, org.mockito.Mockito.times(1))
                 .openSectionGate(100L, 0, "APPROACH_AGREED", 0L);
+    }
+
+    @Test
+    @DisplayName("VP20: INTRO stage prompt includes candidate context block with truncated JD and resume when provided")
+    void testVP20_IntroPromptContextAssembly_PresentAndTruncated() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String longJd = "A".repeat(950);
+        String longResume = "B".repeat(950);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Welcome. I see you have strong experience at Google.",
+                  "followUpQuestion": "Can you elaborate on your distributed systems work?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "EXPLAINING_APPROACH",
+                  "turnSummary": "Candidate intro",
+                  "recommendedAction": "PROBE_DEEPER",
+                  "approachAssessment": "NOT_APPLICABLE"
+                }
+                """;
+        org.mockito.ArgumentCaptor<String> systemInstructionCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(aiClient.generateCompletion(any(), systemInstructionCaptor.capture(), any(), any(), any()))
+                .thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(102L)
+                .sessionMode("INTERVIEW")
+                .sectionType("INTRODUCTION")
+                .targetCompany("Google")
+                .jobDescription(longJd)
+                .resumeSummary(longResume)
+                .candidateExplanation("Hello, glad to be here.")
+                .modelProvider(ModelProvider.GEMINI)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        String captured = systemInstructionCaptor.getValue();
+        assertTrue(captured.contains("CANDIDATE CONTEXT:"));
+        assertTrue(captured.contains("- Target Company: Google"));
+        // Truncated to 800 chars
+        assertTrue(captured.contains("- Job Description: " + "A".repeat(800)));
+        assertFalse(captured.contains("A".repeat(801)));
+        assertTrue(captured.contains("- Resume Summary: " + "B".repeat(800)));
+        assertFalse(captured.contains("B".repeat(801)));
+        assertTrue(captured.contains("Open with ONE question grounded in a specific project, technology, or JD requirement from the context. Ask 'tell me about yourself' only if no grounded context exists."));
+    }
+
+    @Test
+    @DisplayName("VP20: INTRO stage prompt omits candidate context block when fields are null or blank")
+    void testVP20_IntroPromptContextAssembly_AbsentWithoutError() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Welcome to the interview.",
+                  "followUpQuestion": "Could you tell me about yourself?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "EXPLAINING_APPROACH",
+                  "turnSummary": "Candidate intro",
+                  "recommendedAction": "PROBE_DEEPER",
+                  "approachAssessment": "NOT_APPLICABLE"
+                }
+                """;
+        org.mockito.ArgumentCaptor<String> systemInstructionCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(aiClient.generateCompletion(any(), systemInstructionCaptor.capture(), any(), any(), any()))
+                .thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(103L)
+                .sessionMode("INTERVIEW")
+                .sectionType("INTRODUCTION")
+                .targetCompany(null)
+                .jobDescription("")
+                .resumeSummary(null)
+                .candidateExplanation("Hi")
+                .modelProvider(ModelProvider.GEMINI)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        String captured = systemInstructionCaptor.getValue();
+        assertFalse(captured.contains("CANDIDATE CONTEXT:"));
+        assertTrue(captured.contains("Open with ONE question grounded in a specific project, technology, or JD requirement from the context. Ask 'tell me about yourself' only if no grounded context exists."));
+    }
+
+    @Test
+    @DisplayName("VP19: Handoff prompt includes persona, 1-sentence close, next section title, and verbatim gate instruction when gated")
+    void testVP19_ProcessHandoff_GatedSection() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        List<TranscriptTurnDto> transcript = List.of(
+                new TranscriptTurnDto(1L, "INTERVIEWER", "MESSAGE",
+                        "Great job with the introduction.",
+                        null, Map.of("sectionType", "INTRODUCTION", "turnSummary", "Candidate shared background."))
+        );
+        when(sessionTranscriptClient.fetchSessionTranscript(200L)).thenReturn(transcript);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "That concludes our intro. Next up is Algorithmic Problem Solving. Open the problem and read it fully. Before you write any code, explain to me in the chat how you plan to solve it — the editor unlocks once we agree on the approach.",
+                  "followUpQuestion": "",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "SECTION_HANDOFF",
+                  "turnSummary": "Section handoff transition",
+                  "recommendedAction": "NOT_APPLICABLE",
+                  "approachAssessment": "NOT_APPLICABLE"
+                }
+                """;
+
+        org.mockito.ArgumentCaptor<String> promptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(aiClient.generateCompletion(any(), promptCaptor.capture(), any(), any(), any()))
+                .thenReturn(rawJson);
+
+        AiHandoffRequest request = new AiHandoffRequest(
+                200L,
+                "INTRODUCTION",
+                "DSA",
+                "Algorithmic Problem Solving",
+                true,
+                "Alice",
+                "fake-key",
+                ModelProvider.GEMINI,
+                "test-model"
+        );
+
+        AiDialogueResponse response = orchestratorService.processHandoff(request);
+
+        assertNotNull(response);
+        assertEquals("SECTION_HANDOFF", response.detectedIntent());
+        assertTrue(response.interviewerReply().contains("Algorithmic Problem Solving"));
+
+        String prompt = promptCaptor.getValue();
+        assertTrue(prompt.contains("Dr. Anya Chen"));
+        assertTrue(prompt.contains("Candidate shared background."));
+        assertTrue(prompt.contains("Algorithmic Problem Solving"));
+        assertTrue(prompt.contains("Open the problem and read it fully. Before you write any code, explain to me in the chat how you plan to solve it — the editor unlocks once we agree on the approach."));
+    }
+
+    @Test
+    @DisplayName("VP19: Handoff prompt omits gate instruction for non-gated section")
+    void testVP19_ProcessHandoff_NonGatedSection() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        when(sessionTranscriptClient.fetchSessionTranscript(201L)).thenReturn(List.of());
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Let us move to Behavioral STAR.",
+                  "followUpQuestion": "",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "SECTION_HANDOFF",
+                  "turnSummary": "Section handoff transition",
+                  "recommendedAction": "NOT_APPLICABLE",
+                  "approachAssessment": "NOT_APPLICABLE"
+                }
+                """;
+
+        org.mockito.ArgumentCaptor<String> promptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(aiClient.generateCompletion(any(), promptCaptor.capture(), any(), any(), any()))
+                .thenReturn(rawJson);
+
+        AiHandoffRequest request = new AiHandoffRequest(
+                201L,
+                "DSA",
+                "BEHAVIORAL_STAR",
+                "Behavioral STAR Questions",
+                false,
+                "Bob",
+                "fake-key",
+                ModelProvider.GEMINI,
+                "test-model"
+        );
+
+        AiDialogueResponse response = orchestratorService.processHandoff(request);
+
+        assertNotNull(response);
+        assertEquals("SECTION_HANDOFF", response.detectedIntent());
+
+        String prompt = promptCaptor.getValue();
+        assertTrue(prompt.contains("Behavioral STAR Questions"));
+        assertFalse(prompt.contains("the editor unlocks once we agree on the approach"));
     }
 }

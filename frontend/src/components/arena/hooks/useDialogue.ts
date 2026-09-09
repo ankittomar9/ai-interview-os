@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { ModelProvider, IntegritySignals, PlannedSection, AiDialogueResponse } from "../../../types";
-import { processDialogueTurn, addMessageToSession, recordSectionTransition } from "../../../services/api";
+import { processDialogueTurn, addMessageToSession, recordSectionTransition, requestSectionHandoff } from "../../../services/api";
+import { isGatedSectionType } from "../../../lib/approachGate";
 import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
 import { buildNavSections, type StageNavInfo } from "../../../lib/plan-navigation";
 import { isEchoOverlap } from "../../../lib/echo-overlap-filter";
@@ -37,6 +38,9 @@ interface UseDialogueProps {
   getIntegritySignals?: () => IntegritySignals | undefined;
   onSectionChanged?: (sectionIndex: number, section: StageNavInfo) => void;
   onAiTurnCompleted?: (response: AiDialogueResponse) => void;
+  jobDescription?: string;
+  targetCompany?: string;
+  resumeSummary?: string;
 }
 
 export function useDialogue({
@@ -55,8 +59,12 @@ export function useDialogue({
   onAiSpeechRequested,
   getIntegritySignals,
   onSectionChanged,
-  onAiTurnCompleted
+  onAiTurnCompleted,
+  jobDescription,
+  targetCompany,
+  resumeSummary
 }: UseDialogueProps) {
+  const lastHandoffIndexRef = useRef<number | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>(() => [
     {
       role: "interviewer",
@@ -157,7 +165,64 @@ export function useDialogue({
     if (onSectionChanged) {
       onSectionChanged(toIdx, targetSec);
     }
-  }, [activeSectionIndex, navSections, stageTurnCounts, sessionId, onSectionChanged]);
+
+    // P11 / IH3: AI-Narrated Section Handoff with dedup guard
+    if (lastHandoffIndexRef.current !== toIdx && sessionId) {
+      lastHandoffIndexRef.current = toIdx;
+      const curSec = navSections[fromIdx];
+      const isTargetGated = isGatedSectionType(String(targetSec.sectionType));
+
+      requestSectionHandoff({
+        sessionId,
+        fromSectionType: curSec ? String(curSec.sectionType) : "",
+        toSectionType: String(targetSec.sectionType),
+        toSectionTitle: targetSec.label || String(targetSec.sectionType),
+        toSectionGated: isTargetGated,
+        candidateName,
+        apiKey,
+        modelProvider: provider
+      }).then(async (handoffRes) => {
+        if (handoffRes && handoffRes.interviewerReply) {
+          const handoffMsg: DialogueMessage = {
+            role: "interviewer",
+            content: handoffRes.interviewerReply,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            metadata: {
+              type: "SECTION_HANDOFF",
+              sectionType: String(targetSec.sectionType),
+              detectedIntent: "SECTION_HANDOFF",
+              turnSummary: handoffRes.turnSummary || "Section handoff transition"
+            }
+          };
+          setMessages((prev) => [...prev, handoffMsg]);
+          setHasUnread(true);
+
+          try {
+            await addMessageToSession(sessionId, {
+              senderRole: "AI",
+              content: handoffRes.interviewerReply,
+              messageType: "EXPLANATION",
+              metadata: {
+                type: "SECTION_HANDOFF",
+                stage: targetSec.stage,
+                sectionType: String(targetSec.sectionType),
+                provider
+              }
+            });
+          } catch (saveErr) {
+            console.warn("[useDialogue] Failed to persist handoff message:", saveErr);
+          }
+
+          if (onAiSpeechRequested) {
+            onAiSpeechRequested(handoffRes.interviewerReply);
+          }
+        }
+      }).catch((err) => {
+        // Fall back to divider only — NEVER fabricate handoff text client-side
+        console.warn("[useDialogue] Handoff narration failed, falling back to divider only:", err);
+      });
+    }
+  }, [activeSectionIndex, navSections, stageTurnCounts, sessionId, onSectionChanged, candidateName, apiKey, provider, onAiSpeechRequested]);
 
   const transitionStage = useCallback(async (targetStage: InterviewStage, reason: StageTransitionReason = 'MANUAL_JUMP') => {
     const targetIdx = navSections.findIndex((s) => s.stage === targetStage || s.sectionType === targetStage);
@@ -243,6 +308,9 @@ export function useDialogue({
         totalSections: navSections.length,
         softTimeBudgetMinutes: currentNavSection.softTimeBudgetMinutes,
         sectionNote: currentNavSection.note,
+        jobDescription: currentNavSection.sectionType === 'INTRODUCTION' ? jobDescription : undefined,
+        targetCompany: currentNavSection.sectionType === 'INTRODUCTION' ? targetCompany : undefined,
+        resumeSummary: currentNavSection.sectionType === 'INTRODUCTION' ? resumeSummary : undefined,
         latestExecution: latestExecution ? {
           status: latestExecution.status || 'FAILED',
           passedTests: latestExecution.passedTests || 0,

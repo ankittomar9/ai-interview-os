@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, SectionGate } from '../../types';
-import { getSession } from '../../services/api';
+import { getSession, getSessionResume } from '../../services/api';
 import { isApproachGateLocked } from '../../lib/approachGate';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
 import { useExecution } from './hooks/useExecution';
@@ -80,17 +80,31 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     }));
   });
 
+  const [targetCompany, setTargetCompany] = useState<string | undefined>(undefined);
+  const [jobDescription, setJobDescription] = useState<string | undefined>(undefined);
+  const [resumeSummary, setResumeSummary] = useState<string | undefined>(undefined);
+
   useEffect(() => {
-    if (!isPlayground && sessionId) {
+    if (sessionId) {
       getSession(sessionId)
         .then((res) => {
           if (res.sectionGates && res.sectionGates.length > 0) {
             setSectionGates(res.sectionGates);
           }
+          if (res.targetCompany) setTargetCompany(res.targetCompany);
+          if (res.jobDescription) setJobDescription(res.jobDescription);
         })
-        .catch((err) => console.warn('[ArenaRoom] Failed to fetch session gates:', err));
+        .catch((err) => console.warn('[ArenaRoom] Failed to fetch session:', err));
+
+      getSessionResume(sessionId)
+        .then((resDoc) => {
+          if (resDoc?.summary) {
+            setResumeSummary(resDoc.summary);
+          }
+        })
+        .catch((err) => console.warn('[ArenaRoom] Failed to fetch session resume:', err));
     }
-  }, [sessionId, isPlayground]);
+  }, [sessionId]);
 
   const handleAiTurnCompleted = useCallback(async () => {
     if (!isPlayground && sessionId) {
@@ -161,7 +175,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       setActiveSectionIndex(idx);
       if (sec.track && sec.track !== activeTrack) setActiveTrack(sec.track);
     },
-    onAiTurnCompleted: handleAiTurnCompleted
+    onAiTurnCompleted: handleAiTurnCompleted,
+    jobDescription,
+    targetCompany,
+    resumeSummary
   });
 
   // 7. Session Video Recording Engine

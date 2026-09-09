@@ -9,6 +9,7 @@ import com.interviewos.ai.client.SessionTranscriptClient;
 import com.interviewos.ai.config.AiProviderProperties;
 import com.interviewos.ai.dto.AiDialogueRequest;
 import com.interviewos.ai.dto.AiDialogueResponse;
+import com.interviewos.ai.dto.AiHandoffRequest;
 import com.interviewos.ai.dto.GenerateQuestionRequest;
 import com.interviewos.ai.dto.GenerateQuestionResponse;
 import com.interviewos.ai.dto.TranscriptTurnDto;
@@ -341,6 +342,37 @@ public class AiOrchestratorService {
                     You MUST NOT set "recommendedAction": "ADVANCE_STAGE" during introduction unless the candidate has explicitly agreed or affirmed moving on ("yes", "sure", "let's go", "ready").
                     If the candidate says "not yet", has more to say, or asks a question, acknowledge warmly, keep listening, and do NOT advance stage.
                     """);
+
+            if (isInterviewMode) {
+                boolean hasCompany = request.targetCompany() != null && !request.targetCompany().isBlank();
+                boolean hasJd = request.jobDescription() != null && !request.jobDescription().isBlank();
+                boolean hasResume = request.resumeSummary() != null && !request.resumeSummary().isBlank();
+
+                if (hasCompany || hasJd || hasResume) {
+                    systemInstructionBuilder.append("\nCANDIDATE CONTEXT:\n");
+                    if (hasCompany) {
+                        systemInstructionBuilder.append("- Target Company: ").append(request.targetCompany().trim()).append("\n");
+                    }
+                    if (hasJd) {
+                        String jd = request.jobDescription().trim();
+                        if (jd.length() > 800) {
+                            jd = jd.substring(0, 800);
+                        }
+                        systemInstructionBuilder.append("- Job Description: ").append(jd).append("\n");
+                    }
+                    if (hasResume) {
+                        String res = request.resumeSummary().trim();
+                        if (res.length() > 800) {
+                            res = res.substring(0, 800);
+                        }
+                        systemInstructionBuilder.append("- Resume Summary: ").append(res).append("\n");
+                    }
+                }
+                systemInstructionBuilder.append("""
+                        
+                        Open with ONE question grounded in a specific project, technology, or JD requirement from the context. Ask 'tell me about yourself' only if no grounded context exists.
+                        """);
+            }
         }
 
         if (request.sectionType() != null && !request.sectionType().isBlank()) {
@@ -844,5 +876,153 @@ public class AiOrchestratorService {
             }
         }
         return false;
+    }
+
+    public String buildHandoffPrompt(AiHandoffRequest request, String lastTurnSummary) {
+        String candidateName = (request.candidateName() != null && !request.candidateName().isBlank())
+                ? request.candidateName().trim()
+                : "the candidate";
+        String toTitle = (request.toSectionTitle() != null && !request.toSectionTitle().isBlank())
+                ? request.toSectionTitle().trim()
+                : request.toSectionType();
+        boolean isGated = Boolean.TRUE.equals(request.toSectionGated()) || isGatedSectionType(request.toSectionType());
+
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("""
+                You are Dr. Anya Chen, AI Principal Bar Raiser conducting a live, rigorous technical interview assessment.
+                Do not state your own name or introduce yourself by name in your responses. The UI displays your persona header separately.
+                
+                You are narrating a section handoff transition in the interview.
+                - Previous section: %s
+                - Previous section summary/progress: %s
+                - Next section title: %s
+                - Next section type: %s
+                - Next section gated: %s
+                - Candidate name: %s
+                
+                INSTRUCTIONS:
+                1. Close the previous section in ONE sentence grounded in its summary/progress.
+                2. Introduce the next section by its title ("%s").
+                """.formatted(
+                request.fromSectionType() != null ? request.fromSectionType() : "Previous Round",
+                (lastTurnSummary != null && !lastTurnSummary.isBlank()) ? lastTurnSummary : "We have completed the previous round.",
+                toTitle,
+                request.toSectionType(),
+                isGated,
+                candidateName,
+                toTitle
+        ));
+
+        if (isGated) {
+            promptBuilder.append("""
+                    3. Since this section requires an agreed approach before coding, append this exact instruction:
+                    "Open the problem and read it fully. Before you write any code, explain to me in the chat how you plan to solve it — the editor unlocks once we agree on the approach."
+                    """);
+        } else {
+            promptBuilder.append("""
+                    3. Invite the candidate to begin when they are ready.
+                    """);
+        }
+
+        promptBuilder.append("""
+                
+                CRITICAL INSTRUCTION: You MUST reply ONLY with a valid raw JSON object matching this schema:
+                {
+                  "interviewerReply": "Your concise, professional transition narration text",
+                  "followUpQuestion": "",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "SECTION_HANDOFF",
+                  "turnSummary": "Section handoff transition",
+                  "recommendedAction": "NOT_APPLICABLE",
+                  "approachAssessment": "NOT_APPLICABLE"
+                }
+                """);
+
+        return promptBuilder.toString();
+    }
+
+    public AiDialogueResponse processHandoff(AiHandoffRequest request) {
+        List<TranscriptTurnDto> transcript = List.of();
+        if (request.sessionId() != null) {
+            try {
+                transcript = sessionTranscriptClient.fetchSessionTranscript(request.sessionId());
+            } catch (Exception e) {
+                log.warn("Notice: could not fetch transcript for session {} during handoff: {}", request.sessionId(), e.getMessage());
+            }
+        }
+
+        String lastSummary = null;
+        if (transcript != null && !transcript.isEmpty()) {
+            for (int i = transcript.size() - 1; i >= 0; i--) {
+                var t = transcript.get(i);
+                Map<String, String> meta = t.metadata();
+                String sType = meta != null ? meta.get("sectionType") : null;
+                if (request.fromSectionType() == null || request.fromSectionType().equalsIgnoreCase(sType)) {
+                    String turnSum = meta != null ? meta.get("turnSummary") : null;
+                    if (turnSum != null && !turnSum.isBlank()) {
+                        lastSummary = turnSum.trim();
+                        break;
+                    }
+                    if (t.content() != null && !t.content().isBlank()) {
+                        lastSummary = t.content().trim();
+                        if (lastSummary.length() > 120) {
+                            lastSummary = lastSummary.substring(0, 120) + "...";
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        String systemPrompt = buildHandoffPrompt(request, lastSummary);
+
+        ModelProvider provider = request.modelProvider() != null ? request.modelProvider() : ModelProvider.GROQ;
+        String modelName = request.modelName() != null && !request.modelName().isBlank()
+                ? request.modelName()
+                : "dialogue";
+
+        AiClient client = clientFactory.getClient(provider);
+        String rawResponse = client.generateCompletion(
+                provider,
+                systemPrompt,
+                "Please deliver the transition narration now.",
+                request.apiKey(),
+                modelName
+        );
+
+        JsonNode root = null;
+        try {
+            String cleanJson = JsonCleaner.extractPureJson(rawResponse);
+            root = objectMapper.readTree(cleanJson);
+        } catch (Exception e) {
+            log.warn("Notice on parsing handoff JSON response: {}", e.getMessage());
+        }
+
+        String reply = (root != null && root.hasNonNull("interviewerReply"))
+                ? root.get("interviewerReply").asText().trim()
+                : (rawResponse != null ? rawResponse.trim() : "Moving to the next section.");
+
+        if (reply.matches("(?i).*\\b(mickey|dr\\.? anya chen)\\b.*")) {
+            String properName = (request.candidateName() != null && !request.candidateName().isBlank())
+                    ? request.candidateName().trim().split("\\s+")[0]
+                    : "";
+            reply = reply.replaceAll("(?i)\\b(mickey|dr\\.? anya chen)\\b", properName.isEmpty() ? "there" : properName);
+        }
+
+        return new AiDialogueResponse(
+                reply,
+                "",
+                false,
+                null,
+                List.of(),
+                List.of(),
+                "SECTION_HANDOFF",
+                "Section handoff transition",
+                "NOT_APPLICABLE",
+                "NOT_APPLICABLE"
+        );
     }
 }
