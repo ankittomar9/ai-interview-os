@@ -3,6 +3,8 @@ import type { GenerateQuestionResponse } from '../../../types';
 import { executeCode, type ExecutionResultResponse } from '../../../services/api';
 import { saveSubmission, getSubmissions, type SubmissionRecord, type SubmissionStatus } from '../../../lib/submissions';
 import type { ExecutionResult, TestCaseItem } from '../../ide/TestcasePanel';
+import { toast } from '../../../hooks/useToast';
+import { isGateLockedError, getGateLockedMessage } from '../../../lib/approachGate';
 
 interface UseExecutionProps {
   sessionId: number;
@@ -130,6 +132,22 @@ export function useExecution({
 
       return result;
     } catch (err: any) {
+      if (isGateLockedError(err)) {
+        const msg = getGateLockedMessage(err);
+        toast.warning(msg, 'Approach Gate');
+        const lockedResult: ExecutionResult = {
+          status: 'error',
+          verdictTitle: 'Approach Gate Locked',
+          executionTimeMs: 0,
+          memoryUsedMb: 0,
+          passedTests: 0,
+          totalTests: 0,
+          cases: [],
+          rawOutput: msg
+        };
+        setExecutionResult(lockedResult);
+        return lockedResult;
+      }
       const failedResult: ExecutionResult = {
         status: 'error',
         executionTimeMs: 0,
@@ -190,6 +208,14 @@ export function useExecution({
       setActiveExecutionTab('submissions');
       if (onCodeRunRecorded) onCodeRunRecorded();
       return newSub;
+    } catch (err: any) {
+      if (isGateLockedError(err)) {
+        const msg = getGateLockedMessage(err);
+        toast.warning(msg, 'Approach Gate');
+      } else {
+        toast.error(err?.message || 'Submission failed', 'Submission Error');
+      }
+      return null;
     } finally {
       setIsExecuting(false);
     }

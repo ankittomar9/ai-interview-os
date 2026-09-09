@@ -93,6 +93,7 @@ interface ArenaShellProps {
   salvageHint?: string | null;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
+  isApproachGateLocked?: boolean;
 }
 
 export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
@@ -288,6 +289,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
                 onNextQuestion={onNextQuestion}
                 onNextStage={onNextStage}
                 onSelectTrack={onSwitchTrack}
+                isApproachGateLocked={props.isApproachGateLocked}
               />
             </Panel>
           </Group>
