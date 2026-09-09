@@ -107,12 +107,6 @@ public class SessionPlanService {
 
         if (track == InterviewTrack.FULL_LOOP) {
             sections = buildFullLoopSections(difficulty, seed);
-            plannedTotalMinutes = switch (difficulty) {
-                case JUNIOR -> 52;
-                case MID -> 58;
-                case SENIOR -> 55;
-                case STAFF -> 52;
-            };
         } else if (track == InterviewTrack.CUSTOM) {
             List<com.interviewos.session.dto.CustomDomainConfig> defaultCustom = List.of(
                     new com.interviewos.session.dto.CustomDomainConfig(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, 30),
@@ -121,17 +115,14 @@ public class SessionPlanService {
             return buildCustomPlan(difficulty, defaultCustom, seed, source);
         } else if (track == InterviewTrack.DSA_LLD) {
             sections = buildDsaLldSections(difficulty, seed);
-            plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
         } else if (track == InterviewTrack.LLD_HLD) {
             sections = buildLldHldSections(difficulty, seed);
-            plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
         } else if (track == InterviewTrack.DSA_LLD_HLD) {
             sections = buildDsaLldHldSections(difficulty, seed);
-            plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
         } else {
             sections = buildFocusedSections(track, difficulty, seed);
-            plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
         }
+        plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
 
         return new SessionPlan(source, difficulty, sections, plannedTotalMinutes);
     }
@@ -140,26 +131,26 @@ public class SessionPlanService {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
 
-        // Every plan starts with INTRODUCTION (5 min, 1 item)
+        // Every plan starts with INTRODUCTION (8 min, 1 item)
         sections.add(new PlannedSection(
                 SectionType.INTRODUCTION,
                 InterviewTrack.BEHAVIORAL_STAR,
                 1,
-                5,
+                8,
                 "Candidate background, role calibration & warm-up",
                 List.of()
         ));
 
         switch (difficulty) {
             case JUNIOR -> {
-                // DSA x 2 (15, 15)
+                // DSA x 2 (20 min total)
                 List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 2, seed, seenSlugs);
                 seenSlugs.addAll(dsaSlugs);
                 sections.add(new PlannedSection(
                         SectionType.DSA,
                         InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
                         2,
-                        30,
+                        20,
                         "Core algorithms & data structures",
                         dsaSlugs
                 ));
@@ -176,38 +167,38 @@ public class SessionPlanService {
                 ));
             }
             case MID -> {
-                // DSA x 2 (15, 15)
+                // DSA x 2 (20 min total)
                 List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 2, seed, seenSlugs);
                 seenSlugs.addAll(dsaSlugs);
                 sections.add(new PlannedSection(
                         SectionType.DSA,
                         InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
                         2,
-                        30,
+                        20,
                         "Algorithmic problem solving & edge cases",
                         dsaSlugs
                 ));
-                // LLD x 2 (15, 5 rapid-fire) -> 20 min
+                // LLD x 2 (15 min total)
                 List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 2, seed + 1, seenSlugs);
                 seenSlugs.addAll(lldSlugs);
                 sections.add(new PlannedSection(
                         SectionType.LLD,
                         InterviewTrack.SPRING_LLD,
                         2,
-                        20,
+                        15,
                         "Low-level system implementation & rapid-fire design",
                         lldSlugs
                 ));
             }
             case SENIOR -> {
-                // DSA x 1 (15)
+                // DSA x 1 (20)
                 List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 1, seed, seenSlugs);
                 seenSlugs.addAll(dsaSlugs);
                 sections.add(new PlannedSection(
                         SectionType.DSA,
                         InterviewTrack.ALGORITHMS_DATA_STRUCTURES,
                         1,
-                        15,
+                        20,
                         "Algorithmic problem solving",
                         dsaSlugs
                 ));
@@ -281,13 +272,13 @@ public class SessionPlanService {
                 SectionType.INTRODUCTION,
                 InterviewTrack.BEHAVIORAL_STAR,
                 1,
-                5,
+                8,
                 "Candidate background, role calibration & warm-up",
                 List.of()
         ));
 
         int dsaCount = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 2 : 1;
-        int dsaMinutes = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 30 : 15;
+        int dsaMinutes = 20;
         List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs);
         seenSlugs.addAll(dsaSlugs);
         sections.add(new PlannedSection(
@@ -300,7 +291,7 @@ public class SessionPlanService {
         ));
 
         int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
-        int lldMinutes = (difficulty == DifficultyLevel.MID) ? 20 : 15;
+        int lldMinutes = 15;
         List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs);
         seenSlugs.addAll(lldSlugs);
         sections.add(new PlannedSection(
@@ -322,13 +313,13 @@ public class SessionPlanService {
                 SectionType.INTRODUCTION,
                 InterviewTrack.BEHAVIORAL_STAR,
                 1,
-                5,
+                8,
                 "Candidate background, role calibration & warm-up",
                 List.of()
         ));
 
         int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
-        int lldMinutes = (difficulty == DifficultyLevel.MID) ? 20 : 15;
+        int lldMinutes = 15;
         List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed, seenSlugs);
         seenSlugs.addAll(lldSlugs);
         sections.add(new PlannedSection(
@@ -363,13 +354,13 @@ public class SessionPlanService {
                 SectionType.INTRODUCTION,
                 InterviewTrack.BEHAVIORAL_STAR,
                 1,
-                5,
+                8,
                 "Candidate background, role calibration & warm-up",
                 List.of()
         ));
 
         int dsaCount = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 2 : 1;
-        int dsaMinutes = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 30 : 15;
+        int dsaMinutes = 20;
         List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs);
         seenSlugs.addAll(dsaSlugs);
         sections.add(new PlannedSection(
@@ -382,7 +373,7 @@ public class SessionPlanService {
         ));
 
         int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
-        int lldMinutes = (difficulty == DifficultyLevel.MID) ? 20 : 15;
+        int lldMinutes = 15;
         List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs);
         seenSlugs.addAll(lldSlugs);
         sections.add(new PlannedSection(
@@ -414,65 +405,64 @@ public class SessionPlanService {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
 
-        // Every plan starts with INTRODUCTION (5 min, 1 item)
+        // Every plan starts with INTRODUCTION (8 min, 1 item)
         sections.add(new PlannedSection(
                 SectionType.INTRODUCTION,
                 track,
                 1,
-                5,
+                8,
                 "Candidate introduction and domain calibration",
                 List.of()
         ));
 
         SectionType domainSectionType = mapTrackToSectionType(track);
         int itemCount;
-        int softMinutesPerItem;
+        int sectionBudget;
 
         switch (track) {
             case ALGORITHMS_DATA_STRUCTURES -> {
-                softMinutesPerItem = 15;
                 itemCount = switch (difficulty) {
                     case JUNIOR, MID -> 2;
                     case SENIOR, STAFF -> 1;
                 };
+                sectionBudget = 20;
             }
             case SQL -> {
-                softMinutesPerItem = 12;
                 itemCount = switch (difficulty) {
                     case JUNIOR, MID -> 2;
                     case SENIOR, STAFF -> 1;
                 };
+                sectionBudget = itemCount * 12;
             }
             case SPRING_LLD, JAVA_SPRING_BOOT -> {
-                softMinutesPerItem = 15;
                 itemCount = switch (difficulty) {
                     case JUNIOR, SENIOR, STAFF -> 1;
                     case MID -> 2;
                 };
+                sectionBudget = 15;
             }
             case SYSTEM_DESIGN -> {
-                softMinutesPerItem = 18;
                 itemCount = switch (difficulty) {
                     case JUNIOR, MID -> 1;
                     case SENIOR, STAFF -> 2;
                 };
+                sectionBudget = 18;
             }
             case BEHAVIORAL_STAR -> {
-                softMinutesPerItem = 8;
                 itemCount = 2;
+                sectionBudget = 16;
             }
             case RESUME_BASED -> {
-                softMinutesPerItem = 10;
                 itemCount = 2;
+                sectionBudget = 12;
             }
             default -> {
-                softMinutesPerItem = 15;
                 itemCount = 2;
+                sectionBudget = 20;
             }
         }
 
         List<String> slugs = buildPlannedSlugsForTrack(track, difficulty, itemCount, seed, seenSlugs);
-        int sectionBudget = itemCount * softMinutesPerItem;
         sections.add(new PlannedSection(
                 domainSectionType,
                 track,

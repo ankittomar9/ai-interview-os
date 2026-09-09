@@ -166,4 +166,93 @@ class SessionPlanServiceTest {
         assertThat(plan.plannedTotalMinutes()).isEqualTo(60);
         assertThat(plan.sections()).hasSize(2);
     }
+
+    @Test
+    @DisplayName("VP20: Pinned budget table and plannedTotalMinutes sum rule for all tracks and difficulty levels")
+    void testVP20_PinnedBudgetTableAndSumRule() {
+        // Pinned budgets:
+        // FULL_LOOP: Junior (8+20+15=43), Mid (8+20+15=43), Senior (8+20+15+18=61), Staff (8+15+18+12=53)
+        SessionPlan flJr = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.JUNIOR, 42L);
+        assertThat(flJr.plannedTotalMinutes()).isEqualTo(43);
+        assertThat(flJr.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8); // INTRO
+        assertThat(flJr.sections().get(1).softTimeBudgetMinutes()).isEqualTo(20); // DSA
+        assertThat(flJr.sections().get(2).softTimeBudgetMinutes()).isEqualTo(15); // LLD
+        assertThat(flJr.plannedTotalMinutes()).isEqualTo(flJr.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        SessionPlan flMid = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.MID, 42L);
+        assertThat(flMid.plannedTotalMinutes()).isEqualTo(43);
+        assertThat(flMid.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8);
+        assertThat(flMid.sections().get(1).softTimeBudgetMinutes()).isEqualTo(20);
+        assertThat(flMid.sections().get(2).softTimeBudgetMinutes()).isEqualTo(15);
+        assertThat(flMid.plannedTotalMinutes()).isEqualTo(flMid.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        SessionPlan flSr = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.SENIOR, 42L);
+        assertThat(flSr.plannedTotalMinutes()).isEqualTo(61);
+        assertThat(flSr.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8);
+        assertThat(flSr.sections().get(1).softTimeBudgetMinutes()).isEqualTo(20);
+        assertThat(flSr.sections().get(2).softTimeBudgetMinutes()).isEqualTo(15);
+        assertThat(flSr.sections().get(3).softTimeBudgetMinutes()).isEqualTo(18); // SD
+        assertThat(flSr.plannedTotalMinutes()).isEqualTo(flSr.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        SessionPlan flStaff = sessionPlanService.buildPlan(InterviewTrack.FULL_LOOP, DifficultyLevel.STAFF, 42L);
+        assertThat(flStaff.plannedTotalMinutes()).isEqualTo(53);
+        assertThat(flStaff.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8);
+        assertThat(flStaff.sections().get(1).softTimeBudgetMinutes()).isEqualTo(15); // LLD
+        assertThat(flStaff.sections().get(2).softTimeBudgetMinutes()).isEqualTo(18); // SD
+        assertThat(flStaff.sections().get(3).softTimeBudgetMinutes()).isEqualTo(12); // RESUME
+        assertThat(flStaff.plannedTotalMinutes()).isEqualTo(flStaff.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        // Combo tracks: DSA_LLD, LLD_HLD, DSA_LLD_HLD
+        for (DifficultyLevel diff : DifficultyLevel.values()) {
+            SessionPlan dsaLld = sessionPlanService.buildPlan(InterviewTrack.DSA_LLD, diff, 42L);
+            assertThat(dsaLld.plannedTotalMinutes()).isEqualTo(43);
+            assertThat(dsaLld.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8);
+            assertThat(dsaLld.sections().get(1).softTimeBudgetMinutes()).isEqualTo(20);
+            assertThat(dsaLld.sections().get(2).softTimeBudgetMinutes()).isEqualTo(15);
+            assertThat(dsaLld.plannedTotalMinutes()).isEqualTo(dsaLld.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+            SessionPlan lldHld = sessionPlanService.buildPlan(InterviewTrack.LLD_HLD, diff, 42L);
+            assertThat(lldHld.plannedTotalMinutes()).isEqualTo(41);
+            assertThat(lldHld.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8);
+            assertThat(lldHld.sections().get(1).softTimeBudgetMinutes()).isEqualTo(15);
+            assertThat(lldHld.sections().get(2).softTimeBudgetMinutes()).isEqualTo(18);
+            assertThat(lldHld.plannedTotalMinutes()).isEqualTo(lldHld.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+            SessionPlan dsaLldHld = sessionPlanService.buildPlan(InterviewTrack.DSA_LLD_HLD, diff, 42L);
+            assertThat(dsaLldHld.plannedTotalMinutes()).isEqualTo(61);
+            assertThat(dsaLldHld.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8);
+            assertThat(dsaLldHld.sections().get(1).softTimeBudgetMinutes()).isEqualTo(20);
+            assertThat(dsaLldHld.sections().get(2).softTimeBudgetMinutes()).isEqualTo(15);
+            assertThat(dsaLldHld.sections().get(3).softTimeBudgetMinutes()).isEqualTo(18);
+            assertThat(dsaLldHld.plannedTotalMinutes()).isEqualTo(dsaLldHld.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+        }
+
+        // Focused tracks: INTRO is 8 min, domain is pinned
+        SessionPlan dsaPlan = sessionPlanService.buildPlan(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, DifficultyLevel.MID, 42L);
+        assertThat(dsaPlan.plannedTotalMinutes()).isEqualTo(28); // 8 + 20
+        assertThat(dsaPlan.sections().get(0).softTimeBudgetMinutes()).isEqualTo(8);
+        assertThat(dsaPlan.sections().get(1).softTimeBudgetMinutes()).isEqualTo(20);
+        assertThat(dsaPlan.plannedTotalMinutes()).isEqualTo(dsaPlan.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        SessionPlan lldPlan = sessionPlanService.buildPlan(InterviewTrack.SPRING_LLD, DifficultyLevel.MID, 42L);
+        assertThat(lldPlan.plannedTotalMinutes()).isEqualTo(23); // 8 + 15
+        assertThat(lldPlan.plannedTotalMinutes()).isEqualTo(lldPlan.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        SessionPlan sdPlan = sessionPlanService.buildPlan(InterviewTrack.SYSTEM_DESIGN, DifficultyLevel.MID, 42L);
+        assertThat(sdPlan.plannedTotalMinutes()).isEqualTo(26); // 8 + 18
+        assertThat(sdPlan.plannedTotalMinutes()).isEqualTo(sdPlan.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        SessionPlan resPlan = sessionPlanService.buildPlan(InterviewTrack.RESUME_BASED, DifficultyLevel.MID, 42L);
+        assertThat(resPlan.plannedTotalMinutes()).isEqualTo(20); // 8 + 12
+        assertThat(resPlan.plannedTotalMinutes()).isEqualTo(resPlan.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        // SQL track: Junior/Mid = 8 + 24 = 32; Senior/Staff = 8 + 12 = 20
+        SessionPlan sqlMid = sessionPlanService.buildPlan(InterviewTrack.SQL, DifficultyLevel.MID, 42L);
+        assertThat(sqlMid.plannedTotalMinutes()).isEqualTo(32);
+        assertThat(sqlMid.plannedTotalMinutes()).isEqualTo(sqlMid.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+
+        SessionPlan sqlSr = sessionPlanService.buildPlan(InterviewTrack.SQL, DifficultyLevel.SENIOR, 42L);
+        assertThat(sqlSr.plannedTotalMinutes()).isEqualTo(20);
+        assertThat(sqlSr.plannedTotalMinutes()).isEqualTo(sqlSr.sections().stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum());
+    }
 }

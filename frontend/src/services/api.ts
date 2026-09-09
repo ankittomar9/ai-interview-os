@@ -227,6 +227,27 @@ export const generateQuestion = async (payload: {
     return res.json();
 };
 
+export interface AiHandoffPayload {
+    sessionId: number;
+    fromSectionType: string;
+    toSectionType: string;
+    toSectionTitle: string;
+    toSectionGated: boolean;
+    candidateName?: string;
+    apiKey?: string;
+    modelProvider?: string;
+    modelName?: string;
+}
+
+export const requestSectionHandoff = async (payload: AiHandoffPayload): Promise<AiDialogueResponse> => {
+    return fetchJson<AiDialogueResponse>(`${AI_API}/handoff`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        apiKey: payload.apiKey,
+        timeoutMs: 30000
+    });
+};
+
 export const processDialogueTurn = async (payload: {
     questionContext: string;
     sessionId?: number;
@@ -244,6 +265,9 @@ export const processDialogueTurn = async (payload: {
     softTimeBudgetMinutes?: number;
     sectionQuestionTitle?: string;
     sectionNote?: string;
+    jobDescription?: string;
+    targetCompany?: string;
+    resumeSummary?: string;
     latestExecution?: {
         status: string;
         passedTests: number;
@@ -1050,4 +1074,4 @@ export const getRetryQueue = async (
     );
 };
 
-
+
