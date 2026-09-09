@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -310,6 +311,24 @@ public class InterviewSessionService {
             mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
                 doc.setStatus(SessionStatus.IN_PROGRESS.name());
                 doc.setStartedAt(LocalDateTime.now());
+                if (doc.getSectionProgress() == null) {
+                    doc.setSectionProgress(new ArrayList<>());
+                }
+                boolean isPlayground = "PLAYGROUND".equalsIgnoreCase(doc.getSessionMode());
+                if (doc.getSectionProgress().isEmpty()) {
+                    String firstSectionType = "DSA";
+                    if (doc.getPlanSections() != null && !doc.getPlanSections().isEmpty()) {
+                        firstSectionType = doc.getPlanSections().get(0).getSectionType();
+                    }
+                    boolean isGated = !isPlayground && isGatedSectionType(firstSectionType);
+                    doc.getSectionProgress().add(InterviewSessionDocument.SectionProgress.builder()
+                            .index(0)
+                            .sectionType(firstSectionType)
+                            .gateStatus(isGated ? "LOCKED" : "OPEN")
+                            .startedAt(LocalDateTime.now())
+                            .turnCount(0)
+                            .build());
+                }
                 mongoSessionRepository.save(doc);
             });
         } catch (Exception e) {
@@ -400,8 +419,13 @@ public class InterviewSessionService {
         SessionResponse resp = SessionResponse.fromEntity(session);
         try {
             var mongoDoc = mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId);
-            if (mongoDoc.isPresent() && mongoDoc.get().getSectionProgress() != null) {
-                return resp.withSectionProgress(mongoDoc.get().getSectionProgress());
+            if (mongoDoc.isPresent()) {
+                var doc = mongoDoc.get();
+                if (doc.getSectionProgress() != null) {
+                    resp = resp.withSectionProgress(doc.getSectionProgress());
+                }
+                List<com.interviewos.session.dto.SectionGateDto> gates = deriveSectionGates(session.getSessionMode(), resp.plan(), doc.getSectionProgress());
+                return resp.withSectionGates(gates);
             }
         } catch (Exception ignored) {}
         return resp;
@@ -604,6 +628,7 @@ public class InterviewSessionService {
             effectiveTurns = 0;
         }
 
+        String initialGate = (!"PLAYGROUND".equalsIgnoreCase(doc.getSessionMode()) && isGatedSectionType(request.fromSectionType())) ? "LOCKED" : "OPEN";
         InterviewSessionDocument.SectionProgress progress = InterviewSessionDocument.SectionProgress.builder()
                 .sectionType(request.fromSectionType())
                 .index(sectionIdx)
@@ -611,6 +636,7 @@ public class InterviewSessionService {
                 .startedAt(startedAt)
                 .endedAt(now)
                 .turnCount(effectiveTurns)
+                .gateStatus(initialGate)
                 .build();
 
         // Idempotency: update existing progress entry if same index or sectionType already exists
@@ -618,10 +644,16 @@ public class InterviewSessionService {
         for (int i = 0; i < doc.getSectionProgress().size(); i++) {
             InterviewSessionDocument.SectionProgress existing = doc.getSectionProgress().get(i);
             if (existing.getIndex() != null && existing.getIndex().equals(sectionIdx)) {
+                if (existing.getGateStatus() != null) {
+                    progress.setGateStatus(existing.getGateStatus());
+                }
                 doc.getSectionProgress().set(i, progress);
                 updated = true;
                 break;
             } else if (existing.getSectionType() != null && existing.getSectionType().equalsIgnoreCase(request.fromSectionType())) {
+                if (existing.getGateStatus() != null) {
+                    progress.setGateStatus(existing.getGateStatus());
+                }
                 doc.getSectionProgress().set(i, progress);
                 updated = true;
                 break;
@@ -764,5 +796,108 @@ public class InterviewSessionService {
     private InterviewSession findSessionOrThrow(Long sessionId) {
         return sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new NoSuchElementException("Interview session not found with ID: " + sessionId));
+    }
+
+    public static boolean isGatedSectionType(String sType) {
+        if (sType == null) return false;
+        String upper = sType.toUpperCase();
+        return upper.contains("DSA") || upper.contains("LLD") || upper.contains("SQL");
+    }
+
+    public static List<com.interviewos.session.dto.SectionGateDto> deriveSectionGates(
+            String sessionMode,
+            com.interviewos.session.model.SessionPlan plan,
+            List<InterviewSessionDocument.SectionProgress> progressList
+    ) {
+        if (plan == null || plan.sections() == null || plan.sections().isEmpty()) {
+            return List.of();
+        }
+        boolean isPlayground = "PLAYGROUND".equalsIgnoreCase(sessionMode);
+        Map<Integer, String> progressGateMap = new HashMap<>();
+        Map<String, String> progressTypeGateMap = new HashMap<>();
+        if (progressList != null) {
+            for (var p : progressList) {
+                if (p.getGateStatus() != null) {
+                    if (p.getIndex() != null) progressGateMap.put(p.getIndex(), p.getGateStatus());
+                    if (p.getSectionType() != null) progressTypeGateMap.put(p.getSectionType().toUpperCase(), p.getGateStatus());
+                }
+            }
+        }
+
+        List<com.interviewos.session.dto.SectionGateDto> result = new ArrayList<>();
+        for (int i = 0; i < plan.sections().size(); i++) {
+            var sec = plan.sections().get(i);
+            String sType = sec.sectionType() != null ? sec.sectionType().name() : "";
+            boolean isGated = isGatedSectionType(sType);
+
+            String status;
+            if (isPlayground || !isGated) {
+                status = "OPEN";
+            } else {
+                if (progressGateMap.containsKey(i)) {
+                    status = progressGateMap.get(i);
+                } else if (progressTypeGateMap.containsKey(sType.toUpperCase())) {
+                    status = progressTypeGateMap.get(sType.toUpperCase());
+                } else {
+                    status = "LOCKED";
+                }
+            }
+            result.add(new com.interviewos.session.dto.SectionGateDto(i, sType, status));
+        }
+        return result;
+    }
+
+    @Transactional
+    public com.interviewos.session.dto.OpenGateResponse openSectionGate(Long sessionId, int sectionIndex, com.interviewos.session.dto.OpenGateRequest request) {
+        InterviewSession session = findSessionOrThrow(sessionId);
+        if (session.getStatus() != SessionStatus.IN_PROGRESS) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "SESSION_NOT_IN_PROGRESS");
+        }
+
+        InterviewSessionDocument doc = mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)
+                .orElseThrow(() -> new NoSuchElementException("Mongo document not found for session: " + sessionId));
+
+        List<InterviewSessionDocument.PlannedSectionDocument> planSecs = doc.getPlanSections();
+        if (sectionIndex < 0 || (planSecs != null && !planSecs.isEmpty() && sectionIndex >= planSecs.size())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "UNKNOWN_SECTION");
+        }
+
+        String sType = (planSecs != null && sectionIndex < planSecs.size())
+                ? planSecs.get(sectionIndex).getSectionType()
+                : (doc.getSectionProgress() != null && sectionIndex < doc.getSectionProgress().size() ? doc.getSectionProgress().get(sectionIndex).getSectionType() : null);
+
+        if (!isGatedSectionType(sType)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "NOT_A_GATED_SECTION");
+        }
+
+        if (doc.getSectionProgress() == null) {
+            doc.setSectionProgress(new ArrayList<>());
+        }
+
+        InterviewSessionDocument.SectionProgress targetProgress = null;
+        for (InterviewSessionDocument.SectionProgress p : doc.getSectionProgress()) {
+            if (p.getIndex() != null && p.getIndex().equals(sectionIndex)) {
+                targetProgress = p;
+                break;
+            }
+        }
+
+        if (targetProgress != null) {
+            if ("OPEN".equalsIgnoreCase(targetProgress.getGateStatus())) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "GATE_ALREADY_OPEN");
+            }
+            targetProgress.setGateStatus("OPEN");
+        } else {
+            targetProgress = InterviewSessionDocument.SectionProgress.builder()
+                    .index(sectionIndex)
+                    .sectionType(sType)
+                    .gateStatus("OPEN")
+                    .build();
+            doc.getSectionProgress().add(targetProgress);
+        }
+
+        mongoSessionRepository.save(doc);
+        log.info("Opened approach gate for session {} section {} ({})", sessionId, sectionIndex, sType);
+        return new com.interviewos.session.dto.OpenGateResponse(sectionIndex, "OPEN");
     }
 }

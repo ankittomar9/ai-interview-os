@@ -48,4 +48,27 @@ public class SessionTranscriptClient {
             return List.of();
         }
     }
+
+    public boolean openSectionGate(Long sessionId, int sectionIndex, String reason, Long turnId) {
+        if (sessionId == null) {
+            return false;
+        }
+        try {
+            java.util.Map<String, Object> body = java.util.Map.of(
+                    "reason", reason != null ? reason : "APPROACH_AGREED",
+                    "turnId", turnId != null ? turnId : 0L
+            );
+            restClient.post()
+                    .uri("/internal/v1/sessions/{sessionId}/sections/{index}/gate/open", sessionId, sectionIndex)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("Successfully opened approach gate for session {} section {}", sessionId, sectionIndex);
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to open approach gate for session {} section {}: {}", sessionId, sectionIndex, e.getMessage());
+            return false;
+        }
+    }
 }

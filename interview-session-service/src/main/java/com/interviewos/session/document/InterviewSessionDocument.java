@@ -129,6 +129,7 @@ public class InterviewSessionDocument {
         private LocalDateTime startedAt;
         private LocalDateTime endedAt;
         private int turnCount;
+        private String gateStatus; // "LOCKED" | "OPEN" | null
     }
 
     @Data

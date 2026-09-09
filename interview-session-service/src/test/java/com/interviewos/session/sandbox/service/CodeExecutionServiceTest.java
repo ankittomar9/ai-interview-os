@@ -286,4 +286,122 @@ class CodeExecutionServiceTest {
         assertEquals(3, runCount, "Submissions ledger must have exactly 3 RUN entries");
         assertEquals(1, submitCount, "Submissions ledger must have exactly 1 SUBMIT entry");
     }
+
+    @Test
+    @DisplayName("Gate VP17: executeCode in LOCKED gated section throws GateLockedException (409)")
+    void testExecuteCode_whenGatedSectionLocked_throwsGateLockedException() {
+        InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .sessionMode("INTERVIEW")
+                .sectionProgress(new ArrayList<>(List.of(
+                        InterviewSessionDocument.SectionProgress.builder()
+                                .index(0)
+                                .sectionType("DSA")
+                                .gateStatus("LOCKED")
+                                .build()
+                )))
+                .build();
+
+        when(sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(sessionDoc));
+
+        ExecuteCodeRequest request = new ExecuteCodeRequest("java", "class Sol {}", "two-sum", false);
+        com.interviewos.session.exception.GateLockedException ex = assertThrows(
+                com.interviewos.session.exception.GateLockedException.class,
+                () -> codeExecutionService.executeCode(1L, request)
+        );
+        assertEquals("Explain your approach to the interviewer before coding.", ex.getMessage());
+        verifyNoInteractions(trackRunner);
+    }
+
+    @Test
+    @DisplayName("Gate VP17: executeProject in LOCKED gated section throws GateLockedException (409)")
+    void testExecuteProject_whenGatedSectionLocked_throwsGateLockedException() {
+        InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .sessionMode("INTERVIEW")
+                .sectionProgress(new ArrayList<>(List.of(
+                        InterviewSessionDocument.SectionProgress.builder()
+                                .index(1)
+                                .sectionType("LLD")
+                                .gateStatus("LOCKED")
+                                .build()
+                )))
+                .build();
+
+        when(sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(sessionDoc));
+
+        ExecuteProjectRequest request = new ExecuteProjectRequest(
+                "parking-lot",
+                Map.of("File.java", "class File {}")
+        );
+        assertThrows(
+                com.interviewos.session.exception.GateLockedException.class,
+                () -> codeExecutionService.executeProject(1L, request)
+        );
+        verifyNoInteractions(trackRunner);
+    }
+
+    @Test
+    @DisplayName("Gate VP17: executeCode when section gate is OPEN proceeds normally")
+    void testExecuteCode_whenGatedSectionOpen_proceeds() {
+        InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .sessionMode("INTERVIEW")
+                .sectionProgress(new ArrayList<>(List.of(
+                        InterviewSessionDocument.SectionProgress.builder()
+                                .index(0)
+                                .sectionType("DSA")
+                                .gateStatus("OPEN")
+                                .build()
+                )))
+                .transcript(new ArrayList<>())
+                .submissionsLedger(new ArrayList<>())
+                .build();
+
+        when(sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(sessionDoc));
+        when(questionBankClient.fetchProblemBySlug("two-sum"))
+                .thenReturn(Optional.of(ProblemDocument.builder().buildProfile("STANDALONE_DSA").build()));
+        when(trackRunner.supports(any())).thenReturn(true);
+        when(trackRunner.run(eq(1L), any(), any(), eq("java")))
+                .thenReturn(ExecutionResultResponse.builder().status("PASSED").passedTests(1).totalTests(1).build());
+
+        ExecuteCodeRequest request = new ExecuteCodeRequest("java", "class Sol {}", "two-sum", false);
+        ExecutionResultResponse resp = codeExecutionService.executeCode(1L, request);
+        assertNotNull(resp);
+        assertEquals("PASSED", resp.status());
+    }
+
+    @Test
+    @DisplayName("Gate VP17: executeCode in PLAYGROUND mode is never gated even if marked LOCKED")
+    void testExecuteCode_whenPlaygroundMode_neverGated() {
+        InterviewSessionDocument sessionDoc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .sessionMode("PLAYGROUND")
+                .sectionProgress(new ArrayList<>(List.of(
+                        InterviewSessionDocument.SectionProgress.builder()
+                                .index(0)
+                                .sectionType("DSA")
+                                .gateStatus("LOCKED")
+                                .build()
+                )))
+                .transcript(new ArrayList<>())
+                .submissionsLedger(new ArrayList<>())
+                .build();
+
+        when(sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L))
+                .thenReturn(Optional.of(sessionDoc));
+        when(questionBankClient.fetchProblemBySlug("two-sum"))
+                .thenReturn(Optional.of(ProblemDocument.builder().buildProfile("STANDALONE_DSA").build()));
+        when(trackRunner.supports(any())).thenReturn(true);
+        when(trackRunner.run(eq(1L), any(), any(), eq("java")))
+                .thenReturn(ExecutionResultResponse.builder().status("PASSED").passedTests(1).totalTests(1).build());
+
+        ExecuteCodeRequest request = new ExecuteCodeRequest("java", "class Sol {}", "two-sum", false);
+        ExecutionResultResponse resp = codeExecutionService.executeCode(1L, request);
+        assertNotNull(resp);
+        assertEquals("PASSED", resp.status());
+    }
 }

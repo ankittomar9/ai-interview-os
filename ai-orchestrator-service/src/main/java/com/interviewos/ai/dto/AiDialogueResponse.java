@@ -14,8 +14,35 @@ public record AiDialogueResponse(
         List<String> areasToImprove,
         String detectedIntent,
         String turnSummary,
-        String recommendedAction
+        String recommendedAction,
+        String approachAssessment
 ) {
+    // 9-argument constructor for backwards compatibility
+    public AiDialogueResponse(
+            String interviewerReply,
+            String followUpQuestion,
+            boolean isSolutionComplete,
+            String codeAnalysis,
+            List<String> keyStrengths,
+            List<String> areasToImprove,
+            String detectedIntent,
+            String turnSummary,
+            String recommendedAction
+    ) {
+        this(
+                interviewerReply,
+                followUpQuestion,
+                isSolutionComplete,
+                codeAnalysis,
+                keyStrengths,
+                areasToImprove,
+                detectedIntent,
+                turnSummary,
+                recommendedAction,
+                "NOT_APPLICABLE"
+        );
+    }
+
     // Backwards-compatible 6-argument constructor
     public AiDialogueResponse(
             String interviewerReply,
@@ -34,7 +61,8 @@ public record AiDialogueResponse(
                 areasToImprove,
                 "EXPLAINING_APPROACH",
                 "Candidate provided technical explanation.",
-                "PROBE_DEEPER"
+                "PROBE_DEEPER",
+                "NOT_APPLICABLE"
         );
     }
 }
