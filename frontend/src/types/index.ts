@@ -80,6 +80,12 @@ export interface SessionMessage {
     echoFilteredCount?: number;
 }
 
+export interface SectionGate {
+    index: number;
+    sectionType: string;
+    gateStatus: 'LOCKED' | 'OPEN' | string;
+}
+
 export interface SessionResponse {
     id: number;
     candidateId: string;
@@ -97,6 +103,7 @@ export interface SessionResponse {
     plannedSlugs?: string[];
     messages: SessionMessage[];
     plan?: SessionPlan;
+    sectionGates?: SectionGate[];
 }
 
 export interface GenerateQuestionResponse {
@@ -150,6 +157,8 @@ export interface AiDialogueResponse {
     detectedIntent?: 'CLARIFYING' | 'EXPLAINING_APPROACH' | 'CODING' | 'STUCK' | 'COMPLETE' | string;
     turnSummary?: string;
     recommendedAction?: 'PROBE_DEEPER' | 'OFFER_HINT' | 'ADVANCE_STAGE' | 'ANSWER_CLARIFICATION' | string;
+    approachAssessment?: 'NOT_APPLICABLE' | 'PROBE_MORE' | 'AGREE' | string;
+    usedFollowUpSeedIds?: number[];
 }
 
 export interface DimensionScore {

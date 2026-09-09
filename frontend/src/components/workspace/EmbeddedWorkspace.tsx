@@ -30,6 +30,7 @@ interface Props {
   onSubmitProject?: (summary: string) => void;
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
+  isApproachGateLocked?: boolean;
 }
 
 type WorkspaceState = 'provisioning' | 'ready' | 'fallback' | 'error';
@@ -42,7 +43,8 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
   editablePaths,
   onSubmitProject,
   isMaximized = false,
-  onToggleMaximize
+  onToggleMaximize,
+  isApproachGateLocked
 }) => {
   const [state, setState] = useState<WorkspaceState>('provisioning');
   const [workspaceUrl, setWorkspaceUrl] = useState<string | null>(null);
@@ -299,7 +301,7 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
             size="sm"
             variant="primary"
             onClick={() => void handleRunWorkspaceTests()}
-            disabled={testStatus === 'running'}
+            disabled={testStatus === 'running' || isApproachGateLocked}
             className="h-7 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-sm flex items-center gap-1.5 px-3"
           >
             {testStatus === 'running' ? (
@@ -319,6 +321,7 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
             size="sm"
             variant="secondary"
             onClick={handleSubmit}
+            disabled={isApproachGateLocked}
             className="h-7 text-xs text-text-primary border-border-subtle hover:bg-surface-elevated font-medium"
           >
             Submit Project

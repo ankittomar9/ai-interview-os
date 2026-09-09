@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { ModelProvider, IntegritySignals, PlannedSection } from "../../../types";
+import type { ModelProvider, IntegritySignals, PlannedSection, AiDialogueResponse } from "../../../types";
 import { processDialogueTurn, addMessageToSession, recordSectionTransition } from "../../../services/api";
 import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
 import { buildNavSections, type StageNavInfo } from "../../../lib/plan-navigation";
@@ -36,6 +36,7 @@ interface UseDialogueProps {
   onAiSpeechRequested?: (text: string) => void;
   getIntegritySignals?: () => IntegritySignals | undefined;
   onSectionChanged?: (sectionIndex: number, section: StageNavInfo) => void;
+  onAiTurnCompleted?: (response: AiDialogueResponse) => void;
 }
 
 export function useDialogue({
@@ -53,7 +54,8 @@ export function useDialogue({
   sections,
   onAiSpeechRequested,
   getIntegritySignals,
-  onSectionChanged
+  onSectionChanged,
+  onAiTurnCompleted
 }: UseDialogueProps) {
   const [messages, setMessages] = useState<DialogueMessage[]>(() => [
     {
@@ -286,6 +288,8 @@ export function useDialogue({
       } catch (saveErr) {
         console.warn("[useDialogue] Failed to persist AI message:", saveErr);
       }
+
+      onAiTurnCompleted?.(aiResponse);
 
       if (aiResponse.recommendedAction === "ADVANCE_STAGE") {
         if (activeSectionIndex < navSections.length - 1) {

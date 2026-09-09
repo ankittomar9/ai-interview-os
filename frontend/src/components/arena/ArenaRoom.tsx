@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan } from '../../types';
+import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, SectionGate } from '../../types';
+import { getSession } from '../../services/api';
+import { isApproachGateLocked } from '../../lib/approachGate';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
 import { useExecution } from './hooks/useExecution';
 import { useDialogue } from './hooks/useDialogue';
@@ -68,6 +70,41 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
 
+  // Approach Gate status tracking for gated rounds (DSA, LLD, SQL)
+  const [sectionGates, setSectionGates] = useState<SectionGate[]>(() => {
+    if (isPlayground || !plan?.sections) return [];
+    return plan.sections.map((s, idx) => ({
+      index: idx,
+      sectionType: s.sectionType,
+      gateStatus: (s.sectionType === 'DSA' || s.sectionType === 'LLD' || s.sectionType === 'SQL') ? 'LOCKED' : 'OPEN'
+    }));
+  });
+
+  useEffect(() => {
+    if (!isPlayground && sessionId) {
+      getSession(sessionId)
+        .then((res) => {
+          if (res.sectionGates && res.sectionGates.length > 0) {
+            setSectionGates(res.sectionGates);
+          }
+        })
+        .catch((err) => console.warn('[ArenaRoom] Failed to fetch session gates:', err));
+    }
+  }, [sessionId, isPlayground]);
+
+  const handleAiTurnCompleted = useCallback(async () => {
+    if (!isPlayground && sessionId) {
+      try {
+        const updated = await getSession(sessionId);
+        if (updated.sectionGates && updated.sectionGates.length > 0) {
+          setSectionGates(updated.sectionGates);
+        }
+      } catch (err) {
+        console.warn('[ArenaRoom] Failed to refresh session gates after AI turn:', err);
+      }
+    }
+  }, [isPlayground, sessionId]);
+
   // 1. Session Catalog (Strict section-scoped query with zero cross-round bleed)
   const { questionsList, activeQuestion, activeQuestionIndex, questionStatusMap, selectQuestion, markQuestionStatus } =
     useSessionCatalog({
@@ -123,7 +160,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     onSectionChanged: (idx, sec) => {
       setActiveSectionIndex(idx);
       if (sec.track && sec.track !== activeTrack) setActiveTrack(sec.track);
-    }
+    },
+    onAiTurnCompleted: handleAiTurnCompleted
   });
 
   // 7. Session Video Recording Engine
@@ -206,6 +244,15 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   const handleCancelStageSwitch = useCallback(() => setPendingStageSwitch(null), []);
 
+  const activeSection = plan?.sections?.[dialogue.activeSectionIndex];
+  const activeSectionType = activeSection?.sectionType || navSections[dialogue.activeSectionIndex]?.sectionType || initialQuestion.track;
+  const isGateLocked = isApproachGateLocked({
+    sessionMode,
+    sectionType: activeSectionType,
+    sectionIndex: dialogue.activeSectionIndex,
+    sectionGates
+  });
+
   return (
     <>
       {isShareLost && !isPlayground && (
@@ -220,9 +267,10 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       )}
       <ArenaShell
         sessionId={sessionId}
-      track={activeTrack}
-      sections={plan?.sections}
-      activeSectionIndex={dialogue.activeSectionIndex}
+        track={activeTrack}
+        sections={plan?.sections}
+        activeSectionIndex={dialogue.activeSectionIndex}
+        isApproachGateLocked={isGateLocked}
       sectionQuestions={sectionQuestions}
       onSectionClick={handleSectionClick}
       onSwitchTrack={setActiveTrack}

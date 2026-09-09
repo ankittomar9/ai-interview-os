@@ -6,7 +6,7 @@ import { TestcasePanel, type TestCaseItem, type ExecutionResult } from '../../id
 import { StatusBar } from '../../ide/StatusBar';
 import { defineMonacoThemes } from '../../../lib/syntax-themes';
 import { useTheme } from '../../theme-provider';
-import { Code2, Play, CheckCircle2 } from 'lucide-react';
+import { Code2, Play, CheckCircle2, Lock } from 'lucide-react';
 import { Button } from '../../ui/Button';
 
 interface DsaScreenProps {
@@ -23,6 +23,7 @@ interface DsaScreenProps {
   isPlayground?: boolean;
   onNextQuestion?: () => void;
   onNextStage?: () => void;
+  isApproachGateLocked?: boolean;
 }
 
 export const DsaScreen: React.FC<DsaScreenProps> = ({
@@ -37,7 +38,8 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
   executionResult,
   isPlayground,
   onNextQuestion,
-  onNextStage
+  onNextStage,
+  isApproachGateLocked
 }) => {
   const { resolvedTheme } = useTheme();
   const [cursor, setCursor] = useState({ ln: 1, col: 1 });
@@ -109,7 +111,7 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
                 variant="secondary"
                 size="sm"
                 onClick={() => void onRunCode()}
-                disabled={isExecuting}
+                disabled={isExecuting || isApproachGateLocked}
                 className="h-7 text-xs px-2.5"
               >
                 <Play className="w-3 h-3 mr-1 text-success fill-success" />
@@ -120,7 +122,7 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
                 variant="primary"
                 size="sm"
                 onClick={() => void onSubmitSolution()}
-                disabled={isExecuting}
+                disabled={isExecuting || isApproachGateLocked}
                 className="h-7 text-xs px-3"
               >
                 <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -150,9 +152,26 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
                 automaticLayout: true,
                 tabSize: 4,
                 scrollBeyondLastLine: false,
-                lineNumbersMinChars: 3
+                lineNumbersMinChars: 3,
+                readOnly: isApproachGateLocked
               }}
             />
+            {isApproachGateLocked && (
+              <div
+                data-testid="approach-gate-overlay"
+                className="absolute inset-0 bg-surface/80 backdrop-blur-[2px] z-20 flex items-center justify-center p-6 text-center pointer-events-none"
+              >
+                <div className="max-w-md p-5 rounded-lg bg-surface border border-border shadow-xl pointer-events-auto">
+                  <div className="flex items-center justify-center gap-2 mb-2 text-primary font-semibold text-sm">
+                    <Lock className="w-4 h-4 text-primary" />
+                    <span>Approach Gate</span>
+                  </div>
+                  <p className="text-xs text-text-2 leading-relaxed">
+                    Approach gate — explain your approach in the chat; the editor unlocks once the interviewer agrees.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <StatusBar ln={cursor.ln} col={cursor.col} language={language} />

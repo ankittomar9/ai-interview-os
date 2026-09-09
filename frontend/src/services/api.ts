@@ -57,6 +57,10 @@ export const createSession = async (payload: {
     });
 };
 
+export const getSession = async (sessionId: number): Promise<SessionResponse> => {
+    return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}`);
+};
+
 export const startSession = async (sessionId: number): Promise<SessionResponse> => {
     return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}/start`, {
         method: 'POST'
@@ -134,11 +138,6 @@ export const addMessageToSession = async (
     return res.json();
 };
 
-export const completeSession = async (sessionId: number): Promise<SessionResponse> => {
-    const res = await fetch(`${SESSION_API}/${sessionId}/complete`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to complete session via Gateway');
-    return res.json();
-};
 
 // --- Attachments & Canvas Snapshot Engine (:8081) ---
 export const uploadCanvasPngAttachment = async (
