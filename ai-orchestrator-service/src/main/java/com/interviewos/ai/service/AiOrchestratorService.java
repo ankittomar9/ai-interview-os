@@ -212,13 +212,26 @@ public class AiOrchestratorService {
         }
 
         // 3. Build Conversation Memory & Adaptive Directives
+        boolean isPlayground = "PLAYGROUND".equalsIgnoreCase(request.getEffectiveMode());
+        boolean isGatedType = isGatedSectionType(request.sectionType());
+        boolean isInterviewMode = !isPlayground;
+
+        List<TranscriptTurnDto> currentSectionTurns = extractCurrentSectionTurns(transcript, request.sectionType(), request.sectionIndex());
+        int candidateTurnCount = 0;
+        for (TranscriptTurnDto t : currentSectionTurns) {
+            if ("CANDIDATE".equalsIgnoreCase(t.senderRole())) {
+                candidateTurnCount++;
+            }
+        }
+        boolean isGatedSectionLocked = isGatedType && isInterviewMode;
+
         DialogueMemoryBuilder.MemoryView memory = DialogueMemoryBuilder.buildMemory(
                 transcript,
                 request.candidateExplanation(),
-                coachingHint
+                coachingHint,
+                isGatedSectionLocked,
+                candidateTurnCount
         );
-
-        boolean isPlayground = "PLAYGROUND".equalsIgnoreCase(request.getEffectiveMode());
 
         StringBuilder systemInstructionBuilder = new StringBuilder();
         if (isPlayground) {
@@ -283,8 +296,11 @@ public class AiOrchestratorService {
                       "areasToImprove": ["Area 1"],
                       "detectedIntent": "CLARIFYING | EXPLAINING_APPROACH | CODING | STUCK | COMPLETE",
                       "turnSummary": "Concise summary of this candidate turn in <= 25 words",
-                      "recommendedAction": "PROBE_DEEPER | OFFER_HINT | PROPOSE_STAGE_ADVANCE | ADVANCE_STAGE | ANSWER_CLARIFICATION"
+                      "recommendedAction": "PROBE_DEEPER | OFFER_HINT | PROPOSE_STAGE_ADVANCE | ADVANCE_STAGE | ANSWER_CLARIFICATION",
+                      "approachAssessment": "NOT_APPLICABLE | PROBE_MORE | AGREE"
                     }
+                    
+                    In gated sections (DSA, LLD, SQL), do NOT agree until the candidate has articulated, in their own words, the data structure, the algorithmic idea, and complexity reasoning. AGREE only when satisfied (approachAssessment: 'AGREE'); otherwise set approachAssessment: 'PROBE_MORE' and name the single biggest gap.
                     """.formatted(
                     memory.runningSummary(),
                     memory.recentVerbatim(),
@@ -551,6 +567,38 @@ public class AiOrchestratorService {
                 }
             }
 
+            String approachAssessment = root.hasNonNull("approachAssessment") && !root.get("approachAssessment").asText().isBlank()
+                    ? root.get("approachAssessment").asText().trim().toUpperCase()
+                    : "NOT_APPLICABLE";
+
+            // IH1 Deterministic Post-guard on Approach Agreement
+            if (isGatedType && isInterviewMode) {
+                if ("AGREE".equalsIgnoreCase(approachAssessment)) {
+                    boolean hasQualifyingTurn = hasQualifyingCandidateExplanation(currentSectionTurns);
+                    boolean hasCodeExecution = hasCodeExecutionTurn(currentSectionTurns);
+
+                    if (!hasQualifyingTurn || hasCodeExecution) {
+                        log.warn("POST-GUARD: AGREE rejected (qualifyingTurn={}, codeExecution={}). Downgrading to PROBE_MORE.",
+                                hasQualifyingTurn, hasCodeExecution);
+                        approachAssessment = "PROBE_MORE";
+                    } else {
+                        int secIdx = request.sectionIndex() != null ? request.sectionIndex() : 0;
+                        boolean gateOpened = sessionTranscriptClient.openSectionGate(request.sessionId(), secIdx, "APPROACH_AGREED", 0L);
+                        if (!gateOpened) {
+                            log.error("POST-GUARD: Failed to open gate via internal endpoint for session {} section {}. Downgrading to PROBE_MORE.",
+                                    request.sessionId(), secIdx);
+                            approachAssessment = "PROBE_MORE";
+                        } else {
+                            log.info("POST-GUARD: Gate successfully opened for session {} section {}.", request.sessionId(), secIdx);
+                        }
+                    }
+                } else if (!"PROBE_MORE".equalsIgnoreCase(approachAssessment)) {
+                    approachAssessment = "PROBE_MORE";
+                }
+            } else {
+                approachAssessment = "NOT_APPLICABLE";
+            }
+
             return new AiDialogueResponse(
                     reply,
                     followUp,
@@ -560,7 +608,8 @@ public class AiOrchestratorService {
                     areas,
                     detectedIntent,
                     turnSummary,
-                    recommendedAction
+                    recommendedAction,
+                    approachAssessment
             );
         } catch (Exception e) {
             if (providerStatusService != null) {
@@ -570,6 +619,7 @@ public class AiOrchestratorService {
             }
             log.warn("⚠️ LLM dialogue extraction notice: {}. Using completion-aware structured fallback dialogue.", e.getMessage());
 
+            String defaultApproach = (isGatedType && isInterviewMode) ? "PROBE_MORE" : "NOT_APPLICABLE";
             if (isEngineError) {
                 return new AiDialogueResponse(
                         "The platform could not verify this run because the code execution engine is temporarily offline; your code has not been marked wrong.",
@@ -580,7 +630,8 @@ public class AiOrchestratorService {
                         List.of("Walk through edge cases and Big-O complexity conceptually"),
                         "EXPLAINING_APPROACH",
                         "Candidate code execution could not be verified due to engine downtime. No penalty applied.",
-                        "PROBE_DEEPER"
+                        "PROBE_DEEPER",
+                        defaultApproach
                 );
             } else if (isAllTestsPassed) {
                 int passed = request.latestExecution().passedTests();
@@ -599,7 +650,8 @@ public class AiOrchestratorService {
                         List.of("Continue practicing multi-track challenges"),
                         "COMPLETE",
                         "Candidate successfully solved and submitted passing solution.",
-                        recAction
+                        recAction,
+                        defaultApproach
                 );
             } else if (isExecutionFailed) {
                 int passed = request.latestExecution().passedTests();
@@ -614,7 +666,8 @@ public class AiOrchestratorService {
                         List.of("Diagnose failing test case boundary conditions"),
                         "EXPLAINING_APPROACH",
                         "Candidate submitted solution that did not pass all test cases.",
-                        "OFFER_HINT"
+                        "OFFER_HINT",
+                        defaultApproach
                 );
             }
 
@@ -627,7 +680,8 @@ public class AiOrchestratorService {
                     List.of("Explicit Big-O complexity analysis", "Edge-case error handling"),
                     "EXPLAINING_APPROACH",
                     "Candidate provided technical explanation.",
-                    "PROBE_DEEPER"
+                    "PROBE_DEEPER",
+                    defaultApproach
             );
         }
     }
@@ -724,5 +778,71 @@ public class AiOrchestratorService {
             return "two-sum";
         }
         return null;
+    }
+
+    public static boolean isGatedSectionType(String sType) {
+        if (sType == null) return false;
+        String upper = sType.toUpperCase();
+        return upper.contains("DSA") || upper.contains("LLD") || upper.contains("SQL");
+    }
+
+    public static List<TranscriptTurnDto> extractCurrentSectionTurns(List<TranscriptTurnDto> transcript, String currentSectionType, Integer currentSectionIndex) {
+        if (transcript == null || transcript.isEmpty()) return List.of();
+        int targetIdx = currentSectionIndex != null ? currentSectionIndex : 0;
+        int start = 0;
+        for (int i = transcript.size() - 1; i >= 0; i--) {
+            TranscriptTurnDto t = transcript.get(i);
+            Map<String, String> meta = t.metadata();
+            if (meta != null) {
+                if ("ROUND_BOUNDARY".equalsIgnoreCase(meta.get("type")) || "SECTION_HANDOFF".equalsIgnoreCase(meta.get("type"))) {
+                    start = i;
+                    break;
+                }
+                String sIdx = meta.get("sectionIndex");
+                if (sIdx != null) {
+                    try {
+                        if (Integer.parseInt(sIdx) != targetIdx) {
+                            start = i + 1;
+                            break;
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+                String sType = meta.get("sectionType");
+                if (sType != null && currentSectionType != null && !sType.equalsIgnoreCase(currentSectionType)) {
+                    start = i + 1;
+                    break;
+                }
+            }
+        }
+        return transcript.subList(start, transcript.size());
+    }
+
+    public static boolean hasQualifyingCandidateExplanation(List<TranscriptTurnDto> turns) {
+        if (turns == null) return false;
+        for (TranscriptTurnDto t : turns) {
+            if ("CANDIDATE".equalsIgnoreCase(t.senderRole())) {
+                String msgType = t.messageType();
+                boolean isExplanation = msgType == null || "EXPLANATION".equalsIgnoreCase(msgType) || "MESSAGE".equalsIgnoreCase(msgType);
+                boolean isEcho = t.metadata() != null && "true".equalsIgnoreCase(t.metadata().get("echoFiltered"));
+                String content = t.content();
+                if (isExplanation && !isEcho && content != null && content.trim().length() >= 60) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasCodeExecutionTurn(List<TranscriptTurnDto> turns) {
+        if (turns == null) return false;
+        for (TranscriptTurnDto t : turns) {
+            if ("CODE_EXECUTION".equalsIgnoreCase(t.messageType())) {
+                return true;
+            }
+            if (t.metadata() != null && "CODE_EXECUTION".equalsIgnoreCase(t.metadata().get("type"))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

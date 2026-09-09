@@ -7,6 +7,8 @@ import com.interviewos.ai.client.ProblemCatalogClient;
 import com.interviewos.ai.client.SessionTranscriptClient;
 import com.interviewos.ai.dto.AiDialogueRequest;
 import com.interviewos.ai.dto.AiDialogueResponse;
+import com.interviewos.ai.dto.TranscriptTurnDto;
+import java.util.Map;
 import com.interviewos.ai.model.ModelProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -521,5 +523,152 @@ class AiOrchestratorServiceDialogueTest {
                 "Prompt must reflect soft time budget");
         assertTrue(capturedPrompt.toLowerCase().contains("level fixed; do not adjust difficulty from performance"),
                 "Prompt must assert level fixed policy verbatim");
+    }
+
+    @Test
+    @DisplayName("Gate VP16: AGREE with zero qualifying candidate EXPLANATION turns downgrades to PROBE_MORE and gate stays LOCKED")
+    void testGateVP16_AgreeWithZeroQualifyingCandidateTurns_DowngradesToProbeMore_GateStaysLocked() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        // LLM returns AGREE
+        String rawJson = """
+                {
+                  "interviewerReply": "Sounds good, let's start coding.",
+                  "followUpQuestion": "What edge cases exist?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": "Approach looks fine.",
+                  "keyStrengths": ["Good concept"],
+                  "areasToImprove": [],
+                  "detectedIntent": "EXPLAINING_APPROACH",
+                  "turnSummary": "Candidate explained approach.",
+                  "recommendedAction": "PROBE_DEEPER",
+                  "approachAssessment": "AGREE"
+                }
+                """;
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        // Transcript has ZERO qualifying candidate turns (only one 10-char short turn < 60 chars)
+        List<TranscriptTurnDto> transcript = List.of(
+                new TranscriptTurnDto(1L, "CANDIDATE", "EXPLANATION", "I use map.", null, Map.of("sectionType", "DSA"))
+        );
+        when(sessionTranscriptClient.fetchSessionTranscript(100L)).thenReturn(transcript);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(100L)
+                .questionContext("Two Sum Problem Context")
+                .candidateExplanation("I use map.")
+                .modelProvider(ModelProvider.GEMINI)
+                .sessionMode("INTERVIEW")
+                .sectionType("DSA")
+                .sectionIndex(0)
+                .totalSections(3)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROBE_MORE", response.approachAssessment(),
+                "Gate VP16: Orchestrator post-guard must reject AGREE and downgrade to PROBE_MORE when qualifying candidate turns < 60 chars is 0");
+        org.mockito.Mockito.verify(sessionTranscriptClient, org.mockito.Mockito.never())
+                .openSectionGate(anyLong(), anyInt(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Gate VP16: AGREE with CODE_EXECUTION turn in current section downgrades to PROBE_MORE and gate stays LOCKED")
+    void testGateVP16_AgreeWithCodeExecutionTurn_DowngradesToProbeMore_GateStaysLocked() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Approach agreed.",
+                  "followUpQuestion": "What about edge cases?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": "Looks solid.",
+                  "keyStrengths": ["Good logic"],
+                  "areasToImprove": [],
+                  "detectedIntent": "EXPLAINING_APPROACH",
+                  "turnSummary": "Candidate explained approach.",
+                  "recommendedAction": "PROBE_DEEPER",
+                  "approachAssessment": "AGREE"
+                }
+                """;
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        // Candidate has a 75-char explanation, BUT there is a CODE_EXECUTION turn in the section
+        List<TranscriptTurnDto> transcript = List.of(
+                new TranscriptTurnDto(1L, "CANDIDATE", "EXPLANATION",
+                        "I will use a hash map to store complements in O(N) time and O(N) extra auxiliary space.",
+                        null, Map.of("sectionType", "DSA")),
+                new TranscriptTurnDto(2L, "CANDIDATE", "CODE_EXECUTION",
+                        "Candidate executed project tests: 1/1 passed", null, Map.of("sectionType", "DSA"))
+        );
+        when(sessionTranscriptClient.fetchSessionTranscript(100L)).thenReturn(transcript);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(100L)
+                .questionContext("Two Sum Problem Context")
+                .candidateExplanation("I will use a hash map.")
+                .modelProvider(ModelProvider.GEMINI)
+                .sessionMode("INTERVIEW")
+                .sectionType("DSA")
+                .sectionIndex(0)
+                .totalSections(3)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROBE_MORE", response.approachAssessment(),
+                "Gate VP16: Must downgrade to PROBE_MORE when CODE_EXECUTION turn exists in current section");
+        org.mockito.Mockito.verify(sessionTranscriptClient, org.mockito.Mockito.never())
+                .openSectionGate(anyLong(), anyInt(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("Gate VP16: AGREE with qualifying candidate turn (>= 60 chars) calls openSectionGate and returns AGREE")
+    void testGateVP16_AgreeWithQualifyingExplanationAndNoExecution_OpensGateAndReturnsAgree() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Approach agreed.",
+                  "followUpQuestion": "Feel free to start implementing in the editor.",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": "Approach is sound.",
+                  "keyStrengths": ["Clean time/space complexity trade-off"],
+                  "areasToImprove": [],
+                  "detectedIntent": "EXPLAINING_APPROACH",
+                  "turnSummary": "Agreed on hash map approach.",
+                  "recommendedAction": "PROBE_DEEPER",
+                  "approachAssessment": "AGREE"
+                }
+                """;
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        List<TranscriptTurnDto> transcript = List.of(
+                new TranscriptTurnDto(1L, "CANDIDATE", "EXPLANATION",
+                        "I will use a hash map to store complements in O(N) time and O(N) extra auxiliary space.",
+                        null, Map.of("sectionType", "DSA"))
+        );
+        when(sessionTranscriptClient.fetchSessionTranscript(100L)).thenReturn(transcript);
+        when(sessionTranscriptClient.openSectionGate(100L, 0, "APPROACH_AGREED", 0L)).thenReturn(true);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(100L)
+                .questionContext("Two Sum Problem Context")
+                .candidateExplanation("I will use a hash map.")
+                .modelProvider(ModelProvider.GEMINI)
+                .sessionMode("INTERVIEW")
+                .sectionType("DSA")
+                .sectionIndex(0)
+                .totalSections(3)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("AGREE", response.approachAssessment());
+        org.mockito.Mockito.verify(sessionTranscriptClient, org.mockito.Mockito.times(1))
+                .openSectionGate(100L, 0, "APPROACH_AGREED", 0L);
     }
 }

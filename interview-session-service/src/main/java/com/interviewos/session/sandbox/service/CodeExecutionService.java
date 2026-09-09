@@ -34,6 +34,7 @@ public class CodeExecutionService {
      */
     public ExecutionResultResponse executeCode(Long sessionId, ExecuteCodeRequest request) {
         log.info("Executing single-file code for session {} [Language: {}, Problem: {}]", sessionId, request.language(), request.problemSlug());
+        assertApproachGateOpen(sessionId);
 
         Optional<ProblemDocument> problemOpt = resolveProblem(request.problemSlug());
         if (problemOpt.isEmpty()) {
@@ -57,6 +58,7 @@ public class CodeExecutionService {
     public ExecutionResultResponse executeProject(Long sessionId, ExecuteProjectRequest request) {
         log.info("Executing multi-file project for session {} [Problem: {}, Source: {}]",
                 sessionId, request.problemSlug(), request.source());
+        assertApproachGateOpen(sessionId);
 
         workspaceProvisionerProvider.ifAvailable(p -> p.touchWorkspace(sessionId));
 
@@ -227,5 +229,35 @@ public class CodeExecutionService {
         } catch (Exception e) {
             log.warn("Failed to record practice attempt for {}: {}", problemSlug, e.getMessage());
         }
+    }
+
+    private void assertApproachGateOpen(Long sessionId) {
+        if (sessionId == null) return;
+        sessionMongoRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId).ifPresent(doc -> {
+            // Scope: Gate applies ONLY to SectionType in {DSA, LLD, SQL} in INTERVIEW mode. PLAYGROUND is never gated.
+            if ("PLAYGROUND".equalsIgnoreCase(doc.getSessionMode())) {
+                return;
+            }
+            List<InterviewSessionDocument.SectionProgress> progressList = doc.getSectionProgress();
+            if (progressList != null && !progressList.isEmpty()) {
+                InterviewSessionDocument.SectionProgress activeSection = progressList.get(progressList.size() - 1);
+                String sType = activeSection.getSectionType();
+                if (isGatedSectionType(sType)) {
+                    String gateStatus = activeSection.getGateStatus();
+                    // Backward compatibility: missing gateStatus reads as OPEN
+                    if ("LOCKED".equalsIgnoreCase(gateStatus)) {
+                        log.warn("Code execution rejected for session {}: GATE_LOCKED in active section '{}' (idx: {})",
+                                sessionId, sType, activeSection.getIndex());
+                        throw new com.interviewos.session.exception.GateLockedException("Explain your approach to the interviewer before coding.");
+                    }
+                }
+            }
+        });
+    }
+
+    private static boolean isGatedSectionType(String sType) {
+        if (sType == null) return false;
+        String upper = sType.toUpperCase();
+        return upper.contains("DSA") || upper.contains("LLD") || upper.contains("SQL");
     }
 }

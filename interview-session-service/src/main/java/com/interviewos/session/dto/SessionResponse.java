@@ -28,6 +28,7 @@ public record SessionResponse(
         List<String> plannedSlugs,
         com.interviewos.session.model.SessionPlan plan,
         List<com.interviewos.session.document.InterviewSessionDocument.SectionProgress> sectionProgress,
+        List<SectionGateDto> sectionGates,
         List<MessageResponse> messages
 ) {
     public SessionResponse(
@@ -46,13 +47,39 @@ public record SessionResponse(
             String sessionMode,
             List<String> plannedSlugs,
             com.interviewos.session.model.SessionPlan plan,
+            List<com.interviewos.session.document.InterviewSessionDocument.SectionProgress> sectionProgress,
             List<MessageResponse> messages
     ) {
-        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, plannedSlugs, plan, List.of(), messages);
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, plannedSlugs, plan, sectionProgress != null ? sectionProgress : List.of(), List.of(), messages);
+    }
+
+    public SessionResponse(
+            Long id,
+            String candidateId,
+            String roleTitle,
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            String targetCompany,
+            String jobDescription,
+            SessionStatus status,
+            Instant createdAt,
+            Instant startedAt,
+            Instant completedAt,
+            Long durationSeconds,
+            String sessionMode,
+            List<String> plannedSlugs,
+            com.interviewos.session.model.SessionPlan plan,
+            List<MessageResponse> messages
+    ) {
+        this(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, plannedSlugs, plan, List.of(), List.of(), messages);
     }
 
     public SessionResponse withSectionProgress(List<com.interviewos.session.document.InterviewSessionDocument.SectionProgress> progress) {
-        return new SessionResponse(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, plannedSlugs, plan, progress != null ? progress : List.of(), messages);
+        return new SessionResponse(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, plannedSlugs, plan, progress != null ? progress : List.of(), sectionGates != null ? sectionGates : List.of(), messages);
+    }
+
+    public SessionResponse withSectionGates(List<SectionGateDto> gates) {
+        return new SessionResponse(id, candidateId, roleTitle, track, difficulty, targetCompany, jobDescription, status, createdAt, startedAt, completedAt, durationSeconds, sessionMode, plannedSlugs, plan, sectionProgress != null ? sectionProgress : List.of(), gates != null ? gates : List.of(), messages);
     }
 
     public SessionResponse(

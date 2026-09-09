@@ -39,6 +39,16 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), "VERIFICATION_REQUIRED", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(GateLockedException.class)
+    public ResponseEntity<Map<String, Object>> handleGateLocked(GateLockedException ex) {
+        log.warn("Gate locked for execution: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of(
+                        "code", "GATE_LOCKED",
+                        "message", ex.getMessage() != null ? ex.getMessage() : "Explain your approach to the interviewer before coding."
+                ));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         log.warn("Invalid argument: {}", ex.getMessage());

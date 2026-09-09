@@ -22,6 +22,10 @@ public class DialogueMemoryBuilder {
     ) {}
 
     public static MemoryView buildMemory(List<TranscriptTurnDto> turns, String currentCandidateText, String coachingMistakesHint) {
+        return buildMemory(turns, currentCandidateText, coachingMistakesHint, false, 0);
+    }
+
+    public static MemoryView buildMemory(List<TranscriptTurnDto> turns, String currentCandidateText, String coachingMistakesHint, boolean isGatedSectionLocked, int candidateTurnCount) {
         if (turns == null) {
             turns = List.of();
         }
@@ -114,7 +118,9 @@ public class DialogueMemoryBuilder {
 
         // 6. Adaptive Directive assembly
         String adaptiveDirective;
-        if (stuckCount >= 2) {
+        if (isGatedSectionLocked && candidateTurnCount >= 5) {
+            adaptiveDirective = "If the candidate has stated a fundamentally workable approach, agree now (approachAssessment=AGREE); perfectionism is not the bar. Otherwise name the single biggest gap in one sentence.";
+        } else if (stuckCount >= 2) {
             String hintContent = coachingMistakesHint != null && !coachingMistakesHint.isBlank()
                     ? " Targeted coaching guidance: " + coachingMistakesHint
                     : "";
