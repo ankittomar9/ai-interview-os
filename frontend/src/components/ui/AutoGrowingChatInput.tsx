@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { Mic, MicOff, Send, Trash2, CornerDownLeft, Sparkles, XCircle } from 'lucide-react';
+import { getSttChip, subscribeSttChip } from '../../services/api';
 
 interface AutoGrowingChatInputProps {
   value: string;
@@ -18,6 +19,7 @@ interface AutoGrowingChatInputProps {
   onStartListening?: () => void;
   onStopListening?: () => void;
   onAbort?: () => void;
+  sttChip?: string | null;
 }
 
 export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
@@ -36,11 +38,19 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   maxHeight = 180,
   onStartListening,
   onStopListening,
-  onAbort
+  onAbort,
+  sttChip: propSttChip
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pointerDownTimeRef = useRef<number>(0);
   const [recordingSeconds, setRecordingSeconds] = React.useState(0);
+  const [globalSttChip, setGlobalSttChip] = React.useState<string | null>(() => getSttChip());
+
+  useEffect(() => {
+    return subscribeSttChip(setGlobalSttChip);
+  }, []);
+
+  const displaySttChip = propSttChip !== undefined ? propSttChip : globalSttChip;
 
   useEffect(() => {
     let interval: any;
@@ -274,6 +284,12 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
           {wordCount > 0 && (
             <span className="text-[10px] text-text-3 font-mono">
               {wordCount} {wordCount === 1 ? 'word' : 'words'}
+            </span>
+          )}
+
+          {displaySttChip && (
+            <span className="text-[10px] text-text-3 px-1.5 py-0.5 rounded bg-surface border border-border/60 font-mono">
+              {displaySttChip}
             </span>
           )}
         </div>
