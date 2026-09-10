@@ -85,14 +85,19 @@ public class ProviderStatusService {
         if (provider == null) return;
         String key = provider.name().toUpperCase();
         lastKnownMap.put(key, new ProviderStatusDto.LastKnownResult(outcome, httpStatus, System.currentTimeMillis()));
-        if ("ERROR".equalsIgnoreCase(outcome)) cache.remove(key);
+        if ("ERROR".equalsIgnoreCase(outcome) || "DEGRADED".equalsIgnoreCase(outcome)) cache.remove(key);
     }
 
     private ProviderStatusDto attachLastKnown(ProviderStatusDto dto) {
         ProviderStatusDto.LastKnownResult last = lastKnownMap.get(dto.provider());
-        return last == null ? dto : new ProviderStatusDto(
-                dto.provider(), dto.configPresent(), dto.keySource(), dto.state(),
-                dto.configuredModel(), dto.modelListed(), dto.reason(), last, dto.checkedAt());
+        if (last == null) return dto;
+        String state = "DEGRADED".equalsIgnoreCase(last.outcome()) ? "DEGRADED" : dto.state();
+        String reason = "DEGRADED".equalsIgnoreCase(last.outcome())
+                ? "Provider degraded: HTTP " + last.httpStatus() + " on rubric evaluation"
+                : dto.reason();
+        return new ProviderStatusDto(
+                dto.provider(), dto.configPresent(), dto.keySource(), state,
+                dto.configuredModel(), dto.modelListed(), reason, last, dto.checkedAt());
     }
 
     public ProviderStatusDto probeProvider(String provider, String overrideKey, String overrideSource, long now) {

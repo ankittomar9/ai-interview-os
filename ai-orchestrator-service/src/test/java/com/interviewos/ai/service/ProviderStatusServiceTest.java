@@ -131,6 +131,19 @@ class ProviderStatusServiceTest {
     }
 
     @Test
+    @DisplayName("F5.4 (N3): DEGRADED outcome sets state to DEGRADED with honest reason")
+    void testRecordDegradedOutcome() {
+        service.recordOutcome(ModelProvider.GROQ, "DEGRADED", 400);
+        var list = service.getProvidersStatus(null, null);
+        var groq = list.stream().filter(p -> p.provider().equals("GROQ")).findFirst().orElseThrow();
+        assertNotNull(groq.lastKnown());
+        assertEquals("DEGRADED", groq.lastKnown().outcome());
+        assertEquals(400, groq.lastKnown().httpStatus());
+        assertEquals("DEGRADED", groq.state());
+        assertTrue(groq.reason().contains("Provider degraded: HTTP 400"));
+    }
+
+    @Test
     @DisplayName("H4: validateGroqConfiguredModels returns zero warnings when all configured models are in LADDER-v2026-09-08")
     void testValidateGroqConfiguredModelsAllValid() {
         AiProviderProperties validProps = new AiProviderProperties(Map.of(

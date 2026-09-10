@@ -31,6 +31,16 @@ public class RubricService {
     private final ProblemCatalogClient problemCatalogClient;
     private final ObjectMapper objectMapper;
     private final com.interviewos.ai.service.EgressTracker egressTracker;
+    private final com.interviewos.ai.service.ProviderStatusService providerStatusService;
+
+    public RubricService(
+            AiClientFactory clientFactory,
+            ProblemCatalogClient problemCatalogClient,
+            ObjectMapper objectMapper,
+            com.interviewos.ai.service.EgressTracker egressTracker
+    ) {
+        this(clientFactory, problemCatalogClient, objectMapper, egressTracker, null);
+    }
 
     @Value("${rubric.provider:ollama}")
     private String configuredProvider = "ollama";
@@ -108,13 +118,7 @@ public class RubricService {
                         egressTracker.recordCloudCall("GROQ_RUBRIC_FALLBACK");
                         AiClient groqClient = clientFactory.getClient(ModelProvider.GROQ);
                         String effectiveGroqKey = (groqApiKey != null && !groqApiKey.isBlank()) ? groqApiKey : configuredApiKey;
-                        rawResponse = groqClient.generateCompletion(
-                                ModelProvider.GROQ,
-                                systemInstruction,
-                                userPrompt,
-                                effectiveGroqKey,
-                                "eval"
-                        );
+                        rawResponse = executeGroqWithHonestRetry(groqClient, systemInstruction, userPrompt, effectiveGroqKey);
                     } catch (Exception groqErr) {
                         log.error("Groq fallback also failed: {}", groqErr.getMessage());
                         return RubricResponse.emptyFallback(schema);
@@ -122,13 +126,17 @@ public class RubricService {
                 }
             } else {
                 egressTracker.recordCloudCall(provider.name() + "_RUBRIC_PRIMARY");
-                rawResponse = client.generateCompletion(
-                        provider,
-                        systemInstruction,
-                        userPrompt,
-                        configuredApiKey,
-                        "eval"
-                );
+                if (provider == ModelProvider.GROQ) {
+                    rawResponse = executeGroqWithHonestRetry(client, systemInstruction, userPrompt, configuredApiKey);
+                } else {
+                    rawResponse = client.generateCompletion(
+                            provider,
+                            systemInstruction,
+                            userPrompt,
+                            configuredApiKey,
+                            "eval"
+                    );
+                }
             }
 
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);
@@ -329,6 +337,35 @@ public class RubricService {
         } catch (IllegalArgumentException e) {
             return ModelProvider.OLLAMA;
         }
+    }
+
+    private String executeGroqWithHonestRetry(AiClient groqClient, String systemInstruction, String userPrompt, String apiKey) throws Exception {
+        try {
+            return groqClient.generateCompletion(ModelProvider.GROQ, systemInstruction, userPrompt, apiKey, "eval");
+        } catch (Exception e) {
+            if (is400Error(e)) {
+                log.warn("⚠️ Groq rubric returned HTTP 400 (bad request / model error). Retrying once with corrected model 'openai/gpt-oss-20b'...");
+                try {
+                    return groqClient.generateCompletion(ModelProvider.GROQ, systemInstruction, userPrompt, apiKey, "openai/gpt-oss-20b");
+                } catch (Exception retryEx) {
+                    log.error("⚠️ Groq rubric retry also failed with {}. Surfacing Groq as DEGRADED in ProviderStatus.", retryEx.getMessage());
+                    if (providerStatusService != null) {
+                        providerStatusService.recordOutcome(ModelProvider.GROQ, "DEGRADED", 400);
+                    }
+                    throw retryEx;
+                }
+            }
+            throw e;
+        }
+    }
+
+    private boolean is400Error(Throwable t) {
+        if (t == null) return false;
+        if (t instanceof org.springframework.web.client.RestClientResponseException rce && rce.getStatusCode().value() == 400) {
+            return true;
+        }
+        String msg = t.getMessage();
+        return msg != null && (msg.contains("400") || msg.toLowerCase().contains("bad request"));
     }
 
     private record LlmRubricPayload(

@@ -465,7 +465,18 @@ public class EvaluationReportService {
         // P2 Fix: Premature / Abandoned Session Guard (< 180 seconds or < 3 candidate turns)
         if (durationSeconds < 180 || candidateTurns < 3) {
             verdict = HiringVerdict.NO_HIRE;
-            executiveSummary += String.format(" Assessment ended prematurely (%d min, %d turns); minimum viable interview threshold (minimum 3 minutes and at least 3 candidate turns) was not reached.", executedMinutes, candidateTurns);
+            if (candidateTurns < 3) {
+                // F5.1 (D8): Zero-evidence verdict prose template (forbidden: incompetence phrasing over zero turns)
+                strengths.clear();
+                weaknesses.clear();
+                weaknesses.add("No evidence was collected in this session; the candidate is not assessable.");
+                studyPlan.clear();
+                studyPlan.add("Re-attempt assessment with interactive dialogue turns and code execution.");
+                executiveSummary = "No evidence was collected in this session; the candidate is not assessable. "
+                        + String.format("Assessment ended prematurely (%d min, %d turns); minimum viable interview threshold (minimum 3 minutes and at least 3 candidate turns) was not reached.", executedMinutes, candidateTurns);
+            } else {
+                executiveSummary += String.format(" Assessment ended prematurely (%d min, %d turns); minimum viable interview threshold (minimum 3 minutes and at least 3 candidate turns) was not reached.", executedMinutes, candidateTurns);
+            }
         }
 
         String planVsActualJson = null;

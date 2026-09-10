@@ -5,14 +5,19 @@ export const useProctorSentinel = (sessionId: number | null, isActive: boolean) 
     const [tabSwitches, setTabSwitches] = useState<number>(0);
     const [pasteDumps, setPasteDumps] = useState<number>(0);
     const blurStartTimeRef = useRef<number | null>(null);
+    const lastVisibilityBlurRef = useRef<number>(0);
 
     useEffect(() => {
         if (!sessionId || !isActive) return;
 
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                blurStartTimeRef.current = Date.now();
-                setTabSwitches((prev) => prev + 1);
+                const now = Date.now();
+                if (now - lastVisibilityBlurRef.current >= 1000) {
+                    lastVisibilityBlurRef.current = now;
+                    blurStartTimeRef.current = now;
+                    setTabSwitches((prev) => prev + 1);
+                }
             } else {
                 const awaySeconds = blurStartTimeRef.current
                     ? Math.round((Date.now() - blurStartTimeRef.current) / 1000)
