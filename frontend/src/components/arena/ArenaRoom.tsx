@@ -142,6 +142,21 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const dsaPlaceholder = '// No starter code shipped for this problem — report to operator';
   const fallbackStarter = activeQuestion.starterCode || ((activeQuestion.track === 'ALGORITHMS_DATA_STRUCTURES' || activeQuestion.track === 'SQL') ? dsaPlaceholder : '');
   const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({ [activeSlug]: fallbackStarter }));
+
+  // Freshly initialize editor code per question from question.starterCode and reset on session boundary (F2.2)
+  useEffect(() => {
+    setCodeMap((prev) => {
+      if (!prev[activeSlug]) {
+        return { ...prev, [activeSlug]: fallbackStarter };
+      }
+      return prev;
+    });
+  }, [activeSlug, fallbackStarter]);
+
+  useEffect(() => {
+    setCodeMap({ [activeSlug]: fallbackStarter });
+  }, [sessionId]);
+
   const code = codeMap[activeSlug] ?? fallbackStarter;
   const setCode = useCallback((newCode: string) => { setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode })); }, [activeSlug]);
   const [language, setLanguage] = useState(activeTrack === 'SQL' ? 'sql' : 'java');
@@ -172,6 +187,14 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     getQuestionContext: () => activeQuestion?.problemStatement || '',
     getSectionQuestionTitle: () => activeQuestion?.title,
     problemSlug: activeQuestion?.problemSlug || activeQuestion?.slug,
+    starterCode: fallbackStarter,
+    getStarterCode: () => activeQuestion?.starterCode || fallbackStarter,
+    getIsApproachGateLocked: () => isApproachGateLocked({
+      sessionMode,
+      sectionType: plan?.sections?.[dialogue?.activeSectionIndex ?? 0]?.sectionType || navSections[dialogue?.activeSectionIndex ?? 0]?.sectionType || initialQuestion.track,
+      sectionIndex: dialogue?.activeSectionIndex ?? 0,
+      sectionGates
+    }),
     candidateName,
     initialWelcome: persona.welcomeMessage,
     sections: plan?.sections,

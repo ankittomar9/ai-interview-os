@@ -8,16 +8,30 @@
  * to prevent the AI orchestrator from treating warm-up turns as coding questions.
  */
 
-export function shouldAttachCode(sectionType?: string): boolean {
+export function shouldAttachCode(
+  sectionType?: string,
+  isApproachGateLocked?: boolean,
+  codeSnapshot?: string,
+  starterCode?: string
+): boolean {
   if (!sectionType) return false;
   const normalized = sectionType.trim().toUpperCase();
-  return normalized === 'DSA' || normalized === 'LLD';
+  if (normalized !== 'DSA' && normalized !== 'LLD') return false;
+  // F2.1: If Approach Gate is LOCKED, do not attach candidate code
+  if (isApproachGateLocked) return false;
+  // F2.1: If code has not changed from starterCode, do not attach candidate code
+  if (starterCode !== undefined && codeSnapshot !== undefined) {
+    if (codeSnapshot.trim() === starterCode.trim()) return false;
+  }
+  return true;
 }
 
 export interface CandidateTurnInput {
   sectionType?: string;
   textToSend: string;
   codeSnapshot?: string;
+  starterCode?: string;
+  isApproachGateLocked?: boolean;
   questionContext?: string;
   problemSlug?: string;
   sectionQuestionTitle?: string;
@@ -33,7 +47,12 @@ export interface CandidateTurnPayload {
 }
 
 export function buildCandidateTurnPayload(input: CandidateTurnInput): CandidateTurnPayload {
-  const attachCode = shouldAttachCode(input.sectionType);
+  const attachCode = shouldAttachCode(
+    input.sectionType,
+    input.isApproachGateLocked,
+    input.codeSnapshot,
+    input.starterCode
+  );
   const isIntro = (input.sectionType || '').trim().toUpperCase() === 'INTRODUCTION';
 
   return {

@@ -42,6 +42,10 @@ interface UseDialogueProps {
   jobDescription?: string;
   targetCompany?: string;
   resumeSummary?: string;
+  starterCode?: string;
+  getStarterCode?: () => string | undefined;
+  isApproachGateLocked?: boolean;
+  getIsApproachGateLocked?: () => boolean | undefined;
 }
 
 export function useDialogue({
@@ -63,7 +67,11 @@ export function useDialogue({
   onAiTurnCompleted,
   jobDescription,
   targetCompany,
-  resumeSummary
+  resumeSummary,
+  starterCode,
+  getStarterCode,
+  isApproachGateLocked,
+  getIsApproachGateLocked
 }: UseDialogueProps) {
   const lastHandoffIndexRef = useRef<number | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>(() => [
@@ -273,11 +281,15 @@ export function useDialogue({
 
       const resolvedQuestionContext = getQuestionContext ? getQuestionContext() : (questionContext || "");
       const resolvedSectionTitle = getSectionQuestionTitle ? getSectionQuestionTitle() : sectionQuestionTitle;
+      const currentGateLocked = getIsApproachGateLocked ? getIsApproachGateLocked() : isApproachGateLocked;
+      const currentStarterCode = getStarterCode ? getStarterCode() : starterCode;
 
       const payload = buildCandidateTurnPayload({
         sectionType: currentNavSection.sectionType,
         textToSend,
         codeSnapshot,
+        starterCode: currentStarterCode,
+        isApproachGateLocked: currentGateLocked,
         questionContext: resolvedQuestionContext,
         problemSlug,
         sectionQuestionTitle: resolvedSectionTitle

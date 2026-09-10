@@ -485,6 +485,17 @@ public class AiOrchestratorService {
                     request.latestExecution().executionTimeMs()));
         }
 
+        boolean hasExecution = hasCodeExecutionTurn(currentSectionTurns) || request.latestExecution() != null;
+        if (!hasExecution && request.candidateCode() != null && !request.candidateCode().isBlank()) {
+            systemInstructionBuilder.append("""
+                    
+                    UNSUBMITTED CODE DRAFT DIRECTIVE [F2.3]:
+                    No code execution turn exists in the current section.
+                    The candidate has an UNSUBMITTED draft — do not review, praise, or critique it.
+                    Keep the dialogue focused entirely on the candidate's explanation and conceptual algorithmic design.
+                    """);
+        }
+
         String systemInstruction = systemInstructionBuilder.toString();
 
         String userPrompt;
@@ -500,6 +511,9 @@ public class AiOrchestratorService {
                     isPlayground ? "Coach Sam" : "Dr. Anya Chen"
             );
         } else {
+            String codeHeader = (!hasExecution && request.candidateCode() != null && !request.candidateCode().isBlank())
+                    ? "Candidate Code Snippet (candidate has an UNSUBMITTED draft — do not review, praise, or critique it):"
+                    : "Candidate Code Snippet:";
             userPrompt = String.format("""
                     Problem Context:
                     %s
@@ -507,13 +521,14 @@ public class AiOrchestratorService {
                     Candidate Latest Explanation:
                     %s
                     
-                    Candidate Code Snippet:
+                    %s
                     %s
                     
                     Generate realistic, natural interviewer dialogue response in strict JSON format.
                     """,
                     request.questionContext(),
                     request.candidateExplanation(),
+                    codeHeader,
                     request.candidateCode() != null ? request.candidateCode() : "No code written yet"
             );
         }
