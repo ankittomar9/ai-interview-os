@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useProctorSentinel } from '../../../hooks/useProctorSentinel';
 import { useKeystrokeTracker } from '../../../hooks/useKeystrokeTracker';
 import type { IntegritySignals } from '../../../types';
@@ -15,6 +15,7 @@ export function useProctoring({
   const [isWindowBlurred, setIsWindowBlurred] = useState(false);
   const [tabSwitches, setTabSwitches] = useState(0);
   const [pasteDumps, setPasteDumps] = useState(0);
+  const lastFocusLostTimeRef = useRef<number>(0);
 
   // Background Sentinel
   const sentinel = useProctorSentinel(sessionId, !isPlayground);
@@ -27,15 +28,23 @@ export function useProctoring({
 
     const handleBlur = () => {
       setIsWindowBlurred(true);
-      setTabSwitches((c) => c + 1);
+      const now = Date.now();
+      // F5.3 Switch debounce (D6): debounces 1s and counts one per focus-loss episode
+      if (now - lastFocusLostTimeRef.current >= 1000) {
+        lastFocusLostTimeRef.current = now;
+        setTabSwitches((c) => c + 1);
+      }
     };
 
     const handleFocus = () => {
       setIsWindowBlurred(false);
     };
 
-    const handlePaste = () => {
-      setPasteDumps((p) => p + 1);
+    const handlePaste = (e: ClipboardEvent) => {
+      const text = e.clipboardData?.getData('text') || '';
+      if (text.length > 80) {
+        setPasteDumps((p) => p + 1);
+      }
     };
 
     window.addEventListener('blur', handleBlur);
@@ -60,15 +69,15 @@ export function useProctoring({
       keystrokeVariance: Math.round(analytics.variance),
       estimatedWpm: Math.round(analytics.wpm),
       suspiciousTyping: analytics.isSuspicious,
-      tabSwitchCount: sentinel.tabSwitches + tabSwitches,
-      pasteCount: sentinel.pasteDumps + pasteDumps
+      tabSwitchCount: tabSwitches,
+      pasteCount: pasteDumps
     };
-  }, [isPlayground, keystroke, sentinel, tabSwitches, pasteDumps]);
+  }, [isPlayground, keystroke, tabSwitches, pasteDumps]);
 
   return {
     isWindowBlurred,
-    tabSwitches: sentinel.tabSwitches + tabSwitches,
-    pasteDumps: sentinel.pasteDumps + pasteDumps,
+    tabSwitches,
+    pasteDumps,
     sentinel,
     keystroke,
     getIntegritySignals

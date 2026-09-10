@@ -121,4 +121,19 @@ describe('P2: Track Cards Consolidation & Custom Plan Builder', () => {
     assert.ok(preset.preview.includes('≈60 min'));
     assert.strictEqual(preset.plannedTotalMinutes, 60);
   });
+
+  test('D5: getPlanPreset plannedTotalMinutes matches SessionPlanService pinned values', () => {
+    assert.strictEqual(getPlanPreset('FULL_LOOP', 'JUNIOR').plannedTotalMinutes, 43);
+    assert.strictEqual(getPlanPreset('FULL_LOOP', 'MID').plannedTotalMinutes, 43);
+    assert.strictEqual(getPlanPreset('FULL_LOOP', 'SENIOR').plannedTotalMinutes, 61);
+    assert.strictEqual(getPlanPreset('FULL_LOOP', 'STAFF').plannedTotalMinutes, 53);
+    assert.strictEqual(getPlanPreset('ALGORITHMS_DATA_STRUCTURES', 'JUNIOR').plannedTotalMinutes, 28);
+    assert.strictEqual(getPlanPreset('ALGORITHMS_DATA_STRUCTURES', 'MID').plannedTotalMinutes, 28);
+    assert.strictEqual(getPlanPreset('SPRING_LLD', 'MID').plannedTotalMinutes, 23);
+    assert.strictEqual(getPlanPreset('SYSTEM_DESIGN', 'MID').plannedTotalMinutes, 26);
+    assert.strictEqual(getPlanPreset('SQL', 'MID').plannedTotalMinutes, 32);
+    assert.strictEqual(getPlanPreset('SQL', 'JUNIOR').plannedTotalMinutes, 20);
+    assert.strictEqual(getPlanPreset('BEHAVIORAL_STAR', 'MID').plannedTotalMinutes, 18);
+    assert.strictEqual(getPlanPreset('RESUME_BASED', 'MID').plannedTotalMinutes, 20);
+  });
 });

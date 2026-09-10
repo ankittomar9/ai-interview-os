@@ -137,6 +137,8 @@ export const ProviderSection: React.FC<ProviderSectionProps> = ({
                   <span className="text-success font-semibold truncate flex items-center gap-1">● {prov.state === 'READY' ? `READY · ${prov.configuredModel || ''}` : ''}</span>
                 ) : prov?.state === 'NOT_CONFIGURED' ? (
                   <span className="text-text-3 font-semibold">○ NOT CONFIGURED</span>
+                ) : prov?.state === 'DEGRADED' ? (
+                  <span className="text-amber-500 font-semibold truncate" title={prov?.reason || undefined}>▲ DEGRADED: {prov?.reason || 'Degraded'}</span>
                 ) : prov?.state === 'UNREACHABLE' ? (
                   <span className="text-danger font-semibold truncate" title={prov?.reason || undefined}>● UNREACHABLE</span>
                 ) : (

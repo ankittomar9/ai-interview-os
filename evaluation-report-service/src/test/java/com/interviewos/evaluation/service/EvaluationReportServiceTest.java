@@ -145,6 +145,31 @@ class EvaluationReportServiceTest {
 
         assertThat(report.verdict()).isEqualTo(HiringVerdict.NO_HIRE);
         assertThat(report.executiveSummary()).contains("Assessment ended prematurely");
+        assertThat(report.executiveSummary()).contains("No evidence was collected in this session; the candidate is not assessable.");
+    }
+
+    @Test
+    @DisplayName("Gate VP31: 0-turn narrative == 'No evidence was collected…' template without incompetence phrasing")
+    void testGateVP31_ZeroEvidenceVerdictProse() {
+        SessionServiceClient.SessionDetailsDto zeroTurnSession = new SessionServiceClient.SessionDetailsDto(
+                2L, "candidate-02", "Junior Backend Developer", "ALGORITHMS_DATA_STRUCTURES", "JUNIOR",
+                "Acme Corp", "COMPLETED", 60L
+        );
+        when(sessionClient.getSessionById(2L)).thenReturn(zeroTurnSession);
+        when(sessionClient.getSessionTranscript(2L)).thenReturn(List.of());
+        when(aiRubricClient.evaluateRubric(any())).thenReturn(Optional.empty());
+
+        DiagnosticReportResponse report = evaluationReportService.generateReport(2L);
+
+        assertThat(report.verdict()).isEqualTo(HiringVerdict.NO_HIRE);
+        assertThat(report.executiveSummary()).contains("No evidence was collected in this session; the candidate is not assessable.");
+        assertThat(report.areasForImprovement()).containsExactly("No evidence was collected in this session; the candidate is not assessable.");
+        assertThat(report.keyStrengths()).isEmpty();
+        assertThat(report.executiveSummary().toLowerCase()).doesNotContain("too slow");
+        assertThat(report.executiveSummary().toLowerCase()).doesNotContain("over budget");
+        assertThat(report.executiveSummary().toLowerCase()).doesNotContain("took too long");
+        assertThat(report.executiveSummary()).doesNotContain("Weak ALGORITHMIC_REASONING");
+        assertThat(report.executiveSummary()).doesNotContain("Low COMMUNICATION_CLARITY");
     }
 
     @Test

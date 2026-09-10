@@ -35,6 +35,9 @@ class RubricServiceTest {
     @Mock
     private com.interviewos.ai.service.EgressTracker egressTracker;
 
+    @Mock
+    private com.interviewos.ai.service.ProviderStatusService providerStatusService;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -312,5 +315,40 @@ class RubricServiceTest {
                 .recordCloudCall("GROQ_RUBRIC_PRIMARY");
         org.mockito.Mockito.verify(mockGroq, org.mockito.Mockito.times(1))
                 .generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("eval"));
+    }
+
+    @Test
+    @DisplayName("F5.4 (N3): Groq rubric 400 retries once with corrected model and surfaces DEGRADED in ProviderStatus")
+    void testGroq400RetriesWithCorrectedModelAndRecordsDegraded() {
+        org.springframework.test.util.ReflectionTestUtils.setField(rubricService, "configuredProvider", "groq");
+        when(clientFactory.getClient(ModelProvider.GROQ)).thenReturn(aiClient);
+
+        // First call with "eval" fails with HTTP 400
+        when(aiClient.generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("eval")))
+                .thenThrow(new RuntimeException("HTTP 400 Bad Request: model retired"));
+
+        // Second call with "openai/gpt-oss-20b" also fails with HTTP 400
+        when(aiClient.generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("openai/gpt-oss-20b")))
+                .thenThrow(new RuntimeException("HTTP 400 Bad Request"));
+
+        RubricEvaluationRequest request = new RubricEvaluationRequest(
+                "reverse-a-string",
+                "Reverse a string",
+                "ALGORITHMS_DATA_STRUCTURES",
+                "JUNIOR",
+                List.of(new TurnDto("CANDIDATE", "EXPLANATION", "O(N) time", null)),
+                List.of(new ExecutionDto("PASSED", 5, 5, 80.0, 18.0)),
+                "class Main {}",
+                "java"
+        );
+
+        RubricResponse response = rubricService.evaluateRubric(request);
+
+        // Must fallback to deterministic rubric with llmGenerated=false
+        assertThat(response.llmGenerated()).isFalse();
+        // Verify retry with corrected model was attempted
+        org.mockito.Mockito.verify(aiClient).generateCompletion(eq(ModelProvider.GROQ), any(), any(), any(), eq("openai/gpt-oss-20b"));
+        // Verify provider status was recorded as DEGRADED with 400
+        org.mockito.Mockito.verify(providerStatusService).recordOutcome(ModelProvider.GROQ, "DEGRADED", 400);
     }
 }
