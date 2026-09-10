@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RubricService {
 
     private final AiClientFactory clientFactory;
@@ -32,6 +31,22 @@ public class RubricService {
     private final ObjectMapper objectMapper;
     private final com.interviewos.ai.service.EgressTracker egressTracker;
     private final com.interviewos.ai.service.ProviderStatusService providerStatusService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public RubricService(
+            AiClientFactory clientFactory,
+            ProblemCatalogClient problemCatalogClient,
+            ObjectMapper objectMapper,
+            com.interviewos.ai.service.EgressTracker egressTracker,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.interviewos.ai.service.ProviderStatusService providerStatusService
+    ) {
+        this.clientFactory = clientFactory;
+        this.problemCatalogClient = problemCatalogClient;
+        this.objectMapper = objectMapper;
+        this.egressTracker = egressTracker;
+        this.providerStatusService = providerStatusService;
+    }
 
     public RubricService(
             AiClientFactory clientFactory,
