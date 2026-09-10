@@ -85,5 +85,12 @@ G3 — FOUR-NUMBER TEST REPORTING (mandatory vocabulary)
 
 G4 — HONEST-JUDGE GATES (standing reminder)
   Every gate: known-good → PASS and deliberately-wrong → FAIL, both pasted.
+
+G5 — SECRET HYGIENE & ZERO PLAINTEXT SECRETS (hard prohibition)
+  Agents and contributors MUST NOT inline secret values, tokens, or API keys
+  into terminal commands, scripts, test logs, source files, or execution reports.
+  Reference environment variables (${GROQ_API_KEY}, ${GEMINI_API_KEY}, etc.)
+  or read from .env directly without logging values.
+  Printing secrets in plaintext is a critical security defect requiring immediate rotation.
 ```
 
