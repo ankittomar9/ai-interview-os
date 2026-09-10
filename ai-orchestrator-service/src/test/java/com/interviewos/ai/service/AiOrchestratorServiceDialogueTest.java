@@ -440,6 +440,50 @@ class AiOrchestratorServiceDialogueTest {
     }
 
     @Test
+    @DisplayName("F1.3: STT guard suppresses ADVANCE_STAGE and PROPOSE_STAGE_ADVANCE on audio turns")
+    void testSttGuardSuppressesAdvanceOnAudioTurn() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Nice approach.",
+                  "followUpQuestion": "Ready to move on?",
+                  "isSolutionComplete": true,
+                  "codeAnalysis": "Optimal.",
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "COMPLETE",
+                  "turnSummary": "Candidate finished.",
+                  "recommendedAction": "ADVANCE_STAGE",
+                  "approachAssessment": "AGREE"
+                }
+                """;
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .questionContext("Valid Parentheses")
+                .candidateExplanation("Yes, I am completely finished and ready.")
+                .candidateCode("class Solution {}")
+                .chatHistory(List.of())
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .isStt(true)
+                .sectionType("CODING_DSA")
+                .sectionIndex(1)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROBE_DEEPER", response.recommendedAction(),
+                "STT turn must never advance or propose advancing stage; downgraded to PROBE_DEEPER");
+        assertEquals("PROBE_MORE", response.approachAssessment(),
+                "STT turn must never trigger gate mutation / AGREE; downgraded to PROBE_MORE");
+    }
+
+    @Test
     @DisplayName("C0: Consent guard validates all affirmative phrases and blocks all negation phrases")
     void testHasAffirmativeConsentExhaustive() {
         // Valid affirmative phrases

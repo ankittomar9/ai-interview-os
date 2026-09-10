@@ -276,6 +276,7 @@ export const processDialogueTurn = async (payload: {
         memoryUsedMb: number;
     };
     integritySignals?: IntegritySignals;
+    isStt?: boolean;
 }): Promise<AiDialogueResponse> => {
     return fetchJson<AiDialogueResponse>(`${AI_API}/dialogue`, {
         method: 'POST',

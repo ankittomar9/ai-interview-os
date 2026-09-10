@@ -232,7 +232,7 @@ export function useDialogue({
     }
   }, [navSections, transitionSection]);
 
-  const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any) => {
+  const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any, turnMetadata?: Record<string, string>) => {
     const textToSend = (forcedText !== undefined ? forcedText : chatInput).trim();
     if (!textToSend && !codeSnapshot) return;
 
@@ -288,10 +288,15 @@ export function useDialogue({
         content: payload.candidateExplanation,
         codeSnippet: payload.codeSnippet,
         messageType: "EXPLANATION",
-        metadata: { stage: currentStage, sectionType: String(currentNavSection.sectionType) },
+        metadata: {
+          stage: currentStage,
+          sectionType: String(currentNavSection.sectionType),
+          ...(turnMetadata || {})
+        },
         integritySignals: integrity
       });
 
+      const isStt = Boolean(turnMetadata?.isStt === 'true' || turnMetadata?.isStt === true);
       const aiResponse = await processDialogueTurn({
         sessionId,
         questionContext: payload.questionContext,
@@ -319,6 +324,7 @@ export function useDialogue({
           executionTimeMs: latestExecution.executionTimeMs || 0,
           memoryUsedMb: latestExecution.memoryUsedMb || 0
         } : undefined,
+        isStt,
         integritySignals: integrity
       });
 

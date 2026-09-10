@@ -296,7 +296,12 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         </div>
       </div>
       {!isPlayground && !isFocusMode && <WebcamTile isTabBlurred={isWindowBlurred} tabSwitchCount={tabSwitches} pasteCount={pasteDumps} />}
-      <VoiceCoachIndicator problemTitle={!isPlayground && (props.sections?.[props.activeSectionIndex ?? 0]?.sectionType === 'INTRODUCTION' || currentStage === 'INTRODUCTION') ? "Session Introduction" : question.title} currentTrack={track} voiceEnabled={voiceOutputEnabled} />
+      <VoiceCoachIndicator
+        problemTitle={!isPlayground && (props.sections?.[props.activeSectionIndex ?? 0]?.sectionType === 'INTRODUCTION' || currentStage === 'INTRODUCTION') ? "Session Introduction" : question.title}
+        currentTrack={track}
+        voiceEnabled={voiceOutputEnabled}
+        candidateTurns={messages.filter(m => m.role === 'candidate').length}
+      />
       <FloatingAiOrb isOpen={isAiPanelOpen} onToggle={onToggleAiPanel} isAiSpeaking={isAiSpeaking} isListening={isListening} hasUnread={hasUnreadAi} sessionMode={sessionMode} />
       <AiAssistantPanel
         open={isAiPanelOpen}

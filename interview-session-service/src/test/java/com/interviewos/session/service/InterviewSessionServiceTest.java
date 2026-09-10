@@ -601,4 +601,70 @@ class InterviewSessionServiceTest {
         assertThat(resp2.status()).isEqualTo(SessionStatus.COMPLETED);
         assertThat(resp2.durationSeconds()).isEqualTo(originalDuration);
     }
+
+    @Test
+    @DisplayName("VP24 [Negative]: addMessage with sttLowConfidence=true suppresses persistence")
+    void testAddMessage_SttLowConfidence_SuppressesPersistence() {
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .status(SessionStatus.IN_PROGRESS)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+
+        com.interviewos.session.dto.AddMessageRequest req = new com.interviewos.session.dto.AddMessageRequest(
+                "CANDIDATE",
+                com.interviewos.session.model.MessageType.EXPLANATION,
+                "Too short",
+                null,
+                Map.of("sttLowConfidence", "true")
+        );
+
+        SessionResponse.MessageResponse resp = serviceWithVerification.addMessage(1L, req);
+
+        assertEquals(-1L, resp.id());
+        org.mockito.Mockito.verify(messageRepository, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    @DisplayName("VP25 [Negative]: addMessage drops audio turn captured prior to transition (STT_DROPPED_BOUNDARY)")
+    void testAddMessage_SttDroppedBoundary_WhenCaptureTimestampPriorToTransition() {
+        InterviewSession session = InterviewSession.builder()
+                .id(1L)
+                .status(SessionStatus.IN_PROGRESS)
+                .sessionMode("INTERVIEW")
+                .build();
+
+        when(sessionRepository.findById(1L)).thenReturn(Optional.of(session));
+
+        java.time.LocalDateTime transitionTime = java.time.LocalDateTime.now();
+        long transitionEpochMs = transitionTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long priorCaptureEpochMs = transitionEpochMs - 5000; // captured 5 seconds BEFORE section ended
+
+        InterviewSessionDocument doc = InterviewSessionDocument.builder()
+                .sessionId(1L)
+                .sectionProgress(List.of(
+                        InterviewSessionDocument.SectionProgress.builder()
+                                .sectionType("INTRODUCTION")
+                                .endedAt(transitionTime)
+                                .build()
+                ))
+                .build();
+
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.of(doc));
+
+        com.interviewos.session.dto.AddMessageRequest req = new com.interviewos.session.dto.AddMessageRequest(
+                "CANDIDATE",
+                com.interviewos.session.model.MessageType.EXPLANATION,
+                "Delayed audio response from intro",
+                null,
+                Map.of("captureTimestamp", String.valueOf(priorCaptureEpochMs))
+        );
+
+        SessionResponse.MessageResponse resp = serviceWithVerification.addMessage(1L, req);
+
+        assertEquals(-1L, resp.id());
+        org.mockito.Mockito.verify(messageRepository, org.mockito.Mockito.never()).save(any());
+    }
 }

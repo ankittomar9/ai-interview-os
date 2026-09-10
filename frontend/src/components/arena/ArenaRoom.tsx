@@ -153,7 +153,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   // 4. Voice Management
   const voice = useCoachVoice({
-    onCandidateSpeechFinal: (text) => dialogue.triggerCandidateTurn(text, code),
+    onCandidateSpeechFinal: (text, meta) => dialogue.triggerCandidateTurn(text, code, undefined, meta),
     onCandidateSpeechPartialSalvage: (text) => dialogue.setChatInput((prev) => mergeSalvageText(prev, text)),
     apiKey,
     promptContext: [candidateName, activeTrack, activeQuestion?.title, activeQuestion?.difficulty].filter(Boolean).join(', '),

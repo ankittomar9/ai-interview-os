@@ -12,6 +12,7 @@ interface VoiceCoachIndicatorProps {
   elapsedSeconds?: number;
   testFailures?: number;
   candidateWords?: number;
+  candidateTurns?: number;
   className?: string;
 }
 
@@ -25,6 +26,7 @@ export const VoiceCoachIndicator: React.FC<VoiceCoachIndicatorProps> = ({
   elapsedSeconds = 0,
   testFailures = 0,
   candidateWords = 0,
+  candidateTurns = 0,
   className = ''
 }) => {
   const { tip: autoTip, category: autoCategory, shouldSpeak: autoShouldSpeak } = useVoiceCoach({
@@ -33,7 +35,8 @@ export const VoiceCoachIndicator: React.FC<VoiceCoachIndicatorProps> = ({
     currentTrack,
     elapsedSeconds,
     testFailures,
-    candidateWords
+    candidateWords,
+    candidateTurns
   });
 
   const activeTip = explicitTip || autoTip;
