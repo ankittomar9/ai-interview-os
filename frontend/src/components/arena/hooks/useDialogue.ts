@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { ModelProvider, IntegritySignals, PlannedSection, AiDialogueResponse } from "../../../types";
-import { processDialogueTurn, addMessageToSession, recordSectionTransition, requestSectionHandoff } from "../../../services/api";
+import { processDialogueTurn, addMessageToSession, recordSectionTransition, requestSectionHandoff, isSessionCompleted } from "../../../services/api";
 import { isGatedSectionType } from "../../../lib/approachGate";
 import type { InterviewStage, StageTransitionReason } from "../../StageStepper";
 import { buildNavSections, type StageNavInfo } from "../../../lib/plan-navigation";
@@ -241,6 +241,10 @@ export function useDialogue({
   }, [navSections, transitionSection]);
 
   const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any, turnMetadata?: Record<string, string>) => {
+    if (isSessionCompleted(sessionId)) {
+      console.warn("[useDialogue] Suppressing candidate turn for completed session:", sessionId);
+      return;
+    }
     const textToSend = (forcedText !== undefined ? forcedText : chatInput).trim();
     if (!textToSend && !codeSnapshot) return;
 
@@ -341,6 +345,11 @@ export function useDialogue({
       });
 
       setProviderError(null);
+      if (isSessionCompleted(sessionId)) {
+        console.warn("[useDialogue] In-flight AI turn completed after session teardown; discarding for session:", sessionId);
+        setIsAiResponding(false);
+        return;
+      }
       const replyText = aiResponse.interviewerReply || "Thank you. Let us explore the next step.";
       const fullText = replyText + (aiResponse.followUpQuestion ? "\n\n" + aiResponse.followUpQuestion : "");
 

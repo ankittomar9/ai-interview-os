@@ -39,7 +39,6 @@ public class InterviewSession {
 
     private String targetCompany;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String jobDescription;
 
@@ -67,7 +66,6 @@ public class InterviewSession {
     @Builder.Default
     private List<String> plannedSlugs = new ArrayList<>();
 
-    @Lob
     @Column(name = "plan_json", columnDefinition = "TEXT")
     private String planJson;
 

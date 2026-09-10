@@ -448,4 +448,59 @@ class EvaluationReportServiceTest {
 
         assertThat(report.executiveSummary().toLowerCase()).doesNotContain("too slow");
     }
+
+    @Test
+    @DisplayName("VP29: getReportById returns report when matching primary key ID exists")
+    void testGetReportById_DirectIdMatch() {
+        EvaluationReport entity = EvaluationReport.builder()
+                .id(29L)
+                .sessionId(139L)
+                .candidateId("cand-1")
+                .verdict(HiringVerdict.NO_HIRE)
+                .overallScore(33)
+                .build();
+        when(reportRepository.findById(29L)).thenReturn(Optional.of(entity));
+
+        DiagnosticReportResponse result = evaluationReportService.getReportById(29L);
+
+        assertThat(result).isNotNull();
+        assertThat(result.reportId()).isEqualTo(29L);
+        assertThat(result.sessionId()).isEqualTo(139L);
+        verify(reportRepository).findById(29L);
+        verify(reportRepository, never()).findBySessionId(any());
+    }
+
+    @Test
+    @DisplayName("VP29 [Negative -> Fallback]: getReportById falls back to sessionId when ID not found")
+    void testGetReportById_FallbackToSessionId() {
+        EvaluationReport entity = EvaluationReport.builder()
+                .id(29L)
+                .sessionId(139L)
+                .candidateId("cand-1")
+                .verdict(HiringVerdict.NO_HIRE)
+                .overallScore(33)
+                .build();
+        when(reportRepository.findById(139L)).thenReturn(Optional.empty());
+        when(reportRepository.findBySessionId(139L)).thenReturn(Optional.of(entity));
+
+        DiagnosticReportResponse result = evaluationReportService.getReportById(139L);
+
+        assertThat(result).isNotNull();
+        assertThat(result.reportId()).isEqualTo(29L);
+        assertThat(result.sessionId()).isEqualTo(139L);
+        verify(reportRepository).findById(139L);
+        verify(reportRepository).findBySessionId(139L);
+    }
+
+    @Test
+    @DisplayName("VP29 [Negative]: getReportById throws NoSuchElementException when neither id nor sessionId matches")
+    void testGetReportById_NotFoundThrows() {
+        when(reportRepository.findById(999L)).thenReturn(Optional.empty());
+        when(reportRepository.findBySessionId(999L)).thenReturn(Optional.empty());
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                java.util.NoSuchElementException.class,
+                () -> evaluationReportService.getReportById(999L)
+        );
+    }
 }

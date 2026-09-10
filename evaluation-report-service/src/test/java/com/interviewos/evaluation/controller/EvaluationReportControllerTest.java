@@ -76,4 +76,25 @@ class EvaluationReportControllerTest {
                 .andExpect(jsonPath("$.error").value("Evaluation report not found for session ID: 999"))
                 .andExpect(jsonPath("$.sessionId").value(999));
     }
+
+    @Test
+    @DisplayName("VP29: GET /api/v1/reports/{id} resolves dual report lookup")
+    void testGetReportById_Resolves() throws Exception {
+        DiagnosticReportResponse.ScorecardBreakdown scorecard = new DiagnosticReportResponse.ScorecardBreakdown(85, 80, 90, 85, 95, 80);
+        DiagnosticReportResponse mockReport = new DiagnosticReportResponse(
+                29L, 139L, "candidate-123", "Senior Java Engineer", "JAVA_SPRING_BOOT", "SENIOR",
+                HiringVerdict.NO_HIRE, 33, scorecard,
+                "Candidate summary.",
+                List.of(), List.of(), List.of(), List.of(), false, 80, Instant.now()
+        );
+
+        when(reportService.getReportById(139L)).thenReturn(mockReport);
+
+        mockMvc.perform(get("/api/v1/reports/139"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reportId").value(29))
+                .andExpect(jsonPath("$.sessionId").value(139))
+                .andExpect(jsonPath("$.verdict").value("NO_HIRE"))
+                .andExpect(jsonPath("$.overallScore").value(33));
+    }
 }

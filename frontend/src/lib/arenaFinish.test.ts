@@ -54,4 +54,62 @@ describe('F1: Arena finish path session completion', () => {
     assert.equal(res1.durationSeconds, 240);
     assert.equal(res2.durationSeconds, 240);
   });
+
+  it('Gate VP27 [Negative]: addMessageToSession post-completion is FE-blocked and makes zero message POSTs', async () => {
+    const { markSessionCompleted, addMessageToSession, resetCompletedSessions } = await import('../services/api');
+    resetCompletedSessions();
+    const sessionId = 139;
+    markSessionCompleted(sessionId);
+
+    let fetchCalled = false;
+    const originalFetch = globalThis.fetch;
+    (globalThis as any).fetch = async () => {
+      fetchCalled = true;
+      return new Response(JSON.stringify({ id: 1 }), { status: 200 });
+    };
+
+    try {
+      const result = await addMessageToSession(sessionId, {
+        senderRole: 'CANDIDATE',
+        messageType: 'EXPLANATION',
+        content: 'Late audio or candidate turn after teardown'
+      });
+
+      assert.equal(result, null, 'Expected null result indicating suppression');
+      assert.equal(fetchCalled, false, 'Expected zero fetch calls after session is completed');
+    } finally {
+      globalThis.fetch = originalFetch;
+      resetCompletedSessions();
+    }
+  });
+
+  it('Gate VP27 [Positive]: addMessageToSession on active session issues fetch POST', async () => {
+    const { addMessageToSession, resetCompletedSessions } = await import('../services/api');
+    resetCompletedSessions();
+    const sessionId = 140;
+
+    let fetchCalled = false;
+    let requestedUrl = '';
+    const originalFetch = globalThis.fetch;
+    (globalThis as any).fetch = async (url: any) => {
+      fetchCalled = true;
+      requestedUrl = String(url);
+      return new Response(JSON.stringify({ id: 1, content: 'ok' }), { status: 200 });
+    };
+
+    try {
+      const result = await addMessageToSession(sessionId, {
+        senderRole: 'CANDIDATE',
+        messageType: 'EXPLANATION',
+        content: 'Active turn'
+      });
+
+      assert.equal(fetchCalled, true, 'Expected fetch to be called for active session');
+      assert.ok(requestedUrl.includes('/140/messages'), 'Expected URL to contain /140/messages');
+      assert.equal(result.id, 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+      resetCompletedSessions();
+    }
+  });
 });

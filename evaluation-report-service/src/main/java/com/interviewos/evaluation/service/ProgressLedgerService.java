@@ -71,6 +71,7 @@ public class ProgressLedgerService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<ProgressLedger> getCandidateProgress(String candidateId, String track) {
         if (track != null && !track.isBlank() && !"ALL".equalsIgnoreCase(track)) {
             return progressLedgerRepository.findByCandidateIdAndTrackOrderBySessionDateAsc(candidateId, track);
@@ -78,6 +79,7 @@ public class ProgressLedgerService {
         return progressLedgerRepository.findByCandidateIdOrderBySessionDateAsc(candidateId);
     }
 
+    @Transactional(readOnly = true)
     public ProgressAnalytics getCandidateAnalytics(String candidateId, String track) {
         List<ProgressLedger> progress = getCandidateProgress(candidateId, track);
         if (progress.size() < 2) {

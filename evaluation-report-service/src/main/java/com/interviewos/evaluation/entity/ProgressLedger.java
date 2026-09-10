@@ -37,7 +37,6 @@ public class ProgressLedger {
     @Column(name = "overall_score", nullable = false)
     private Integer overallScore;
 
-    @Lob
     @Column(name = "dimension_scores", columnDefinition = "TEXT")
     private String dimensionScores;
 
