@@ -79,3 +79,51 @@ test('buildCandidateTurnPayload: nulls code fields but retains discussion contex
   assert.equal(hldPayload.problemSlug, 'design-twitter');
   assert.equal(hldPayload.sectionQuestionTitle, 'Design Twitter');
 });
+
+test('Gate VP26 [Negative]: buildCandidateTurnPayload serializes candidateCode as empty when gate is LOCKED', () => {
+  const payload = buildCandidateTurnPayload({
+    sectionType: 'DSA',
+    textToSend: 'Here is my initial thought.',
+    codeSnapshot: 'class Solution { public int solve() { return 1; } }',
+    starterCode: 'class Solution {}',
+    isApproachGateLocked: true,
+    questionContext: 'Some problem',
+    problemSlug: 'some-problem'
+  });
+
+  assert.equal(payload.candidateCode, '', 'candidateCode must be empty when gate is locked');
+  assert.equal(payload.codeSnippet, '', 'codeSnippet must be empty when gate is locked');
+});
+
+test('Gate VP26 [Negative]: buildCandidateTurnPayload serializes candidateCode as empty when code equals starterCode', () => {
+  const starter = 'class Solution {\n    // starter\n}';
+  const payload = buildCandidateTurnPayload({
+    sectionType: 'DSA',
+    textToSend: 'Looking at the problem.',
+    codeSnapshot: starter,
+    starterCode: starter,
+    isApproachGateLocked: false,
+    questionContext: 'Some problem',
+    problemSlug: 'some-problem'
+  });
+
+  assert.equal(payload.candidateCode, '', 'candidateCode must be empty when code equals starterCode');
+  assert.equal(payload.codeSnippet, '', 'codeSnippet must be empty when code equals starterCode');
+});
+
+test('Gate VP26 [Positive]: buildCandidateTurnPayload serializes candidateCode when gate is OPEN and code modified', () => {
+  const starter = 'class Solution {\n    // starter\n}';
+  const modified = 'class Solution {\n    int x = 42;\n}';
+  const payload = buildCandidateTurnPayload({
+    sectionType: 'DSA',
+    textToSend: 'I implemented the hash map logic.',
+    codeSnapshot: modified,
+    starterCode: starter,
+    isApproachGateLocked: false,
+    questionContext: 'Some problem',
+    problemSlug: 'some-problem'
+  });
+
+  assert.equal(payload.candidateCode, modified, 'candidateCode must be serialized when gate is open and code modified');
+  assert.equal(payload.codeSnippet, modified, 'codeSnippet must be serialized when gate is open and code modified');
+});

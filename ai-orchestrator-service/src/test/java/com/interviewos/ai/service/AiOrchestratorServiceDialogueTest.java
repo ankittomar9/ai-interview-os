@@ -365,6 +365,54 @@ class AiOrchestratorServiceDialogueTest {
     }
 
     @Test
+    @DisplayName("F2.3: Prompt treats unsubmitted code as draft without critique when no execution turn exists")
+    void testUnsubmittedDraftPromptDirectiveWhenNoExecutionTurn() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        org.mockito.ArgumentCaptor<String> sysPromptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.ArgumentCaptor<String> userPromptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+
+        when(aiClient.generateCompletion(any(), sysPromptCaptor.capture(), userPromptCaptor.capture(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Let us discuss your approach first.",
+                          "followUpQuestion": "What is the time complexity?",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": "",
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "EXPLAINING_APPROACH",
+                          "turnSummary": "Candidate explained hash map approach.",
+                          "recommendedAction": "PROBE_DEEPER"
+                        }
+                        """);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .candidateName("Alice")
+                .currentStage("DSA")
+                .sectionType("CODING_DSA")
+                .sectionIndex(1)
+                .questionContext("Two Sum Problem")
+                .candidateExplanation("I am planning to use a HashMap.")
+                .candidateCode("class Solution { public int[] twoSum() { return new int[0]; } }")
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .latestExecution(null)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        String capturedSysPrompt = sysPromptCaptor.getValue();
+        String capturedUserPrompt = userPromptCaptor.getValue();
+
+        assertTrue(capturedSysPrompt.contains("UNSUBMITTED draft — do not review, praise, or critique it"),
+                "System prompt must instruct interviewer that candidate has an unsubmitted draft");
+        assertTrue(capturedUserPrompt.contains("UNSUBMITTED draft — do not review, praise, or critique it"),
+                "User prompt code snippet header must flag code as unsubmitted draft");
+    }
+
+    @Test
     @DisplayName("C0: Consent guard downgrades ADVANCE_STAGE to PROPOSE_STAGE_ADVANCE when candidate lacks affirmative consent")
     void testConsentGuardDowngradesWithoutAffirmative() {
         when(clientFactory.getClient(any())).thenReturn(aiClient);

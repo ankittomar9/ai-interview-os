@@ -177,7 +177,8 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                     Scanner sc = new Scanner(System.in);
                                     if (sc.hasNextLine()) {
                                         String s = sc.nextLine();
-                                        System.out.println(new StringBuilder(s).reverse().toString());
+                                        // TODO: Implement string reversal logic
+                                        
                                     }
                                 }
                             }
