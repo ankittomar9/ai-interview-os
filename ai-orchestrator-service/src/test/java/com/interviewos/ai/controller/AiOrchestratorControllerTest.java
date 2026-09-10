@@ -167,7 +167,8 @@ class AiOrchestratorControllerTest {
 
         when(transcriptionService.transcribeAudio(
                 any(), any(), any(), org.mockito.ArgumentMatchers.eq("Kafka; React"),
-                org.mockito.ArgumentMatchers.eq(123L), org.mockito.ArgumentMatchers.eq("en")
+                org.mockito.ArgumentMatchers.eq(123L), org.mockito.ArgumentMatchers.eq("en"),
+                org.mockito.ArgumentMatchers.any()
         )).thenReturn(java.util.Map.of(
                 "text", "We use Kafka and React",
                 "status", "SUCCESS",
