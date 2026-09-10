@@ -77,6 +77,92 @@ public class WhisperTranscriptionService {
         return fullPrompt;
     }
 
+    public static final double MIN_AUDIO_DURATION_SEC = 1.2;
+    public static final double SILENCE_RMS_FLOOR = 0.003;
+    public static final String TOAST_TOO_SHORT = "Recording too short — hold/toggle and speak your full approach.";
+
+    public Map<String, String> checkAudioFragment(byte[] audioBytes, String filename) {
+        if (audioBytes == null || audioBytes.length == 0) {
+            return Map.of("text", "", "status", "TOO_SHORT", "sttLowConfidence", "true", "message", TOAST_TOO_SHORT);
+        }
+
+        // Check if WAV format (RIFF ... WAVE)
+        if (audioBytes.length >= 44 && audioBytes[0] == 'R' && audioBytes[1] == 'I' && audioBytes[2] == 'F' && audioBytes[3] == 'F'
+                && audioBytes[8] == 'W' && audioBytes[9] == 'A' && audioBytes[10] == 'V' && audioBytes[11] == 'E') {
+            int channels = (audioBytes[22] & 0xFF) | ((audioBytes[23] & 0xFF) << 8);
+            int sampleRate = (audioBytes[24] & 0xFF) | ((audioBytes[25] & 0xFF) << 8)
+                    | ((audioBytes[26] & 0xFF) << 16) | ((audioBytes[27] & 0xFF) << 24);
+            int bitsPerSample = (audioBytes[34] & 0xFF) | ((audioBytes[35] & 0xFF) << 8);
+
+            int dataOffset = 44;
+            int dataSize = audioBytes.length - 44;
+            for (int i = 12; i < Math.min(audioBytes.length - 8, 120); i++) {
+                if (audioBytes[i] == 'd' && audioBytes[i + 1] == 'a' && audioBytes[i + 2] == 't' && audioBytes[i + 3] == 'a') {
+                    dataOffset = i + 8;
+                    dataSize = (audioBytes[i + 4] & 0xFF) | ((audioBytes[i + 5] & 0xFF) << 8)
+                            | ((audioBytes[i + 6] & 0xFF) << 16) | ((audioBytes[i + 7] & 0xFF) << 24);
+                    break;
+                }
+            }
+            if (channels > 0 && sampleRate > 0 && bitsPerSample > 0) {
+                int bytesPerSample = bitsPerSample / 8;
+                int totalSamples = dataSize / (channels * bytesPerSample);
+                double durationSec = (double) totalSamples / sampleRate;
+
+                if (durationSec < MIN_AUDIO_DURATION_SEC) {
+                    log.warn("STT Fragment Gate: Rejected audio duration {}s (< {}s floor), samples={}, bytes={}",
+                            String.format("%.2f", durationSec), MIN_AUDIO_DURATION_SEC, totalSamples, dataSize);
+                    return Map.of("text", "", "status", "TOO_SHORT", "sttLowConfidence", "true", "message", TOAST_TOO_SHORT);
+                }
+
+                // Compute RMS for 16-bit PCM samples
+                if (bitsPerSample == 16 && dataOffset + 2 <= audioBytes.length) {
+                    double sumSq = 0.0;
+                    int pcmSamples = Math.min((audioBytes.length - dataOffset) / 2, totalSamples);
+                    if (pcmSamples > 0) {
+                        for (int i = 0; i < pcmSamples; i++) {
+                            int idx = dataOffset + i * 2;
+                            if (idx + 1 >= audioBytes.length) break;
+                            short sample = (short) ((audioBytes[idx] & 0xFF) | (audioBytes[idx + 1] << 8));
+                            double norm = sample / 32768.0;
+                            sumSq += norm * norm;
+                        }
+                        double rms = Math.sqrt(sumSq / pcmSamples);
+                        if (rms < SILENCE_RMS_FLOOR) {
+                            log.warn("STT Fragment Gate: Rejected audio below silence floor RMS={} (< {})",
+                                    String.format("%.5f", rms), SILENCE_RMS_FLOOR);
+                            return Map.of("text", "", "status", "TOO_SHORT", "sttLowConfidence", "true", "message", TOAST_TOO_SHORT);
+                        }
+                    }
+                }
+            }
+        } else {
+            // Non-WAV (e.g. webm/opus): raw byte size heuristic.
+            // A 1.2s webm audio stream is typically >= 12,000 bytes.
+            if (audioBytes.length < 12000) {
+                log.warn("STT Fragment Gate: Rejected non-WAV audio below minimum size bytes={} (< 12000)", audioBytes.length);
+                return Map.of("text", "", "status", "TOO_SHORT", "sttLowConfidence", "true", "message", TOAST_TOO_SHORT);
+            }
+        }
+        return null;
+    }
+
+    private Map<String, String> evaluateTranscribedText(Map<String, String> result) {
+        String text = result.get("text");
+        if (text != null && !text.isBlank()) {
+            String[] words = text.trim().split("\\s+");
+            if (words.length < 3) {
+                log.warn("STT Fragment Gate: Transcribed text has only {} words (< 3): '{}'. Flagging sttLowConfidence.", words.length, text);
+                Map<String, String> updated = new java.util.HashMap<>(result);
+                updated.put("sttLowConfidence", "true");
+                updated.put("status", "TOO_SHORT");
+                updated.put("message", TOAST_TOO_SHORT);
+                return updated;
+            }
+        }
+        return result;
+    }
+
     /**
      * Transcribes candidate audio using local Whisper.cpp if available, falling back to Groq Whisper LPU.
      */
@@ -86,13 +172,23 @@ public class WhisperTranscriptionService {
 
     public Map<String, String> transcribeAudio(MultipartFile audioFile, String customApiKey, String customModel,
                                               String promptContext, Long sessionId, String lang) {
+        try {
+            byte[] bytes = audioFile.getBytes();
+            Map<String, String> fragmentGate = checkAudioFragment(bytes, audioFile.getOriginalFilename());
+            if (fragmentGate != null) {
+                return fragmentGate;
+            }
+        } catch (Exception e) {
+            log.warn("Notice checking audio fragment gate: {}", e.getMessage());
+        }
+
         String effectiveLang = (lang != null && !lang.isBlank()) ? lang.trim() : "en";
         String prompt = assemblePrompt(promptContext, sessionId);
 
         if (isWhisperSidecarRunning()) {
             log.info("🔒 Transcribing speech via 100% Local Whisper.cpp sidecar at {} (promptLength={}, lang={})",
                     localWhisperEndpoint, prompt.length(), effectiveLang);
-            return transcribeLocal(audioFile, prompt, effectiveLang);
+            return evaluateTranscribedText(transcribeLocal(audioFile, prompt, effectiveLang));
         }
 
         String apiKey = (customApiKey != null && !customApiKey.isBlank()) ? customApiKey : defaultGroqApiKey;
@@ -149,14 +245,14 @@ public class WhisperTranscriptionService {
             long duration = System.currentTimeMillis() - startTime;
 
             log.info("🎙️ Groq Whisper Transcribed using model '{}' ({}ms): \"{}\"", model, duration, transcript);
-            return Map.of(
+            return evaluateTranscribedText(Map.of(
                     "text", transcript,
                     "status", "SUCCESS",
                     "latencyMs", String.valueOf(duration),
                     "model", model,
                     "provider", "GROQ",
                     "promptUsed", String.valueOf(!prompt.isBlank())
-            );
+            ));
 
         } catch (Exception e) {
             log.error("⚠️ Groq Whisper transcription error: {}", e.getMessage(), e);

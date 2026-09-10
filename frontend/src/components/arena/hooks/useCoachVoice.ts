@@ -12,7 +12,7 @@ export interface TurnMetrics {
 }
 
 export interface UseCoachVoiceProps {
-  onCandidateSpeechFinal?: (text: string) => void;
+  onCandidateSpeechFinal?: (text: string, metadata?: Record<string, string>) => void;
   onCandidateSpeechPartialSalvage?: (text: string) => void;
   apiKey?: string;
   promptContext?: string;
@@ -212,6 +212,15 @@ export function useCoachVoice({
               return;
             }
 
+            const isLowConfidence = (result as any).sttLowConfidence === 'true' || (result as any).status === 'TOO_SHORT';
+            if (isLowConfidence) {
+              const msg = (result as any).message || 'Recording too short — hold/toggle and speak your full approach.';
+              setMicError(msg);
+              setInterimTranscript('');
+              setPttState('IDLE');
+              return;
+            }
+
             const text = (result as any).transcript || (result as any).text;
             if (text && text.trim()) {
               setLastTurnMetrics({
@@ -221,7 +230,11 @@ export function useCoachVoice({
               });
               setInterimTranscript('');
               setPttState('IDLE');
-              onCandidateSpeechFinalRef.current?.(text.trim());
+              const meta: Record<string, string> = {
+                isStt: 'true',
+                captureTimestamp: String(recordingStartTimeRef.current || Date.now())
+              };
+              onCandidateSpeechFinalRef.current?.(text.trim(), meta);
             } else {
               setMicError('No speech detected');
               setInterimTranscript('');

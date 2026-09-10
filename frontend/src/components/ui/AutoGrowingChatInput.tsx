@@ -39,7 +39,46 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   onAbort
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const pointerHandledRef = useRef<boolean>(false);
+  const pointerDownTimeRef = useRef<number>(0);
+  const [recordingSeconds, setRecordingSeconds] = React.useState(0);
+
+  useEffect(() => {
+    let interval: any;
+    if (isListening) {
+      setRecordingSeconds(0);
+      interval = setInterval(() => {
+        setRecordingSeconds((s) => s + 1);
+      }, 1000);
+    } else {
+      setRecordingSeconds(0);
+    }
+    return () => clearInterval(interval);
+  }, [isListening]);
+
+  // Global Ctrl+M keyboard shortcut for PTT toggle
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        if (isAiResponding) return;
+        if (isListening) {
+          if (onStopListening) onStopListening();
+          else onToggleListening();
+        } else {
+          if (onStartListening) onStartListening();
+          else onToggleListening();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isListening, isAiResponding, onStartListening, onStopListening, onToggleListening]);
+
+  const formatTimer = (sec: number) => {
+    const m = Math.floor(sec / 60).toString().padStart(2, '0');
+    const s = (sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   // Dynamically readjust height based on content
   const adjustHeight = useCallback(() => {
@@ -73,7 +112,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
-    pointerHandledRef.current = true;
+    pointerDownTimeRef.current = Date.now();
     if (!isListening && !isAiResponding) {
       if (onStartListening) onStartListening();
       else onToggleListening();
@@ -81,7 +120,18 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   };
 
   const handlePointerUp = () => {
-    if (isListening) {
+    const holdDuration = Date.now() - pointerDownTimeRef.current;
+    if (isListening && holdDuration > 500) {
+      // Intentionally held down and released -> stop recording
+      if (onStopListening) onStopListening();
+      else onToggleListening();
+    }
+  };
+
+  const handleButtonClick = () => {
+    const holdDuration = Date.now() - pointerDownTimeRef.current;
+    if (isListening && holdDuration <= 500) {
+      // 1-click toggle: clicked to finish recording
       if (onStopListening) onStopListening();
       else onToggleListening();
     }
@@ -115,10 +165,10 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
         <div className="flex items-center justify-between px-3 pt-2 pb-1 text-[11px] text-primary font-medium border-b border-primary/20">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-danger animate-ping" />
-            <span className="font-semibold">Push-to-Talk (Whisper STT)…</span>
+            <span className="font-semibold">Recording ({formatTimer(recordingSeconds)})…</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-text-3 font-normal">Release or click to finish</span>
+            <span className="text-[10px] text-text-3 font-normal">Click mic again or release to finish (Ctrl+M)</span>
             {onAbort && (
               <button
                 type="button"
@@ -185,17 +235,11 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
             type="button"
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
-            onClick={() => {
-              if (pointerHandledRef.current) {
-                pointerHandledRef.current = false;
-                return;
-              }
-              onToggleListening();
-            }}
+            onClick={handleButtonClick}
             title={
               isListening
-                ? 'Recording speech… Release to Transcribe or Click to finish'
-                : 'Push-to-Talk Voice: Hold to speak or Click to start (Whisper STT)'
+                ? `Recording (${formatTimer(recordingSeconds)})… Click to finish or hold to talk (Ctrl+M)`
+                : 'Click to record or hold to speak (Ctrl+M)'
             }
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all duration-150 ${
               isListening
@@ -206,12 +250,12 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
             {isListening ? (
               <>
                 <MicOff className="w-3.5 h-3.5" />
-                <span>Release to Send</span>
+                <span>Stop & Send ({formatTimer(recordingSeconds)})</span>
               </>
             ) : (
               <>
                 <Mic className="w-3.5 h-3.5 text-primary-2" />
-                <span className="text-[11px]">PTT Voice</span>
+                <span className="text-[11px]">Record (Ctrl+M)</span>
               </>
             )}
           </button>

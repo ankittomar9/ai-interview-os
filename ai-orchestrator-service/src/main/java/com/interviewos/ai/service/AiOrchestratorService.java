@@ -609,13 +609,24 @@ public class AiOrchestratorService {
                 }
             }
 
+            // STT-Guard: STT turns cannot trigger PROPOSE_STAGE_ADVANCE or ADVANCE_STAGE [F1.3]
+            if (Boolean.TRUE.equals(request.isStt())) {
+                if ("ADVANCE_STAGE".equalsIgnoreCase(recommendedAction) || "PROPOSE_STAGE_ADVANCE".equalsIgnoreCase(recommendedAction)) {
+                    log.info("STT-GUARD: Suppressed {} on STT turn; resetting recommendedAction to PROBE_DEEPER", recommendedAction);
+                    recommendedAction = "PROBE_DEEPER";
+                }
+            }
+
             String approachAssessment = root.hasNonNull("approachAssessment") && !root.get("approachAssessment").asText().isBlank()
                     ? root.get("approachAssessment").asText().trim().toUpperCase()
                     : "NOT_APPLICABLE";
 
             // IH1 Deterministic Post-guard on Approach Agreement
             if (isGatedType && isInterviewMode) {
-                if ("AGREE".equalsIgnoreCase(approachAssessment)) {
+                if (Boolean.TRUE.equals(request.isStt())) {
+                    log.info("STT-GUARD: Gate mutations suppressed on STT turn; setting approachAssessment to PROBE_MORE");
+                    approachAssessment = "PROBE_MORE";
+                } else if ("AGREE".equalsIgnoreCase(approachAssessment)) {
                     boolean hasQualifyingTurn = hasQualifyingCandidateExplanation(currentSectionTurns);
                     boolean hasCodeExecution = hasCodeExecutionTurn(currentSectionTurns);
 
@@ -696,6 +707,9 @@ public class AiOrchestratorService {
                 String candidateText = request.candidateExplanation() != null ? request.candidateExplanation() : "";
                 if (!hasAffirmativeConsent(candidateText)) {
                     recAction = "PROPOSE_STAGE_ADVANCE";
+                }
+                if (Boolean.TRUE.equals(request.isStt())) {
+                    recAction = "PROBE_DEEPER";
                 }
                 return new AiDialogueResponse(
                         String.format("Your solution is correct and passes all %d/%d test cases! Excellent work.", passed, total),

@@ -28,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -338,6 +339,21 @@ public class InterviewSessionService {
         return SessionResponse.fromEntity(saved);
     }
 
+    private long parseCaptureTimestamp(String captureTsStr) {
+        if (captureTsStr == null || captureTsStr.isBlank()) {
+            return System.currentTimeMillis();
+        }
+        try {
+            return Long.parseLong(captureTsStr.trim());
+        } catch (NumberFormatException e) {
+            try {
+                return Instant.parse(captureTsStr.trim()).toEpochMilli();
+            } catch (Exception ex) {
+                return LocalDateTime.parse(captureTsStr.trim()).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+            }
+        }
+    }
+
     @Transactional
     public SessionResponse.MessageResponse addMessage(Long sessionId, AddMessageRequest request) {
         InterviewSession session = findSessionOrThrow(sessionId);
@@ -348,6 +364,53 @@ public class InterviewSessionService {
 
         if (session.getStatus() != SessionStatus.IN_PROGRESS && session.getStatus() != SessionStatus.INITIALIZED) {
             throw new IllegalStateException("Cannot add messages to a session in status: " + session.getStatus());
+        }
+
+        // F1.1 Suppress persistence for low-confidence / too-short STT turns
+        if (request.metadata() != null && "true".equalsIgnoreCase(request.metadata().get("sttLowConfidence"))) {
+            log.info("STT_SUPPRESSED_LOW_CONFIDENCE: Suppressing persistence for low-confidence audio turn on session {}", sessionId);
+            return new SessionResponse.MessageResponse(
+                    -1L,
+                    request.senderRole().toUpperCase(),
+                    request.messageType(),
+                    request.content(),
+                    request.codeSnippet(),
+                    Instant.now(),
+                    request.metadata()
+            );
+        }
+
+        // F1.2 Boundary Attribution: If audio turn arrives after transition with captureTimestamp predating transition, drop it
+        if (request.metadata() != null && request.metadata().containsKey("captureTimestamp")) {
+            String captureTsStr = request.metadata().get("captureTimestamp");
+            try {
+                long captureEpochMs = parseCaptureTimestamp(captureTsStr);
+                var docOpt = mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId);
+                if (docOpt.isPresent()) {
+                    var doc = docOpt.get();
+                    if (doc.getSectionProgress() != null && !doc.getSectionProgress().isEmpty()) {
+                        var latestTransition = doc.getSectionProgress().get(doc.getSectionProgress().size() - 1);
+                        if (latestTransition.getEndedAt() != null) {
+                            long transitionEpochMs = latestTransition.getEndedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                            if (captureEpochMs < transitionEpochMs) {
+                                log.warn("STT_DROPPED_BOUNDARY: Dropping audio turn with captureTimestamp {} ({}ms) prior to transition endedAt {} ({}ms) for session {}",
+                                        captureTsStr, captureEpochMs, latestTransition.getEndedAt(), transitionEpochMs, sessionId);
+                                return new SessionResponse.MessageResponse(
+                                        -1L,
+                                        request.senderRole().toUpperCase(),
+                                        request.messageType(),
+                                        request.content(),
+                                        request.codeSnippet(),
+                                        Instant.now(),
+                                        request.metadata()
+                                );
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Notice checking captureTimestamp '{}': {}", captureTsStr, e.getMessage());
+            }
         }
 
         SessionMessage message = SessionMessage.builder()

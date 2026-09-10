@@ -15,6 +15,8 @@ import org.springframework.web.client.RestClient;
 
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -90,11 +92,43 @@ class WhisperTranscriptionServiceTest {
         assertEquals("Fallback Context", promptWithContext);
     }
 
+    public static byte[] createWav(int sampleRate, int numSamples, double amplitude) {
+        int channels = 1;
+        int bitsPerSample = 16;
+        int dataSize = numSamples * channels * (bitsPerSample / 8);
+        int totalSize = 36 + dataSize;
+
+        ByteBuffer bb = ByteBuffer.allocate(44 + dataSize).order(ByteOrder.LITTLE_ENDIAN);
+        bb.put((byte) 'R').put((byte) 'I').put((byte) 'F').put((byte) 'F');
+        bb.putInt(totalSize);
+        bb.put((byte) 'W').put((byte) 'A').put((byte) 'V').put((byte) 'E');
+
+        bb.put((byte) 'f').put((byte) 'm').put((byte) 't').put((byte) ' ');
+        bb.putInt(16);
+        bb.putShort((short) 1); // PCM
+        bb.putShort((short) channels);
+        bb.putInt(sampleRate);
+        bb.putInt(sampleRate * channels * 2);
+        bb.putShort((short) (channels * 2));
+        bb.putShort((short) bitsPerSample);
+
+        bb.put((byte) 'd').put((byte) 'a').put((byte) 't').put((byte) 'a');
+        bb.putInt(dataSize);
+
+        for (int i = 0; i < numSamples; i++) {
+            short sample = (short) (amplitude * 32767.0 * Math.sin(2 * Math.PI * 440.0 * i / sampleRate));
+            bb.putShort(sample);
+        }
+
+        return bb.array();
+    }
+
     @Test
     @DisplayName("transcribeAudio returns MISSING_API_KEY when sidecar is down and no key provided")
     void testTranscribeMissingApiKey() {
+        byte[] validWav = createWav(16000, 24000, 0.5); // 1.5s speech
         MockMultipartFile audioFile = new MockMultipartFile(
-                "file", "speech.wav", "audio/wav", new byte[]{1, 2, 3, 4}
+                "file", "speech.wav", "audio/wav", validWav
         );
 
         Map<String, String> result = transcriptionService.transcribeAudio(
@@ -103,6 +137,48 @@ class WhisperTranscriptionServiceTest {
 
         assertEquals("MISSING_API_KEY", result.get("status"));
         assertEquals("", result.get("text"));
+    }
+
+    @Test
+    @DisplayName("VP24 [Negative]: 0.3s / 4,800-sample fixture rejected with TOO_SHORT and sttLowConfidence")
+    void testAudioFragmentGateRejectsTooShortWav() {
+        byte[] shortWav = createWav(16000, 4800, 0.5); // 0.3s
+        MockMultipartFile audioFile = new MockMultipartFile(
+                "file", "short.wav", "audio/wav", shortWav
+        );
+
+        Map<String, String> result = transcriptionService.transcribeAudio(
+                audioFile, "fake-key", "whisper-large-v3", "Context", 1L, "en"
+        );
+
+        assertEquals("TOO_SHORT", result.get("status"));
+        assertEquals("true", result.get("sttLowConfidence"));
+        assertEquals(WhisperTranscriptionService.TOAST_TOO_SHORT, result.get("message"));
+    }
+
+    @Test
+    @DisplayName("VP24 [Negative]: 1.5s silent audio rejected below silence RMS floor")
+    void testAudioFragmentGateRejectsSilenceWav() {
+        byte[] silentWav = createWav(16000, 24000, 0.0); // 1.5s silence
+        MockMultipartFile audioFile = new MockMultipartFile(
+                "file", "silent.wav", "audio/wav", silentWav
+        );
+
+        Map<String, String> result = transcriptionService.transcribeAudio(
+                audioFile, "fake-key", "whisper-large-v3", "Context", 1L, "en"
+        );
+
+        assertEquals("TOO_SHORT", result.get("status"));
+        assertEquals("true", result.get("sttLowConfidence"));
+        assertEquals(WhisperTranscriptionService.TOAST_TOO_SHORT, result.get("message"));
+    }
+
+    @Test
+    @DisplayName("VP24 [Positive]: >=1.2s non-silent audio passes fragment gate")
+    void testAudioFragmentGateAcceptsValidWav() {
+        byte[] validWav = createWav(16000, 24000, 0.5); // 1.5s speech
+        Map<String, String> gateCheck = transcriptionService.checkAudioFragment(validWav, "speech.wav");
+        assertNull(gateCheck, "Fragment gate must return null for valid 1.5s speech audio");
     }
 
     @Test

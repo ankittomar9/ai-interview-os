@@ -5,6 +5,7 @@ interface UseVoiceCoachProps {
   elapsedSeconds?: number;
   testFailures?: number;
   candidateWords?: number;
+  candidateTurns?: number;
   currentTrack?: string;
   problemTitle?: string;
 }
@@ -14,6 +15,7 @@ export function useVoiceCoach({
   elapsedSeconds = 0,
   testFailures = 0,
   candidateWords = 0,
+  candidateTurns = 0,
   currentTrack = 'ALGORITHMS_DATA_STRUCTURES',
   problemTitle = ''
 }: UseVoiceCoachProps = {}) {
@@ -40,16 +42,19 @@ export function useVoiceCoach({
             testFailures,
             consecutiveFailures: testFailures,
             candidateWords,
+            candidateTurns,
             currentTrack,
             problemTitle
           })
         });
         if (res.ok) {
           const data = await res.json();
-          if (data && data.tip) {
+          if (data && data.tip && data.category !== 'NONE') {
             setTip(data.tip);
             setCategory(data.category || 'COACH');
             setShouldSpeak(!!data.shouldSpeak);
+          } else {
+            setTip(undefined);
           }
         }
       } catch {

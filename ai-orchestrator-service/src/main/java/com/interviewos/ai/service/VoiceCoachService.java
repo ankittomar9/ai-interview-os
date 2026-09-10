@@ -41,11 +41,15 @@ public class VoiceCoachService {
             );
         }
 
-        // 4. Default gentle coaching
-        return new VoiceCoachTipResponse(
-                "You are making steady progress. State any key trade-offs before locking in your implementation.",
-                "TRADE_OFFS",
-                false
-        );
+        // 4. Default gentle coaching (F1.5: Gated behind >= 2 non-empty candidate turns)
+        if (request.candidateTurns() >= 2 && request.candidateWords() >= 20) {
+            return new VoiceCoachTipResponse(
+                    "You are making steady progress. State any key trade-offs before locking in your implementation.",
+                    "TRADE_OFFS",
+                    false
+            );
+        }
+
+        return new VoiceCoachTipResponse("", "NONE", false);
     }
 }
