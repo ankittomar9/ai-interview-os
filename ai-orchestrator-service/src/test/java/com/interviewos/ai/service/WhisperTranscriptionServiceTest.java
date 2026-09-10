@@ -244,4 +244,63 @@ class WhisperTranscriptionServiceTest {
             server.stop(0);
         }
     }
+
+    @Test
+    @DisplayName("VP30: resolveEffectiveProvider selection matrix")
+    void testResolveEffectiveProviderMatrix() {
+        // auto + key + INTERVIEW -> groq
+        assertEquals("groq", transcriptionService.resolveEffectiveProvider("auto", "gsk-12345", "INTERVIEW"));
+        assertEquals("groq", transcriptionService.resolveEffectiveProvider(null, "gsk-12345", "INTERVIEW"));
+
+        // auto + no key -> local
+        assertEquals("local", transcriptionService.resolveEffectiveProvider("auto", "", "INTERVIEW"));
+        assertEquals("local", transcriptionService.resolveEffectiveProvider("auto", null, "INTERVIEW"));
+
+        // auto + key + PLAYGROUND -> local
+        assertEquals("local", transcriptionService.resolveEffectiveProvider("auto", "gsk-12345", "PLAYGROUND"));
+
+        // explicit local -> local (regardless of key or mode)
+        assertEquals("local", transcriptionService.resolveEffectiveProvider("local", "gsk-12345", "INTERVIEW"));
+        assertEquals("local", transcriptionService.resolveEffectiveProvider("local", "", "INTERVIEW"));
+
+        // explicit groq -> groq
+        assertEquals("groq", transcriptionService.resolveEffectiveProvider("groq", "gsk-12345", "INTERVIEW"));
+    }
+
+    @Test
+    @DisplayName("VP30 [Negative]: Explicit local never calls Groq even when key is present and sidecar down")
+    void testTranscribeAudioExplicitLocalNeverCallsGroq() {
+        ReflectionTestUtils.setField(transcriptionService, "configuredSttProvider", "local");
+        byte[] validWav = createWav(16000, 24000, 0.5); // 1.5s speech
+        MockMultipartFile audioFile = new MockMultipartFile(
+                "file", "speech.wav", "audio/wav", validWav
+        );
+
+        Map<String, String> result = transcriptionService.transcribeAudio(
+                audioFile, "gsk-mock-key", "", "Kafka", 1L, "en", "INTERVIEW"
+        );
+
+        // Sidecar is not running, so in explicit local mode it must return MISSING_API_KEY / not available
+        assertEquals("MISSING_API_KEY", result.get("status"));
+        // verify egressTracker was NEVER called for Groq
+        org.mockito.Mockito.verifyNoInteractions(egressTracker);
+    }
+
+    @Test
+    @DisplayName("VP30: Auto mode without key selects local provider")
+    void testTranscribeAudioAutoWithoutKeySelectsLocal() {
+        ReflectionTestUtils.setField(transcriptionService, "configuredSttProvider", "auto");
+        byte[] validWav = createWav(16000, 24000, 0.5); // 1.5s speech
+        MockMultipartFile audioFile = new MockMultipartFile(
+                "file", "speech.wav", "audio/wav", validWav
+        );
+
+        Map<String, String> result = transcriptionService.transcribeAudio(
+                audioFile, "", "", "Kafka", 1L, "en", "INTERVIEW"
+        );
+
+        // Without key and sidecar down -> returns MISSING_API_KEY and never calls Groq
+        assertEquals("MISSING_API_KEY", result.get("status"));
+        org.mockito.Mockito.verifyNoInteractions(egressTracker);
+    }
 }

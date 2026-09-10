@@ -38,6 +38,9 @@ public class WhisperTranscriptionService {
     @Value("${ai.providers.groq.stt-model:${GROQ_MODEL_STT:whisper-large-v3-turbo}}")
     private String configuredGroqSttModel;
 
+    @Value("${ai.whisper.stt-provider:${STT_PROVIDER:auto}}")
+    private String configuredSttProvider = "auto";
+
     private static final String GROQ_WHISPER_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions";
     private static final String DEFAULT_WHISPER_MODEL = "whisper-large-v3-turbo";
 
@@ -166,12 +169,39 @@ public class WhisperTranscriptionService {
     /**
      * Transcribes candidate audio using local Whisper.cpp if available, falling back to Groq Whisper LPU.
      */
+    public String resolveEffectiveProvider(String sttProviderSetting, String apiKey, String sessionMode) {
+        String pref = (sttProviderSetting != null && !sttProviderSetting.isBlank())
+                ? sttProviderSetting.trim().toLowerCase() : "auto";
+
+        if ("local".equals(pref)) {
+            return "local";
+        }
+        if ("groq".equals(pref)) {
+            return "groq";
+        }
+        // auto: if usable key exists and mode is INTERVIEW -> groq; else local
+        boolean hasKey = apiKey != null && !apiKey.isBlank();
+        boolean isInterview = sessionMode == null || !"PLAYGROUND".equalsIgnoreCase(sessionMode.trim());
+        if (hasKey && isInterview) {
+            return "groq";
+        }
+        return "local";
+    }
+
+    /**
+     * Transcribes candidate audio according to configured STT_PROVIDER policy (local | groq | auto).
+     */
     public Map<String, String> transcribeAudio(MultipartFile audioFile, String customApiKey, String customModel) {
-        return transcribeAudio(audioFile, customApiKey, customModel, null, null, "en");
+        return transcribeAudio(audioFile, customApiKey, customModel, null, null, "en", "INTERVIEW");
     }
 
     public Map<String, String> transcribeAudio(MultipartFile audioFile, String customApiKey, String customModel,
                                               String promptContext, Long sessionId, String lang) {
+        return transcribeAudio(audioFile, customApiKey, customModel, promptContext, sessionId, lang, "INTERVIEW");
+    }
+
+    public Map<String, String> transcribeAudio(MultipartFile audioFile, String customApiKey, String customModel,
+                                              String promptContext, Long sessionId, String lang, String sessionMode) {
         try {
             byte[] bytes = audioFile.getBytes();
             Map<String, String> fragmentGate = checkAudioFragment(bytes, audioFile.getOriginalFilename());
@@ -182,15 +212,6 @@ public class WhisperTranscriptionService {
             log.warn("Notice checking audio fragment gate: {}", e.getMessage());
         }
 
-        String effectiveLang = (lang != null && !lang.isBlank()) ? lang.trim() : "en";
-        String prompt = assemblePrompt(promptContext, sessionId);
-
-        if (isWhisperSidecarRunning()) {
-            log.info("🔒 Transcribing speech via 100% Local Whisper.cpp sidecar at {} (promptLength={}, lang={})",
-                    localWhisperEndpoint, prompt.length(), effectiveLang);
-            return evaluateTranscribedText(transcribeLocal(audioFile, prompt, effectiveLang));
-        }
-
         String apiKey = (customApiKey != null && !customApiKey.isBlank()) ? customApiKey : defaultGroqApiKey;
         if (apiKey == null || apiKey.isBlank()) {
             String envKey = System.getenv("GROQ_API_KEY");
@@ -198,66 +219,102 @@ public class WhisperTranscriptionService {
                 apiKey = envKey.trim();
             }
         }
+
+        String effectiveProvider = resolveEffectiveProvider(configuredSttProvider, apiKey, sessionMode);
+        String effectiveLang = (lang != null && !lang.isBlank()) ? lang.trim() : "en";
+        String prompt = assemblePrompt(promptContext, sessionId);
+
+        if ("groq".equals(effectiveProvider)) {
+            if (apiKey == null || apiKey.isBlank()) {
+                log.warn("⚠️ Groq STT selected but no Groq API Key provided.");
+                return Map.of("text", "", "status", "MISSING_API_KEY", "message", "No Groq API key available for Groq STT.");
+            }
+            try {
+                return evaluateTranscribedText(transcribeGroq(audioFile, apiKey, customModel, prompt, effectiveLang));
+            } catch (Exception e) {
+                log.error("⚠️ Groq Whisper transcription error: {}", e.getMessage(), e);
+                // In auto mode, fallback to local sidecar if running
+                if ("auto".equalsIgnoreCase(configuredSttProvider) && isWhisperSidecarRunning()) {
+                    log.info("⚠️ Falling back to 100% Local Whisper.cpp sidecar after Groq failure: {}", e.getMessage());
+                    return evaluateTranscribedText(transcribeLocal(audioFile, prompt, effectiveLang));
+                }
+                return Map.of("text", "", "status", "ERROR", "message", e.getMessage(), "sttProvider", "groq", "provider", "GROQ");
+            }
+        }
+
+        // effectiveProvider is "local"
+        if (isWhisperSidecarRunning()) {
+            log.info("🔒 Transcribing speech via 100% Local Whisper.cpp sidecar at {} (promptLength={}, lang={})",
+                    localWhisperEndpoint, prompt.length(), effectiveLang);
+            return evaluateTranscribedText(transcribeLocal(audioFile, prompt, effectiveLang));
+        }
+
+        // In auto mode, if sidecar is down but Groq key is present, fallback to Groq
+        if ("auto".equalsIgnoreCase(configuredSttProvider) && apiKey != null && !apiKey.isBlank()) {
+            log.info("Local Whisper sidecar not running, routing to Groq Whisper LPU.");
+            try {
+                return evaluateTranscribedText(transcribeGroq(audioFile, apiKey, customModel, prompt, effectiveLang));
+            } catch (Exception e) {
+                log.error("⚠️ Groq Whisper fallback error: {}", e.getMessage(), e);
+                return Map.of("text", "", "status", "ERROR", "message", e.getMessage(), "sttProvider", "groq", "provider", "GROQ");
+            }
+        }
+
+        log.warn("⚠️ No local Whisper.cpp running and no Groq API Key provided for Whisper transcription.");
+        return Map.of("text", "", "status", "MISSING_API_KEY", "message", "No STT provider available. Start Whisper sidecar or provide GROQ_API_KEY.");
+    }
+
+    private Map<String, String> transcribeGroq(MultipartFile audioFile, String apiKey, String customModel, String prompt, String effectiveLang) throws Exception {
+        egressTracker.recordCloudCall("GROQ_WHISPER");
+        long startTime = System.currentTimeMillis();
+        String fileName = (audioFile.getOriginalFilename() != null && !audioFile.getOriginalFilename().isBlank())
+                ? audioFile.getOriginalFilename() : "candidate_speech.webm";
+
+        ByteArrayResource audioResource = new ByteArrayResource(audioFile.getBytes()) {
+            @Override
+            public String getFilename() {
+                return fileName;
+            }
+        };
+
         String fallbackModel = (configuredGroqSttModel != null && !configuredGroqSttModel.isBlank())
                 ? configuredGroqSttModel : DEFAULT_WHISPER_MODEL;
         String model = (customModel != null && !customModel.isBlank()) ? customModel : fallbackModel;
 
-        if (apiKey == null || apiKey.isBlank()) {
-            log.warn("⚠️ No local Whisper.cpp running and no Groq API Key provided for Whisper transcription.");
-            return Map.of("text", "", "status", "MISSING_API_KEY", "message", "No STT provider available. Start Whisper sidecar or provide GROQ_API_KEY.");
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", audioResource);
+        body.add("model", model);
+        body.add("language", effectiveLang);
+        body.add("response_format", "json");
+        if (!prompt.isBlank()) {
+            body.add("prompt", prompt);
         }
 
-        egressTracker.recordCloudCall("GROQ_WHISPER");
+        RestClient restClient = restClientBuilder.build();
 
-        try {
-            long startTime = System.currentTimeMillis();
-            String fileName = (audioFile.getOriginalFilename() != null && !audioFile.getOriginalFilename().isBlank())
-                    ? audioFile.getOriginalFilename() : "candidate_speech.webm";
+        String rawResponse = restClient.post()
+                .uri(GROQ_WHISPER_ENDPOINT)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(body)
+                .retrieve()
+                .body(String.class);
 
-            ByteArrayResource audioResource = new ByteArrayResource(audioFile.getBytes()) {
-                @Override
-                public String getFilename() {
-                    return fileName;
-                }
-            };
+        JsonNode root = objectMapper.readTree(rawResponse);
+        String transcript = root.path("text").asText("");
+        long duration = System.currentTimeMillis() - startTime;
 
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", audioResource);
-            body.add("model", model);
-            body.add("language", effectiveLang);
-            body.add("response_format", "json");
-            if (!prompt.isBlank()) {
-                body.add("prompt", prompt);
-            }
-
-            RestClient restClient = restClientBuilder.build();
-
-            String rawResponse = restClient.post()
-                    .uri(GROQ_WHISPER_ENDPOINT)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-
-            JsonNode root = objectMapper.readTree(rawResponse);
-            String transcript = root.path("text").asText("");
-            long duration = System.currentTimeMillis() - startTime;
-
-            log.info("🎙️ Groq Whisper Transcribed using model '{}' ({}ms): \"{}\"", model, duration, transcript);
-            return evaluateTranscribedText(Map.of(
-                    "text", transcript,
-                    "status", "SUCCESS",
-                    "latencyMs", String.valueOf(duration),
-                    "model", model,
-                    "provider", "GROQ",
-                    "promptUsed", String.valueOf(!prompt.isBlank())
-            ));
-
-        } catch (Exception e) {
-            log.error("⚠️ Groq Whisper transcription error: {}", e.getMessage(), e);
-            return Map.of("text", "", "status", "ERROR", "message", e.getMessage());
-        }
+        log.info("🎙️ Groq Whisper Transcribed using model '{}' ({}ms): \"{}\"", model, duration, transcript);
+        return Map.of(
+                "text", transcript,
+                "status", "SUCCESS",
+                "sttProvider", "groq",
+                "provider", "GROQ",
+                "sttMs", String.valueOf(duration),
+                "latencyMs", String.valueOf(duration),
+                "model", model,
+                "promptUsed", String.valueOf(!prompt.isBlank())
+        );
     }
 
     private volatile long lastSidecarCheckTime = 0;
@@ -327,8 +384,10 @@ public class WhisperTranscriptionService {
             return Map.of(
                     "text", text,
                     "status", "SUCCESS",
-                    "latencyMs", String.valueOf(duration),
+                    "sttProvider", "local",
                     "provider", "WHISPER_CPP_LOCAL",
+                    "sttMs", String.valueOf(duration),
+                    "latencyMs", String.valueOf(duration),
                     "promptUsed", String.valueOf(prompt != null && !prompt.isBlank())
             );
         } catch (Exception e) {

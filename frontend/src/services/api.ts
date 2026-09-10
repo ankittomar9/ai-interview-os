@@ -352,6 +352,36 @@ export const refreshProvidersStatus = async (): Promise<ProviderStatusItem[]> =>
     return res.json();
 };
 
+export interface TranscriptionResponse {
+    transcript?: string;
+    text?: string;
+    durationSeconds?: number;
+    provider?: string;
+    sttProvider?: 'groq' | 'local' | string;
+    sttMs?: string;
+    latencyMs?: string;
+    status?: string;
+    message?: string;
+    sttLowConfidence?: string;
+}
+
+let currentSttChip: string | null = null;
+const sttChipListeners = new Set<(chip: string | null) => void>();
+
+export const setSttChip = (chip: string | null): void => {
+    currentSttChip = chip;
+    sttChipListeners.forEach(fn => fn(chip));
+};
+
+export const getSttChip = (): string | null => currentSttChip;
+
+export const subscribeSttChip = (listener: (chip: string | null) => void): (() => void) => {
+    sttChipListeners.add(listener);
+    return () => {
+        sttChipListeners.delete(listener);
+    };
+};
+
 // --- Groq / Local Whisper Speech-To-Text Transcription Endpoint (:8082) ---
 export const transcribeAudio = async (
     audioBlob: Blob,
@@ -359,8 +389,9 @@ export const transcribeAudio = async (
     promptContext?: string,
     sessionId?: number,
     lang?: string,
-    signal?: AbortSignal
-): Promise<{ transcript?: string; durationSeconds?: number; provider?: string; text?: string; latencyMs?: string; status?: string }> => {
+    signal?: AbortSignal,
+    sessionMode?: 'INTERVIEW' | 'PLAYGROUND'
+): Promise<TranscriptionResponse> => {
     const isWav = audioBlob.type.includes('wav');
     const filename = isWav ? 'candidate_speech.wav' : 'candidate_speech.webm';
     const formData = new FormData();
@@ -370,6 +401,7 @@ export const transcribeAudio = async (
     if (promptContext) formData.append('promptContext', promptContext);
     if (sessionId != null) formData.append('sessionId', String(sessionId));
     if (lang) formData.append('lang', lang);
+    if (sessionMode) formData.append('sessionMode', sessionMode);
 
     const headers: Record<string, string> = {};
     if (apiKey) {
@@ -383,7 +415,15 @@ export const transcribeAudio = async (
         signal
     });
     if (!res.ok) throw new Error('Speech transcription request failed');
-    return res.json();
+    const data: TranscriptionResponse = await res.json();
+    const rawProv = data.sttProvider || data.provider;
+    const prov: 'groq' | 'local' = (rawProv && String(rawProv).toLowerCase().includes('groq')) ? 'groq' : 'local';
+    const ms = Number(data.sttMs || data.latencyMs) || 0;
+    const chipText = prov === 'groq'
+        ? `voice: Groq LPU · ${(ms / 1000).toFixed(1)}s`
+        : `voice: local · ${(ms / 1000).toFixed(1)}s`;
+    setSttChip(chipText);
+    return data;
 };
 
 export interface BackendPurityStatus {

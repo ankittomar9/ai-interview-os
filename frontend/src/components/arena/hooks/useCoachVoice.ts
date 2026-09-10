@@ -39,6 +39,7 @@ export function useCoachVoice({
     recordingDurationMs: null,
     turnCompletedAt: null
   });
+  const [lastSttInfo, setLastSttInfo] = useState<{ provider: 'groq' | 'local'; latencyMs: number } | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -223,6 +224,13 @@ export function useCoachVoice({
 
             const text = (result as any).transcript || (result as any).text;
             if (text && text.trim()) {
+              const rawProv = (result as any).sttProvider || (result as any).provider;
+              const prov: 'groq' | 'local' = (rawProv && String(rawProv).toLowerCase().includes('groq')) ? 'groq' : 'local';
+              const durationMs = Number((result as any).sttMs || (result as any).latencyMs) || sttLatency;
+              setLastSttInfo({
+                provider: prov,
+                latencyMs: durationMs
+              });
               setLastTurnMetrics({
                 sttLatencyMs: sttLatency,
                 recordingDurationMs: duration,
@@ -321,6 +329,12 @@ export function useCoachVoice({
     abortTurn();
   }, [abortTurn]);
 
+  const sttChip = lastSttInfo ? (
+    lastSttInfo.provider === 'groq'
+      ? `voice: Groq LPU · ${(lastSttInfo.latencyMs / 1000).toFixed(1)}s`
+      : `voice: local · ${(lastSttInfo.latencyMs / 1000).toFixed(1)}s`
+  ) : null;
+
   return {
     isAiPanelOpen,
     setIsAiPanelOpen,
@@ -339,6 +353,8 @@ export function useCoachVoice({
     stopListening,
     toggleListening,
     abortTurn,
-    lastTurnMetrics
+    lastTurnMetrics,
+    lastSttInfo,
+    sttChip
   };
 }

@@ -737,7 +737,7 @@ export const PreInterviewChecklist: React.FC<Props> = ({
               className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
             />
             <span className="text-xs font-semibold text-text">
-              This session is recorded and proctored. I consent to camera video, screen share, and microphone audio capture, with AI integrity analysis.
+              This session is recorded and proctored. I consent to camera video, screen share, and microphone audio capture, with AI integrity analysis. Candidate audio is transcribed via Groq Whisper LPU (BYOK egress).
             </span>
           </label>
           <Chip variant={consentGiven ? 'success' : 'danger'} size="sm">
