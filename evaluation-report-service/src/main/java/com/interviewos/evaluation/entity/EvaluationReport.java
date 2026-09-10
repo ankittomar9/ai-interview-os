@@ -42,11 +42,9 @@ public class EvaluationReport {
     private int integrityScore;
     private Integer requirementsClarificationScore;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String executiveSummary;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String rubricJson;
 
@@ -77,7 +75,6 @@ public class EvaluationReport {
     @Builder.Default
     private String workspaceProvenance = "LOCAL_SANDBOX";
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String planVsActualJson;
 

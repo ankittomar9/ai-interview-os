@@ -32,11 +32,9 @@ public class SessionMessage {
     @Column(nullable = false)
     private MessageType messageType;
 
-    @Lob
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @Lob
     @Column(columnDefinition = "TEXT")
     private String codeSnippet;
 

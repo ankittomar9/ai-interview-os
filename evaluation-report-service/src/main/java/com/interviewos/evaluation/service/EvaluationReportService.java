@@ -524,8 +524,9 @@ public class EvaluationReportService {
     @Transactional(readOnly = true)
     public DiagnosticReportResponse getReportById(Long reportId) {
         return reportRepository.findById(reportId)
+                .or(() -> reportRepository.findBySessionId(reportId))
                 .map(DiagnosticReportResponse::fromEntity)
-                .orElseThrow(() -> new NoSuchElementException("Evaluation report not found with ID: " + reportId));
+                .orElseThrow(() -> new NoSuchElementException("Evaluation report not found with ID or session ID: " + reportId));
     }
 
     @Transactional(readOnly = true)

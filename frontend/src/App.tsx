@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, PlannedSection } from './types';
-import { completeSession, createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession } from './services/api';
+import { completeSession, createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession, markSessionCompleted } from './services/api';
 import { clearVerificationStreams } from './services/verificationStreams';
 import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
@@ -352,6 +352,7 @@ export function App() {
     }
 
     setIsGeneratingReport(true);
+    markSessionCompleted(sessionId);
     try {
       await completeSession(sessionId);
       const rep = await generateDiagnosticReport(sessionId);

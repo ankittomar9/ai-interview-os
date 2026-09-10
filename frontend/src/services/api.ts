@@ -67,10 +67,26 @@ export const startSession = async (sessionId: number): Promise<SessionResponse> 
     });
 };
 
+const completedSessionIds = new Set<number>();
+
+export const markSessionCompleted = (sessionId: number): void => {
+    completedSessionIds.add(sessionId);
+};
+
+export const isSessionCompleted = (sessionId: number): boolean => {
+    return completedSessionIds.has(sessionId);
+};
+
+export const resetCompletedSessions = (): void => {
+    completedSessionIds.clear();
+};
+
 export const completeSession = async (sessionId: number): Promise<SessionResponse> => {
-    return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}/complete`, {
+    const res = await fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}/complete`, {
         method: 'POST'
     });
+    markSessionCompleted(sessionId);
+    return res;
 };
 
 export interface VerificationPayload {
@@ -129,6 +145,10 @@ export const addMessageToSession = async (
         integritySignals?: IntegritySignals;
     }
 ) => {
+    if (isSessionCompleted(sessionId)) {
+        console.warn(`[addMessageToSession] Suppressed outgoing message POST for completed session ${sessionId}`);
+        return null;
+    }
     const res = await fetch(`${SESSION_API}/${sessionId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
