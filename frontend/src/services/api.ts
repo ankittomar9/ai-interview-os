@@ -326,7 +326,7 @@ export interface ProviderStatusItem {
     provider: string;
     configPresent: boolean;
     keySource: 'ENV' | 'BYOK' | 'NONE';
-    state: 'READY' | 'NOT_CONFIGURED' | 'ERROR' | 'UNREACHABLE';
+    state: 'READY' | 'NOT_CONFIGURED' | 'DEGRADED' | 'ERROR' | 'UNREACHABLE';
     configuredModel?: string;
     modelListed?: boolean | null;
     reason?: string | null;
