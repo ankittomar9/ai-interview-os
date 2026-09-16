@@ -5,13 +5,21 @@ import { toast } from '../../hooks/useToast';
 interface Props {
   initialMinutes?: number;
   defaultMinutes?: number;
+  autoStart?: boolean;
   onExpire?: () => void;
 }
 
-export const SelfTimer: React.FC<Props> = ({ initialMinutes = 30, defaultMinutes, onExpire }) => {
+export const SelfTimer: React.FC<Props> = ({ initialMinutes = 30, defaultMinutes, autoStart = false, onExpire }) => {
   const startingMinutes = defaultMinutes !== undefined ? defaultMinutes : initialMinutes;
   const [secondsLeft, setSecondsLeft] = useState(startingMinutes * 60);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isRunning, setIsRunning] = useState(autoStart);
+
+  useEffect(() => {
+    setSecondsLeft(startingMinutes * 60);
+    if (autoStart) {
+      setIsRunning(true);
+    }
+  }, [startingMinutes, autoStart]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;

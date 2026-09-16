@@ -122,6 +122,25 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
     return transcriptData.transcript || [];
   }, [transcriptData]);
 
+  const sessionStartTimeMs = useMemo(() => {
+    const streamStart = manifest?.streams?.[replayStreamKind]?.startedAt;
+    if (streamStart && !isNaN(new Date(streamStart).getTime())) {
+      return new Date(streamStart).getTime();
+    }
+    const audioStart = manifest?.streams?.['mic-audio']?.startedAt;
+    if (audioStart && !isNaN(new Date(audioStart).getTime())) {
+      return new Date(audioStart).getTime();
+    }
+    for (const turn of transcriptList) {
+      const ts = turn.metadata?.captureTimestamp || turn.timestamp;
+      if (ts) {
+        const parsed = new Date(ts).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    return null;
+  }, [manifest, replayStreamKind, transcriptList]);
+
   const hasSingleCameraFlag = useMemo(() => {
     return transcriptList.some(
       (m) =>
@@ -943,17 +962,27 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
                 <div className="max-h-64 overflow-y-auto space-y-2 pr-1 divide-y divide-border/40">
                   {transcriptList && transcriptList.length > 0 ? (
                     transcriptList.map((turn, index: number) => {
-                      const estimatedSeconds = index * 15;
+                      const turnTimestamp = turn.metadata?.captureTimestamp || turn.timestamp;
+                      let seekSeconds: number | null = null;
+                      if (sessionStartTimeMs !== null && turnTimestamp) {
+                        const turnTimeMs = new Date(turnTimestamp).getTime();
+                        if (!isNaN(turnTimeMs) && turnTimeMs >= sessionStartTimeMs) {
+                          seekSeconds = Math.floor((turnTimeMs - sessionStartTimeMs) / 1000);
+                        }
+                      }
+
                       return (
                         <div
                           key={index}
                           onClick={() => {
-                            if (videoRef.current) {
-                              videoRef.current.currentTime = estimatedSeconds;
+                            if (seekSeconds !== null && videoRef.current) {
+                              videoRef.current.currentTime = seekSeconds;
                               videoRef.current.play().catch(() => {});
                             }
                           }}
-                          className="pt-2 first:pt-0 flex items-start justify-between gap-3 cursor-pointer group hover:bg-elevated/60 p-2 rounded transition-colors text-xs"
+                          className={`pt-2 first:pt-0 flex items-start justify-between gap-3 p-2 rounded transition-colors text-xs ${
+                            seekSeconds !== null ? 'cursor-pointer group hover:bg-elevated/60' : 'opacity-85'
+                          }`}
                         >
                           <div className="flex items-start gap-2 flex-1 min-w-0">
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-elevated border border-border text-text-2 shrink-0">
@@ -961,9 +990,15 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
                             </span>
                             <p className="text-text-2 line-clamp-2">{turn.content}</p>
                           </div>
-                          <span className="text-[10px] font-mono text-primary group-hover:underline shrink-0">
-                            Seek to ~{Math.floor(estimatedSeconds / 60)}:{String(estimatedSeconds % 60).padStart(2, '0')}
-                          </span>
+                          {seekSeconds !== null ? (
+                            <span className="text-[10px] font-mono text-primary group-hover:underline shrink-0">
+                              Seek to {Math.floor(seekSeconds / 60)}:{String(seekSeconds % 60).padStart(2, '0')}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-text-3 shrink-0">
+                              {turn.timestamp ? turn.timestamp.split('T')[1]?.substring(0, 8) || turn.timestamp : `Turn #${turn.id || index + 1}`}
+                            </span>
+                          )}
                         </div>
                       );
                     })

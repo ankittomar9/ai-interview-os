@@ -28,16 +28,21 @@ export function useProctoring({
 
     const handleBlur = () => {
       setIsWindowBlurred(true);
-      const now = Date.now();
-      // F5.3 Switch debounce (D6): debounces 1s and counts one per focus-loss episode
-      if (now - lastFocusLostTimeRef.current >= 1000) {
-        lastFocusLostTimeRef.current = now;
-        setTabSwitches((c) => c + 1);
-      }
     };
 
     const handleFocus = () => {
       setIsWindowBlurred(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const now = Date.now();
+        // F5.3 Switch debounce (D6): debounces 1s and counts one per visibility-loss episode
+        if (now - lastFocusLostTimeRef.current >= 1000) {
+          lastFocusLostTimeRef.current = now;
+          setTabSwitches((c) => c + 1);
+        }
+      }
     };
 
     const handlePaste = (e: ClipboardEvent) => {
@@ -49,11 +54,13 @@ export function useProctoring({
 
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('paste', handlePaste);
 
     return () => {
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('paste', handlePaste);
     };
   }, [isPlayground]);
