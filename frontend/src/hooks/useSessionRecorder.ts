@@ -36,6 +36,7 @@ export function useSessionRecorder({
   const [screenActive, setScreenActive] = useState(false);
   const [verificationBroken, setVerificationBroken] = useState(false);
   const [failedChunkCount, setFailedChunkCount] = useState(0);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const qualityPreset = getStoredRecordingQuality();
 
   const screenWidthRef = useRef<number>(1920);
@@ -204,7 +205,7 @@ export function useSessionRecorder({
         const qConfig = QUALITY_PRESETS[qualityPreset] || QUALITY_PRESETS.READABLE;
         const cameraStream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: qConfig.cameraWidth }, height: { ideal: qConfig.cameraHeight }, frameRate: { ideal: qConfig.cameraFps } },
-          audio: true
+          audio: false
         });
         if (isCancelled) {
           cameraStream.getTracks().forEach((t) => t.stop());
@@ -238,6 +239,7 @@ export function useSessionRecorder({
         timer = setInterval(() => { setRecordingSeconds((prev) => prev + 1); }, 1000);
       } catch (err: any) {
         console.warn('Session camera recording capture notice:', err);
+        setCameraError(err.message || 'Webcam feed unavailable for recording');
         setRecordingInterrupted(true);
         if (onInterrupted) onInterrupted(err.message || 'Webcam feed unavailable for recording');
       }
@@ -303,6 +305,7 @@ export function useSessionRecorder({
     recordingInterrupted,
     failedChunkCount,
     cameraActive,
+    cameraError,
     screenActive,
     verificationBroken,
     attachScreenStream,

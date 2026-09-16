@@ -138,6 +138,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   }));
 
   const activeSlug = question.slug || ('q' + (activeQuestionIndex + 1));
+  const activeSection = props.sections?.[props.activeSectionIndex ?? 0];
+  const currentSectionBudget = activeSection?.softTimeBudgetMinutes || 20;
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg text-text select-none relative">
@@ -148,7 +150,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         <StageSwitchModal targetTrack={pendingStageSwitch.targetTrack} onConfirm={onConfirmStageSwitch} onCancel={onCancelStageSwitch} />
       )}
       {isAiSpeaking && (
-        <div className="fixed top-4 right-4 bg-amber-500 text-white px-3 py-1.5 rounded-lg shadow-lg z-50 animate-pulse text-xs font-semibold flex items-center gap-1.5">🔇 Mic muted (AI speaking)</div>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-3 py-1.5 rounded-lg shadow-lg z-40 animate-pulse text-xs font-semibold flex items-center gap-1.5">🔇 Mic muted (AI speaking)</div>
       )}
       <div className="h-12 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 z-20">
         <div className="flex items-center gap-3">
@@ -198,7 +200,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         <div className="flex items-center gap-2.5">
           <LocalPurityBadge provider={provider} apiKey={apiKey} />
           <FocusModeToggle isFocusMode={isFocusMode} onToggle={onToggleFocusMode || (() => {})} />
-          <SelfTimer />
+          <SelfTimer initialMinutes={currentSectionBudget} autoStart={!isPlayground} />
           <ThemeToggle />
           <Chip variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'} size="sm">
             {isSpeakingNow ? 'Speaking' : isListening ? 'Mic Active' : 'Mic Ready'}

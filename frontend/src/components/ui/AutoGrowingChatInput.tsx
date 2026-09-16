@@ -43,6 +43,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pointerDownTimeRef = useRef<number>(0);
+  const startedThisPressRef = useRef<boolean>(false);
   const [recordingSeconds, setRecordingSeconds] = React.useState(0);
   const [globalSttChip, setGlobalSttChip] = React.useState<string | null>(() => getSttChip());
 
@@ -124,8 +125,11 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
     if (e.button !== 0) return;
     pointerDownTimeRef.current = Date.now();
     if (!isListening && !isAiResponding) {
+      startedThisPressRef.current = true;
       if (onStartListening) onStartListening();
       else onToggleListening();
+    } else {
+      startedThisPressRef.current = false;
     }
   };
 
@@ -133,15 +137,21 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
     const holdDuration = Date.now() - pointerDownTimeRef.current;
     if (isListening && holdDuration > 500) {
       // Intentionally held down and released -> stop recording
+      startedThisPressRef.current = false;
       if (onStopListening) onStopListening();
       else onToggleListening();
     }
   };
 
   const handleButtonClick = () => {
+    if (startedThisPressRef.current) {
+      // Quick click from idle initiated listening; leave recording active (1-click toggle ON)
+      startedThisPressRef.current = false;
+      return;
+    }
     const holdDuration = Date.now() - pointerDownTimeRef.current;
     if (isListening && holdDuration <= 500) {
-      // 1-click toggle: clicked to finish recording
+      // Subsequent quick click: 1-click toggle OFF
       if (onStopListening) onStopListening();
       else onToggleListening();
     }
