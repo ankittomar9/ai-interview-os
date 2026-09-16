@@ -240,7 +240,7 @@ export function useDialogue({
     }
   }, [navSections, transitionSection]);
 
-  const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any, turnMetadata?: Record<string, string>) => {
+  const triggerCandidateTurn = useCallback(async (forcedText?: string, codeSnapshot = "", latestExecution?: any, turnMetadata?: Record<string, any>) => {
     if (isSessionCompleted(sessionId)) {
       console.warn("[useDialogue] Suppressing candidate turn for completed session:", sessionId);
       return;
