@@ -45,6 +45,8 @@ export interface AiAssistantPanelProps {
   salvageHint?: string | null;
   micError?: string | null;
   onClearMicError?: () => void;
+  canRetryStt?: boolean;
+  onRetryStt?: () => void;
   transcript?: TranscriptTurn[];
   stackAbove?: "webcam" | "none";
   className?: string;
@@ -74,6 +76,8 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
   salvageHint = null,
   micError = null,
   onClearMicError,
+  canRetryStt = false,
+  onRetryStt,
   transcript = [],
   stackAbove = "none",
   className = ""
@@ -281,6 +285,8 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             salvageHint={salvageHint}
             micError={micError}
             onClearMicError={onClearMicError}
+            canRetryStt={canRetryStt}
+            onRetryStt={onRetryStt}
             placeholder="Speak or type your response..."
           />
         </div>

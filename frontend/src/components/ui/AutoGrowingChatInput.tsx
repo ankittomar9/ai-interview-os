@@ -13,6 +13,8 @@ interface AutoGrowingChatInputProps {
   salvageHint?: string | null;
   micError?: string | null;
   onClearMicError?: () => void;
+  canRetryStt?: boolean;
+  onRetryStt?: () => void;
   placeholder?: string;
   minHeight?: number;
   maxHeight?: number;
@@ -33,6 +35,8 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   salvageHint = null,
   micError = null,
   onClearMicError,
+  canRetryStt = false,
+  onRetryStt,
   placeholder = 'Speak or type your explanation...',
   minHeight = 44,
   maxHeight = 180,
@@ -170,13 +174,24 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
     >
       {/* Mic Error Banner */}
       {micError && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-danger/10 border-b border-danger/20 text-[11px] text-danger rounded-t-xl">
-          <span>{micError}</span>
-          {onClearMicError && (
-            <button type="button" onClick={onClearMicError} className="text-danger hover:text-danger/80 font-bold ml-2 cursor-pointer">
-              ✕
-            </button>
-          )}
+        <div className="flex items-center justify-between px-3 py-1.5 bg-danger/10 border-b border-danger/20 text-[11px] text-danger rounded-t-xl gap-2">
+          <span className="flex-1">{micError}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {canRetryStt && onRetryStt && (
+              <button
+                type="button"
+                onClick={onRetryStt}
+                className="px-2 py-0.5 rounded bg-danger text-on-accent font-semibold hover:bg-danger/90 transition-colors cursor-pointer"
+              >
+                Retry
+              </button>
+            )}
+            {onClearMicError && (
+              <button type="button" onClick={onClearMicError} className="text-danger hover:text-danger/80 font-bold cursor-pointer">
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       )}
 

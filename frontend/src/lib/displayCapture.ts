@@ -26,3 +26,11 @@ export function buildDisplayShareConstraints(): DisplayShareConstraints {
     selfBrowserSurface: 'exclude'
   };
 }
+
+export function isExtendedMultiMonitorDisplay(
+  win: Window | undefined = typeof window !== 'undefined' ? window : undefined
+): boolean {
+  if (!win || !win.screen) return false;
+  return Boolean((win.screen as any).isExtended);
+}
+

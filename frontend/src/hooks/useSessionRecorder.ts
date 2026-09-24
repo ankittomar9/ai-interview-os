@@ -22,6 +22,31 @@ interface UseSessionRecorderProps {
   onShareLost?: () => void;
 }
 
+export const pickMime = (hasAudio: boolean = false): string => {
+  const candidates = hasAudio
+    ? [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=h264,opus',
+        'video/webm;codecs=h264',
+        'video/webm;codecs=vp8,opus',
+        'video/webm;codecs=vp8',
+        'video/webm'
+      ]
+    : [
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=h264',
+        'video/webm;codecs=vp8',
+        'video/webm'
+      ];
+  for (const c of candidates) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) {
+      return c;
+    }
+  }
+  return 'video/webm';
+};
+
 export function useSessionRecorder({
   sessionId,
   isPlayground = false,
@@ -38,6 +63,12 @@ export function useSessionRecorder({
   const [failedChunkCount, setFailedChunkCount] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const qualityPreset = getStoredRecordingQuality();
+
+  const onInterruptedRef = useRef(onInterrupted);
+  onInterruptedRef.current = onInterrupted;
+  const onShareLostRef = useRef(onShareLost);
+  onShareLostRef.current = onShareLost;
+  const uploadedChunksCountRef = useRef(0);
 
   const screenWidthRef = useRef<number>(1920);
   const screenHeightRef = useRef<number>(1080);
@@ -75,6 +106,7 @@ export function useSessionRecorder({
         body: createFormData(blob, seq)
       });
       if (res.ok) {
+        uploadedChunksCountRef.current += 1;
         setUploadedChunks((prev) => prev + 1);
       } else if (res.status === 413) {
         console.error(`Recording ${kind} chunk ${seq} exceeds size limit. Discarding.`);
@@ -89,6 +121,9 @@ export function useSessionRecorder({
     }
   }, [sessionId, reportDrop]);
 
+  const uploadChunkRef = useRef(uploadChunk);
+  uploadChunkRef.current = uploadChunk;
+
   const retryFailedChunks = useCallback(async () => {
     if (failedChunksRef.current.length === 0) return;
     const candidates = [...failedChunksRef.current];
@@ -100,6 +135,7 @@ export function useSessionRecorder({
           body: createFormData(chunk.blob, chunk.seq)
         });
         if (res.ok) {
+          uploadedChunksCountRef.current += 1;
           setUploadedChunks((prev) => prev + 1);
           failedChunksRef.current = failedChunksRef.current.filter((c) => !(c.seq === chunk.seq && c.kind === chunk.kind)); setFailedChunkCount(failedChunksRef.current.length);
         } else if (res.status === 413) {
@@ -120,24 +156,6 @@ export function useSessionRecorder({
     return () => clearInterval(retryInterval);
   }, [sessionId, isPlayground, retryFailedChunks]);
 
-  const pickMime = (): string => {
-    const candidates = [
-      'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=h264,opus',
-      'video/webm;codecs=h264',
-      'video/webm;codecs=vp8,opus',
-      'video/webm;codecs=vp8',
-      'video/webm'
-    ];
-    for (const c of candidates) {
-      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) {
-        return c;
-      }
-    }
-    return 'video/webm';
-  };
-
   const attachScreenStream = useCallback((stream: MediaStream) => {
     if (screenRecorderRef.current && screenRecorderRef.current.state !== 'inactive') {
       try { screenRecorderRef.current.stop(); } catch (_) {}
@@ -152,7 +170,8 @@ export function useSessionRecorder({
       screenHeightRef.current = height;
       const { bitrateBps, isCapped } = computeScreenBitrate(height, qualityPreset);
       screenBitrateRef.current = bitrateBps;
-      const mime = pickMime();
+      const hasAudio = typeof stream.getAudioTracks === 'function' && stream.getAudioTracks().length > 0;
+      const mime = pickMime(hasAudio);
       screenCodecRef.current = mime;
       console.info(`[useSessionRecorder] Screen attach: preset=${qualityPreset}, ${width}x${height}, bitrate=${bitrateBps} bps${isCapped ? ' (capped by operator)' : ''}, codec=${mime}`);
 
@@ -163,7 +182,7 @@ export function useSessionRecorder({
         if (event.data && event.data.size > 0) {
           const seq = screenSeqRef.current++;
           const blob = event.data;
-          uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunk(blob, seq, 'screen'));
+          uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunkRef.current(blob, seq, 'screen'));
         }
       };
 
@@ -173,7 +192,7 @@ export function useSessionRecorder({
           screenRecorderRef.current = null;
           screenStreamRef.current = null;
           setScreenActive(false);
-          if (onShareLost) onShareLost();
+          onShareLostRef.current?.();
         };
       }
 
@@ -185,7 +204,10 @@ export function useSessionRecorder({
       setScreenActive(false);
       setVerificationBroken(true);
     }
-  }, [uploadChunk, onShareLost]);
+  }, [qualityPreset]);
+
+  const attachScreenStreamRef = useRef(attachScreenStream);
+  attachScreenStreamRef.current = attachScreenStream;
 
   useEffect(() => {
     if (isPlayground || !sessionId) return;
@@ -194,10 +216,10 @@ export function useSessionRecorder({
 
     const preScreen = getScreenStream();
     if (preScreen && preScreen.active && preScreen.getVideoTracks().some((t) => t.readyState === 'live')) {
-      attachScreenStream(preScreen);
+      attachScreenStreamRef.current(preScreen);
     } else {
       setVerificationBroken(true);
-      if (onInterrupted) onInterrupted('VERIFICATION_STREAM_MISSING');
+      onInterruptedRef.current?.('VERIFICATION_STREAM_MISSING');
     }
 
     const startRecording = async () => {
@@ -213,7 +235,8 @@ export function useSessionRecorder({
         }
 
         cameraStreamRef.current = cameraStream;
-        const camMime = pickMime();
+        const hasAudio = typeof cameraStream.getAudioTracks === 'function' && cameraStream.getAudioTracks().length > 0;
+        const camMime = pickMime(hasAudio);
         const cameraRec = new MediaRecorder(cameraStream, { mimeType: camMime, videoBitsPerSecond: qConfig.cameraBps });
         cameraRecorderRef.current = cameraRec;
 
@@ -221,14 +244,14 @@ export function useSessionRecorder({
           if (event.data && event.data.size > 0) {
             const seq = cameraSeqRef.current++;
             const blob = event.data;
-            uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunk(blob, seq, 'camera'));
+            uploadQueueRef.current = uploadQueueRef.current.then(() => uploadChunkRef.current(blob, seq, 'camera'));
           }
         };
 
         cameraRec.onerror = (event: any) => {
           console.error('Camera MediaRecorder error:', event);
           setRecordingInterrupted(true);
-          if (onInterrupted) onInterrupted('Camera recording error');
+          onInterruptedRef.current?.('Camera recording error');
         };
 
         cameraRec.onstop = () => { setCameraActive(false); };
@@ -241,7 +264,7 @@ export function useSessionRecorder({
         console.warn('Session camera recording capture notice:', err);
         setCameraError(err.message || 'Webcam feed unavailable for recording');
         setRecordingInterrupted(true);
-        if (onInterrupted) onInterrupted(err.message || 'Webcam feed unavailable for recording');
+        onInterruptedRef.current?.(err.message || 'Webcam feed unavailable for recording');
       }
     };
 
@@ -263,7 +286,7 @@ export function useSessionRecorder({
       setScreenActive(false);
       clearVerificationStreams();
     };
-  }, [sessionId, isPlayground, onInterrupted, uploadChunk, attachScreenStream]);
+  }, [sessionId, isPlayground]);
 
   const finish = useCallback(async (): Promise<void> => {
     if (screenRecorderRef.current && screenRecorderRef.current.state !== 'inactive') {
@@ -272,6 +295,9 @@ export function useSessionRecorder({
     if (cameraRecorderRef.current && cameraRecorderRef.current.state !== 'inactive') {
       try { cameraRecorderRef.current.stop(); } catch (_) {}
     }
+
+    // Allow final MediaRecorder.ondataavailable events from .stop() to enqueue into uploadQueueRef
+    await new Promise<void>((resolve) => setTimeout(resolve, 150));
 
     const queueDrain = uploadQueueRef.current;
     const timeout = new Promise<void>((resolve) => setTimeout(resolve, 15000));
@@ -286,7 +312,7 @@ export function useSessionRecorder({
         body: JSON.stringify({
           kind: 'screen',
           attempted: screenSeqRef.current,
-          uploaded: uploadedChunks,
+          uploaded: uploadedChunksCountRef.current,
           failedSeqs: failedChunksRef.current.filter((c) => c.kind === 'screen').map((c) => c.seq),
           codec: screenCodecRef.current,
           width: screenWidthRef.current,
@@ -296,7 +322,7 @@ export function useSessionRecorder({
         })
       });
     } catch (_) {}
-  }, [sessionId, uploadedChunks, qualityPreset, retryFailedChunks]);
+  }, [sessionId, qualityPreset, retryFailedChunks]);
 
   return {
     isRecording,

@@ -211,8 +211,12 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   });
 
   // 7. Session Video Recording Engine
+  const handleShareLost = useCallback(() => {
+    if (!isPlayground) setIsShareLost(true);
+  }, [isPlayground]);
+
   const recorder = useSessionRecorder({
-    sessionId, isPlayground, onShareLost: () => { if (!isPlayground) setIsShareLost(true); }
+    sessionId, isPlayground, onShareLost: handleShareLost
   });
 
   // 8. Dedicated Candidate Voice Track Engine (SPEC-AUDIO-1 D1)
@@ -371,6 +375,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       interimTranscript={voice.interimTranscript}
       micError={voice.micError}
       onClearMicError={voice.clearMicError}
+      canRetryStt={voice.canRetryStt}
+      onRetryStt={voice.retryLastTranscription}
       voiceOutputEnabled={voice.voiceOutputEnabled}
       onToggleVoice={() => voice.setVoiceOutputEnabled(!voice.voiceOutputEnabled)}
       onMicToggle={voice.toggleListening}

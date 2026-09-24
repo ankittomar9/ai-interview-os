@@ -80,7 +80,9 @@ public class SessionRecordingController {
     @GetMapping("/{id}/recordings/manifest")
     public ResponseEntity<RecordingManifest> getManifest(@PathVariable Long id) {
         RecordingManifest manifest = recordingService.getManifest(id);
-        return ResponseEntity.ok(manifest);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(manifest);
     }
 
     @GetMapping("/{id}/recordings/stream")

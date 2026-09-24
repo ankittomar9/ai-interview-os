@@ -6,6 +6,23 @@ export interface PlayTtsOptions {
   onError: () => void;
 }
 
+export function sanitizeTtsText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\$?\bO\(\s*1\s*\)\$?/gi, 'O of 1')
+    .replace(/\$?\bO\(\s*N\s*\\?log\s*N\s*\)\$?/gi, 'O of N log N')
+    .replace(/\$?\bO\(\s*\\?log\s*N\s*\)\$?/gi, 'O of log N')
+    .replace(/\$?\bO\(\s*N\^2\s*\)\$?/gi, 'O of N squared')
+    .replace(/\$?\bO\(\s*N\^3\s*\)\$?/gi, 'O of N cubed')
+    .replace(/\$?\bO\(\s*([A-Za-z0-9+\-*/\s]+)\s*\)\$?/g, 'O of $1')
+    .replace(/\\log\b/g, 'log')
+    .replace(/\\times\b/g, 'times')
+    .replace(/[*#`_~\[\]$]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function playTtsUtterance({
   text,
   voiceOutputEnabled,
@@ -15,7 +32,7 @@ export function playTtsUtterance({
 }: PlayTtsOptions): boolean {
   if (!voiceOutputEnabled || typeof window === 'undefined' || !window.speechSynthesis) return false;
   window.speechSynthesis.cancel();
-  const cleanText = text.replace(/[*#`_~\[\]]/g, '').trim();
+  const cleanText = sanitizeTtsText(text);
   if (!cleanText) return false;
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -27,3 +44,4 @@ export function playTtsUtterance({
   window.speechSynthesis.speak(utterance);
   return true;
 }
+

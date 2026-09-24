@@ -636,13 +636,11 @@ public class AiOrchestratorService {
                     ? root.get("approachAssessment").asText().trim().toUpperCase()
                     : "NOT_APPLICABLE";
 
-            // IH1 Deterministic Post-guard on Approach Agreement
+            // IH1 Deterministic Post-guard on Approach Agreement (V4-01: Voice/STT turns with qualifying explanations can open gate)
             if (isGatedType && isInterviewMode) {
-                if (Boolean.TRUE.equals(request.isStt())) {
-                    log.info("STT-GUARD: Gate mutations suppressed on STT turn; setting approachAssessment to PROBE_MORE");
-                    approachAssessment = "PROBE_MORE";
-                } else if ("AGREE".equalsIgnoreCase(approachAssessment)) {
-                    boolean hasQualifyingTurn = hasQualifyingCandidateExplanation(currentSectionTurns);
+                if ("AGREE".equalsIgnoreCase(approachAssessment)) {
+                    boolean hasQualifyingTurn = hasQualifyingCandidateExplanation(currentSectionTurns)
+                            || (request.candidateExplanation() != null && request.candidateExplanation().trim().length() >= 60);
                     boolean hasCodeExecution = hasCodeExecutionTurn(currentSectionTurns);
 
                     if (!hasQualifyingTurn || hasCodeExecution) {
@@ -940,6 +938,7 @@ public class AiOrchestratorService {
                 : request.toSectionType();
         boolean isGated = Boolean.TRUE.equals(request.toSectionGated()) || isGatedSectionType(request.toSectionType());
 
+        boolean isSkippedZeroTurns = "SKIPPED_ZERO_CANDIDATE_TURNS".equals(lastTurnSummary);
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("""
                 You are Dr. Anya Chen, AI Principal Bar Raiser conducting a live, rigorous technical interview assessment.
@@ -954,15 +953,20 @@ public class AiOrchestratorService {
                 - Candidate name: %s
                 
                 INSTRUCTIONS:
-                1. Close the previous section in ONE sentence grounded in its summary/progress.
+                1. %s
                 2. Introduce the next section by its title ("%s").
                 """.formatted(
                 request.fromSectionType() != null ? request.fromSectionType() : "Previous Round",
-                (lastTurnSummary != null && !lastTurnSummary.isBlank()) ? lastTurnSummary : "We have completed the previous round.",
+                isSkippedZeroTurns
+                        ? "Skipped with 0 candidate turns (no introduction dialogue occurred)."
+                        : ((lastTurnSummary != null && !lastTurnSummary.isBlank()) ? lastTurnSummary : "We have completed the previous round."),
                 toTitle,
                 request.toSectionType(),
                 isGated,
                 candidateName,
+                isSkippedZeroTurns
+                        ? "State neutrally in ONE short clause that the previous section was skipped and we are moving directly into the next section (NEVER say 'completed' or 'successfully completed')."
+                        : "Close the previous section in ONE sentence grounded in its summary/progress.",
                 toTitle
         ));
 
@@ -1008,26 +1012,32 @@ public class AiOrchestratorService {
         }
 
         String lastSummary = null;
+        int candidateTurnsInFromSection = 0;
         if (transcript != null && !transcript.isEmpty()) {
             for (int i = transcript.size() - 1; i >= 0; i--) {
                 var t = transcript.get(i);
                 Map<String, String> meta = t.metadata();
                 String sType = meta != null ? meta.get("sectionType") : null;
                 if (request.fromSectionType() == null || request.fromSectionType().equalsIgnoreCase(sType)) {
-                    String turnSum = meta != null ? meta.get("turnSummary") : null;
-                    if (turnSum != null && !turnSum.isBlank()) {
-                        lastSummary = turnSum.trim();
-                        break;
+                    if ("CANDIDATE".equalsIgnoreCase(t.senderRole())) {
+                        candidateTurnsInFromSection++;
                     }
-                    if (t.content() != null && !t.content().isBlank()) {
-                        lastSummary = t.content().trim();
-                        if (lastSummary.length() > 120) {
-                            lastSummary = lastSummary.substring(0, 120) + "...";
+                    if (lastSummary == null) {
+                        String turnSum = meta != null ? meta.get("turnSummary") : null;
+                        if (turnSum != null && !turnSum.isBlank()) {
+                            lastSummary = turnSum.trim();
+                        } else if ("CANDIDATE".equalsIgnoreCase(t.senderRole()) && t.content() != null && !t.content().isBlank()) {
+                            lastSummary = t.content().trim();
+                            if (lastSummary.length() > 120) {
+                                lastSummary = lastSummary.substring(0, 120) + "...";
+                            }
                         }
-                        break;
                     }
                 }
             }
+        }
+        if (candidateTurnsInFromSection == 0 && lastSummary == null) {
+            lastSummary = "SKIPPED_ZERO_CANDIDATE_TURNS";
         }
 
         String systemPrompt = buildHandoffPrompt(request, lastSummary);
@@ -1057,6 +1067,14 @@ public class AiOrchestratorService {
         String reply = (root != null && root.hasNonNull("interviewerReply"))
                 ? root.get("interviewerReply").asText().trim()
                 : (rawResponse != null ? rawResponse.trim() : "Moving to the next section.");
+
+        if (candidateTurnsInFromSection == 0 && reply.matches("(?is).*\\b(successfully completed|completed our (initial )?introduction|completed the previous)\\b.*")) {
+            String toTitle = (request.toSectionTitle() != null && !request.toSectionTitle().isBlank())
+                    ? request.toSectionTitle().trim()
+                    : (request.toSectionType() != null ? request.toSectionType() : "the next section");
+            reply = reply.replaceAll("(?i)[^.?!]*\\b(successfully completed|completed our (initial )?introduction|completed the previous)[^.?!]*[.?!]?",
+                    "Introduction skipped — transitioning directly to " + toTitle + ".").trim();
+        }
 
         if (reply.matches("(?i).*\\b(mickey|dr\\.? anya chen)\\b.*")) {
             String properName = (request.candidateName() != null && !request.candidateName().isBlank())

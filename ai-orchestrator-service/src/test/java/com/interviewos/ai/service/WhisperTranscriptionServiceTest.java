@@ -303,4 +303,22 @@ class WhisperTranscriptionServiceTest {
         assertEquals("MISSING_API_KEY", result.get("status"));
         org.mockito.Mockito.verifyNoInteractions(egressTracker);
     }
+
+    @Test
+    @DisplayName("V4-03: application.yaml configures 25MB multipart limits and >1.5MB 60-second audio passes fragment gate")
+    void testV403_MultipartSizeConfigAndLargeAudioPayloadAccepted() throws Exception {
+        try (var in = getClass().getClassLoader().getResourceAsStream("application.yaml")) {
+            assertNotNull(in, "application.yaml must exist on classpath");
+            String yaml = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue(yaml.contains("max-file-size: 25MB"), "ai-orchestrator-service must set spring.servlet.multipart.max-file-size: 25MB");
+            assertTrue(yaml.contains("max-request-size: 25MB"), "ai-orchestrator-service must set spring.servlet.multipart.max-request-size: 25MB");
+        }
+
+        // 60 seconds @ 16kHz 16-bit PCM = 1,920,044 bytes (~1.92 MB > 1 MB default cap)
+        byte[] largeWav = createWav(16000, 960000, 0.5);
+        assertTrue(largeWav.length > 1_500_000, "Fixture must exceed 1.5 MB to verify >1MB spoken answers");
+        Map<String, String> gateCheck = transcriptionService.checkAudioFragment(largeWav, "speech_60s.wav");
+        assertNull(gateCheck, "Fragment gate must accept >1.5 MB 60-second spoken answer without error");
+    }
 }
+
