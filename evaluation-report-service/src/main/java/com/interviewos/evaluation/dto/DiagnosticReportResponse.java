@@ -28,8 +28,36 @@ public record DiagnosticReportResponse(
         Integer requirementsClarityScore,
         Instant generatedAt,
         IntegritySummaryDto integrity,
-        List<PlanVsActualEntryDto> planVsActual
+        List<PlanVsActualEntryDto> planVsActual,
+        boolean platformDegraded,
+        String degradedAnnotation
 ) {
+    public DiagnosticReportResponse(
+            Long reportId,
+            Long sessionId,
+            String candidateId,
+            String roleTitle,
+            String track,
+            String difficulty,
+            HiringVerdict verdict,
+            int overallScore,
+            ScorecardBreakdown scorecard,
+            String executiveSummary,
+            List<String> keyStrengths,
+            List<String> areasForImprovement,
+            List<String> sevenDayStudyPlan,
+            List<DimensionScoreDto> dimensions,
+            boolean llmGenerated,
+            Integer requirementsClarityScore,
+            Instant generatedAt,
+            IntegritySummaryDto integrity,
+            List<PlanVsActualEntryDto> planVsActual
+    ) {
+        this(reportId, sessionId, candidateId, roleTitle, track, difficulty, verdict, overallScore, scorecard,
+                executiveSummary, keyStrengths, areasForImprovement, sevenDayStudyPlan, dimensions, llmGenerated,
+                requirementsClarityScore, generatedAt, integrity, planVsActual, false, null);
+    }
+
     public DiagnosticReportResponse(
             Long reportId,
             Long sessionId,
@@ -52,7 +80,7 @@ public record DiagnosticReportResponse(
     ) {
         this(reportId, sessionId, candidateId, roleTitle, track, difficulty, verdict, overallScore, scorecard,
                 executiveSummary, keyStrengths, areasForImprovement, sevenDayStudyPlan, dimensions, llmGenerated,
-                requirementsClarityScore, generatedAt, integrity, List.of());
+                requirementsClarityScore, generatedAt, integrity, List.of(), false, null);
     }
 
     public DiagnosticReportResponse(
@@ -159,7 +187,9 @@ public record DiagnosticReportResponse(
                 r.getRequirementsClarificationScore(),
                 r.getGeneratedAt(),
                 integrity,
-                planVsActual
+                planVsActual,
+                Boolean.TRUE.equals(r.getPlatformDegraded()),
+                r.getDegradedAnnotation()
         );
     }
 }

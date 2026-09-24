@@ -559,6 +559,22 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
               </div>
             )}
 
+            {/* V5-04: PLATFORM_DEGRADED DISCLOSURE BANNER */}
+            {((report as any).platformDegraded || (report.executiveSummary && report.executiveSummary.includes('PLATFORM_DEGRADED'))) && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs">
+                  <div className="font-bold text-amber-400 uppercase tracking-wider font-mono">
+                    Platform Degraded Session (Automated Fallback Active)
+                  </div>
+                  <p className="text-text-2 leading-relaxed">
+                    {(report as any).degradedAnnotation ||
+                      'Interviewer LLM was unavailable during part of this session (Gemini 503). Deterministic fallback turns have been excluded from candidate rubric scoring and Recent Avg trajectory analytics.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* C. 6-DIMENSION ROW */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {dimensionMetrics.map((metric, idx) => (
@@ -849,32 +865,51 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
 
             <div className="space-y-1">
               {transcriptList && transcriptList.length > 0 ? (
-                transcriptList.map((turn, index: number) => (
-                  <div
-                    key={index}
-                    className="border-b border-border/50 py-3 space-y-1.5 last:border-b-0"
-                  >
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-elevated border border-border text-text-2">
-                          {turn.senderRole}
-                        </span>
-                        <span className="text-xs text-text-3">Turn #{turn.id || index + 1}</span>
+                transcriptList.map((turn, index: number) => {
+                  const isFallbackInterviewer =
+                    turn.senderRole === 'AI' &&
+                    ((turn as any).metadata?.generator === 'DETERMINISTIC_FALLBACK' ||
+                      (turn as any).metadata?.generator === 'OFFLINE_COACH' ||
+                      (turn as any).metadata?.offlineFallback === 'true' ||
+                      (turn.content && turn.content.includes('10M records')));
+                  const gateUnlockSrc = (turn as any).metadata?.gateUnlockSource;
+                  return (
+                    <div
+                      key={index}
+                      className="border-b border-border/50 py-3 space-y-1.5 last:border-b-0"
+                    >
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-elevated border border-border text-text-2">
+                            {isFallbackInterviewer ? 'Automated Fallback — not the interviewer' : turn.senderRole}
+                          </span>
+                          {isFallbackInterviewer && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              {(turn as any).metadata?.generator || 'DETERMINISTIC_FALLBACK'} (Excluded from Grading)
+                            </span>
+                          )}
+                          {gateUnlockSrc === 'FALLBACK_HEURISTIC' && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              FALLBACK_HEURISTIC
+                            </span>
+                          )}
+                          <span className="text-xs text-text-3">Turn #{turn.id || index + 1}</span>
+                        </div>
+                        <span className="text-[11px] text-text-3 font-mono">{turn.timestamp || 'N/A'}</span>
                       </div>
-                      <span className="text-[11px] text-text-3 font-mono">{turn.timestamp || 'N/A'}</span>
+
+                      <p className="text-sm text-text-2 whitespace-pre-wrap leading-relaxed">
+                        {turn.content}
+                      </p>
+
+                      {turn.codeSnippet && turn.codeSnippet.trim() && (
+                        <div className="mt-2 bg-elevated border border-border rounded p-3 font-mono text-xs text-text-2 overflow-x-auto">
+                          <pre>{turn.codeSnippet}</pre>
+                        </div>
+                      )}
                     </div>
-
-                    <p className="text-sm text-text-2 whitespace-pre-wrap leading-relaxed">
-                      {turn.content}
-                    </p>
-
-                    {turn.codeSnippet && turn.codeSnippet.trim() && (
-                      <div className="mt-2 bg-elevated border border-border rounded p-3 font-mono text-xs text-text-2 overflow-x-auto">
-                        <pre>{turn.codeSnippet}</pre>
-                      </div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-xs text-text-3 text-center py-8">
                   Loading audited transcript records...
@@ -1088,16 +1123,16 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
                   <span className="text-xs font-bold text-text">MongoDB GridFS Chunked</span>
                 </div>
                 <div className="bg-elevated p-3 rounded border border-border space-y-1">
-                  <span className="text-[11px] font-semibold text-text-3 block">Stream Format &amp; Preset</span>
+                  <span className="text-[11px] font-semibold text-text-3 block">Active Stream ({replayStreamKind})</span>
                   <span className="text-xs font-bold text-text truncate block">
-                    {manifest?.streams?.[replayStreamKind]?.summary?.qualityPreset || 'READABLE'} · {manifest?.streams?.[replayStreamKind]?.summary?.codec?.split(';')[0] || 'video/webm'}
+                    {manifest?.streams?.[replayStreamKind]?.summary?.qualityPreset || 'READABLE'} · {manifest?.streams?.[replayStreamKind]?.summary?.codec?.split(';')[0] || 'video/webm'} ({manifest?.streams?.[replayStreamKind]?.chunks ?? 0} chunks)
                   </span>
                 </div>
                 <div className="bg-elevated p-3 rounded border border-border space-y-1">
-                  <span className="text-[11px] font-semibold text-text-3 block">Integrity Status</span>
-                  {manifest && (manifest.streams?.[replayStreamKind]?.chunks ?? 0) > 0 ? (
+                  <span className="text-[11px] font-semibold text-text-3 block">Session Integrity Status</span>
+                  {manifest && ((manifest.streams?.camera?.chunks ?? 0) > 0 || (manifest.streams?.screen?.chunks ?? 0) > 0) ? (
                     <Chip variant="success" size="sm">
-                      Verified Stream ({manifest.streams?.[replayStreamKind]?.chunks} chunks)
+                      Verified (Cam: {manifest.streams?.camera?.chunks ?? 0} · Screen: {manifest.streams?.screen?.chunks ?? 0} chunks)
                     </Chip>
                   ) : (
                     <Chip variant="neutral" size="sm">

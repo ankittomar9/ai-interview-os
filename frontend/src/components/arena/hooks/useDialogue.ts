@@ -22,6 +22,34 @@ export interface ProviderErrorState {
   label: string;
 }
 
+const OFFLINE_PROBES = [
+  (topic: string) =>
+    `I noted your point${topic ? ` on "${topic}"` : ""}. Could you walk through the exact time and space complexity invariants of that approach?`,
+  (topic: string) =>
+    `Thank you for explaining${topic ? ` "${topic}"` : " your approach"}. What boundary inputs or degenerate cases could break your loop invariant?`,
+  (topic: string) =>
+    `Building on${topic ? ` "${topic}"` : " that design"}, how would you structure the helper method and test harness before running the code?`,
+  (topic: string) =>
+    `Understood${topic ? ` regarding "${topic}"` : ""}. What trade-offs exist between auxiliary memory and single-pass execution here?`
+];
+
+export function selectRotatingOfflineProbe(
+  candidateText: string,
+  turnIndex: number,
+  lastProbeIndex?: number
+): { probeIndex: number; probeText: string } {
+  const cleaned = (candidateText || "").replace(/\s+/g, " ").trim();
+  const words = cleaned ? cleaned.split(" ").slice(0, 6).join(" ") : "";
+  let idx = Math.abs(turnIndex) % OFFLINE_PROBES.length;
+  if (lastProbeIndex !== undefined && idx === lastProbeIndex) {
+    idx = (idx + 1) % OFFLINE_PROBES.length;
+  }
+  return {
+    probeIndex: idx,
+    probeText: OFFLINE_PROBES[idx](words)
+  };
+}
+
 interface UseDialogueProps {
   sessionId: number;
   provider: ModelProvider;
@@ -378,13 +406,24 @@ export function useDialogue({
       const replyText = aiResponse.interviewerReply || "Thank you. Let us explore the next step.";
       const fullText = replyText + (aiResponse.followUpQuestion ? "\n\n" + aiResponse.followUpQuestion : "");
 
-      const aiMetadata = buildAiTurnMetadata({
-        aiResponse,
-        stage: currentStage,
-        sectionType: String(currentNavSection.sectionType),
-        provider,
-        model: (aiResponse as any).model ?? ""
-      });
+      const generator = (aiResponse as any).generator || "LLM";
+      const generatorReason = (aiResponse as any).generatorReason || "";
+      const gateUnlockSource = (aiResponse as any).gateUnlockSource || "";
+      const isAutomatedFallback = generator === "DETERMINISTIC_FALLBACK";
+
+      const aiMetadata: Record<string, any> = {
+        ...buildAiTurnMetadata({
+          aiResponse,
+          stage: currentStage,
+          sectionType: String(currentNavSection.sectionType),
+          provider,
+          model: (aiResponse as any).model ?? ""
+        }),
+        generator,
+        generatorReason,
+        gateUnlockSource,
+        ...(isAutomatedFallback ? { senderName: "Automated Fallback" } : {})
+      };
 
       const aiMsg: DialogueMessage = {
         role: "interviewer",
@@ -397,7 +436,11 @@ export function useDialogue({
           turnSummary: aiResponse.turnSummary || "",
           followUpQuestion: aiResponse.followUpQuestion || "",
           approachAssessment: aiResponse.approachAssessment || "NOT_APPLICABLE",
-          usedFollowUpSeedIds: aiMetadata.usedFollowUpSeedIds
+          usedFollowUpSeedIds: aiMetadata.usedFollowUpSeedIds,
+          generator,
+          generatorReason,
+          gateUnlockSource,
+          ...(isAutomatedFallback ? { senderName: "Automated Fallback" } : {})
         }
       };
 
@@ -433,11 +476,14 @@ export function useDialogue({
 
       const errStr = (err?.message || "").toLowerCase();
       const status = err?.status || 0;
+      const isClientContract400 = status === 400 || errStr.includes("status 400") || errStr.includes("must not be blank");
 
       let errorType: ProviderErrorState["type"] = "UNREACHABLE";
       let label = "Provider unreachable";
 
-      if (status === 401 || status === 403 || errStr.includes("401") || errStr.includes("403") || errStr.includes("key rejected") || errStr.includes("unauthorized")) {
+      if (isClientContract400) {
+        label = "Request validation error (400)";
+      } else if (status === 401 || status === 403 || errStr.includes("401") || errStr.includes("403") || errStr.includes("key rejected") || errStr.includes("unauthorized")) {
         errorType = "API_KEY_REJECTED";
         label = "API key rejected";
       } else if (status === 429 || errStr.includes("429") || errStr.includes("rate limit")) {
@@ -451,14 +497,23 @@ export function useDialogue({
         label
       });
 
+      // V5-01: On HTTP 400 client validation error, surface banner and do NOT fabricate an Offline Coach turn
+      if (isClientContract400) {
+        toast.warning("Turn payload validation notice — please retry or advance stage.");
+        return;
+      }
+
+      const candidateTurnCount = messages.filter((m) => m.role === "candidate").length + 1;
+      const { probeText } = selectRotatingOfflineProbe(textToSend, candidateTurnCount);
+
       const fallbackMsg: DialogueMessage = {
         role: "interviewer",
-        content: isPlayground
-          ? "I noted your input. How would you handle potential edge cases or scale constraints?"
-          : "Thank you for sharing your approach. How does your solution handle scale or boundary conditions?",
+        content: probeText,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         metadata: {
           offlineFallback: "true",
+          generator: "OFFLINE_COACH",
+          generatorReason: `CLIENT_CATCH_${status || "NETWORK"}`,
           senderName: "Offline Coach"
         }
       };
@@ -482,7 +537,10 @@ export function useDialogue({
             sectionType: String(currentNavSection.sectionType),
             provider,
             error: "true",
-            offlineFallback: "true"
+            offlineFallback: "true",
+            generator: "OFFLINE_COACH",
+            generatorReason: `CLIENT_CATCH_${status || "NETWORK"}`,
+            senderName: "Offline Coach"
           },
           integritySignals: errIntegrity
         });

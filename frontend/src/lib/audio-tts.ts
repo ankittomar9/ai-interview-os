@@ -10,6 +10,8 @@ export function sanitizeTtsText(text: string): string {
   if (!text) return '';
   return text
     .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/[\uFE00-\uFE0F\u200B-\u200D\uFEFF]/g, '')
     .replace(/\$?\bO\(\s*1\s*\)\$?/gi, 'O of 1')
     .replace(/\$?\bO\(\s*N\s*\\?log\s*N\s*\)\$?/gi, 'O of N log N')
     .replace(/\$?\bO\(\s*\\?log\s*N\s*\)\$?/gi, 'O of log N')

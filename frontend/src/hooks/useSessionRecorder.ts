@@ -68,7 +68,11 @@ export function useSessionRecorder({
   onInterruptedRef.current = onInterrupted;
   const onShareLostRef = useRef(onShareLost);
   onShareLostRef.current = onShareLost;
-  const uploadedChunksCountRef = useRef(0);
+  const uploadedByKindRef = useRef<{ camera: number; screen: number; 'mic-audio': number }>({
+    camera: 0,
+    screen: 0,
+    'mic-audio': 0
+  });
 
   const screenWidthRef = useRef<number>(1920);
   const screenHeightRef = useRef<number>(1080);
@@ -106,7 +110,7 @@ export function useSessionRecorder({
         body: createFormData(blob, seq)
       });
       if (res.ok) {
-        uploadedChunksCountRef.current += 1;
+        uploadedByKindRef.current[kind] = (uploadedByKindRef.current[kind] || 0) + 1;
         setUploadedChunks((prev) => prev + 1);
       } else if (res.status === 413) {
         console.error(`Recording ${kind} chunk ${seq} exceeds size limit. Discarding.`);
@@ -135,7 +139,7 @@ export function useSessionRecorder({
           body: createFormData(chunk.blob, chunk.seq)
         });
         if (res.ok) {
-          uploadedChunksCountRef.current += 1;
+          uploadedByKindRef.current[chunk.kind] = (uploadedByKindRef.current[chunk.kind] || 0) + 1;
           setUploadedChunks((prev) => prev + 1);
           failedChunksRef.current = failedChunksRef.current.filter((c) => !(c.seq === chunk.seq && c.kind === chunk.kind)); setFailedChunkCount(failedChunksRef.current.length);
         } else if (res.status === 413) {
@@ -312,12 +316,23 @@ export function useSessionRecorder({
         body: JSON.stringify({
           kind: 'screen',
           attempted: screenSeqRef.current,
-          uploaded: uploadedChunksCountRef.current,
+          uploaded: uploadedByKindRef.current.screen,
           failedSeqs: failedChunksRef.current.filter((c) => c.kind === 'screen').map((c) => c.seq),
           codec: screenCodecRef.current,
           width: screenWidthRef.current,
           height: screenHeightRef.current,
           bitrateBps: screenBitrateRef.current,
+          qualityPreset
+        })
+      });
+      await fetch(`/api/v1/sessions/${sessionId}/recordings/summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'camera',
+          attempted: cameraSeqRef.current,
+          uploaded: uploadedByKindRef.current.camera,
+          failedSeqs: failedChunksRef.current.filter((c) => c.kind === 'camera').map((c) => c.seq),
           qualityPreset
         })
       });

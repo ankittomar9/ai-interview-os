@@ -52,7 +52,9 @@ public class ProgressLedgerService {
                     .codeQualityScore(report.getCodeQualityScore())
                     .executionEfficiencyScore(report.getProblemSolvingScore())
                     .communicationScore(report.getCommunicationClarityScore())
-                    .professionalismScore(report.getIntegrityScore());
+                    .professionalismScore(report.getIntegrityScore())
+                    .platformDegraded(Boolean.TRUE.equals(report.getPlatformDegraded()))
+                    .degradedAnnotation(report.getDegradedAnnotation());
 
             if ("BEHAVIORAL".equals(schema)) {
                 builder.leadershipScore(dimScores.getOrDefault("LEADERSHIP", report.getTechnicalAccuracyScore()))
@@ -63,9 +65,19 @@ public class ProgressLedgerService {
             }
 
             ProgressLedger ledger = builder.build();
+            List<ProgressLedger> existingRows = progressLedgerRepository.findByCandidateIdOrderBySessionDateAsc(report.getCandidateId());
+            for (ProgressLedger existing : existingRows) {
+                if (Objects.equals(existing.getSessionId(), report.getSessionId())) {
+                    ledger.setId(existing.getId());
+                    if (existing.getSessionDate() != null) {
+                        ledger.setSessionDate(existing.getSessionDate());
+                    }
+                    break;
+                }
+            }
             progressLedgerRepository.save(ledger);
-            log.info("📈 Saved session {} to candidate {} progress ledger ({}) with score {}/100",
-                    report.getSessionId(), report.getCandidateId(), schema, report.getOverallScore());
+            log.info("📈 Saved session {} to candidate {} progress ledger ({}) with score {}/100 (platformDegraded={})",
+                    report.getSessionId(), report.getCandidateId(), schema, report.getOverallScore(), ledger.getPlatformDegraded());
         } catch (Exception e) {
             log.warn("⚠️ Failed to record progress ledger for session {}: {}", report.getSessionId(), e.getMessage());
         }
@@ -81,10 +93,15 @@ public class ProgressLedgerService {
 
     @Transactional(readOnly = true)
     public ProgressAnalytics getCandidateAnalytics(String candidateId, String track) {
-        List<ProgressLedger> progress = getCandidateProgress(candidateId, track);
+        List<ProgressLedger> allProgress = getCandidateProgress(candidateId, track);
+        List<ProgressLedger> validProgress = allProgress.stream()
+                .filter(p -> !Boolean.TRUE.equals(p.getPlatformDegraded()))
+                .toList();
+        List<ProgressLedger> progress = validProgress.isEmpty() ? allProgress : validProgress;
+
         if (progress.size() < 2) {
             int currentScore = progress.isEmpty() ? 0 : progress.get(0).getOverallScore();
-            return new ProgressAnalytics(0, currentScore, List.of(), progress.size());
+            return new ProgressAnalytics(0, currentScore, List.of(), allProgress.size());
         }
 
         int totalSessions = progress.size();
@@ -105,7 +122,7 @@ public class ProgressLedgerService {
 
         int scoreDelta = (int) Math.round(recentAvg - earlierAvg);
 
-        // Identify dimensions below 70 in multiple sessions
+        // Identify dimensions below 70 in multiple non-degraded sessions
         List<String> weakDimensions = new ArrayList<>();
         long lowCodeQuality = progress.stream()
                 .filter(p -> p.getCodeQualityScore() != null && p.getCodeQualityScore() < 70)
@@ -122,7 +139,7 @@ public class ProgressLedgerService {
                 .count();
         if (lowCommunication >= 2) weakDimensions.add("Communication Clarity");
 
-        return new ProgressAnalytics(scoreDelta, (int) Math.round(recentAvg), weakDimensions, totalSessions);
+        return new ProgressAnalytics(scoreDelta, (int) Math.round(recentAvg), weakDimensions, allProgress.size());
     }
 
     public record ProgressAnalytics(

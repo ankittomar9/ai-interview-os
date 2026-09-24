@@ -108,21 +108,37 @@ public class SessionRecordingController {
     }
 
     @GetMapping("/{id}/recordings/download")
-    public ResponseEntity<byte[]> downloadRecording(
+    public ResponseEntity<StreamingResponseBody> downloadRecording(
             @PathVariable Long id,
             @RequestParam(value = "kind", defaultValue = "camera") String kind
     ) {
         try {
-            byte[] bytes = recordingService.getFullRecordingBytes(id, kind);
-            if (bytes.length == 0) {
+            RecordingManifest manifest = recordingService.getManifest(id);
+            String normalizedKind = ("camera".equalsIgnoreCase(kind) || "screen".equalsIgnoreCase(kind) || "mic-audio".equalsIgnoreCase(kind))
+                    ? kind.toLowerCase()
+                    : "camera";
+            SessionRecordingService.StreamMeta meta = manifest != null && manifest.getStreams() != null
+                    ? manifest.getStreams().get(normalizedKind)
+                    : null;
+            if (meta == null || meta.getChunks() == 0 || meta.getBytes() <= 0) {
                 return ResponseEntity.notFound().build();
             }
 
-            String contentType = "mic-audio".equalsIgnoreCase(kind) ? "audio/webm" : "video/webm";
+            StreamingResponseBody responseBody = outputStream -> {
+                try {
+                    recordingService.streamRecording(id, normalizedKind, outputStream);
+                } catch (Exception e) {
+                    log.warn("Download streaming {} recording notice for session {}: {}", normalizedKind, id, e.getMessage());
+                }
+            };
+
+            String contentType = "mic-audio".equalsIgnoreCase(normalizedKind) ? "audio/webm" : "video/webm";
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, contentType)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"session-" + id + "-" + kind + "-recording.webm\"")
-                    .body(bytes);
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(meta.getBytes()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"session-" + id + "-" + normalizedKind + "-recording.webm\"")
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .body(responseBody);
         } catch (Exception e) {
             log.error("Download failed for session {} kind {}: {}", id, kind, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();

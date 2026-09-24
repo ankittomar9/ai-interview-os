@@ -109,3 +109,90 @@ test('V4-08 & V4-10: DiagnosticReportView resets manifest with cache: no-store a
     'AutoGrowingChatInput must render Retry button inside micError banner when canRetryStt && onRetryStt are provided'
   );
 });
+
+test('V5-07a: sanitizeTtsText strips Extended_Pictographic emojis and variation selectors ("Hello 👋" -> "Hello")', () => {
+  assert.equal(sanitizeTtsText('Hello 👋'), 'Hello');
+  assert.equal(sanitizeTtsText('Hello 👋, welcome to AI Interview OS ✨\uFE0F!'), 'Hello , welcome to AI Interview OS !');
+});
+
+test('V5-07b: ensureDsaMethodSignatureBoilerplate guarantees typed helper method signature and never renders bare comment', () => {
+  const arenaSrc = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/arena/ArenaRoom.tsx'),
+    'utf-8'
+  );
+  assert.equal(
+    arenaSrc.includes('export function ensureDsaMethodSignatureBoilerplate('),
+    true,
+    'ArenaRoom must export ensureDsaMethodSignatureBoilerplate'
+  );
+  assert.equal(
+    arenaSrc.includes('public static String reverseString(String s)') &&
+      arenaSrc.includes('public static int lengthOfLongestSubstring(String s)'),
+    true,
+    'ensureDsaMethodSignatureBoilerplate must provide reverseString and lengthOfLongestSubstring method signatures'
+  );
+});
+
+test('V5-07c: useSessionRecorder tracks uploaded chunk counts per stream kind (uploadedByKindRef) so screen summary never sums camera + screen', () => {
+  const recorderSrc = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/hooks/useSessionRecorder.ts'),
+    'utf-8'
+  );
+  assert.equal(
+    recorderSrc.includes('uploadedByKindRef') &&
+      recorderSrc.includes('uploaded: uploadedByKindRef.current.screen'),
+    true,
+    'useSessionRecorder must track uploadedByKindRef per stream kind and report uploadedByKindRef.current.screen'
+  );
+});
+
+test('V5-05: SelfTimer hides +15m and Reset in INTERVIEW mode and logs TIMER_EXTEND_BLOCKED mode=INTERVIEW', () => {
+  const timerSrc = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/ide/SelfTimer.tsx'),
+    'utf-8'
+  );
+  assert.equal(
+    timerSrc.includes("console.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW')") &&
+      timerSrc.includes("effectiveMode === 'PLAYGROUND'"),
+    true,
+    'SelfTimer must block timer extension in INTERVIEW mode with TIMER_EXTEND_BLOCKED mode=INTERVIEW and gate +15m/Reset to PLAYGROUND'
+  );
+});
+
+test('V5-09b: selectRotatingOfflineProbe rotates across distinct probes and echoes candidate topic snippet', () => {
+  const dialogueSrc = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/arena/hooks/useDialogue.ts'),
+    'utf-8'
+  );
+  assert.equal(
+    dialogueSrc.includes('export function selectRotatingOfflineProbe(') &&
+      dialogueSrc.includes('const isClientContract400 = status === 400'),
+    true,
+    'useDialogue must export selectRotatingOfflineProbe and guard HTTP 400 from fabricating Offline Coach turns'
+  );
+});
+
+test('V5-04, V5-06 & V5-09a: AiAssistantPanel renders Automated Fallback & Degraded AI mode banner, and DiagnosticReportView decouples Session Integrity Status', () => {
+  const panelSrc = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/ai/AiAssistantPanel.tsx'),
+    'utf-8'
+  );
+  assert.equal(
+    panelSrc.includes('Degraded AI mode — responses automated') &&
+      panelSrc.includes('Automated Fallback'),
+    true,
+    'AiAssistantPanel must render Degraded AI mode banner and Automated Fallback attribution'
+  );
+
+  const reportSrc = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/DiagnosticReportView.tsx'),
+    'utf-8'
+  );
+  assert.equal(
+    reportSrc.includes('Session Integrity Status') &&
+      reportSrc.includes('Automated Fallback — not the interviewer'),
+    true,
+    'DiagnosticReportView must render decoupled Session Integrity Status and Automated Fallback badge in Audited Transcript'
+  );
+});
+

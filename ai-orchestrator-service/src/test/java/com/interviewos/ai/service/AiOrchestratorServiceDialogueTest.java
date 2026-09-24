@@ -1252,6 +1252,173 @@ class AiOrchestratorServiceDialogueTest {
         assertTrue(response.interviewerReply().contains("Introduction skipped — transitioning directly to Algorithmic Problem Solving."),
                 "V4-05: Handoff must state neutrally that introduction was skipped");
     }
+
+    @Test
+    @DisplayName("V5-01: processDialogue allows blank questionContext in INTRODUCTION stage and rejects blank questionContext in gated CODING_DSA")
+    void testV501_IntroductionTurnWithBlankQuestionContext_PassesValidationAndRejectsGatedBlank() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn("""
+                {
+                  "interviewerReply": "Great to meet you, Ankit. Thanks for sharing your background.",
+                  "followUpQuestion": "Shall we transition to the coding round?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "INTRODUCTION",
+                  "turnSummary": "Candidate introduced background",
+                  "recommendedAction": "PROPOSE_STAGE_ADVANCE",
+                  "approachAssessment": "NOT_APPLICABLE"
+                }
+                """);
+
+        AiDialogueRequest introReq = AiDialogueRequest.builder()
+                .sessionId(144L)
+                .questionContext("")
+                .candidateExplanation("Hi, I am Ankit Singh Tomar, a backend engineer working with Java and distributed systems.")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("INTRODUCTION")
+                .currentStage("INTRODUCTION")
+                .sectionIndex(0)
+                .totalSections(4)
+                .build();
+
+        AiDialogueResponse introRes = orchestratorService.processDialogue(introReq);
+        assertNotNull(introRes);
+        assertEquals("LLM", introRes.generator());
+        assertTrue(introRes.interviewerReply().contains("Great to meet you"));
+
+        AiDialogueRequest gatedBlankReq = AiDialogueRequest.builder()
+                .sessionId(144L)
+                .questionContext("   ")
+                .candidateExplanation("I will use two pointers.")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("CODING_DSA")
+                .currentStage("CODING_DSA")
+                .sectionIndex(1)
+                .build();
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> orchestratorService.processDialogue(gatedBlankReq),
+                "V5-01: Gated CODING_DSA turn must still require non-blank questionContext"
+        );
+    }
+
+    @Test
+    @DisplayName("V5-02 & V5-06: processDialogue fails over GEMINI -> GROQ on 503 and unlocks gate via FALLBACK_HEURISTIC when all providers fail")
+    void testV502_ProviderFailoverAndFallbackHeuristicGateUnlock() {
+        com.interviewos.ai.client.AiClient geminiClient = org.mockito.Mockito.mock(com.interviewos.ai.client.AiClient.class);
+        com.interviewos.ai.client.AiClient groqClient = org.mockito.Mockito.mock(com.interviewos.ai.client.AiClient.class);
+        org.mockito.Mockito.lenient().when(clientFactory.getClient(ModelProvider.GEMINI)).thenReturn(geminiClient);
+        org.mockito.Mockito.lenient().when(clientFactory.getClient(ModelProvider.GROQ)).thenReturn(groqClient);
+        org.mockito.Mockito.lenient().when(sessionTranscriptClient.openSectionGate(anyLong(), anyInt(), anyString(), anyLong())).thenReturn(true);
+
+        // 1. GEMINI throws 503, GROQ succeeds -> failover returns LLM response
+        when(geminiClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("503 Service Unavailable: high demand"));
+        when(groqClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Your sliding window approach with HashMap is solid.",
+                          "followUpQuestion": "Go ahead and implement lengthOfLongestSubstring.",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": null,
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "APPROACH",
+                          "turnSummary": "Sliding window agreed",
+                          "recommendedAction": "PROBE_DEEPER",
+                          "approachAssessment": "AGREE"
+                        }
+                        """);
+
+        AiDialogueRequest req = AiDialogueRequest.builder()
+                .sessionId(144L)
+                .questionContext("Given a string s, find the length of the longest substring without repeating characters.")
+                .candidateExplanation("I will use a sliding window with two pointers left and right and a HashMap to store character indices in O(n) time complexity and O(min(n, m)) space complexity.")
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .sessionMode("INTERVIEW")
+                .sectionType("CODING_DSA")
+                .currentStage("CODING_DSA")
+                .sectionIndex(1)
+                .totalSections(4)
+                .build();
+
+        AiDialogueResponse failoverRes = orchestratorService.processDialogue(req);
+        assertNotNull(failoverRes);
+        assertEquals("LLM", failoverRes.generator());
+        assertEquals("AGREE", failoverRes.approachAssessment());
+
+        // 2. Both GEMINI and GROQ fail with 503 -> deterministic fallback with FALLBACK_HEURISTIC gate unlock
+        when(groqClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("503 Service Unavailable: groq overloaded"));
+
+        AiDialogueResponse fallbackRes = orchestratorService.processDialogue(req);
+        assertNotNull(fallbackRes);
+        assertEquals("DETERMINISTIC_FALLBACK", fallbackRes.generator());
+        assertEquals("AGREE", fallbackRes.approachAssessment());
+        assertEquals("FALLBACK_HEURISTIC", fallbackRes.gateUnlockSource());
+        assertFalse(fallbackRes.followUpQuestion().contains("10M records"),
+                "V5-02: Fallback follow-up must rotate and never repeat hardcoded 10M records string");
+        org.mockito.Mockito.verify(sessionTranscriptClient, org.mockito.Mockito.atLeastOnce())
+                .openSectionGate(org.mockito.ArgumentMatchers.eq(144L), org.mockito.ArgumentMatchers.eq(1), org.mockito.ArgumentMatchers.eq("FALLBACK_HEURISTIC"), anyLong());
+    }
+
+    @Test
+    @DisplayName("V5-08: RubricService quote validator strips fabricated quotes not in candidate transcript and preserves genuine quotes")
+    void testV508_RubricQuoteValidator_RewritesFabricatedTranscriptQuotes() {
+        List<com.interviewos.ai.rubric.dto.TurnDto> turns = List.of(
+                new com.interviewos.ai.rubric.dto.TurnDto(
+                        "CANDIDATE",
+                        "EXPLANATION",
+                        "I will use a sliding window with two pointers and a HashMap to achieve O(n) time complexity.",
+                        "",
+                        java.util.Map.of("stage", "CODING_DSA")
+                )
+        );
+
+        List<com.interviewos.ai.rubric.dto.DimensionScore> rawDims = List.of(
+                new com.interviewos.ai.rubric.dto.DimensionScore(
+                        "CODE_QUALITY",
+                        35,
+                        "Candidate failed because 'No code submitted.' appears in transcript.",
+                        "The transcript explicitly states: 'No code submitted.'"
+                ),
+                new com.interviewos.ai.rubric.dto.DimensionScore(
+                        "ALGORITHMIC_REASONING",
+                        78,
+                        "Clear O(n) sliding window explanation.",
+                        "Candidate stated: 'sliding window with two pointers and a HashMap'"
+                )
+        );
+
+        List<com.interviewos.ai.rubric.dto.DimensionScore> sanitized =
+                com.interviewos.ai.rubric.service.RubricService.validateAndSanitizeDimensionQuotes(rawDims, turns);
+
+        assertEquals(2, sanitized.size());
+        assertEquals("No observable evidence in transcript.", sanitized.get(0).evidence(),
+                "V5-08: Fabricated 'No code submitted.' quote must be rewritten to 'No observable evidence in transcript.'");
+        assertFalse(sanitized.get(0).rationale().contains("No code submitted"),
+                "V5-08: Fabricated quote in rationale must be stripped");
+        assertTrue(sanitized.get(1).evidence().contains("sliding window with two pointers"),
+                "V5-08: Genuine candidate quote must be preserved");
+    }
+
+    @Test
+    @DisplayName("V5-09c: WhisperTranscriptionService prepends session candidateName to vocabulary bias prompt")
+    void testV509c_WhisperAssemblePrompt_IncludesSessionCandidateName() {
+        when(sessionTranscriptClient.fetchSessionCandidateName(144L)).thenReturn("Rohan Sharma");
+        WhisperTranscriptionService whisperService =
+                new WhisperTranscriptionService(null, null, null, sessionTranscriptClient);
+
+        String prompt = whisperService.assemblePrompt("ALGORITHMS_DATA_STRUCTURES", 144L);
+        assertNotNull(prompt);
+        assertTrue(prompt.startsWith("Candidate name: Rohan Sharma, Ankit Singh Tomar; "),
+                "V5-09c: assemblePrompt must prepend session candidateName and Ankit Singh Tomar");
+    }
 }
+
 
 

@@ -71,4 +71,26 @@ public class SessionTranscriptClient {
             return false;
         }
     }
+
+    public String fetchSessionCandidateName(Long sessionId) {
+        if (sessionId == null) {
+            return null;
+        }
+        try {
+            java.util.Map<String, Object> sessionDoc = restClient.get()
+                    .uri("/api/v1/sessions/{id}", sessionId)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<java.util.Map<String, Object>>() {});
+            if (sessionDoc != null && sessionDoc.get("candidateName") != null) {
+                String name = String.valueOf(sessionDoc.get("candidateName")).trim();
+                if (!name.isEmpty() && !"null".equalsIgnoreCase(name)) {
+                    return name;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not fetch candidateName for sessionId {}: {}", sessionId, e.getMessage());
+        }
+        return null;
+    }
 }

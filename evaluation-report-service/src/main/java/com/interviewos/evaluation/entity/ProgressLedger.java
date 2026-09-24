@@ -71,6 +71,13 @@ public class ProgressLedger {
     private Integer communicationBehavioralScore;
 
     @Builder.Default
+    @Column(name = "platform_degraded", nullable = false)
+    private Boolean platformDegraded = false;
+
+    @Column(name = "degraded_annotation", columnDefinition = "TEXT")
+    private String degradedAnnotation;
+
+    @Builder.Default
     @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 }

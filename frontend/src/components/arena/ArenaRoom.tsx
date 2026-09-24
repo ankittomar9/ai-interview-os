@@ -19,6 +19,42 @@ import { mergeSalvageText } from '../../lib/salvage-dedup';
 import type { InterviewStage } from '../StageStepper';
 import { buildNavSections } from '../../lib/plan-navigation';
 
+export function ensureDsaMethodSignatureBoilerplate(
+  rawStarter?: string,
+  slug?: string,
+  track?: string
+): string {
+  if (track === 'SQL') {
+    return rawStarter && rawStarter.trim() ? rawStarter : '-- Write your SQL query below\nSELECT 1;';
+  }
+  const trimmed = (rawStarter || '').trim();
+  const s = (slug || '').toLowerCase();
+  const buildDefaultBoilerplate = () => {
+    if (s.includes('reverse') && s.includes('string')) {
+      return `import java.util.Scanner;\n\npublic class Main {\n    public static String reverseString(String s) {\n        // TODO: write your solution here\n        return "";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            System.out.println(reverseString(sc.nextLine()));\n        }\n    }\n}\n`;
+    }
+    if (s.includes('longest-substring')) {
+      return `import java.util.*;\n\npublic class Main {\n    public static int lengthOfLongestSubstring(String s) {\n        // TODO: write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextLine()) {\n            System.out.println(0);\n            return;\n        }\n        System.out.println(lengthOfLongestSubstring(sc.nextLine()));\n    }\n}\n`;
+    }
+    if (s.includes('two-sum')) {
+      return `import java.util.*;\n\npublic class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // TODO: write your solution here\n        return new int[]{0, 0};\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] nums = new int[n];\n        for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int[] ans = twoSum(nums, target);\n        System.out.println(ans[0] + " " + ans[1]);\n    }\n}\n`;
+    }
+    return `import java.util.*;\n\npublic class Main {\n    public static String solve(String input) {\n        // TODO: write your solution here\n        return "";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String input = sc.hasNextLine() ? sc.nextLine() : "";\n        System.out.println(solve(input));\n    }\n}\n`;
+  };
+
+  if (!trimmed || trimmed.startsWith('// No starter code shipped')) {
+    return buildDefaultBoilerplate();
+  }
+
+  // If starterCode only contains main(String[] args) and no helper method stub, upgrade it
+  const staticMethodMatches = trimmed.match(/public\s+static\s+/g) || [];
+  if (trimmed.includes('public class Main') && staticMethodMatches.length < 2 && (s.includes('reverse') || s.includes('longest-substring') || s.includes('two-sum'))) {
+    return buildDefaultBoilerplate();
+  }
+
+  return rawStarter!;
+}
+
 interface ArenaRoomProps {
   sessionId: number;
   question: GenerateQuestionResponse;
@@ -139,14 +175,18 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   // 2. Code State (Keyed per slug to eliminate A10 cross-question bleed)
   const activeSlug = activeQuestion.problemSlug || activeQuestion.slug || `q_${activeQuestionIndex}`;
-  const dsaPlaceholder = '// No starter code shipped for this problem — report to operator';
-  const fallbackStarter = activeQuestion.starterCode || ((activeQuestion.track === 'ALGORITHMS_DATA_STRUCTURES' || activeQuestion.track === 'SQL') ? dsaPlaceholder : '');
+  const fallbackStarter = ensureDsaMethodSignatureBoilerplate(
+    activeQuestion.starterCode,
+    activeSlug,
+    activeQuestion.track
+  );
   const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({ [activeSlug]: fallbackStarter }));
 
-  // Freshly initialize editor code per question from question.starterCode and reset on session boundary (F2.2)
+  // Freshly initialize editor code per question from question.starterCode and reset on session boundary (F2.2 / V5-07b)
   useEffect(() => {
     setCodeMap((prev) => {
-      if (!prev[activeSlug]) {
+      const existing = prev[activeSlug];
+      if (!existing || existing.startsWith('// No starter code shipped')) {
         return { ...prev, [activeSlug]: fallbackStarter };
       }
       return prev;
@@ -155,7 +195,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   useEffect(() => {
     setCodeMap({ [activeSlug]: fallbackStarter });
-  }, [sessionId]);
+  }, [sessionId, activeSlug, fallbackStarter]);
 
   const code = codeMap[activeSlug] ?? fallbackStarter;
   const setCode = useCallback((newCode: string) => { setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode })); }, [activeSlug]);

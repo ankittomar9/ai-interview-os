@@ -13,7 +13,6 @@ import java.util.List;
  */
 @Builder
 public record AiDialogueRequest(
-        @NotBlank(message = "Question context is required")
         String questionContext,
 
         Long sessionId,

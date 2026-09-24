@@ -46,6 +46,15 @@ public class WhisperTranscriptionService {
 
     public String assemblePrompt(String promptContext, Long sessionId) {
         StringBuilder sb = new StringBuilder();
+        String sessionCandidateName = null;
+        if (sessionId != null && sessionTranscriptClient != null) {
+            try {
+                sessionCandidateName = sessionTranscriptClient.fetchSessionCandidateName(sessionId);
+            } catch (Exception ignored) {}
+        }
+        if (sessionCandidateName != null && !sessionCandidateName.isBlank()) {
+            sb.append("Candidate name: ").append(sessionCandidateName.trim()).append(", Ankit Singh Tomar; ");
+        }
         if (promptContext != null && !promptContext.isBlank()) {
             sb.append(promptContext.trim());
         }
@@ -63,7 +72,7 @@ public class WhisperTranscriptionService {
                                                   .replaceAll("\\s+", " ")
                                                   .trim();
                             if (!clean.isEmpty()) {
-                                if (sb.length() > 0) sb.append("; ");
+                                if (sb.length() > 0 && !sb.toString().endsWith("; ")) sb.append("; ");
                                 sb.append(clean);
                             }
                         }
