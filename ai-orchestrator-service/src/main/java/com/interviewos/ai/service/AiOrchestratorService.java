@@ -133,6 +133,15 @@ public class AiOrchestratorService {
      * Handles live conversational dialogue, memory construction, adaptive directives, and single-pass intent extraction.
      */
     public AiDialogueResponse processDialogue(AiDialogueRequest request) {
+        boolean isIntroStage = "INTRODUCTION".equalsIgnoreCase(request.currentStage())
+                || "INTRODUCTION".equalsIgnoreCase(request.sectionType());
+        if (!isIntroStage && isGatedSectionType(request.sectionType())
+                && (request.questionContext() == null || request.questionContext().isBlank())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Question context is required for gated technical sections"
+            );
+        }
         ModelProvider effectiveProvider = resolveEffectiveProvider(request.modelProvider(), request.apiKey());
         String effectiveApiKey = request.apiKey();
 
@@ -534,16 +543,13 @@ public class AiOrchestratorService {
         }
 
         try {
-            String rawResponse = client.generateCompletion(
+            String rawResponse = executeWithProviderFailover(
                     effectiveProvider,
                     systemInstruction,
                     userPrompt,
                     effectiveApiKey,
                     request.modelName() != null ? request.modelName() : "dialogue"
             );
-            if (providerStatusService != null) {
-                providerStatusService.recordOutcome(effectiveProvider, "OK", 200);
-            }
 
             String cleanJson = JsonCleaner.extractPureJson(rawResponse);
             JsonNode root = objectMapper.readTree(cleanJson);
@@ -635,6 +641,7 @@ public class AiOrchestratorService {
             String approachAssessment = root.hasNonNull("approachAssessment") && !root.get("approachAssessment").asText().isBlank()
                     ? root.get("approachAssessment").asText().trim().toUpperCase()
                     : "NOT_APPLICABLE";
+            String gateUnlockSource = null;
 
             // IH1 Deterministic Post-guard on Approach Agreement (V4-01: Voice/STT turns with qualifying explanations can open gate)
             if (isGatedType && isInterviewMode) {
@@ -656,6 +663,7 @@ public class AiOrchestratorService {
                             approachAssessment = "PROBE_MORE";
                         } else {
                             log.info("POST-GUARD: Gate successfully opened for session {} section {}.", request.sessionId(), secIdx);
+                            gateUnlockSource = "LLM_AGREE";
                         }
                     }
                 } else if (!"PROBE_MORE".equalsIgnoreCase(approachAssessment)) {
@@ -689,17 +697,39 @@ public class AiOrchestratorService {
                     turnSummary,
                     recommendedAction,
                     approachAssessment,
-                    usedFollowUpSeedIds
+                    usedFollowUpSeedIds,
+                    "LLM",
+                    null,
+                    gateUnlockSource
             );
         } catch (Exception e) {
+            Integer status = (e instanceof org.springframework.web.client.RestClientResponseException rce)
+                    ? rce.getStatusCode().value() : null;
             if (providerStatusService != null) {
-                Integer status = (e instanceof org.springframework.web.client.RestClientResponseException rce)
-                        ? rce.getStatusCode().value() : null;
                 providerStatusService.recordOutcome(effectiveProvider, "ERROR", status);
             }
-            log.warn("⚠️ LLM dialogue extraction notice: {}. Using completion-aware structured fallback dialogue.", e.getMessage());
+            String generatorReason = effectiveProvider.name() + "_" + (status != null ? status : "OUTAGE");
+            log.warn("⚠️ LLM dialogue extraction notice ({}): {}. Using completion-aware structured fallback dialogue.", generatorReason, e.getMessage());
+
+            boolean hasQualifyingTurn = hasQualifyingCandidateExplanation(currentSectionTurns)
+                    || (request.candidateExplanation() != null && request.candidateExplanation().trim().length() >= 60);
+            boolean hasCodeExecution = hasCodeExecutionTurn(currentSectionTurns) || request.latestExecution() != null;
+            boolean qualifiedForHeuristicUnlock = isGatedType && isInterviewMode && hasQualifyingTurn && !hasCodeExecution;
 
             String defaultApproach = (isGatedType && isInterviewMode) ? "PROBE_MORE" : "NOT_APPLICABLE";
+            String gateUnlockSource = null;
+
+            if (qualifiedForHeuristicUnlock) {
+                int secIdx = request.sectionIndex() != null ? request.sectionIndex() : 0;
+                boolean gateOpened = sessionTranscriptClient.openSectionGate(request.sessionId(), secIdx, "FALLBACK_HEURISTIC", 0L);
+                if (gateOpened) {
+                    defaultApproach = "AGREE";
+                    gateUnlockSource = "FALLBACK_HEURISTIC";
+                    log.info("POST-GUARD [FALLBACK_HEURISTIC]: Gate opened for session {} section {} during provider outage ({}).",
+                            request.sessionId(), secIdx, generatorReason);
+                }
+            }
+
             if (isEngineError) {
                 return new AiDialogueResponse(
                         "The platform could not verify this run because the code execution engine is temporarily offline; your code has not been marked wrong.",
@@ -711,7 +741,11 @@ public class AiOrchestratorService {
                         "EXPLAINING_APPROACH",
                         "Candidate code execution could not be verified due to engine downtime. No penalty applied.",
                         "PROBE_DEEPER",
-                        defaultApproach
+                        defaultApproach,
+                        List.of(),
+                        "DETERMINISTIC_FALLBACK",
+                        generatorReason,
+                        gateUnlockSource
                 );
             } else if (isAllTestsPassed) {
                 int passed = request.latestExecution().passedTests();
@@ -734,14 +768,18 @@ public class AiOrchestratorService {
                         "COMPLETE",
                         "Candidate successfully solved and submitted passing solution.",
                         recAction,
-                        defaultApproach
+                        defaultApproach,
+                        List.of(),
+                        "DETERMINISTIC_FALLBACK",
+                        generatorReason,
+                        gateUnlockSource
                 );
             } else if (isExecutionFailed) {
                 int passed = request.latestExecution().passedTests();
                 int total = request.latestExecution().totalTests();
-                String status = request.latestExecution().status() != null ? request.latestExecution().status() : "FAILED";
+                String statusStr = request.latestExecution().status() != null ? request.latestExecution().status() : "FAILED";
                 return new AiDialogueResponse(
-                        String.format("Your latest execution resulted in %s with %d/%d test cases passing.", status, passed, total),
+                        String.format("Your latest execution resulted in %s with %d/%d test cases passing.", statusStr, passed, total),
                         "Which test case or edge condition do you think failed, and what adjustments should we make to the code?",
                         false,
                         "The solution encountered test case failures or compilation/runtime errors.",
@@ -750,13 +788,22 @@ public class AiOrchestratorService {
                         "EXPLAINING_APPROACH",
                         "Candidate submitted solution that did not pass all test cases.",
                         "OFFER_HINT",
-                        defaultApproach
+                        defaultApproach,
+                        List.of(),
+                        "DETERMINISTIC_FALLBACK",
+                        generatorReason,
+                        gateUnlockSource
                 );
             }
 
+            String fallbackReply = "AGREE".equals(defaultApproach)
+                    ? "Your proposed approach and data structure plan are clear — I have unlocked the code editor so you can proceed with implementation."
+                    : "Thank you for sharing your thoughts. Let's refine the step-by-step details before coding.";
+            String fallbackFollowUp = buildRotatingFallbackFollowUp(request, candidateTurnCount, "AGREE".equals(defaultApproach));
+
             return new AiDialogueResponse(
-                    "Thank you for sharing your approach. I see your logic taking shape.",
-                    "How would you optimize this solution for higher concurrent throughput or handle edge cases where input is empty or scaled to 10M records?",
+                    fallbackReply,
+                    fallbackFollowUp,
                     false,
                     "Algorithmic structure looks promising. Focus on time/space trade-offs and boundary condition validation.",
                     List.of("Clear communicative thought process", "Structured problem breakdown"),
@@ -764,9 +811,91 @@ public class AiOrchestratorService {
                     "EXPLAINING_APPROACH",
                     "Candidate provided technical explanation.",
                     "PROBE_DEEPER",
-                    defaultApproach
+                    defaultApproach,
+                    List.of(),
+                    "DETERMINISTIC_FALLBACK",
+                    generatorReason,
+                    gateUnlockSource
             );
         }
+    }
+
+    String executeWithProviderFailover(
+            ModelProvider primaryProvider,
+            String systemInstruction,
+            String userPrompt,
+            String apiKey,
+            String modelName
+    ) {
+        AiClient primaryClient = clientFactory.getClient(primaryProvider);
+        try {
+            String res = primaryClient.generateCompletion(primaryProvider, systemInstruction, userPrompt, apiKey, modelName);
+            if (providerStatusService != null) {
+                providerStatusService.recordOutcome(primaryProvider, "OK", 200);
+            }
+            return res;
+        } catch (Exception primaryErr) {
+            Integer status = (primaryErr instanceof org.springframework.web.client.RestClientResponseException rce)
+                    ? rce.getStatusCode().value() : 503;
+            if (providerStatusService != null) {
+                providerStatusService.recordOutcome(primaryProvider, "ERROR", status);
+            }
+            ModelProvider fallbackProvider = null;
+            if (primaryProvider == ModelProvider.GEMINI && (isGroqConfigured() || clientFactory.getClient(ModelProvider.GROQ) != null)) {
+                fallbackProvider = ModelProvider.GROQ;
+            } else if (primaryProvider == ModelProvider.GROQ && (isGeminiConfigured() || clientFactory.getClient(ModelProvider.GEMINI) != null)) {
+                fallbackProvider = ModelProvider.GEMINI;
+            } else if (primaryProvider != ModelProvider.OLLAMA && isOllamaRunning()) {
+                fallbackProvider = ModelProvider.OLLAMA;
+            }
+            if (fallbackProvider != null && fallbackProvider != primaryProvider) {
+                try {
+                    AiClient fallbackClient = clientFactory.getClient(fallbackProvider);
+                    if (fallbackClient != null) {
+                        log.warn("DIALOGUE_FAILOVER from={} to={} status={}", primaryProvider, fallbackProvider, status);
+                        String fallbackRes = fallbackClient.generateCompletion(fallbackProvider, systemInstruction, userPrompt, null, modelName);
+                        if (fallbackRes != null && !fallbackRes.isBlank()) {
+                            if (providerStatusService != null) {
+                                providerStatusService.recordOutcome(fallbackProvider, "OK", 200);
+                            }
+                            return fallbackRes;
+                        }
+                    }
+                } catch (Exception fallbackErr) {
+                    log.warn("Failover provider {} also failed: {}", fallbackProvider, fallbackErr.getMessage());
+                }
+            }
+            throw primaryErr;
+        }
+    }
+
+    private String buildRotatingFallbackFollowUp(AiDialogueRequest request, int candidateTurnCount, boolean gateUnlocked) {
+        String topicSnippet = "this approach";
+        if (request.candidateExplanation() != null && !request.candidateExplanation().isBlank()) {
+            String cleaned = request.candidateExplanation().trim().replaceAll("\\s+", " ");
+            String[] words = cleaned.split(" ");
+            if (words.length >= 3) {
+                int len = Math.min(words.length, 6);
+                topicSnippet = "\"" + String.join(" ", java.util.Arrays.copyOfRange(words, 0, len)) + "...\"";
+            }
+        }
+        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType())) {
+            String[] introPool = new String[]{
+                    "Which recent backend or distributed system project are you most proud of, and what was your specific role?",
+                    "What key technical trade-offs did you navigate in that system, and are you ready to begin Round 1?",
+                    "Great context — whenever you are ready, click Begin Round 1 to start the technical problem."
+            };
+            return introPool[Math.abs(candidateTurnCount) % introPool.length];
+        }
+        if (gateUnlocked) {
+            return "The code editor is now unlocked — as you implement your solution for " + topicSnippet + ", what is the expected time and space complexity?";
+        }
+        String[] gatedPool = new String[]{
+                "Building on " + topicSnippet + ", what specific data structure and step-by-step algorithm will you use, and what is its Big-O time complexity?",
+                "How will your step-by-step algorithm handle boundary inputs (such as empty input or single-element cases), and what is its auxiliary space complexity?",
+                "Before we unlock the editor, could you summarize the core loop or recursion invariant and expected time complexity?"
+        };
+        return gatedPool[Math.abs(candidateTurnCount) % gatedPool.length];
     }
 
     private boolean isGroqConfigured() {
@@ -1047,14 +1176,28 @@ public class AiOrchestratorService {
                 ? request.modelName()
                 : "dialogue";
 
-        AiClient client = clientFactory.getClient(provider);
-        String rawResponse = client.generateCompletion(
-                provider,
-                systemPrompt,
-                "Please deliver the transition narration now.",
-                request.apiKey(),
-                modelName
-        );
+        String rawResponse;
+        try {
+            rawResponse = executeWithProviderFailover(
+                    provider,
+                    systemPrompt,
+                    "Please deliver the transition narration now.",
+                    request.apiKey(),
+                    modelName
+            );
+        } catch (Exception handoffErr) {
+            log.warn("Notice: handoff provider failed ({}), using deterministic neutral handoff transition.", handoffErr.getMessage());
+            String toTitle = (request.toSectionTitle() != null && !request.toSectionTitle().isBlank())
+                    ? request.toSectionTitle().trim()
+                    : (request.toSectionType() != null ? request.toSectionType() : "the next section");
+            boolean isGated = Boolean.TRUE.equals(request.toSectionGated()) || isGatedSectionType(request.toSectionType());
+            String gateText = isGated
+                    ? " Open the problem and read it fully. Before you write any code, explain to me in the chat how you plan to solve it — the editor unlocks once we agree on the approach."
+                    : "";
+            rawResponse = (candidateTurnsInFromSection == 0
+                    ? "Introduction skipped — transitioning directly to " + toTitle + "."
+                    : "Thank you for the introduction — transitioning now to " + toTitle + ".") + gateText;
+        }
 
         JsonNode root = null;
         try {

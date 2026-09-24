@@ -202,7 +202,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         <div className="flex items-center gap-2.5">
           <LocalPurityBadge provider={provider} apiKey={apiKey} />
           <FocusModeToggle isFocusMode={isFocusMode} onToggle={onToggleFocusMode || (() => {})} />
-          <SelfTimer initialMinutes={currentSectionBudget} autoStart={!isPlayground} />
+          <SelfTimer initialMinutes={currentSectionBudget} autoStart={!isPlayground} mode={sessionMode} />
           <ThemeToggle />
           <Chip variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'} size="sm">
             {isSpeakingNow ? 'Speaking' : isListening ? 'Mic Active' : 'Mic Ready'}

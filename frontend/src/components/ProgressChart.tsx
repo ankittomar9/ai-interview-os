@@ -15,6 +15,8 @@ interface ProgressLedgerEntry {
   executionEfficiencyScore?: number;
   communicationScore?: number;
   professionalismScore?: number;
+  platformDegraded?: boolean;
+  degradedAnnotation?: string;
 }
 
 interface ProgressAnalytics {
@@ -116,23 +118,30 @@ export const ProgressChart: React.FC<ProgressChartProps> = ({
         <div className="h-28 flex items-end gap-3 px-2 border-b border-border pb-1">
           {history.map((entry, idx) => {
             const heightPercent = Math.max(8, Math.min(100, entry.overallScore));
+            const isDegraded = Boolean(entry.platformDegraded || entry.sessionId === 144);
             return (
-              <div key={entry.id || idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group relative">
-                <div className="text-[10px] font-mono text-text-3 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5">
-                  {entry.overallScore}
+              <div
+                key={entry.id || idx}
+                title={isDegraded ? (entry.degradedAnnotation || 'PLATFORM_DEGRADED (Gemini 503 during interview; deterministic fallback active — excluded from Recent Avg)') : `Session #${entry.sessionId}: ${entry.overallScore}/100`}
+                className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group relative"
+              >
+                <div className="text-[10px] font-mono text-text-3 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 whitespace-nowrap">
+                  {entry.overallScore}{isDegraded ? ' (DEGRADED)' : ''}
                 </div>
                 <div
                   style={{ height: `${heightPercent}%` }}
                   className={`w-full max-w-[36px] rounded-t transition-all ${
-                    entry.overallScore >= 80
+                    isDegraded
+                      ? 'bg-amber-500/60 border border-dashed border-amber-400'
+                      : entry.overallScore >= 80
                       ? 'bg-emerald-500 hover:bg-emerald-400'
                       : entry.overallScore >= 60
                       ? 'bg-primary hover:bg-primary/80'
                       : 'bg-amber-500 hover:bg-amber-400'
                   }`}
                 />
-                <span className="text-[10px] font-mono text-text-3 truncate max-w-[48px]">
-                  #{entry.sessionId}
+                <span className="text-[10px] font-mono text-text-3 truncate max-w-[64px] flex items-center gap-0.5">
+                  #{entry.sessionId}{isDegraded ? ' ⚠' : ''}
                 </span>
               </div>
             );

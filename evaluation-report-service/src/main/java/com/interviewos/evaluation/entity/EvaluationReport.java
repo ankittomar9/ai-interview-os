@@ -78,6 +78,13 @@ public class EvaluationReport {
     @Column(columnDefinition = "TEXT")
     private String planVsActualJson;
 
+    @Builder.Default
+    @Column(name = "platform_degraded", nullable = false)
+    private Boolean platformDegraded = false;
+
+    @Column(name = "degraded_annotation", columnDefinition = "TEXT")
+    private String degradedAnnotation;
+
     private Instant generatedAt;
 
     @PrePersist

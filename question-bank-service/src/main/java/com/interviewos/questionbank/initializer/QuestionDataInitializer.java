@@ -173,12 +173,16 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             import java.util.Scanner;
 
                             public class Main {
+                                public static String reverseString(String s) {
+                                    // TODO: write your solution here
+                                    return "";
+                                }
+
                                 public static void main(String[] args) {
                                     Scanner sc = new Scanner(System.in);
                                     if (sc.hasNextLine()) {
                                         String s = sc.nextLine();
-                                        // TODO: Implement string reversal logic
-                                        
+                                        System.out.println(reverseString(s));
                                     }
                                 }
                             }
@@ -229,6 +233,11 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             import java.util.*;
 
                             public class Main {
+                                public static int[] twoSum(int[] nums, int target) {
+                                    // TODO: write your solution here
+                                    return new int[]{0, 0};
+                                }
+
                                 public static void main(String[] args) {
                                     Scanner sc = new Scanner(System.in);
                                     if (!sc.hasNextInt()) return;
@@ -236,15 +245,9 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                     int target = sc.nextInt();
                                     int[] nums = new int[n];
                                     for (int i = 0; i < n; i++) nums[i] = sc.nextInt();
-
-                                    Map<Integer, Integer> map = new HashMap<>();
-                                    for (int i = 0; i < n; i++) {
-                                        int complement = target - nums[i];
-                                        if (map.containsKey(complement)) {
-                                            System.out.println(map.get(complement) + " " + i);
-                                            return;
-                                        }
-                                        map.put(nums[i], i);
+                                    int[] ans = twoSum(nums, target);
+                                    if (ans != null && ans.length >= 2) {
+                                        System.out.println(ans[0] + " " + ans[1]);
                                     }
                                 }
                             }
@@ -917,6 +920,11 @@ public class QuestionDataInitializer implements CommandLineRunner {
                             import java.util.*;
 
                             public class Main {
+                                public static int lengthOfLongestSubstring(String s) {
+                                    // TODO: write your solution here
+                                    return 0;
+                                }
+
                                 public static void main(String[] args) {
                                     Scanner scanner = new Scanner(System.in);
                                     if (!scanner.hasNextLine()) {
@@ -924,18 +932,7 @@ public class QuestionDataInitializer implements CommandLineRunner {
                                         return;
                                     }
                                     String s = scanner.nextLine();
-                                    Map<Character, Integer> lastSeen = new HashMap<>();
-                                    int maxLen = 0;
-                                    int left = 0;
-                                    for (int right = 0; right < s.length(); right++) {
-                                        char c = s.charAt(right);
-                                        if (lastSeen.containsKey(c)) {
-                                            left = Math.max(left, lastSeen.get(c) + 1);
-                                        }
-                                        lastSeen.put(c, right);
-                                        maxLen = Math.max(maxLen, right - left + 1);
-                                    }
-                                    System.out.println(maxLen);
+                                    System.out.println(lengthOfLongestSubstring(s));
                                 }
                             }
                             """)

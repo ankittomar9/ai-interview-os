@@ -35,12 +35,15 @@ public class EvaluationReportService {
     @Transactional
     public DiagnosticReportResponse generateReport(Long sessionId) {
         Optional<EvaluationReport> existing = reportRepository.findBySessionId(sessionId);
-        if (existing.isPresent()) {
+        boolean needsRegrade = existing.isPresent()
+                && existing.get().getDegradedAnnotation() != null
+                && existing.get().getDegradedAnnotation().contains("NEEDS_REGRADE");
+        if (existing.isPresent() && !needsRegrade) {
             log.info("Returning cached diagnostic report for session {}", sessionId);
             return DiagnosticReportResponse.fromEntity(existing.get());
         }
 
-        log.info("Starting qualitative diagnostic evaluation synthesis for session {}", sessionId);
+        log.info("Starting qualitative diagnostic evaluation synthesis for session {} (regrade={})", sessionId, needsRegrade);
 
         // 1. Fetch Session Details & MongoDB Transcript Turns
         SessionServiceClient.SessionDetailsDto session = sessionClient.getSessionById(sessionId);
@@ -250,8 +253,21 @@ public class EvaluationReportService {
             }
         }
 
-        // 5. Request Qualitative Multi-Rubric from AI Orchestrator
+        // 5. Request Qualitative Multi-Rubric from AI Orchestrator (V5-04: exclude fallback interviewer turns)
+        long fallbackInterviewerTurns = transcript.stream()
+                .filter(this::isFallbackInterviewerTurn)
+                .count();
+        boolean platformDegraded = fallbackInterviewerTurns > 0
+                || (existing.isPresent() && Boolean.TRUE.equals(existing.get().getPlatformDegraded()));
+        String degradedAnnotation = platformDegraded
+                ? String.format("PLATFORM_DEGRADED (Gemini 503 during interview; %d deterministic fallback interviewer turn(s) excluded from candidate grading)",
+                        Math.max(1L, fallbackInterviewerTurns))
+                : null;
+        boolean executionUnverifiable = allExecutionsFailedByEngine
+                || (platformDegraded && totalExecutionRuns == 0 && candidateTurns >= 3);
+
         List<AiRubricClient.TurnDto> turnDtos = transcript.stream()
+                .filter(t -> !isFallbackInterviewerTurn(t))
                 .map(t -> new AiRubricClient.TurnDto(t.senderRole(), t.messageType(), t.content(), t.codeSnippet(), t.metadata()))
                 .toList();
 
@@ -324,7 +340,7 @@ public class EvaluationReportService {
             }
 
             boolean isCodingTrack = !trackUpper.contains("BEHAVIORAL") && !trackUpper.contains("RESUME") && !trackUpper.contains("SYSTEM_DESIGN");
-            if (!isCodingTrack || allExecutionsFailedByEngine) {
+            if (!isCodingTrack || executionUnverifiable) {
                 technicalScore = algoScore;
                 codeQualityScore = codeScore;
             } else {
@@ -343,6 +359,8 @@ public class EvaluationReportService {
             executiveSummary = rubric.executiveSummary();
             if (allExecutionsFailedByEngine) {
                 executiveSummary = String.format("%s Execution not verifiable (engine offline ×%d). %s", headline, totalEngineErrors, executiveSummary);
+            } else if (platformDegraded) {
+                executiveSummary = String.format("%s [%s] %s", headline, degradedAnnotation, executiveSummary);
             } else {
                 executiveSummary = headline + " " + executiveSummary;
             }
@@ -358,20 +376,23 @@ public class EvaluationReportService {
             }
         } else {
             // Deterministic Fallback Score Math
-            if (allExecutionsFailedByEngine) {
-                technicalScore = Math.min(80, 50 + (int) candidateTurns * 5);
-                codeQualityScore = Math.min(80, 55 + (int) candidateTurns * 3);
+            if (executionUnverifiable) {
+                technicalScore = Math.min(80, 50 + (int) candidateTurns * 3);
+                codeQualityScore = Math.min(75, 50 + (int) candidateTurns * 2);
+                problemSolvingScore = Math.min(75, 45 + (int) candidateTurns * 3);
             } else {
                 technicalScore = Math.min(executionScore, 60);
                 codeQualityScore = Math.min(executionScore, (int) Math.round(40 + 0.2 * executionScore));
+                problemSolvingScore = Math.min(70, 30 + executionScore / 2);
             }
-            problemSolvingScore = Math.min(70, 30 + executionScore / 2);
             communicationScore = Math.min(75, 30 + (int) candidateTurns * 5);
             requirementsClarityScore = Math.min(60, 40);
 
             // Dynamic Fallback Narratives based on lowest dimensions & execution stats
             if (allExecutionsFailedByEngine) {
                 strengths.add(String.format("Demonstrated technical composure during sandbox offline notice (%d attempt(s)).", totalEngineErrors));
+            } else if (platformDegraded) {
+                strengths.add(String.format("Maintained structured technical explanations across %d candidate turns despite interviewer LLM outage.", candidateTurns));
             } else if (verifiedPasses > 0) {
                 strengths.add(String.format("Verified %d sandbox execution runs with passing test suites in the IDE.", verifiedPasses));
             }
@@ -403,6 +424,11 @@ public class EvaluationReportService {
                 executiveSummary = String.format(
                         "%s Execution not verifiable (engine offline ×%d). Technical Accuracy scored from code structure and dialogue evidence.",
                         headline, totalEngineErrors
+                );
+            } else if (platformDegraded) {
+                executiveSummary = String.format(
+                        "%s [%s] Technical and communication scores evaluated strictly from candidate turns with automated fallback prompts excluded.",
+                        headline, degradedAnnotation
                 );
             } else {
                 executiveSummary = String.format(
@@ -442,9 +468,9 @@ public class EvaluationReportService {
 
         int overallScore = (technicalScore + problemSolvingScore + communicationScore + codeQualityScore + integrityScore) / 5;
 
-        // Hiring Verdict Thresholds (M1.5 Rule: verifiedPasses >= 1 required for HIRE / STRONG_HIRE, unless all runs were engine errors)
+        // Hiring Verdict Thresholds (M1.5 Rule: verifiedPasses >= 1 required for HIRE / STRONG_HIRE, unless all runs were engine errors or platform degraded)
         HiringVerdict verdict;
-        if (allExecutionsFailedByEngine) {
+        if (executionUnverifiable) {
             if (overallScore >= 70 && integrityScore >= 70) {
                 verdict = HiringVerdict.HIRE;
             } else if (overallScore >= 55) {
@@ -490,6 +516,7 @@ public class EvaluationReportService {
         }
 
         EvaluationReport report = EvaluationReport.builder()
+                .id(existing.map(EvaluationReport::getId).orElse(null))
                 .sessionId(sessionId)
                 .candidateId(session.candidateId())
                 .roleTitle(session.roleTitle())
@@ -514,11 +541,34 @@ public class EvaluationReportService {
                 .consentDowngrades(consentDowngrades)
                 .workspaceProvenance(workspaceProvenance)
                 .planVsActualJson(planVsActualJson)
+                .platformDegraded(platformDegraded)
+                .degradedAnnotation(degradedAnnotation)
+                .generatedAt(Instant.now())
                 .build();
 
         EvaluationReport saved = reportRepository.save(report);
         progressLedgerService.recordSession(saved);
         return DiagnosticReportResponse.fromEntity(saved);
+    }
+
+    private boolean isFallbackInterviewerTurn(SessionServiceClient.TranscriptMessageDto turn) {
+        if (turn == null || !"AI".equalsIgnoreCase(turn.senderRole())) {
+            return false;
+        }
+        if (turn.metadata() != null) {
+            String generator = turn.metadata().get("generator");
+            String senderName = turn.metadata().get("senderName");
+            if ("DETERMINISTIC_FALLBACK".equalsIgnoreCase(generator)
+                    || "OFFLINE_COACH".equalsIgnoreCase(generator)
+                    || "Automated Fallback".equalsIgnoreCase(senderName)
+                    || "Offline Coach".equalsIgnoreCase(senderName)) {
+                return true;
+            }
+        }
+        String content = turn.content() != null ? turn.content() : "";
+        return content.contains("10M records")
+                || content.contains("Thank you for sharing your background. Let's transition to the technical problem")
+                || content.contains("Could you state the exact time and space complexity");
     }
 
     @Transactional(readOnly = true)

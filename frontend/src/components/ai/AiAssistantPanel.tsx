@@ -103,6 +103,13 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
 
   if (!open) return null;
 
+  const isDegradedAiMode = messages.some(
+    (m) =>
+      m.metadata?.generator === "DETERMINISTIC_FALLBACK" ||
+      m.metadata?.generator === "OFFLINE_COACH" ||
+      m.metadata?.offlineFallback === "true"
+  );
+
   const positionClass = stackAbove === "webcam"
     ? "fixed bottom-52 right-5"
     : "fixed bottom-20 right-5";
@@ -119,13 +126,13 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
           <AiOrbAvatar isAiSpeaking={isAiSpeaking} size="sm" />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-text truncate">{personaName}</span>
-              <Chip variant="primary" size="sm">
+              <span className="text-xs font-bold text-text truncate">{isDegradedAiMode ? "Automated Fallback" : personaName}</span>
+              <Chip variant={isDegradedAiMode ? "warning" : "primary"} size="sm">
                 {currentStage}
               </Chip>
             </div>
             <div className="text-[10px] text-text-3 truncate flex items-center gap-1.5">
-              <span>{personaTitle}</span>
+              <span>{isDegradedAiMode ? "Degraded AI mode — responses automated" : personaTitle}</span>
               {isAiSpeaking && <WaveformBars isSpeaking={true} size="sm" />}
             </div>
           </div>
@@ -151,6 +158,13 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {isDegradedAiMode && (
+        <div className="px-3 py-1.5 bg-warning/15 border-b border-warning/30 text-warning text-[10px] font-semibold flex items-center justify-between">
+          <span>⚠ Degraded AI mode — responses automated</span>
+          <span className="font-mono text-[9px] uppercase">Fallback Active</span>
+        </div>
+      )}
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 text-xs">
         {mode === "intro" && (
@@ -180,17 +194,36 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
               if (m.metadata?.type === 'ROUND_BOUNDARY') {
                 return <RoundDivider key={idx} title={m.content} sectionType={m.metadata?.sectionType} />;
               }
+              const isDetFallback = m.metadata?.generator === "DETERMINISTIC_FALLBACK";
+              const isOfflineFallback = m.metadata?.generator === "OFFLINE_COACH" || m.metadata?.offlineFallback === "true";
+              const displaySender = m.role === "candidate"
+                ? "You"
+                : isDetFallback
+                ? "Automated Fallback"
+                : isOfflineFallback
+                ? "Offline Coach"
+                : (m.metadata?.senderName || personaName);
               return (
               <div
                 key={idx}
                 className={"p-2.5 rounded-lg border text-xs leading-relaxed " + (m.role === "candidate" ? "bg-primary/10 border-primary/40 text-text" : "bg-elevated border-border text-text")}
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
-                  <div className="flex items-center gap-1.5">
-                    <span>{m.role === "candidate" ? "You" : (m.metadata?.senderName || (m.metadata?.offlineFallback === "true" ? "Offline Coach" : personaName))}</span>
-                    {m.metadata?.offlineFallback === "true" && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span>{displaySender}</span>
+                    {isDetFallback && (
+                      <span className="px-1 py-0.2 rounded text-[9px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-0.5">
+                        Automated Fallback
+                      </span>
+                    )}
+                    {isOfflineFallback && (
                       <span className="px-1 py-0.2 rounded text-[9px] bg-warning/15 text-warning border border-warning/30 font-semibold inline-flex items-center gap-0.5">
                         Offline Coach
+                      </span>
+                    )}
+                    {m.metadata?.gateUnlockSource === "FALLBACK_HEURISTIC" && (
+                      <span className="px-1 py-0.2 rounded text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold inline-flex items-center gap-0.5">
+                        Heuristic Gate Unlock
                       </span>
                     )}
                     {m.metadata?.recommendedAction === "OFFER_HINT" && (
@@ -245,15 +278,22 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                 <span>No transcript turns recorded for this session.</span>
               </div>
             )}
-            {transcript.map((turn, idx) => (
+            {transcript.map((turn, idx) => {
+              const isFallbackTurn = turn.senderRole === "AI" && (
+                (turn as any).metadata?.generator === "DETERMINISTIC_FALLBACK" ||
+                (turn as any).metadata?.generator === "OFFLINE_COACH" ||
+                (turn as any).metadata?.offlineFallback === "true" ||
+                (turn.content && turn.content.includes("10M records"))
+              );
+              return (
               <div
                 key={idx}
                 className={"p-2.5 rounded-lg border text-xs leading-relaxed " + (turn.senderRole === "CANDIDATE" ? "bg-primary/10 border-primary/40" : "bg-elevated border-border")}
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
-                  <span>{turn.senderRole === "CANDIDATE" ? "Candidate" : personaName}</span>
+                  <span>{turn.senderRole === "CANDIDATE" ? "Candidate" : isFallbackTurn ? "Automated Fallback — not the interviewer" : personaName}</span>
                   {turn.messageType && (
-                    <span className="text-text-3 text-[9px] font-mono">{turn.messageType}</span>
+                    <span className="text-text-3 text-[9px] font-mono">{isFallbackTurn ? "DETERMINISTIC_FALLBACK" : turn.messageType}</span>
                   )}
                 </div>
                 <div className="whitespace-pre-wrap text-text">{turn.content}</div>
@@ -263,7 +303,8 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                   </pre>
                 )}
               </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </>
         )}

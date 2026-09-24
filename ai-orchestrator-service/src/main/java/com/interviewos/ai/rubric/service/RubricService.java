@@ -162,8 +162,10 @@ public class RubricService {
                 return RubricResponse.emptyFallback(schema);
             }
 
+            List<DimensionScore> validatedDims = validateAndSanitizeDimensionQuotes(parsed.dimensions, request.transcript());
+
             return new RubricResponse(
-                    parsed.dimensions,
+                    validatedDims,
                     parsed.strengths != null ? parsed.strengths : List.of(),
                     parsed.weaknesses != null ? parsed.weaknesses : List.of(),
                     parsed.studyPlan != null ? parsed.studyPlan : List.of(),
@@ -175,6 +177,108 @@ public class RubricService {
                     provider, e.getMessage());
             return RubricResponse.emptyFallback(schema);
         }
+    }
+
+    public static boolean isFallbackInterviewerTurn(TurnDto turn) {
+        if (turn == null || !"AI".equalsIgnoreCase(turn.role())) return false;
+        if (turn.metadata() != null) {
+            String gen = turn.metadata().get("generator");
+            if ("DETERMINISTIC_FALLBACK".equalsIgnoreCase(gen) || "OFFLINE_COACH".equalsIgnoreCase(gen)) {
+                return true;
+            }
+            if ("true".equalsIgnoreCase(turn.metadata().get("offlineFallback"))
+                    || "true".equalsIgnoreCase(turn.metadata().get("error"))) {
+                return true;
+            }
+        }
+        String c = turn.content() != null ? turn.content() : "";
+        return c.contains("scaled to 10M records")
+                || c.contains("How does your solution handle scale or boundary conditions?");
+    }
+
+    public static List<DimensionScore> validateAndSanitizeDimensionQuotes(
+            List<DimensionScore> dimensions,
+            List<TurnDto> transcript
+    ) {
+        if (dimensions == null) return List.of();
+        StringBuilder normTranscriptSb = new StringBuilder();
+        if (transcript != null) {
+            for (TurnDto t : transcript) {
+                if (t != null && t.content() != null) {
+                    normTranscriptSb.append(" ").append(normalizeForQuoteMatch(t.content()));
+                }
+            }
+        }
+        String normTranscript = normTranscriptSb.toString();
+        String sanctionedNoEvidence = "No observable evidence in transcript.";
+
+        List<DimensionScore> result = new ArrayList<>(dimensions.size());
+        java.util.regex.Pattern quotePattern = java.util.regex.Pattern.compile("['\"“”‘’]([^'\"“”‘’]{5,})['\"“”‘’]");
+
+        for (DimensionScore dim : dimensions) {
+            if (dim == null) continue;
+            String ev = dim.evidence() != null ? dim.evidence().trim() : sanctionedNoEvidence;
+            String rat = dim.rationale() != null ? dim.rationale().trim() : "";
+
+            // 1. Validate any quoted substring or prompt-footer leak inside evidence against transcript
+            boolean fabricatedInEvidence = ev.toLowerCase(java.util.Locale.ROOT).contains("no code submitted");
+            java.util.regex.Matcher evMatcher = quotePattern.matcher(ev);
+            while (evMatcher.find()) {
+                String quoted = evMatcher.group(1);
+                String normQ = normalizeForQuoteMatch(quoted);
+                if (!normQ.isEmpty() && !matchesTranscriptNgram(normQ, normTranscript)) {
+                    fabricatedInEvidence = true;
+                    break;
+                }
+            }
+            if (fabricatedInEvidence) {
+                ev = sanctionedNoEvidence;
+            }
+
+            // 2. Validate any quoted substring inside rationale against transcript
+            java.util.regex.Matcher m = quotePattern.matcher(rat);
+            boolean fabricatedInRationale = rat.toLowerCase(java.util.Locale.ROOT).contains("no code submitted");
+            while (m.find()) {
+                String quoted = m.group(1);
+                String normQ = normalizeForQuoteMatch(quoted);
+                if (!normQ.isEmpty() && !matchesTranscriptNgram(normQ, normTranscript)) {
+                    fabricatedInRationale = true;
+                    break;
+                }
+            }
+            if (fabricatedInRationale) {
+                ev = sanctionedNoEvidence;
+                rat = rat.replaceAll("(?i)The transcript explicitly states:\\s*['\"“”‘’][^'\"“”‘’]+['\"“”‘’]\\.?\\s*",
+                        "No code submission was recorded in the session transcript. ");
+                rat = quotePattern.matcher(rat).replaceAll("no observable evidence in transcript").trim();
+            }
+
+            result.add(new DimensionScore(dim.dimension(), dim.score(), rat, ev));
+        }
+        return result;
+    }
+
+    private static String normalizeForQuoteMatch(String s) {
+        if (s == null) return "";
+        return s.toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private static boolean matchesTranscriptNgram(String normQuote, String normTranscript) {
+        if (normQuote.isEmpty() || normTranscript.isEmpty()) return false;
+        if (normTranscript.contains(normQuote)) return true;
+        String[] words = normQuote.split(" ");
+        if (words.length < 4) return false;
+        int window = Math.min(5, words.length);
+        for (int i = 0; i <= words.length - window; i++) {
+            String ngram = String.join(" ", java.util.Arrays.copyOfRange(words, i, i + window));
+            if (normTranscript.contains(ngram)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String buildSanitizedUserPrompt(RubricEvaluationRequest req) {
@@ -221,6 +325,10 @@ public class RubricService {
 
         for (int i = 0; i < transcript.size(); i++) {
             TurnDto turn = transcript.get(i);
+            if (isFallbackInterviewerTurn(turn)) {
+                // V5-04: Exclude fallback interviewer turns so candidates are never graded against canned outage probes
+                continue;
+            }
             String role = turn.role() != null ? turn.role() : "UNKNOWN";
             String content = turn.content() != null ? turn.content() : "";
 
@@ -243,7 +351,7 @@ public class RubricService {
         } else if (!codeSnippets.isEmpty()) {
             sb.append(codeSnippets.get(codeSnippets.size() - 1)).append("\n");
         } else {
-            sb.append("// No code submitted.\n");
+            sb.append("// [NONE]\n");
         }
 
         // Hard cap total prompt length to ~12,000 characters to ensure deterministic context processing

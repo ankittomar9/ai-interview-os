@@ -16,7 +16,10 @@ public record AiDialogueResponse(
         String turnSummary,
         String recommendedAction,
         String approachAssessment,
-        List<Integer> usedFollowUpSeedIds
+        List<Integer> usedFollowUpSeedIds,
+        String generator,
+        String generatorReason,
+        String gateUnlockSource
 ) {
     public AiDialogueResponse {
         if (usedFollowUpSeedIds == null) {
@@ -25,6 +28,41 @@ public record AiDialogueResponse(
         if (approachAssessment == null || approachAssessment.isBlank()) {
             approachAssessment = "NOT_APPLICABLE";
         }
+        if (generator == null || generator.isBlank()) {
+            generator = "LLM";
+        }
+    }
+
+    // 11-argument constructor for backwards compatibility (defaults to LLM generator)
+    public AiDialogueResponse(
+            String interviewerReply,
+            String followUpQuestion,
+            boolean isSolutionComplete,
+            String codeAnalysis,
+            List<String> keyStrengths,
+            List<String> areasToImprove,
+            String detectedIntent,
+            String turnSummary,
+            String recommendedAction,
+            String approachAssessment,
+            List<Integer> usedFollowUpSeedIds
+    ) {
+        this(
+                interviewerReply,
+                followUpQuestion,
+                isSolutionComplete,
+                codeAnalysis,
+                keyStrengths,
+                areasToImprove,
+                detectedIntent,
+                turnSummary,
+                recommendedAction,
+                approachAssessment,
+                usedFollowUpSeedIds,
+                "LLM",
+                null,
+                null
+        );
     }
 
     // 10-argument constructor for backwards compatibility
@@ -51,7 +89,10 @@ public record AiDialogueResponse(
                 turnSummary,
                 recommendedAction,
                 approachAssessment,
-                List.of()
+                List.of(),
+                "LLM",
+                null,
+                null
         );
     }
 
