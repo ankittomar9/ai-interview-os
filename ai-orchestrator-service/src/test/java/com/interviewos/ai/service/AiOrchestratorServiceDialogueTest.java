@@ -1112,4 +1112,146 @@ class AiOrchestratorServiceDialogueTest {
         // (c & e) All 6 seeds used in sequence without repetition
         assertEquals(List.of(0, 1, 2, 3, 4, 5), capturedUsedSeedIds);
     }
+
+    @Test
+    @DisplayName("V4-01: Voice/STT turn with qualifying explanation (>= 60 chars) and no code execution opens approach gate and returns AGREE while still suppressing stage advance")
+    void testV401_SttTurnWithQualifyingExplanation_OpensGateAndReturnsAgree() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Your two-pointer in-place swap approach is optimal O(N) time and O(1) auxiliary space.",
+                  "followUpQuestion": "The editor is now unlocked — please go ahead and implement your solution.",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": "Sound two-pointer strategy.",
+                  "keyStrengths": ["O(N) time", "O(1) space"],
+                  "areasToImprove": [],
+                  "detectedIntent": "EXPLAINING_APPROACH",
+                  "turnSummary": "Candidate explained two-pointer approach via voice.",
+                  "recommendedAction": "ADVANCE_STAGE",
+                  "approachAssessment": "AGREE"
+                }
+                """;
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        String spokenExplanation = "I will use two pointers starting at index zero and length minus one, swapping characters in place until left meets right for O(N) time and O(1) space.";
+        List<TranscriptTurnDto> transcript = List.of(
+                new TranscriptTurnDto(1L, "CANDIDATE", "EXPLANATION", spokenExplanation,
+                        null, Map.of("sectionType", "DSA", "isStt", "true"))
+        );
+        when(sessionTranscriptClient.fetchSessionTranscript(142L)).thenReturn(transcript);
+        when(sessionTranscriptClient.openSectionGate(142L, 1, "APPROACH_AGREED", 0L)).thenReturn(true);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(142L)
+                .questionContext("Reverse a String in-place")
+                .candidateExplanation(spokenExplanation)
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .isStt(true)
+                .sessionMode("INTERVIEW")
+                .sectionType("DSA")
+                .sectionIndex(1)
+                .totalSections(4)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROBE_DEEPER", response.recommendedAction(),
+                "Guard #1 must still suppress ADVANCE_STAGE on STT turns");
+        assertEquals("AGREE", response.approachAssessment(),
+                "V4-01: Qualifying voice explanation must return AGREE and unlock the editor gate");
+        org.mockito.Mockito.verify(sessionTranscriptClient, org.mockito.Mockito.times(1))
+                .openSectionGate(142L, 1, "APPROACH_AGREED", 0L);
+    }
+
+    @Test
+    @DisplayName("V4-01: Voice/STT turn with non-qualifying short utterance (< 60 chars) is still downgraded to PROBE_MORE by IH1 POST-GUARD")
+    void testV401_SttTurnWithShortNonQualifyingExplanation_DowngradesToProbeMore() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        String rawJson = """
+                {
+                  "interviewerReply": "Okay, go ahead.",
+                  "followUpQuestion": "Start coding.",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "EXPLAINING_APPROACH",
+                  "turnSummary": "Short voice utterance.",
+                  "recommendedAction": "PROBE_DEEPER",
+                  "approachAssessment": "AGREE"
+                }
+                """;
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+        when(sessionTranscriptClient.fetchSessionTranscript(142L)).thenReturn(List.of());
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(142L)
+                .questionContext("Reverse a String in-place")
+                .candidateExplanation("Unlock the editor please.")
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .isStt(true)
+                .sessionMode("INTERVIEW")
+                .sectionType("DSA")
+                .sectionIndex(1)
+                .totalSections(4)
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+
+        assertNotNull(response);
+        assertEquals("PROBE_MORE", response.approachAssessment(),
+                "V4-01: Non-qualifying short voice turn must still be downgraded to PROBE_MORE by POST-GUARD");
+        org.mockito.Mockito.verify(sessionTranscriptClient, org.mockito.Mockito.never())
+                .openSectionGate(anyLong(), anyInt(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("V4-05: processHandoff when INTRODUCTION has 0 candidate turns strips fabricated completion claims")
+    void testV405_ProcessHandoffWithZeroCandidateTurns_NeverClaimsCompletedIntroduction() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+        when(sessionTranscriptClient.fetchSessionTranscript(142L)).thenReturn(List.of());
+
+        String rawJson = """
+                {
+                  "interviewerReply": "We have successfully completed our initial introduction. Next, we will transition to Algorithmic Problem Solving. Open the problem and read it fully.",
+                  "followUpQuestion": "",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "SECTION_HANDOFF",
+                  "turnSummary": "Section handoff transition",
+                  "recommendedAction": "NOT_APPLICABLE",
+                  "approachAssessment": "NOT_APPLICABLE"
+                }
+                """;
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn(rawJson);
+
+        AiHandoffRequest request = new AiHandoffRequest(
+                142L,
+                "INTRODUCTION",
+                "DSA",
+                "Algorithmic Problem Solving",
+                true,
+                "Ankit",
+                "fake-key",
+                ModelProvider.GEMINI,
+                "test-model"
+        );
+
+        AiDialogueResponse response = orchestratorService.processHandoff(request);
+
+        assertNotNull(response);
+        assertFalse(response.interviewerReply().toLowerCase().contains("successfully completed"),
+                "V4-05: Handoff after 0-turn INTRODUCTION must never claim introduction was completed");
+        assertTrue(response.interviewerReply().contains("Introduction skipped — transitioning directly to Algorithmic Problem Solving."),
+                "V4-05: Handoff must state neutrally that introduction was skipped");
+    }
 }
+
+

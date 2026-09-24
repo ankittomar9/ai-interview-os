@@ -102,6 +102,31 @@ export function useDialogue({
   const lastTurnRef = useRef<{ textToSend: string; codeSnapshot: string } | null>(null);
   const echoFilteredCountRef = useRef<number>(0);
   const highestSectionIndexRef = useRef<number>(0);
+  const welcomePersistedSessionIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!sessionId || !initialWelcome.trim() || welcomePersistedSessionIdRef.current === sessionId) return;
+    welcomePersistedSessionIdRef.current = sessionId;
+
+    void addMessageToSession(sessionId, {
+      senderRole: 'AI',
+      content: initialWelcome,
+      messageType: 'EXPLANATION',
+      metadata: {
+        type: 'WELCOME_GREETING',
+        stage: currentStage,
+        sectionType: String(currentNavSection.sectionType),
+        provider
+      }
+    }).catch((err) => {
+      console.warn('[useDialogue] Failed to persist initial welcome message:', err);
+    });
+
+    if (onAiSpeechRequested) {
+      onAiSpeechRequested(initialWelcome);
+    }
+  }, [sessionId, initialWelcome, currentStage, currentNavSection.sectionType, provider, onAiSpeechRequested]);
+
   useEffect(() => {
     if (activeSectionIndex > highestSectionIndexRef.current) {
       highestSectionIndexRef.current = activeSectionIndex;

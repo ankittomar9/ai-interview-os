@@ -52,16 +52,25 @@ export function useProctoring({
       }
     };
 
+    const handleScreenChange = () => {
+      if ((window.screen as any)?.isExtended === true) {
+        setTabSwitches((c) => c + 1);
+        setIsWindowBlurred(true);
+      }
+    };
+
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('paste', handlePaste);
+    (window.screen as any)?.addEventListener?.('change', handleScreenChange);
 
     return () => {
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('paste', handlePaste);
+      (window.screen as any)?.removeEventListener?.('change', handleScreenChange);
     };
   }, [isPlayground]);
 

@@ -463,10 +463,13 @@ public class EvaluationReportService {
         }
 
         // P2 Fix: Premature / Abandoned Session Guard (< 180 seconds or < 3 candidate turns)
+        long dialogueTurns = transcript.stream()
+                .filter(m -> "CANDIDATE".equalsIgnoreCase(m.senderRole()) && !"CODE_EXECUTION".equalsIgnoreCase(m.messageType()))
+                .count();
         if (durationSeconds < 180 || candidateTurns < 3) {
             verdict = HiringVerdict.NO_HIRE;
-            if (candidateTurns < 3) {
-                // F5.1 (D8): Zero-evidence verdict prose template (forbidden: incompetence phrasing over zero turns)
+            if (dialogueTurns == 0 && totalExecutionRuns == 0) {
+                // F5.1 (D8) & V4-06: Zero-evidence verdict prose template ONLY when true 0 dialogue turns AND 0 code executions
                 strengths.clear();
                 weaknesses.clear();
                 weaknesses.add("No evidence was collected in this session; the candidate is not assessable.");

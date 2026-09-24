@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { sanitizeTtsText } from '../../lib/audio-tts';
 import {
   ArrowLeft,
   Bot
@@ -88,11 +89,7 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
     window.speechSynthesis.cancel();
-    const cleanText = text
-      .replace(/```[\s\S]*?```/g, '')
-      .replace(/[*_#`]/g, '')
-      .replace(/\n+/g, ' ')
-      .trim();
+    const cleanText = sanitizeTtsText(text);
 
     if (!cleanText) return;
 

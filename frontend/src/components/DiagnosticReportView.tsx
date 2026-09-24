@@ -75,30 +75,32 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
   const [sessionStatus, setSessionStatus] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setManifest(null);
     if (report.sessionId) {
       getSessionQuestions(report.sessionId)
-        .then((qs) => setSessionQuestions(qs || []))
+        .then((qs) => { if (!cancelled) setSessionQuestions(qs || []); })
         .catch((err) => console.warn('Could not load session questions:', err));
 
       fetchSessionTranscript(report.sessionId)
-        .then((data) => setTranscriptData(data))
+        .then((data) => { if (!cancelled) setTranscriptData(data); })
         .catch((err) => console.warn('Could not load transcript records:', err));
 
       getVerification(report.sessionId)
-        .then((rec) => setVerificationReceipt(rec))
+        .then((rec) => { if (!cancelled) setVerificationReceipt(rec); })
         .catch((err) => console.debug('Verification receipt load note:', err));
 
-      fetch(`/api/v1/sessions/${report.sessionId}`)
+      fetch(`/api/v1/sessions/${report.sessionId}`, { cache: 'no-store' })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data?.status) setSessionStatus(data.status);
+          if (!cancelled && data?.status) setSessionStatus(data.status);
         })
         .catch(() => {});
 
-      fetch(`/api/v1/sessions/${report.sessionId}/recordings/manifest`)
+      fetch(`/api/v1/sessions/${report.sessionId}/recordings/manifest`, { cache: 'no-store' })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data) {
+          if (!cancelled && data && (!data.sessionId || Number(data.sessionId) === Number(report.sessionId))) {
             setManifest(data);
             if (!data.streams?.camera && data.streams?.screen) {
               setReplayStreamKind('screen');
@@ -107,6 +109,9 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
         })
         .catch((err) => console.warn('Could not load recording manifest:', err));
     }
+    return () => {
+      cancelled = true;
+    };
   }, [report.sessionId]);
 
   const availableStreams = useMemo(() => {

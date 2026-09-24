@@ -145,7 +145,32 @@ class EvaluationReportServiceTest {
 
         assertThat(report.verdict()).isEqualTo(HiringVerdict.NO_HIRE);
         assertThat(report.executiveSummary()).contains("Assessment ended prematurely");
-        assertThat(report.executiveSummary()).contains("No evidence was collected in this session; the candidate is not assessable.");
+        assertThat(report.executiveSummary()).doesNotContain("No evidence was collected in this session; the candidate is not assessable.");
+    }
+
+    @Test
+    @DisplayName("V4-06: Partial-evidence session (e.g. 2 candidate dialogue turns over 5 min) preserves collected evidence without claiming 'No evidence was collected'")
+    void testV406_PartialEvidenceTwoTurnsDoesNotClaimZeroEvidence() {
+        SessionServiceClient.SessionDetailsDto session142 = new SessionServiceClient.SessionDetailsDto(
+                142L, "candidate-142", "Junior Backend Engineer", "ALGORITHMS_DATA_STRUCTURES", "JUNIOR",
+                "Acme Corp", "COMPLETED", 300L
+        );
+        when(sessionClient.getSessionById(142L)).thenReturn(session142);
+        List<SessionServiceClient.TranscriptMessageDto> transcript = List.of(
+                new SessionServiceClient.TranscriptMessageDto(1L, "CANDIDATE", "EXPLANATION",
+                        "I will use two pointers starting at both ends and swap characters in place.", null, Instant.now().minusSeconds(300)),
+                new SessionServiceClient.TranscriptMessageDto(2L, "CANDIDATE", "EXPLANATION",
+                        "Time complexity is O(N) and auxiliary space is O(1) since we swap in-place.", null, Instant.now())
+        );
+        when(sessionClient.getSessionTranscript(142L)).thenReturn(transcript);
+        when(aiRubricClient.evaluateRubric(any())).thenReturn(Optional.empty());
+
+        DiagnosticReportResponse report = evaluationReportService.generateReport(142L);
+
+        assertThat(report.verdict()).isEqualTo(HiringVerdict.NO_HIRE);
+        assertThat(report.executiveSummary()).contains("Assessment ended prematurely (5 min, 2 turns)");
+        assertThat(report.executiveSummary()).doesNotContain("No evidence was collected in this session; the candidate is not assessable.");
+        assertThat(report.areasForImprovement()).doesNotContain("No evidence was collected in this session; the candidate is not assessable.");
     }
 
     @Test

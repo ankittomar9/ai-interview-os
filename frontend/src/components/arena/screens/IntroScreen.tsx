@@ -43,21 +43,31 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ candidateName, onNextS
           </div>
         </div>
 
-        <div className="pt-4 border-t border-border flex items-center justify-between">
+        <div className="pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-text-3 text-[11px]">
             <ShieldCheck className="w-4 h-4 text-success" />
-            <span>Hardware & Verification verified</span>
+            <span>Hardware &amp; Verification verified · AI Interviewer panel is open</span>
           </div>
-          {onNextStage && (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onNextStage}
-              className="px-4 py-2 bg-primary text-on-accent text-xs font-semibold rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              onClick={() => document.getElementById('chat-input')?.focus()}
+              className="px-3.5 py-2 bg-elevated border border-border text-text text-xs font-semibold rounded-lg hover:bg-surface transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <span>Begin Round 1</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <MessageSquare className="w-3.5 h-3.5 text-primary" />
+              <span>Reply to Interviewer</span>
             </button>
-          )}
+            {onNextStage && (
+              <button
+                type="button"
+                onClick={onNextStage}
+                className="px-4 py-2 bg-primary text-on-accent text-xs font-semibold rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <span>Begin Round 1</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

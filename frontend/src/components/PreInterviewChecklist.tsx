@@ -26,7 +26,7 @@ import {
   QUALITY_PRESETS,
   type RecordingQualityPreset
 } from '../lib/recording-quality';
-import { buildDisplayShareConstraints } from '../lib/displayCapture';
+import { buildDisplayShareConstraints, isExtendedMultiMonitorDisplay } from '../lib/displayCapture';
 
 interface Props {
   sessionId: number;
@@ -213,11 +213,35 @@ export const PreInterviewChecklist: React.FC<Props> = ({
   const handleShareScreen = async () => {
     try {
       setScreenError(null);
+      if (isExtendedMultiMonitorDisplay()) {
+        setScreenOk(false);
+        setScreenScope('MULTI_MONITOR' as any);
+        setScreenError('Multiple displays detected (extended desktop). Please disconnect or mirror your secondary monitor so only a single screen is active.');
+        void sendTelemetryEvent({
+          sessionId,
+          eventType: 'VERIFY_SCREEN_REJECTED',
+          metadataDetails: 'SHARE_SCOPE_REJECTED reason=MULTI_MONITOR_EXTENDED'
+        });
+        return;
+      }
       const stream = await navigator.mediaDevices.getDisplayMedia(buildDisplayShareConstraints() as any);
 
       const track = stream.getVideoTracks()[0];
       if (!track) {
         throw new Error('No video track found in screen capture');
+      }
+
+      if (isExtendedMultiMonitorDisplay()) {
+        track.stop();
+        setScreenOk(false);
+        setScreenScope('MULTI_MONITOR' as any);
+        setScreenError('Multiple displays detected (extended desktop). Please disconnect or mirror your secondary monitor so only a single screen is active.');
+        void sendTelemetryEvent({
+          sessionId,
+          eventType: 'VERIFY_SCREEN_REJECTED',
+          metadataDetails: 'SHARE_SCOPE_REJECTED reason=MULTI_MONITOR_EXTENDED'
+        });
+        return;
       }
 
       const settings = track.getSettings ? track.getSettings() : ({} as any);

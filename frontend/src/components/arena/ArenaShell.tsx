@@ -75,6 +75,8 @@ interface ArenaShellProps {
   interimTranscript?: string;
   micError?: string | null;
   onClearMicError?: () => void;
+  canRetryStt?: boolean;
+  onRetryStt?: () => void;
   hasUnreadAi: boolean;
   isWindowBlurred?: boolean;
   tabSwitches?: number;
@@ -107,7 +109,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
     voiceOutputEnabled, onToggleVoice, onMicToggle, onStartListening, onStopListening, onAbortVoice,
     interimTranscript = '', micError = null,
-    onClearMicError, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
+    onClearMicError, canRetryStt = false, onRetryStt, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
     isRecording, recordingSeconds, recordingInterrupted, failedChunkCount = 0, cameraActive, screenActive, verificationBroken = false,
     isVoiceRecording = false, voiceUnsentCount = 0, voiceLostAt = null, audioConsent = true,
     isFocusMode = false, onToggleFocusMode, sectionQuestions
@@ -329,6 +331,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         salvageHint={props.salvageHint}
         micError={micError}
         onClearMicError={onClearMicError}
+        canRetryStt={canRetryStt}
+        onRetryStt={onRetryStt}
         stackAbove="webcam"
       />
     </div>
