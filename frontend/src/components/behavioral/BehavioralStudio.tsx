@@ -464,7 +464,7 @@ export const BehavioralStudio: React.FC<BehavioralStudioProps> = ({
 
         {/* Right Header Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <SelfTimer />
+          <SelfTimer mode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} autoStart={!isPlayground} />
           <ThemeToggle />
 
           <Button

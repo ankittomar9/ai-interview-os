@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Timer, Plus, Pause, Play, RotateCcw } from 'lucide-react';
 import { toast } from '../../hooks/useToast';
 
@@ -7,6 +7,7 @@ interface Props {
   defaultMinutes?: number;
   autoStart?: boolean;
   mode?: 'INTERVIEW' | 'PLAYGROUND';
+  sectionIndex?: number;
   onExpire?: () => void;
 }
 
@@ -14,20 +15,40 @@ export const SelfTimer: React.FC<Props> = ({
   initialMinutes = 30,
   defaultMinutes,
   autoStart = false,
-  mode,
+  mode = 'INTERVIEW',
+  sectionIndex,
   onExpire
 }) => {
-  const effectiveMode: 'INTERVIEW' | 'PLAYGROUND' = mode ?? (autoStart ? 'INTERVIEW' : 'PLAYGROUND');
+  // Unsafe fallback removed: missing mode defaults strictly to INTERVIEW
+  const effectiveMode: 'INTERVIEW' | 'PLAYGROUND' = mode;
   const startingMinutes = defaultMinutes !== undefined ? defaultMinutes : initialMinutes;
   const [secondsLeft, setSecondsLeft] = useState(startingMinutes * 60);
   const [isRunning, setIsRunning] = useState(autoStart);
+  const prevSectionRef = useRef<number | undefined>(sectionIndex);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
-    setSecondsLeft(startingMinutes * 60);
+    if (prevSectionRef.current !== undefined && sectionIndex !== undefined && prevSectionRef.current !== sectionIndex) {
+      console.info(`TIMER_TRANSITION fromSection=${prevSectionRef.current} toSection=${sectionIndex} displayed=${formatTime(secondsLeft)}`);
+      setSecondsLeft(startingMinutes * 60);
+      prevSectionRef.current = sectionIndex;
+    } else if (prevSectionRef.current === undefined && sectionIndex !== undefined) {
+      prevSectionRef.current = sectionIndex;
+    } else if (sectionIndex === undefined) {
+      setSecondsLeft(startingMinutes * 60);
+    }
+  }, [sectionIndex, startingMinutes]);
+
+  useEffect(() => {
     if (autoStart) {
       setIsRunning(true);
     }
-  }, [startingMinutes, autoStart]);
+  }, [autoStart]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
@@ -52,12 +73,6 @@ export const SelfTimer: React.FC<Props> = ({
       if (interval) clearInterval(interval);
     };
   }, [isRunning, secondsLeft, onExpire, effectiveMode]);
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
 
   const handleAddMinutes = (mins: number) => {
     if (effectiveMode === 'INTERVIEW') {

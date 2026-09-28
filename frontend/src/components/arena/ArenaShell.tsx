@@ -147,6 +147,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   const activeSlug = question.slug || ('q' + (activeQuestionIndex + 1));
   const activeSection = props.sections?.[props.activeSectionIndex ?? 0];
   const currentSectionBudget = activeSection?.softTimeBudgetMinutes || 20;
+  const recorderRestarts = typeof window !== 'undefined' && window.sessionStorage && props.sessionId
+    ? parseInt(window.sessionStorage.getItem(`rec_restarts_${props.sessionId}`) || '0', 10)
+    : 0;
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg text-text select-none relative">
@@ -167,13 +170,17 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
           </Chip>
           {!isPlayground && (
             <>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-elevated border border-border text-[11px] font-mono">
+              <div
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-elevated border border-border text-[11px] font-mono"
+                title={recorderRestarts > 0 ? `Restarts: ${recorderRestarts}` : undefined}
+              >
                 <span className={`w-2 h-2 rounded-full ${recordingInterrupted ? 'bg-danger animate-ping' : failedChunkCount > 0 ? 'bg-amber-500 animate-pulse' : isRecording ? 'bg-danger animate-pulse' : 'bg-text-3'}`} />
                 <span className="font-bold text-text-2">{recordingInterrupted ? 'REC INTERRUPTED' : failedChunkCount > 0 ? `REC ⚠ ${failedChunkCount} unsent` : isRecording ? 'REC' : 'STANDBY'}</span>
                 {isRecording && <span className="text-text-3">({Math.floor((recordingSeconds || 0) / 60)}:{String((recordingSeconds || 0) % 60).padStart(2, '0')})</span>}
                 {isRecording && (
                   <span className="text-text-3 border-l border-border pl-1.5 ml-0.5">
                     {cameraActive && '🎥 Cam'} {screenActive ? '· 🖥️ Screen' : verificationBroken ? '· ⚠ Unverified' : ''}
+                    {recorderRestarts > 0 ? ` · 🔄 ${recorderRestarts}` : ''}
                   </span>
                 )}
               </div>
@@ -207,7 +214,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         <div className="flex items-center gap-2.5">
           <LocalPurityBadge provider={provider} apiKey={apiKey} />
           <FocusModeToggle isFocusMode={isFocusMode} onToggle={onToggleFocusMode || (() => {})} />
-          <SelfTimer initialMinutes={currentSectionBudget} autoStart={!isPlayground} mode={sessionMode} />
+          <SelfTimer initialMinutes={currentSectionBudget} autoStart={!isPlayground} mode={sessionMode} sectionIndex={props.activeSectionIndex} />
           <ThemeToggle />
           <Chip variant={isSpeakingNow ? 'success' : isListening ? 'warning' : 'neutral'} size="sm">
             {isSpeakingNow ? 'Speaking' : isListening ? 'Mic Active' : 'Mic Ready'}
