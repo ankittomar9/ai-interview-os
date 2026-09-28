@@ -40,6 +40,7 @@ export type TelemetryEventType =
     | 'KEYSTROKE_BURST'
     | 'IDLE_TIMEOUT'
     | 'COPY_ATTEMPT'
+    | 'NO_SPEECH_GAP'
     | 'VERIFY_CAMERA_OK'
     | 'VERIFY_MIC_OK'
     | 'VERIFY_SCREEN_OK'

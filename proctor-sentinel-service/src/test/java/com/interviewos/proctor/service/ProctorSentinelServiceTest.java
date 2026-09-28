@@ -234,4 +234,71 @@ class ProctorSentinelServiceTest {
             assertFalse(ev.isFlagged());
         }
     }
+
+    @Test
+    @DisplayName("V6-10 (G6-10-a): 90s silent window produces flagged NO_SPEECH_GAP event and bounded score deduction")
+    void testV610_G610a_90sSilentWindow_EmitsFlaggedEventAndDeductsScore() {
+        Long sessionId = 146L;
+        ArgumentCaptor<TelemetryEvent> captor = ArgumentCaptor.forClass(TelemetryEvent.class);
+        when(eventRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        RecordTelemetryRequest req = new RecordTelemetryRequest(
+                sessionId,
+                TelemetryEventType.NO_SPEECH_GAP,
+                null,
+                90L,
+                "Continuous silence of 90s observed"
+        );
+        TelemetrySummaryResponse.TelemetryEventResponse resp = proctorService.recordEvent(req);
+
+        assertTrue(resp.isFlagged(), "90s silence gap (>= 60s threshold) must be flagged");
+        assertEquals(90L, resp.durationSeconds());
+
+        TelemetryEvent event = createEvent(1L, sessionId, TelemetryEventType.NO_SPEECH_GAP, null, 90L, true);
+        when(eventRepository.findBySessionIdOrderByTimestampAsc(sessionId)).thenReturn(List.of(event));
+
+        TelemetrySummaryResponse summary = proctorService.getSessionSummary(sessionId);
+        // 100 - 5 = 95
+        assertEquals(95, summary.integrityScore());
+        assertEquals(IntegrityRiskLevel.CLEAN, summary.riskLevel());
+        assertFalse(summary.anomalyFlags().isEmpty());
+        assertTrue(summary.anomalyFlags().get(0).contains("90 seconds"));
+    }
+
+    @Test
+    @DisplayName("V6-10 (G6-10-b Honest Judge): 30s silence gap is below threshold and must NOT be flagged")
+    void testV610_G610b_30sGap_NotFlagged() {
+        Long sessionId = 147L;
+        when(eventRepository.save(any(TelemetryEvent.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RecordTelemetryRequest req = new RecordTelemetryRequest(
+                sessionId,
+                TelemetryEventType.NO_SPEECH_GAP,
+                null,
+                30L,
+                "Brief 30s silence"
+        );
+        TelemetrySummaryResponse.TelemetryEventResponse resp = proctorService.recordEvent(req);
+
+        assertFalse(resp.isFlagged(), "30s gap (< 60s threshold) must NOT be flagged");
+    }
+
+    @Test
+    @DisplayName("V6-10: Multiple NO_SPEECH_GAP events capped at 15 points deduction and never triggers NO_HIRE")
+    void testV610_MultipleGaps_CappedAt15Deduction_NeverTriggersNoHire() {
+        Long sessionId = 148L;
+        List<TelemetryEvent> events = List.of(
+                createEvent(1L, sessionId, TelemetryEventType.NO_SPEECH_GAP, null, 90L, true),
+                createEvent(2L, sessionId, TelemetryEventType.NO_SPEECH_GAP, null, 80L, true),
+                createEvent(3L, sessionId, TelemetryEventType.NO_SPEECH_GAP, null, 70L, true),
+                createEvent(4L, sessionId, TelemetryEventType.NO_SPEECH_GAP, null, 100L, true)
+        );
+        when(eventRepository.findBySessionIdOrderByTimestampAsc(sessionId)).thenReturn(events);
+
+        TelemetrySummaryResponse summary = proctorService.getSessionSummary(sessionId);
+        // 4 gaps * 5 = 20, but capped at 15 -> score 85 (CLEAN)
+        assertEquals(85, summary.integrityScore());
+        assertEquals(IntegrityRiskLevel.CLEAN, summary.riskLevel());
+        assertEquals(4, summary.anomalyFlags().size());
+    }
 }
