@@ -65,6 +65,7 @@ export const QuestionRail: React.FC<QuestionRailProps> = ({
             <button
               key={item.slug || idx}
               type="button"
+              data-slug={item.slug}
               onClick={() => onSelect(idx)}
               title={`${idx + 1}. ${item.title} (${item.status})`}
               className={`relative w-9 h-8 rounded flex items-center justify-center text-xs font-mono font-bold transition-all cursor-pointer ${

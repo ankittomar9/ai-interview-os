@@ -49,6 +49,8 @@ public class ProctorSentinelService {
         int tabSwitches = 0;
         int pasteDumps = 0;
         int keystrokeBursts = 0;
+        int noSpeechGaps = 0;
+        int noSpeechGapPenaltyTotal = 0;
         int totalPenalty = 0;
         List<String> anomalyFlags = new ArrayList<>();
 
@@ -67,6 +69,18 @@ public class ProctorSentinelService {
                 keystrokeBursts++;
                 totalPenalty += scoringProperties.getKeystrokeBurstPenalty();
                 anomalyFlags.add("Unnatural high-frequency keystroke burst detected (> " + scoringProperties.getKeystrokeBurstCpmThreshold() + " CPM).");
+            } else if (e.getEventType() == TelemetryEventType.NO_SPEECH_GAP) {
+                noSpeechGaps++;
+                if (noSpeechGapPenaltyTotal < scoringProperties.getNoSpeechGapMaxPenalty()) {
+                    int penaltyToAdd = Math.min(
+                            scoringProperties.getNoSpeechGapPenalty(),
+                            scoringProperties.getNoSpeechGapMaxPenalty() - noSpeechGapPenaltyTotal
+                    );
+                    noSpeechGapPenaltyTotal += penaltyToAdd;
+                    totalPenalty += penaltyToAdd;
+                }
+                long duration = e.getDurationSeconds() != null ? e.getDurationSeconds() : 60L;
+                anomalyFlags.add("Extended absence/silence gap detected: " + duration + " seconds without candidate speech or activity.");
             }
         }
 
@@ -110,6 +124,9 @@ public class ProctorSentinelService {
             return true;
         }
         if (req.eventType() == TelemetryEventType.TAB_BLUR && req.durationSeconds() != null && req.durationSeconds() > 5) {
+            return true;
+        }
+        if (req.eventType() == TelemetryEventType.NO_SPEECH_GAP && req.durationSeconds() != null && req.durationSeconds() >= scoringProperties.getNoSpeechGapThresholdSeconds()) {
             return true;
         }
         return req.eventType() == TelemetryEventType.KEYSTROKE_BURST;

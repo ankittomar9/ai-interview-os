@@ -7,6 +7,7 @@ public enum TelemetryEventType {
     KEYSTROKE_BURST,        // Unnatural typing cadence (>25 chars/sec)
     IDLE_TIMEOUT,           // Candidate was inactive for extended duration
     COPY_ATTEMPT,           // Candidate attempted to copy question text
+    NO_SPEECH_GAP,          // Extended silence & inactivity gap during active interview
     VERIFY_CAMERA_OK,           // Pre-interview camera hardware check passed
     VERIFY_MIC_OK,              // Pre-interview microphone hardware check passed
     VERIFY_SCREEN_OK,           // Full-monitor screen share acquired (scope in metadataDetails)

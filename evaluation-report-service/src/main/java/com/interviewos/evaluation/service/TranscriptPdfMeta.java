@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewos.evaluation.dto.DiagnosticReportResponse.PlanVsActualEntryDto;
 import com.interviewos.evaluation.entity.EvaluationReport;
 
+import java.time.Instant;
 import java.util.List;
 
 public record TranscriptPdfMeta(
@@ -17,8 +18,43 @@ public record TranscriptPdfMeta(
         Integer droppedChunks,
         Integer consentDowngrades,
         String workspaceProvenance,
-        List<PlanVsActualEntryDto> planVsActual
+        List<PlanVsActualEntryDto> planVsActual,
+        List<QuestionPresentedMeta> questionsPresented,
+        Instant sessionStartTime
 ) {
+    public record QuestionPresentedMeta(String slug, String title, String difficulty) {}
+
+    public TranscriptPdfMeta(
+            String candidateId,
+            Long sessionId,
+            String track,
+            int overallScore,
+            String verdict,
+            Integer echoFilteredCount,
+            Integer droppedChunks,
+            Integer consentDowngrades,
+            String workspaceProvenance,
+            List<PlanVsActualEntryDto> planVsActual,
+            List<QuestionPresentedMeta> questionsPresented
+    ) {
+        this(candidateId, sessionId, track, overallScore, verdict, echoFilteredCount, droppedChunks, consentDowngrades, workspaceProvenance, planVsActual, questionsPresented, null);
+    }
+
+    public TranscriptPdfMeta(
+            String candidateId,
+            Long sessionId,
+            String track,
+            int overallScore,
+            String verdict,
+            Integer echoFilteredCount,
+            Integer droppedChunks,
+            Integer consentDowngrades,
+            String workspaceProvenance,
+            List<PlanVsActualEntryDto> planVsActual
+    ) {
+        this(candidateId, sessionId, track, overallScore, verdict, echoFilteredCount, droppedChunks, consentDowngrades, workspaceProvenance, planVsActual, List.of(), null);
+    }
+
     public TranscriptPdfMeta(
             String candidateId,
             Long sessionId,
@@ -30,7 +66,7 @@ public record TranscriptPdfMeta(
             Integer consentDowngrades,
             String workspaceProvenance
     ) {
-        this(candidateId, sessionId, track, overallScore, verdict, echoFilteredCount, droppedChunks, consentDowngrades, workspaceProvenance, List.of());
+        this(candidateId, sessionId, track, overallScore, verdict, echoFilteredCount, droppedChunks, consentDowngrades, workspaceProvenance, List.of(), List.of(), null);
     }
 
     public TranscriptPdfMeta(String candidateId, Long sessionId, String track, int overallScore, String verdict) {

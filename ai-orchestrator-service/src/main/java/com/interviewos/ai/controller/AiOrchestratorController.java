@@ -93,6 +93,12 @@ public class AiOrchestratorController {
                         .softTimeBudgetMinutes(request.softTimeBudgetMinutes())
                         .sectionQuestionTitle(request.sectionQuestionTitle())
                         .sectionNote(request.sectionNote())
+                        .jobDescription(request.jobDescription())
+                        .targetCompany(request.targetCompany())
+                        .resumeSummary(request.resumeSummary())
+                        .isStt(request.isStt())
+                        .questionIndex(request.questionIndex())
+                        .totalQuestionsInSection(request.totalQuestionsInSection())
                         .build()
                 : request;
 

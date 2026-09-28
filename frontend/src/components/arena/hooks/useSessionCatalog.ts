@@ -23,6 +23,18 @@ const EMPTY_QUESTION: GenerateQuestionResponse = {
   evaluationCriteria: []
 };
 
+export const BINDING_ERROR_QUESTION: GenerateQuestionResponse = {
+  title: 'Question Binding Error',
+  problemStatement: 'Error: Selected question index is out of bounds for the current section question list.',
+  difficulty: 'MID',
+  track: 'ALGORITHMS_DATA_STRUCTURES',
+  starterCode: '',
+  hints: [],
+  evaluationCriteria: [],
+  slug: 'binding-error',
+  problemSlug: 'binding-error'
+};
+
 export function useSessionCatalog({
   defaultQuestion,
   sectionQuestions,
@@ -102,10 +114,16 @@ export function useSessionCatalog({
     };
   }, [track, defaultQuestion, isInterview, playlistQuestions, sessionMode, sessionId, activeSectionList]);
 
-  // Derive activeQuestion: never fallback to another section's question
+  // Derive activeQuestion: never silently fallback to another question or questionsList[0]
   const activeQuestion = useMemo(() => {
     if (questionsList.length > 0) {
-      return questionsList[activeQuestionIndex] || questionsList[0];
+      if (activeQuestionIndex >= 0 && activeQuestionIndex < questionsList.length) {
+        return questionsList[activeQuestionIndex];
+      }
+      return {
+        ...BINDING_ERROR_QUESTION,
+        track: track || 'ALGORITHMS_DATA_STRUCTURES'
+      };
     }
     if (activeSectionIndex === 0 && defaultQuestion) {
       return defaultQuestion;
@@ -119,6 +137,8 @@ export function useSessionCatalog({
   const selectQuestion = useCallback((index: number) => {
     if (index >= 0 && index < questionsList.length) {
       setActiveQuestionIndex(index);
+    } else {
+      console.warn(`[useSessionCatalog] Out-of-bounds selectQuestion call: index=${index}, listLength=${questionsList.length}`);
     }
   }, [questionsList.length]);
 

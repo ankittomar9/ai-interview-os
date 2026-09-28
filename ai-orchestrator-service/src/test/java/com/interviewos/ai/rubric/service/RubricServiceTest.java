@@ -351,4 +351,73 @@ class RubricServiceTest {
         // Verify provider status was recorded as DEGRADED with 400
         org.mockito.Mockito.verify(providerStatusService).recordOutcome(ModelProvider.GROQ, "DEGRADED", 400);
     }
+
+    @Test
+    @DisplayName("V6-04 / G6-04-a: surgical replacement preserves verified quotes byte-identical and replaces fabricated quote in rationale")
+    void testV604_SurgicalReplacement_PreservesVerifiedQuotes() {
+        List<TurnDto> transcript = List.of(
+                new TurnDto("CANDIDATE", "EXPLANATION", "I will use two pointers and a sliding window for this problem.", null)
+        );
+
+        String rawRationale = "The candidate correctly explained 'two pointers' and 'sliding window', but falsely claimed 'constant time lookup without hashing'.";
+        List<com.interviewos.ai.rubric.dto.DimensionScore> rawDims = List.of(
+                new com.interviewos.ai.rubric.dto.DimensionScore(
+                        "PROBLEM_SOLVING",
+                        80,
+                        rawRationale,
+                        "Evidence mentions 'sliding window'"
+                )
+        );
+
+        List<com.interviewos.ai.rubric.dto.DimensionScore> sanitized =
+                RubricService.validateAndSanitizeDimensionQuotes(rawDims, transcript);
+
+        assertThat(sanitized).hasSize(1);
+        String resRat = sanitized.get(0).rationale();
+
+        // Verified quotes MUST be preserved byte-identical
+        assertThat(resRat).contains("'two pointers'");
+        assertThat(resRat).contains("'sliding window'");
+
+        // Fabricated quote MUST be replaced with sanctioned text
+        assertThat(resRat).doesNotContain("constant time lookup without hashing");
+        assertThat(resRat).contains("no observable evidence in transcript");
+
+        // Surrounding structure must not be mashed or lowercased
+        assertThat(resRat).startsWith("The candidate correctly explained 'two pointers' and 'sliding window'");
+    }
+
+    @Test
+    @DisplayName("V6-04 / G6-04-b (Honest-Judge): all quotes fabricated in rationale are all replaced")
+    void testV604_AllQuotesFabricated_AllReplaced() {
+        List<TurnDto> transcript = List.of(
+                new TurnDto("CANDIDATE", "EXPLANATION", "I am completely silent.", null)
+        );
+
+        String rawRationale = "'Quantum algorithm' was used and 'O(1) sorting' was achieved.";
+        List<com.interviewos.ai.rubric.dto.DimensionScore> rawDims = List.of(
+                new com.interviewos.ai.rubric.dto.DimensionScore(
+                        "PROBLEM_SOLVING",
+                        20,
+                        rawRationale,
+                        "Fabricated evidence 'O(1) sorting'"
+                )
+        );
+
+        List<com.interviewos.ai.rubric.dto.DimensionScore> sanitized =
+                RubricService.validateAndSanitizeDimensionQuotes(rawDims, transcript);
+
+        assertThat(sanitized).hasSize(1);
+        String resRat = sanitized.get(0).rationale();
+
+        // Neither fabricated quote should remain
+        assertThat(resRat).doesNotContain("Quantum algorithm");
+        assertThat(resRat).doesNotContain("O(1) sorting");
+
+        // Evidence with fabricated quote becomes sanctioned text
+        assertThat(sanitized.get(0).evidence()).isEqualTo("No observable evidence in transcript.");
+
+        // First quote was at start of sentence, so capitalized:
+        assertThat(resRat).startsWith("No observable evidence in transcript was used");
+    }
 }

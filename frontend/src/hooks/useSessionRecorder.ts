@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { toast } from './useToast';
 import { getScreenStream, clearVerificationStreams } from '../services/verificationStreams';
 import {
   getStoredRecordingQuality,
@@ -7,6 +8,33 @@ import {
 } from '../lib/recording-quality';
 
 export type StreamKind = 'camera' | 'screen' | 'mic-audio';
+
+export const getSessionStartEpoch = (sid: number): number => {
+  if (typeof window !== 'undefined' && window.sessionStorage && sid) {
+    const key = `rec_start_epoch_${sid}`;
+    const stored = window.sessionStorage.getItem(key);
+    if (stored) {
+      const val = parseInt(stored, 10);
+      if (!isNaN(val) && val > 0) return val;
+    }
+    const now = Date.now();
+    window.sessionStorage.setItem(key, String(now));
+    return now;
+  }
+  return Date.now();
+};
+
+export const getStoredRestarts = (sid: number): number => {
+  if (typeof window !== 'undefined' && window.sessionStorage && sid) {
+    const key = `rec_restarts_${sid}`;
+    const stored = window.sessionStorage.getItem(key);
+    if (stored) {
+      const val = parseInt(stored, 10);
+      if (!isNaN(val) && val >= 0) return val;
+    }
+  }
+  return 0;
+};
 
 interface QueuedChunk {
   blob: Blob;
@@ -54,8 +82,16 @@ export function useSessionRecorder({
   onShareLost
 }: UseSessionRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const sessionStartEpochRef = useRef<number>(getSessionStartEpoch(sessionId));
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recorderRestarts, setRecorderRestarts] = useState<number>(getStoredRestarts(sessionId));
+  const initCountRef = useRef<number>(0);
   const [uploadedChunks, setUploadedChunks] = useState(0);
+
+  useEffect(() => {
+    sessionStartEpochRef.current = getSessionStartEpoch(sessionId);
+    setRecorderRestarts(getStoredRestarts(sessionId));
+  }, [sessionId]);
   const [recordingInterrupted, setRecordingInterrupted] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [screenActive, setScreenActive] = useState(false);
@@ -161,8 +197,19 @@ export function useSessionRecorder({
   }, [sessionId, isPlayground, retryFailedChunks]);
 
   const attachScreenStream = useCallback((stream: MediaStream) => {
+    const isRestart = screenRecorderRef.current !== null;
     if (screenRecorderRef.current && screenRecorderRef.current.state !== 'inactive') {
       try { screenRecorderRef.current.stop(); } catch (_) {}
+    }
+    if (isRestart) {
+      setRecorderRestarts((prev) => {
+        const next = prev + 1;
+        if (typeof window !== 'undefined' && window.sessionStorage && sessionId) {
+          window.sessionStorage.setItem(`rec_restarts_${sessionId}`, String(next));
+        }
+        return next;
+      });
+      toast.info('Recording restarted — session timer unaffected', 'Recorder Notice');
     }
     screenStreamRef.current = stream;
     try {
@@ -258,12 +305,29 @@ export function useSessionRecorder({
           onInterruptedRef.current?.('Camera recording error');
         };
 
+        initCountRef.current++;
+        if (initCountRef.current > 1) {
+          setRecorderRestarts((prev) => {
+            const next = prev + 1;
+            if (typeof window !== 'undefined' && window.sessionStorage && sessionId) {
+              window.sessionStorage.setItem(`rec_restarts_${sessionId}`, String(next));
+            }
+            return next;
+          });
+          toast.info('Recording restarted — session timer unaffected', 'Recorder Notice');
+        }
+
         cameraRec.onstop = () => { setCameraActive(false); };
         cameraRec.start(5000);
         setCameraActive(true);
         setIsRecording(true);
 
-        timer = setInterval(() => { setRecordingSeconds((prev) => prev + 1); }, 1000);
+        const updateMonotonicTime = () => {
+          const elapsed = Math.max(0, Math.floor((Date.now() - sessionStartEpochRef.current) / 1000));
+          setRecordingSeconds(elapsed);
+        };
+        updateMonotonicTime();
+        timer = setInterval(updateMonotonicTime, 1000);
       } catch (err: any) {
         console.warn('Session camera recording capture notice:', err);
         setCameraError(err.message || 'Webcam feed unavailable for recording');
@@ -342,6 +406,7 @@ export function useSessionRecorder({
   return {
     isRecording,
     recordingSeconds,
+    recorderRestarts,
     uploadedChunks,
     recordingInterrupted,
     failedChunkCount,

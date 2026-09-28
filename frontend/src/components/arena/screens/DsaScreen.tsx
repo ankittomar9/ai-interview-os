@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { GenerateQuestionResponse } from '../../../types';
@@ -44,6 +44,23 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
   const { resolvedTheme } = useTheme();
   const [cursor, setCursor] = useState({ ln: 1, col: 1 });
   const [customCases, setCustomCases] = useState<TestCaseItem[]>([]);
+  const [runtimeLabels, setRuntimeLabels] = useState<Record<string, string>>({
+    java: 'Java',
+    python: 'Python',
+    cpp: 'C++',
+    javascript: 'JavaScript'
+  });
+
+  useEffect(() => {
+    fetch('/api/v1/system/capabilities')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.runtimes) {
+          setRuntimeLabels((prev) => ({ ...prev, ...data.runtimes }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const sampleTestItems: TestCaseItem[] = useMemo(() => {
     return (question.sampleTests || []).map((t, idx) => ({
@@ -99,10 +116,10 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
                 onChange={(e) => onChangeLanguage(e.target.value)}
                 className="bg-surface border border-border rounded px-2 py-0.5 text-xs text-text focus:outline-none focus:border-primary font-mono cursor-pointer"
               >
-                <option value="java">Java (OpenJDK 13.0.1)</option>
-                <option value="python">Python (3.8.1)</option>
-                <option value="cpp">C++ (GCC 9.2.0)</option>
-                <option value="javascript">JavaScript (Node.js 12.14.0)</option>
+                <option value="java">{runtimeLabels.java || 'Java'}</option>
+                <option value="python">{runtimeLabels.python || 'Python'}</option>
+                <option value="cpp">{runtimeLabels.cpp || 'C++'}</option>
+                <option value="javascript">{runtimeLabels.javascript || 'JavaScript'}</option>
               </select>
             </div>
 

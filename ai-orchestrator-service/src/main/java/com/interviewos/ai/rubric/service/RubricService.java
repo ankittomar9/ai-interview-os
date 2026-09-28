@@ -235,23 +235,43 @@ public class RubricService {
                 ev = sanctionedNoEvidence;
             }
 
-            // 2. Validate any quoted substring inside rationale against transcript
-            java.util.regex.Matcher m = quotePattern.matcher(rat);
-            boolean fabricatedInRationale = rat.toLowerCase(java.util.Locale.ROOT).contains("no code submitted");
-            while (m.find()) {
-                String quoted = m.group(1);
-                String normQ = normalizeForQuoteMatch(quoted);
-                if (!normQ.isEmpty() && !matchesTranscriptNgram(normQ, normTranscript)) {
-                    fabricatedInRationale = true;
-                    break;
-                }
-            }
-            if (fabricatedInRationale) {
-                ev = sanctionedNoEvidence;
+            // 2. Validate and surgically replace quoted substrings inside rationale against transcript
+            if (rat.toLowerCase(java.util.Locale.ROOT).contains("no code submitted")) {
                 rat = rat.replaceAll("(?i)The transcript explicitly states:\\s*['\"“”‘’][^'\"“”‘’]+['\"“”‘’]\\.?\\s*",
                         "No code submission was recorded in the session transcript. ");
-                rat = quotePattern.matcher(rat).replaceAll("no observable evidence in transcript").trim();
             }
+
+            java.util.regex.Matcher m = quotePattern.matcher(rat);
+            StringBuilder sanitizedRat = new StringBuilder();
+            int lastIndex = 0;
+            while (m.find()) {
+                sanitizedRat.append(rat, lastIndex, m.start());
+                String quoted = m.group(1);
+                String normQ = normalizeForQuoteMatch(quoted);
+                boolean isFabricated = quoted.toLowerCase(java.util.Locale.ROOT).contains("no code submitted")
+                        || (!normQ.isEmpty() && !matchesTranscriptNgram(normQ, normTranscript));
+
+                if (isFabricated) {
+                    // Check if this fabricated quote starts a sentence to preserve casing
+                    boolean isStartOfSentence = true;
+                    for (int i = sanitizedRat.length() - 1; i >= 0; i--) {
+                        char c = sanitizedRat.charAt(i);
+                        if (Character.isWhitespace(c)) continue;
+                        isStartOfSentence = (c == '.' || c == '!' || c == '?');
+                        break;
+                    }
+                    String replacement = isStartOfSentence
+                            ? "No observable evidence in transcript"
+                            : "no observable evidence in transcript";
+                    sanitizedRat.append(replacement);
+                } else {
+                    // Verified quote: keep byte-identical including the surrounding quotes
+                    sanitizedRat.append(m.group(0));
+                }
+                lastIndex = m.end();
+            }
+            sanitizedRat.append(rat.substring(lastIndex));
+            rat = sanitizedRat.toString().trim();
 
             result.add(new DimensionScore(dim.dimension(), dim.score(), rat, ev));
         }

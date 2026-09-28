@@ -15,4 +15,7 @@ public class ProctorScoringProperties {
     private int pasteCharacterThreshold = 200;
     private int keystrokeBurstPenalty = 10;
     private int keystrokeBurstCpmThreshold = 800;
+    private int noSpeechGapPenalty = 5;
+    private int noSpeechGapMaxPenalty = 15;
+    private int noSpeechGapThresholdSeconds = 60;
 }

@@ -37,10 +37,10 @@ export const ProblemDescriptionTab: React.FC<ProblemDescriptionTabProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-slug={slug}>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-bold text-text">{question.title}</h3>
+          <h3 className="text-base font-bold text-text" data-slug={slug}>{question.title}</h3>
           {isSolved && (
             <Chip variant="success" size="sm" icon={<CheckCircle2 className="w-3 h-3" />}>
               Solved
