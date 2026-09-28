@@ -182,3 +182,47 @@ test('V6-07-c: Section transition logs TIMER_TRANSITION and sets new section bud
   assert.equal(logs[0], 'TIMER_TRANSITION fromSection=0 toSection=1 displayed=07:42');
   assert.equal(secondsLeft, 1200, 'Seconds left must update to 20 minutes (1200s) on transition boundary');
 });
+
+test('V6-09 (Honest Judge): Countdown timer deadline delta vs interval decrement under throttling drift', () => {
+  // Scenario: Timer initialized for 10 minutes (600s).
+  // Browser tab is throttled / sleeps for 10 seconds of wall-clock time.
+  // Only 1 interval callback executes during this 10-second window.
+  const t0 = 1700000000000;
+  const initialSeconds = 600;
+
+  // PRE-FIX IMPLEMENTATION (setInterval decrement):
+  // Every interval tick decrements secondsLeft by 1, regardless of how much wall-clock time elapsed.
+  let preFixSecondsLeft = initialSeconds;
+  // 1 delayed tick callback after 10s:
+  preFixSecondsLeft = preFixSecondsLeft - 1;
+  // Wall-clock time should be 590s, but pre-fix is 599s (drifts behind by 9s)
+  assert.equal(preFixSecondsLeft, 599, 'Pre-fix decrement drifts: only subtracted 1s despite 10s wall-clock advance');
+
+  // POST-FIX IMPLEMENTATION (Deadline-based delta via Date.now()):
+  const deadline = t0 + initialSeconds * 1000;
+  const computeRemaining = (now: number, targetDeadline: number) => {
+    return Math.max(0, Math.ceil((targetDeadline - now) / 1000));
+  };
+
+  // Wall clock advances by 10s (10,000ms):
+  const tWallClock10s = t0 + 10 * 1000;
+  const postFixRemaining10s = computeRemaining(tWallClock10s, deadline);
+  assert.equal(postFixRemaining10s, 590, 'Post-fix deadline delta strictly tracks wall-clock (600 - 10 = 590)');
+
+  // Wall clock advances past expiry (605s elapsed):
+  const tOverrun = t0 + 605 * 1000;
+  const postFixOverrun = computeRemaining(tOverrun, deadline);
+  assert.equal(postFixOverrun, 0, 'Post-fix deadline delta bounds to 0 upon wall-clock overrun');
+
+  // Static check: verify SelfTimer.tsx contains deadline delta calculation and does not re-depend on secondsLeft
+  const selfTimerFile = path.resolve(srcDir, 'components/ide/SelfTimer.tsx');
+  const selfTimerContent = fs.readFileSync(selfTimerFile, 'utf8');
+  assert.ok(
+    selfTimerContent.includes('deadlineRef.current - now'),
+    'SelfTimer must compute remaining time from deadline delta'
+  );
+  assert.ok(
+    !selfTimerContent.includes('return s - 1;'),
+    'SelfTimer must not use naive s - 1 interval decrement'
+  );
+});

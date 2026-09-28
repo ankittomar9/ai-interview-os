@@ -25,6 +25,7 @@ export const SelfTimer: React.FC<Props> = ({
   const [secondsLeft, setSecondsLeft] = useState(startingMinutes * 60);
   const [isRunning, setIsRunning] = useState(autoStart);
   const prevSectionRef = useRef<number | undefined>(sectionIndex);
+  const deadlineRef = useRef<number | null>(null);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -37,12 +38,18 @@ export const SelfTimer: React.FC<Props> = ({
       console.info(`TIMER_TRANSITION fromSection=${prevSectionRef.current} toSection=${sectionIndex} displayed=${formatTime(secondsLeft)}`);
       setSecondsLeft(startingMinutes * 60);
       prevSectionRef.current = sectionIndex;
+      if (isRunning) {
+        deadlineRef.current = Date.now() + startingMinutes * 60 * 1000;
+      }
     } else if (prevSectionRef.current === undefined && sectionIndex !== undefined) {
       prevSectionRef.current = sectionIndex;
     } else if (sectionIndex === undefined) {
       setSecondsLeft(startingMinutes * 60);
+      if (isRunning) {
+        deadlineRef.current = Date.now() + startingMinutes * 60 * 1000;
+      }
     }
-  }, [sectionIndex, startingMinutes]);
+  }, [sectionIndex, startingMinutes, isRunning]);
 
   useEffect(() => {
     if (autoStart) {
@@ -53,31 +60,51 @@ export const SelfTimer: React.FC<Props> = ({
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
     if (isRunning && secondsLeft > 0) {
+      if (!deadlineRef.current) {
+        deadlineRef.current = Date.now() + secondsLeft * 1000;
+      }
       interval = setInterval(() => {
-        setSecondsLeft((s) => {
-          if (s <= 1) {
-            if (effectiveMode === 'PLAYGROUND') {
-              toast.info('Your practice timer has expired! You can add 15 minutes or continue untimed.', 'Practice Timer Expiry');
-            } else {
-              toast.info('Section time budget reached. Wrap up your current point or advance to the next stage.', 'Section Time Budget');
-            }
-            onExpire?.();
-            setIsRunning(false);
-            return 0;
+        if (!deadlineRef.current) return;
+        const now = Date.now();
+        const diffMs = deadlineRef.current - now;
+        const remaining = Math.max(0, Math.ceil(diffMs / 1000));
+        setSecondsLeft(remaining);
+        if (remaining <= 0) {
+          deadlineRef.current = null;
+          if (effectiveMode === 'PLAYGROUND') {
+            toast.info('Your practice timer has expired! You can add 15 minutes or continue untimed.', 'Practice Timer Expiry');
+          } else {
+            toast.info('Section time budget reached. Wrap up your current point or advance to the next stage.', 'Section Time Budget');
           }
-          return s - 1;
-        });
+          onExpire?.();
+          setIsRunning(false);
+        }
       }, 1000);
+    } else {
+      deadlineRef.current = null;
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, secondsLeft, onExpire, effectiveMode]);
+  }, [isRunning, effectiveMode, onExpire]);
+
+  const handleToggleRunning = () => {
+    if (isRunning) {
+      deadlineRef.current = null;
+      setIsRunning(false);
+    } else {
+      deadlineRef.current = Date.now() + secondsLeft * 1000;
+      setIsRunning(true);
+    }
+  };
 
   const handleAddMinutes = (mins: number) => {
     if (effectiveMode === 'INTERVIEW') {
       console.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW');
       return;
+    }
+    if (deadlineRef.current) {
+      deadlineRef.current += mins * 60 * 1000;
     }
     setSecondsLeft((s) => s + mins * 60);
   };
@@ -87,6 +114,7 @@ export const SelfTimer: React.FC<Props> = ({
       console.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW');
       return;
     }
+    deadlineRef.current = null;
     setSecondsLeft(mins * 60);
     setIsRunning(false);
   };
@@ -100,7 +128,7 @@ export const SelfTimer: React.FC<Props> = ({
 
       <button
         type="button"
-        onClick={() => setIsRunning(!isRunning)}
+        onClick={handleToggleRunning}
         className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded cursor-pointer transition-colors"
         title={isRunning ? 'Pause Timer' : 'Start Timer'}
       >

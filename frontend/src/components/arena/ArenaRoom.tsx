@@ -406,7 +406,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       if (sessionId) {
         addMessageToSession(sessionId, {
           senderRole: 'CANDIDATE',
-          messageType: 'TEXT',
+          messageType: 'SYSTEM_EVENT',
           content: '[SYSTEM_MARKER] Candidate skipped introduction.',
           metadata: { introSkipped: 'true' }
         }).catch(() => {});
