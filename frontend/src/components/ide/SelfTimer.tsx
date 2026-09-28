@@ -25,6 +25,7 @@ export const SelfTimer: React.FC<Props> = ({
   const [secondsLeft, setSecondsLeft] = useState(startingMinutes * 60);
   const [isRunning, setIsRunning] = useState(autoStart);
   const prevSectionRef = useRef<number | undefined>(sectionIndex);
+  const prevStartingMinutesRef = useRef<number>(startingMinutes);
   const deadlineRef = useRef<number | null>(null);
 
   const formatTime = (secs: number) => {
@@ -38,13 +39,16 @@ export const SelfTimer: React.FC<Props> = ({
       console.info(`TIMER_TRANSITION fromSection=${prevSectionRef.current} toSection=${sectionIndex} displayed=${formatTime(secondsLeft)}`);
       setSecondsLeft(startingMinutes * 60);
       prevSectionRef.current = sectionIndex;
+      prevStartingMinutesRef.current = startingMinutes;
       if (isRunning) {
         deadlineRef.current = Date.now() + startingMinutes * 60 * 1000;
       }
     } else if (prevSectionRef.current === undefined && sectionIndex !== undefined) {
       prevSectionRef.current = sectionIndex;
-    } else if (sectionIndex === undefined) {
+      prevStartingMinutesRef.current = startingMinutes;
+    } else if (sectionIndex === undefined && prevStartingMinutesRef.current !== startingMinutes) {
       setSecondsLeft(startingMinutes * 60);
+      prevStartingMinutesRef.current = startingMinutes;
       if (isRunning) {
         deadlineRef.current = Date.now() + startingMinutes * 60 * 1000;
       }

@@ -226,3 +226,12 @@ test('V6-09 (Honest Judge): Countdown timer deadline delta vs interval decrement
     'SelfTimer must not use naive s - 1 interval decrement'
   );
 });
+
+test('V206-F5: PLAYGROUND timer pause does not reset elapsed countdown budget', () => {
+  const selfTimerFile = path.resolve(srcDir, 'components/ide/SelfTimer.tsx');
+  const selfTimerContent = fs.readFileSync(selfTimerFile, 'utf8');
+  assert.ok(
+    selfTimerContent.includes('sectionIndex === undefined && prevStartingMinutesRef.current !== startingMinutes'),
+    'SelfTimer must not reset starting budget on PLAYGROUND pause/resume'
+  );
+});

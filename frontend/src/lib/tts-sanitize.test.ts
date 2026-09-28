@@ -87,21 +87,34 @@ test('TTS Sanitizer Static Guard - every SpeechSynthesisUtterance callsite is sa
 });
 
 test('TTS Sanitizer Gate G6-06-b (Honest Judge) - SpeechSynthesisUtterance text with stock greeting', () => {
-  const rawStockGreeting = PERSONAS.INTERVIEW.welcomeMessage;
+  // Pre-fix stock greeting contained emoji
+  const legacyStockGreetingWithEmoji = "Welcome to your Technical Assessment! 👋\n\nI am Dr. Anya Chen, AI Principal Bar Raiser. Let's begin with a brief introduction. Please tell me about your engineering background and recent systems you've built.";
 
   // DELIBERATELY WRONG (pre-fix raw greeting passed directly to SpeechSynthesisUtterance)
-  const preFixUtteranceText = rawStockGreeting;
+  const preFixUtteranceText = legacyStockGreetingWithEmoji;
   const preFixHasEmoji = /\p{Extended_Pictographic}/u.test(preFixUtteranceText);
   // Pre-fix speech path would vocalize the emoji name ("waving hand") -> FAIL
   assert.equal(preFixHasEmoji, true, 'Pre-fix text must contain emoji (honest negative test)');
 
   // KNOWN-GOOD (sanitized speech path)
-  const postFixUtteranceText = sanitizeTtsText(rawStockGreeting);
+  const postFixUtteranceText = sanitizeTtsText(legacyStockGreetingWithEmoji);
   const postFixHasEmoji = /\p{Extended_Pictographic}/u.test(postFixUtteranceText);
   // Post-fix speech path has zero emojis -> PASS
   assert.equal(postFixHasEmoji, false, 'Post-fix speech text must not contain emoji');
   assert.equal(
     postFixUtteranceText,
     "Welcome to your Technical Assessment! I am Dr. Anya Chen, AI Principal Bar Raiser. Let's begin with a brief introduction. Please tell me about your engineering background and recent systems you've built."
+  );
+
+  // SOURCE SANITIZATION (V6-06 F6b): Current personas.ts source string must contain ZERO emojis
+  assert.equal(
+    /\p{Extended_Pictographic}/u.test(PERSONAS.INTERVIEW.welcomeMessage),
+    false,
+    'Dr. Anya Chen personas.ts source string must not contain emojis'
+  );
+  assert.equal(
+    /\p{Extended_Pictographic}/u.test(PERSONAS.PLAYGROUND.welcomeMessage),
+    false,
+    'Coach Sam personas.ts source string must not contain emojis'
   );
 });
