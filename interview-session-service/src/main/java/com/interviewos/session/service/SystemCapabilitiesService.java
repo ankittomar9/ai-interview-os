@@ -50,6 +50,13 @@ public class SystemCapabilitiesService {
     private final AtomicReference<CachedCapabilities> cache = new AtomicReference<>();
     private static final Duration CACHE_TTL = Duration.ofSeconds(5);
 
+    public static final Map<String, String> JUDGE0_RUNTIMES = Map.of(
+            "java", "Java (OpenJDK 13.0.1)",
+            "python", "Python (3.8.1)",
+            "cpp", "C++ (GCC 9.2.0)",
+            "javascript", "JavaScript (Node.js 12.14.0)"
+    );
+
     private Instant serviceStartupTime = Instant.now();
     private final Map<String, Instant> engineLastReadyAt = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -174,6 +181,7 @@ public class SystemCapabilitiesService {
                 .engines(engines)
                 .services(services)
                 .storage(storage)
+                .runtimes(JUDGE0_RUNTIMES)
                 .checkedAt(Instant.now().toString())
                 .build();
     }
@@ -250,6 +258,7 @@ public class SystemCapabilitiesService {
             Map<String, EngineStatus> engines,
             Map<String, Boolean> services,
             StorageMetrics storage,
+            Map<String, String> runtimes,
             String checkedAt
     ) {}
 

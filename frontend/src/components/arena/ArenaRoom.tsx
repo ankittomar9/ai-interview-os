@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, SectionGate } from '../../types';
-import { getSession, getSessionResume } from '../../services/api';
+import { getSession, getSessionResume, addMessageToSession } from '../../services/api';
 import { isApproachGateLocked } from '../../lib/approachGate';
 import { useLeaveGuard, isLeaveGuardActive } from '../../hooks/useLeaveGuard';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
@@ -393,12 +393,30 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     if (activeQuestionIndex < questionsList.length - 1) selectQuestion(activeQuestionIndex + 1);
   }, [activeQuestionIndex, questionsList.length, selectQuestion]);
 
-  const handleNextStage = useCallback(() => {
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.sessionStorage && sessionId) {
+      const count = dialogue.stageTurnCounts['INTRODUCTION'] ?? 0;
+      window.sessionStorage.setItem(`arena_intro_turn_count_${sessionId}`, String(count));
+    }
+  }, [dialogue.stageTurnCounts, sessionId]);
+
+  const handleNextStage = useCallback((options?: { introSkipped?: boolean }) => {
+    if (options?.introSkipped) {
+      console.info('[ArenaRoom] Stage advance: introSkipped=true');
+      if (sessionId) {
+        addMessageToSession(sessionId, {
+          senderRole: 'CANDIDATE',
+          messageType: 'TEXT',
+          content: '[SYSTEM_MARKER] Candidate skipped introduction.',
+          metadata: { introSkipped: 'true' }
+        }).catch(() => {});
+      }
+    }
     if (dialogue.activeSectionIndex < navSections.length - 1) {
       const nextSec = navSections[dialogue.activeSectionIndex + 1];
       handleSectionClick(dialogue.activeSectionIndex + 1, nextSec.stage);
     }
-  }, [dialogue.activeSectionIndex, navSections, handleSectionClick]);
+  }, [dialogue.activeSectionIndex, navSections, handleSectionClick, sessionId]);
 
   const handleConfirmStageSwitch = useCallback(() => {
     if (pendingStageSwitch) {

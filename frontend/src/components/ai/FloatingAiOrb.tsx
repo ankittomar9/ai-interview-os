@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Mic } from 'lucide-react';
 import { WaveformBars } from './AiOrbAvatar';
+import { getPersona } from '../../lib/personas';
 
 export interface FloatingAiOrbProps {
   isOpen: boolean;
@@ -24,8 +25,9 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
   className = ''
 }) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
-  const personaLabel = isPlayground ? 'Coach Sam' : 'Mickey';
-  const personaDesc = isPlayground ? 'Coach Sam (Senior Tech Lead)' : 'Mickey (Principal Engineer & Bar Raiser)';
+  const persona = getPersona(isPlayground);
+  const personaLabel = persona.name;
+  const personaDesc = `${persona.name} (${persona.role})`;
   // Dragging support with localStorage position persistence
   const [pos, setPos] = useState<{ x: number; y: number } | null>(() => {
     try {

@@ -41,6 +41,7 @@ class SystemCapabilitiesControllerTest {
                         "orchestrator", true
                 ))
                 .storage(new SystemCapabilitiesService.StorageMetrics(10, 2048000))
+                .runtimes(SystemCapabilitiesService.JUDGE0_RUNTIMES)
                 .checkedAt(Instant.now().toString())
                 .build();
 
@@ -55,6 +56,8 @@ class SystemCapabilitiesControllerTest {
                 .andExpect(jsonPath("$.engines.hld.ready").value(true))
                 .andExpect(jsonPath("$.engines.behavioral.ready").value(true))
                 .andExpect(jsonPath("$.storage.gridFsAttachmentCount").value(10))
+                .andExpect(jsonPath("$.runtimes.java").value("Java (OpenJDK 13.0.1)"))
+                .andExpect(jsonPath("$.runtimes.python").value("Python (3.8.1)"))
                 .andExpect(jsonPath("$.checkedAt").exists());
     }
 
