@@ -30,6 +30,7 @@ export interface SubmissionRecord {
   totalTests: number;
   rawOutput?: string;
   compilerOutput?: string;
+  codeSnippet?: string;
   cases?: SubmissionCaseResult[];
 }
 
@@ -74,6 +75,14 @@ export const saveSubmission = (
   }
 
   return fullRecord;
+};
+
+export const clearSubmissions = (sessionId: number | string, slug: string): void => {
+  try {
+    localStorage.removeItem(buildStorageKey(sessionId, slug));
+  } catch {
+    // Ignore storage errors
+  }
 };
 
 export const formatTimeAgo = (isoDate: string): string => {

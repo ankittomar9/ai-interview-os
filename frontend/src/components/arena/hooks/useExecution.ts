@@ -19,7 +19,13 @@ export function useExecution({
 }: UseExecutionProps) {
   const currentSlug = activeQuestion?.problemSlug || activeQuestion?.slug || 'problem';
   const [isExecuting, setIsExecuting] = useState(false);
-  const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
+  const [resultsBySlug, setResultsBySlug] = useState<Record<string, ExecutionResult | null>>({});
+  const executionResult = resultsBySlug[currentSlug] ?? null;
+
+  const setExecutionResult = useCallback((res: ExecutionResult | null) => {
+    setResultsBySlug((prev) => ({ ...prev, [currentSlug]: res }));
+  }, [currentSlug]);
+
   const [activeExecutionTab, setActiveExecutionTab] = useState<'testcases' | 'submissions'>('testcases');
   const [customInput, setCustomInput] = useState('');
   const [submissions, setSubmissions] = useState<SubmissionRecord[]>(() =>
@@ -112,6 +118,7 @@ export function useExecution({
       const runRecord = saveSubmission(sessionId, slug, {
         type: 'RUN',
         language,
+        codeSnippet: code,
         status: runSubStatus,
         runtimeMs: response.executionTimeMs || 0,
         memoryMb: response.memoryUsedMb || 0,
@@ -194,6 +201,7 @@ export function useExecution({
       const newSub = saveSubmission(sessionId, slug, {
         type: 'SUBMIT',
         language,
+        codeSnippet: code,
         status: subStatus,
         runtimeMs: response.executionTimeMs || 0,
         memoryMb: response.memoryUsedMb || 0,

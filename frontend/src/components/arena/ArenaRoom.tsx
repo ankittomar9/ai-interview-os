@@ -18,6 +18,8 @@ import { getPersona } from '../../lib/personas';
 import { mergeSalvageText } from '../../lib/salvage-dedup';
 import type { InterviewStage } from '../StageStepper';
 import { buildNavSections } from '../../lib/plan-navigation';
+import { toast } from '../../hooks/useToast';
+import { getSubmissions } from '../../lib/submissions';
 
 export function ensureDsaMethodSignatureBoilerplate(
   rawStarter?: string,
@@ -29,30 +31,76 @@ export function ensureDsaMethodSignatureBoilerplate(
   }
   const trimmed = (rawStarter || '').trim();
   const s = (slug || '').toLowerCase();
-  const buildDefaultBoilerplate = () => {
-    if (s.includes('reverse') && s.includes('string')) {
-      return `import java.util.Scanner;\n\npublic class Main {\n    public static String reverseString(String s) {\n        // TODO: write your solution here\n        return "";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            System.out.println(reverseString(sc.nextLine()));\n        }\n    }\n}\n`;
-    }
-    if (s.includes('longest-substring')) {
-      return `import java.util.*;\n\npublic class Main {\n    public static int lengthOfLongestSubstring(String s) {\n        // TODO: write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextLine()) {\n            System.out.println(0);\n            return;\n        }\n        System.out.println(lengthOfLongestSubstring(sc.nextLine()));\n    }\n}\n`;
-    }
-    if (s.includes('two-sum')) {
-      return `import java.util.*;\n\npublic class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // TODO: write your solution here\n        return new int[]{0, 0};\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] nums = new int[n];\n        for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int[] ans = twoSum(nums, target);\n        System.out.println(ans[0] + " " + ans[1]);\n    }\n}\n`;
-    }
-    return `import java.util.*;\n\npublic class Main {\n    public static String solve(String input) {\n        // TODO: write your solution here\n        return "";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String input = sc.hasNextLine() ? sc.nextLine() : "";\n        System.out.println(solve(input));\n    }\n}\n`;
-  };
+
+  let requiredMethodName = 'solve';
+  let methodStub = `    public static String solve(String input) {\n        // TODO: write your solution here\n        return "";\n    }\n`;
+  let defaultFull = `import java.util.*;\n\npublic class Main {\n    public static String solve(String input) {\n        // TODO: write your solution here\n        return "";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String input = sc.hasNextLine() ? sc.nextLine() : "";\n        System.out.println(solve(input));\n    }\n}\n`;
+
+  if (s.includes('reverse') && s.includes('string')) {
+    requiredMethodName = 'reverseString';
+    methodStub = `    public static String reverseString(String s) {\n        // TODO: write your solution here\n        return "";\n    }\n`;
+    defaultFull = `import java.util.Scanner;\n\npublic class Main {\n    public static String reverseString(String s) {\n        // TODO: write your solution here\n        return "";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextLine()) {\n            System.out.println(reverseString(sc.nextLine()));\n        }\n    }\n}\n`;
+  } else if (s.includes('longest-substring')) {
+    requiredMethodName = 'lengthOfLongestSubstring';
+    methodStub = `    public static int lengthOfLongestSubstring(String s) {\n        // TODO: write your solution here\n        return 0;\n    }\n`;
+    defaultFull = `import java.util.*;\n\npublic class Main {\n    public static int lengthOfLongestSubstring(String s) {\n        // TODO: write your solution here\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextLine()) {\n            System.out.println(0);\n            return;\n        }\n        System.out.println(lengthOfLongestSubstring(sc.nextLine()));\n    }\n}\n`;
+  } else if (s.includes('two-sum')) {
+    requiredMethodName = 'twoSum';
+    methodStub = `    public static int[] twoSum(int[] nums, int target) {\n        // TODO: write your solution here\n        return new int[]{0, 0};\n    }\n`;
+    defaultFull = `import java.util.*;\n\npublic class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // TODO: write your solution here\n        return new int[]{0, 0};\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] nums = new int[n];\n        for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int[] ans = twoSum(nums, target);\n        System.out.println(ans[0] + " " + ans[1]);\n    }\n}\n`;
+  }
 
   if (!trimmed || trimmed.startsWith('// No starter code shipped')) {
-    return buildDefaultBoilerplate();
+    return defaultFull;
   }
 
-  // If starterCode only contains main(String[] args) and no helper method stub, upgrade it
-  const staticMethodMatches = trimmed.match(/public\s+static\s+/g) || [];
-  if (trimmed.includes('public class Main') && staticMethodMatches.length < 2 && (s.includes('reverse') || s.includes('longest-substring') || s.includes('two-sum'))) {
-    return buildDefaultBoilerplate();
+  // If the candidate or starter already has the required method signature, return intact
+  if (trimmed.includes(requiredMethodName)) {
+    return rawStarter!;
   }
 
+  // If the code has a class Main, insert the missing method stub without touching anything else
+  const mainClassIdx = rawStarter!.indexOf('class Main');
+  if (mainClassIdx !== -1) {
+    const braceIdx = rawStarter!.indexOf('{', mainClassIdx);
+    if (braceIdx !== -1) {
+      return rawStarter!.slice(0, braceIdx + 1) + '\n' + methodStub + rawStarter!.slice(braceIdx + 1);
+    }
+  }
+
+  // If there's non-empty candidate code but no class Main, never wipe it
   return rawStarter!;
+}
+
+export function getSavedCodeForSlug(
+  sessionId: number,
+  slug: string,
+  fallback: string
+): { code: string; source: 'autosave' | 'submission' | 'starter' } {
+  const autosaveKey = `editor.autosave.${sessionId}.${slug}`;
+  try {
+    const saved = typeof window !== 'undefined' ? window.localStorage?.getItem(autosaveKey) : null;
+    if (saved && saved.trim() && !saved.startsWith('// No starter code shipped')) {
+      return { code: saved, source: 'autosave' };
+    }
+  } catch {
+    // localStorage access may be restricted
+  }
+
+  try {
+    const subs = getSubmissions(sessionId, slug);
+    if (subs && subs.length > 0) {
+      for (const s of subs) {
+        if (s.codeSnippet && s.codeSnippet.trim() && !s.codeSnippet.startsWith('// No starter code shipped')) {
+          return { code: s.codeSnippet, source: 'submission' };
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return { code: fallback, source: 'starter' };
 }
 
 interface ArenaRoomProps {
@@ -180,25 +228,52 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     activeSlug,
     activeQuestion.track
   );
-  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => ({ [activeSlug]: fallbackStarter }));
+  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => {
+    const initial = getSavedCodeForSlug(sessionId, activeSlug, fallbackStarter);
+    return { [activeSlug]: initial.code };
+  });
 
-  // Freshly initialize editor code per question from question.starterCode and reset on session boundary (F2.2 / V5-07b)
+  // Reset entire map ONLY when sessionId changes
+  useEffect(() => {
+    const initial = getSavedCodeForSlug(sessionId, activeSlug, fallbackStarter);
+    setCodeMap({ [activeSlug]: initial.code });
+  }, [sessionId]);
+
+  // When switching questions or when starter code resolves, initialize new slug if not already set
   useEffect(() => {
     setCodeMap((prev) => {
       const existing = prev[activeSlug];
-      if (!existing || existing.startsWith('// No starter code shipped')) {
-        return { ...prev, [activeSlug]: fallbackStarter };
+      if (existing !== undefined && existing !== null && !existing.startsWith('// No starter code shipped')) {
+        return prev;
       }
-      return prev;
+      const restored = getSavedCodeForSlug(sessionId, activeSlug, fallbackStarter);
+      if (restored.source === 'submission') {
+        toast.info('Restored your last submission for this question');
+      }
+      return { ...prev, [activeSlug]: restored.code };
     });
-  }, [activeSlug, fallbackStarter]);
-
-  useEffect(() => {
-    setCodeMap({ [activeSlug]: fallbackStarter });
   }, [sessionId, activeSlug, fallbackStarter]);
 
   const code = codeMap[activeSlug] ?? fallbackStarter;
-  const setCode = useCallback((newCode: string) => { setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode })); }, [activeSlug]);
+
+  // Debounced autosave to localStorage per slug
+  useEffect(() => {
+    if (!code || code === fallbackStarter) return;
+    const timer = setTimeout(() => {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(`editor.autosave.${sessionId}.${activeSlug}`, code);
+        }
+      } catch {
+        // quota exceeded or storage disabled
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [sessionId, activeSlug, code, fallbackStarter]);
+
+  const setCode = useCallback((newCode: string) => {
+    setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode }));
+  }, [activeSlug]);
   const [language, setLanguage] = useState(activeTrack === 'SQL' ? 'sql' : 'java');
 
   // 3. Execution Engine
@@ -371,11 +446,6 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       activeQuestionIndex={activeQuestionIndex}
       onSelectQuestion={(idx) => {
         selectQuestion(idx);
-        const nextQ = questionsList[idx];
-        const qFallback = (nextQ?.track === 'ALGORITHMS_DATA_STRUCTURES' || nextQ?.track === 'SQL') && !nextQ?.starterCode
-          ? '// No starter code shipped for this problem — report to operator'
-          : (nextQ?.starterCode || '');
-        if (qFallback) setCode(qFallback);
       }}
       questionStatusMap={questionStatusMap}
       code={code}

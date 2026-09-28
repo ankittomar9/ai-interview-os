@@ -139,6 +139,11 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     status: questionStatusMap[q.slug || ('q' + (idx + 1))] || 'UNTOUCHED'
   }));
 
+  const expectedRailItem = railItems[activeQuestionIndex];
+  if (expectedRailItem && question && question.slug && expectedRailItem.slug !== question.slug) {
+    console.error(`[RAIL_BINDING_MISMATCH] Rail item slug "${expectedRailItem.slug}" does not match active question slug "${question.slug}" at index ${activeQuestionIndex}`);
+  }
+
   const activeSlug = question.slug || ('q' + (activeQuestionIndex + 1));
   const activeSection = props.sections?.[props.activeSectionIndex ?? 0];
   const currentSectionBudget = activeSection?.softTimeBudgetMinutes || 20;
