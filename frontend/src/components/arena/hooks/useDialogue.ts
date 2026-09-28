@@ -74,6 +74,10 @@ interface UseDialogueProps {
   getStarterCode?: () => string | undefined;
   isApproachGateLocked?: boolean;
   getIsApproachGateLocked?: () => boolean | undefined;
+  questionIndex?: number;
+  totalQuestionsInSection?: number;
+  getQuestionIndex?: () => number | undefined;
+  getTotalQuestionsInSection?: () => number | undefined;
 }
 
 export function useDialogue({
@@ -99,7 +103,11 @@ export function useDialogue({
   starterCode,
   getStarterCode,
   isApproachGateLocked,
-  getIsApproachGateLocked
+  getIsApproachGateLocked,
+  questionIndex,
+  totalQuestionsInSection,
+  getQuestionIndex,
+  getTotalQuestionsInSection
 }: UseDialogueProps) {
   const lastHandoffIndexRef = useRef<number | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>(() => [
@@ -381,6 +389,8 @@ export function useDialogue({
         sectionType: String(currentNavSection.sectionType),
         sectionIndex: activeSectionIndex,
         totalSections: navSections.length,
+        questionIndex: getQuestionIndex ? getQuestionIndex() : questionIndex,
+        totalQuestionsInSection: getTotalQuestionsInSection ? getTotalQuestionsInSection() : totalQuestionsInSection,
         softTimeBudgetMinutes: currentNavSection.softTimeBudgetMinutes,
         sectionNote: currentNavSection.note,
         jobDescription: currentNavSection.sectionType === 'INTRODUCTION' ? jobDescription : undefined,

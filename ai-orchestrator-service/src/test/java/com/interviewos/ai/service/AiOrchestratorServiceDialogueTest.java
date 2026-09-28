@@ -610,7 +610,7 @@ class AiOrchestratorServiceDialogueTest {
                 "Prompt must contain 'SECTION CONTEXT:' block");
         assertTrue(capturedPrompt.contains("Current Section Type: INTRODUCTION"),
                 "Prompt must reflect section type");
-        assertTrue(capturedPrompt.contains("Section Position: 1 of 4"),
+        assertTrue(capturedPrompt.contains("Section: 1 of 4"),
                 "Prompt must reflect section position 1 of 4");
         assertTrue(capturedPrompt.contains("Soft Time Budget: 5 minutes"),
                 "Prompt must reflect soft time budget");
@@ -1417,6 +1417,98 @@ class AiOrchestratorServiceDialogueTest {
         assertNotNull(prompt);
         assertTrue(prompt.startsWith("Candidate name: Rohan Sharma, Ankit Singh Tomar; "),
                 "V5-09c: assemblePrompt must prepend session candidateName and Ankit Singh Tomar");
+    }
+
+    @Test
+    @DisplayName("V6-03 / G6-03-a: Question 1 of 2 in SECTION CONTEXT contains Question: 1 of 2 and Section: 1 of 2")
+    void testV603_QuestionIndexInPrompt_MultiQuestionSection() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn("""
+                {
+                  "interviewerReply": "Thanks for starting with two pointers. Walk me through how you will handle odd length strings.",
+                  "followUpQuestion": "What is the time complexity?",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "APPROACH",
+                  "turnSummary": "Candidate explained two pointers",
+                  "recommendedAction": "PROBE_DEEPER",
+                  "approachAssessment": "AGREE"
+                }
+                """);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(146L)
+                .questionContext("Given a string s, reverse it.")
+                .candidateExplanation("I will use two pointers from both ends.")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("CODING_DSA")
+                .sectionIndex(0)
+                .totalSections(2)
+                .questionIndex(0)
+                .totalQuestionsInSection(2)
+                .currentStage("CODING_DSA")
+                .build();
+
+        AiDialogueResponse response = orchestratorService.processDialogue(request);
+        assertNotNull(response);
+        assertFalse(response.interviewerReply().toLowerCase().contains("final question"),
+                "Interviewer must never claim final question for Q1 of 2");
+
+        org.mockito.ArgumentCaptor<String> sysPromptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(aiClient).generateCompletion(any(), sysPromptCaptor.capture(), any(), any(), any());
+        String sysPrompt = sysPromptCaptor.getValue();
+
+        assertTrue(sysPrompt.contains("- Section: 1 of 2"),
+                "Prompt must contain '- Section: 1 of 2' (relabeled from Section Position)");
+        assertTrue(sysPrompt.contains("- Question: 1 of 2 in this section"),
+                "Prompt must contain '- Question: 1 of 2 in this section'");
+        assertTrue(sysPrompt.contains("Never claim this is the \"final question\""),
+                "Prompt must include question policy instruction forbidding final question claim");
+    }
+
+    @Test
+    @DisplayName("V6-03 / G6-03-b (Honest-Judge): null questionIndex omits Question line entirely from SECTION CONTEXT")
+    void testV603_NullQuestionIndex_OmittedFromPrompt() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any())).thenReturn("""
+                {
+                  "interviewerReply": "Understood.",
+                  "followUpQuestion": "Continue.",
+                  "isSolutionComplete": false,
+                  "codeAnalysis": null,
+                  "keyStrengths": [],
+                  "areasToImprove": [],
+                  "detectedIntent": "APPROACH",
+                  "turnSummary": "Candidate turn",
+                  "recommendedAction": "PROBE_DEEPER"
+                }
+                """);
+
+        AiDialogueRequest request = AiDialogueRequest.builder()
+                .sessionId(146L)
+                .questionContext("Ad-hoc discussion")
+                .candidateExplanation("My approach")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("BEHAVIORAL")
+                .sectionIndex(0)
+                .totalSections(1)
+                .questionIndex(null)
+                .totalQuestionsInSection(null)
+                .currentStage("BEHAVIORAL")
+                .build();
+
+        orchestratorService.processDialogue(request);
+
+        org.mockito.ArgumentCaptor<String> sysPromptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(aiClient, org.mockito.Mockito.atLeastOnce()).generateCompletion(any(), sysPromptCaptor.capture(), any(), any(), any());
+        String sysPrompt = sysPromptCaptor.getValue();
+
+        assertFalse(sysPrompt.contains("- Question:"),
+                "Prompt must omit Question line entirely when questionIndex is null (never 'Question: null of null')");
+        assertFalse(sysPrompt.contains("null of null"),
+                "Prompt must never contain 'null of null'");
     }
 }
 

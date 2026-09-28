@@ -387,12 +387,13 @@ public class AiOrchestratorService {
         }
 
         if (request.sectionType() != null && !request.sectionType().isBlank()) {
-            systemInstructionBuilder.append(String.format("""
+            StringBuilder sectionContext = new StringBuilder();
+            sectionContext.append(String.format("""
                     
                     SECTION CONTEXT:
                     - Current Section Type: %s
                     - Section Problem: %s
-                    - Section Position: %d of %d
+                    - Section: %d of %d
                     - Soft Time Budget: %d minutes
                     - Section Guidance: %s
                     - Calibration Policy: Level fixed; do not adjust difficulty from performance.
@@ -404,6 +405,17 @@ public class AiOrchestratorService {
                     request.softTimeBudgetMinutes() != null ? request.softTimeBudgetMinutes() : 15,
                     (request.sectionNote() != null && !request.sectionNote().isBlank()) ? request.sectionNote() : "Execute section objectives"
             ));
+
+            if (request.questionIndex() != null) {
+                int qIdx = request.questionIndex() + 1;
+                int qTotal = request.totalQuestionsInSection() != null ? request.totalQuestionsInSection() : 1;
+                sectionContext.append(String.format("- Question: %d of %d in this section\n", qIdx, qTotal));
+                sectionContext.append(String.format(
+                        "- Question Policy: Never claim this is the \"final question\" unless Question: %d of %d has current == total (%d == %d). If %d == 1 && %d == 1, you may say this is the only question for this section. If %d < %d, other questions remain in this section — NEVER tell the candidate this is the final question.\n",
+                        qIdx, qTotal, qIdx, qTotal, qIdx, qTotal, qIdx, qTotal
+                ));
+            }
+            systemInstructionBuilder.append(sectionContext.toString());
         }
 
         List<DialogueMemoryBuilder.FilteredSeed> filteredSeeds = DialogueMemoryBuilder.filterFollowUpSeeds(followUpSeeds, memory.usedFollowUpSeedIds());

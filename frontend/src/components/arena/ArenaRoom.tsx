@@ -304,6 +304,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     problemSlug: activeQuestion?.problemSlug || activeQuestion?.slug,
     starterCode: fallbackStarter,
     getStarterCode: () => activeQuestion?.starterCode || fallbackStarter,
+    getQuestionIndex: () => activeQuestionIndex,
+    getTotalQuestionsInSection: () => questionsList.length,
     getIsApproachGateLocked: () => isApproachGateLocked({
       sessionMode,
       sectionType: plan?.sections?.[dialogue?.activeSectionIndex ?? 0]?.sectionType || navSections[dialogue?.activeSectionIndex ?? 0]?.sectionType || initialQuestion.track,
