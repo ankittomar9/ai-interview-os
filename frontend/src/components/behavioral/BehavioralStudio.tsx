@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { sanitizeTtsText } from '../../lib/audio-tts';
+import { sanitizeTtsText } from '../../lib/tts-sanitize';
 import {
   ArrowLeft,
   Bot

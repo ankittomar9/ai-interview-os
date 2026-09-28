@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Lightbulb, Volume2, X } from 'lucide-react';
+import { sanitizeTtsText } from '../../lib/tts-sanitize';
 import { useVoiceCoach } from '../../hooks/useVoiceCoach';
 
 interface VoiceCoachIndicatorProps {
@@ -54,7 +55,10 @@ export const VoiceCoachIndicator: React.FC<VoiceCoachIndicatorProps> = ({
     if (now - lastSpokenTimeRef.current < 10000) return;
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+    const cleanText = sanitizeTtsText(text);
+    if (!cleanText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.05;
     utterance.pitch = 1.0;
     lastSpokenTimeRef.current = now;
