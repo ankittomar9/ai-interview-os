@@ -41,15 +41,15 @@ G8 — MULTI-AGENT COLLAB FOLDERS (protocol)
 |---|---|---|---|
 | Gemini (local, user's machine) | HTTPS/SSH as today | user's own git auth (already works — pushed f5f25b5) | read/write |
 | Z.ai (this sandbox) | HTTPS only (**no ssh binary in sandbox — deploy keys impossible**) | **fine-grained PAT** | Contents: Read+Write on this one repo |
-| Qwen (web studio) | depends on its runtime: if it has shell+git → own read-only PAT; if not → operator pastes only the relevant `collab/<agent>/` file | fine-grained PAT (separate, Read-only) | read |
+| Qwen (web studio) | HTTPS | **fine-grained PAT** | Contents: Read+Write on this one repo |
 
 **PAT creation (GitHub → Settings → Developer settings → Fine-grained tokens):**
 1. Repository access → *Only select repositories* → `ankittomar9/ai-interview-os`
-2. Permissions → **Contents: Read and write** (for Z.ai; Read-only for Qwen's token). No metadata/admin/secret scopes.
+2. Permissions → **Contents: Read and write** (for Z.ai and Qwen). No metadata/admin/secret scopes.
 3. Expiry: short (7 days) and regenerate as needed; revoke at project end regardless.
-4. Z.ai stores it in a sandbox-local credential store (`git credential approve`, file perms 600) — never in the remote URL, never in any committed file, never quoted in worklog or collab content (G5).
+4. Token storage: store in a sandbox-local credential store (`git credential approve`, file perms 600) — never in the remote URL, never in any committed file, never quoted in worklog or collab content (G5).
 
-**Cutover sequence (zero-downtime):** create PAT → paste to Z.ai → Z.ai wires + **tests fetch while repo is still public** → operator flips repo to **private** → Z.ai re-tests fetch → done. Gemini's pushes are unaffected (its own auth already works).
+**Cutover sequence (zero-downtime):** create PAT → wire credentials in sandbox → verify fetch → done. Gemini's pushes are unaffected (its own auth already works).
 
 ## 4 — Privacy & end-of-project cleanup
 
