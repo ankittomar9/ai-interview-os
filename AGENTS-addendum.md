@@ -92,5 +92,18 @@ G5 — SECRET HYGIENE & ZERO PLAINTEXT SECRETS (hard prohibition)
   Reference environment variables (${GROQ_API_KEY}, ${GEMINI_API_KEY}, etc.)
   or read from .env directly without logging values.
   Printing secrets in plaintext is a critical security defect requiring immediate rotation.
+
+G6 — IN-REPO ARTIFACT TRANSPORT (mandatory)
+  All SPECs, execution reports, and gate evidence travel inside the repository
+  (docs/ directory, existing naming convention: SPEC_Vxxx_VERIFICATION.md).
+  Chat paste / external links are NOT accepted transport. The auditor reads
+  git only. A task without its in-repo report file is not auditable => FAIL.
+
+G7 — WORKLOG SCOPE (boundary)
+  The cross-agent worklog remains OUT of git. What enters the repo is the
+  per-task report file only. Any in-repo markdown must pass the G5 secret
+  scan before push. History cleanup = move files to docs/archive/ in a
+  forward merge; rewriting pushed history is a hard prohibition.
 ```
+
 
