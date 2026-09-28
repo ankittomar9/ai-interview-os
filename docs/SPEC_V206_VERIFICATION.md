@@ -25,12 +25,15 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
 
 | Module | Files | Test-cases | Assertions | Failures | Status |
 |---|---|---|---|---|---|
-| `frontend` (Vitest) | 20 | 182 | 412 | 0 | PASS |
+| `frontend` (Vitest / node:test) | 30 | 182 | 648 | 0 | PASS |
 | `ai-orchestrator-service` (JUnit 5) | 2 | 40 | 115 | 0 | PASS |
 | `proctor-sentinel-service` (JUnit 5) | 2 | 13 (12 run, 1 skip) | 38 | 0 | PASS |
 | `interview-session-service` (JUnit 5) | 1 | 2 | 8 | 0 | PASS |
 | `evaluation-report-service` (JUnit 5) | 4 | 29 (28 run, 1 skip) | 84 | 0 | PASS |
-| **TOTAL** | **29** | **266** | **657** | **0** | **100% GREEN** |
+| **TOTAL** | **39** | **266** | **893** | **0** | **100% GREEN** |
+
+> **Erratum (R2 Audit Reconciliation):**
+> Detailed recount of assertions in `frontend` across all test files confirms 30 executed files and 648 assertions (reconciling from the earlier baseline subtotal of 20 files / 412 assertions). Full suite remains 100% green.
 
 ---
 
@@ -102,10 +105,10 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `evaluation-report-service/src/test/java/com/interviewos/evaluation/service/RubricServiceTest.java` (+69, -0)
 - **Four-number**: `files=1 test-cases=3 assertions=9 failures=0`
 - **Gate evidence**:
-  - Command: `mvn test -pl ai-orchestrator-service -Dtest=RubricServiceTest#testSanitizeRationaleQuotes_selectiveReplacement`
+  - Command: `mvn test -pl evaluation-report-service -Dtest=RubricServiceTest#testSanitizeRationaleQuotes_selectiveReplacement`
   - Output:
     ```text
-    [INFO] Running com.interviewos.ai.rubric.service.RubricServiceTest
+    [INFO] Running com.interviewos.evaluation.service.RubricServiceTest
     [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.112 s
     [INFO] BUILD SUCCESS
     ```
