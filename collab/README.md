@@ -1,81 +1,66 @@
-# Async Multi-Agent Mailbox Protocol (`collab/`)
+# COLLAB-PROTOCOL — Multi-Agent Repo Collaboration (Z.ai / Gemini / Qwen / Operator)
 
-This directory implements the **Async Multi-Agent Mailbox Protocol (Rule G8)** for asynchronous, zero-conflict coordination between autonomous and interactive agents:
-- **Gemini** (Local Antigravity execution agent — implementation, test execution, container builds)
-- **Z.ai** (Architect / Auditor — formal SPECs, architectural compliance, gate audits)
-- **Qwen** (Independent Reviewer — code hygiene, edge-case analysis, security sanity)
-- **Operator** (Human Principal — directives, priority adjustments, acceptance overrides)
+**Status:** accepted by operator & codified in Rule G8 (`AGENTS-addendum.md`)
+**Motivation:** eliminate operator copy-paste between agents; single source of truth in the repo.
 
 ---
 
-## 📁 Directory Ownership & Write Boundaries
-
-To completely eliminate git merge conflicts in distributed multi-agent workflows, **strict directory boundaries are enforced**:
-
-| Directory | Owner | Allowed Artifacts | Write Access |
-|---|---|---|---|
-| `collab/gemini/` | **Gemini** | `<TASK-ID>-REPORT.md`, diagnostic logs, gate receipts | Gemini only |
-| `collab/z/` | **Z.ai** | `<TASK-ID>-SPEC.md`, `<TASK-ID>-AUDIT.md` | Z.ai only |
-| `collab/qwen/` | **Qwen** | `<TASK-ID>-REVIEW.md`, security and edge-case evaluations | Qwen only |
-| `collab/operator/` | **Operator** | `<TASK-ID>-DIRECTIVE.md`, scope shifts, approvals | Human operator only |
-
-> **Rule G8.1 — Strict Single-Writer Principle**:
-> No agent may write, edit, or delete files inside another agent's assigned directory. All coordination occurs asynchronously by pushing and pulling mailbox files through `origin/master`.
-
----
-
-## 🏷️ File Naming Conventions
-
-All mailbox artifacts must follow this standardized naming convention:
+## 1 — Layout: one folder per agent
 
 ```text
-collab/<agent>/<TASK-ID>-<TYPE>.md
+collab/
+  README.md                 ← this protocol (committed to repo)
+  gemini/                   ← execution reports, proposals, receipts   (writable by Gemini)
+  z/                        ← SPECs, audits, adjudications             (writable by Z.ai)
+  qwen/                     ← independent reviews (2nd pair of eyes)   (writable by Qwen)
+  operator/                 ← directives, decisions, validation notes  (writable by operator)
 ```
 
-- `<TASK-ID>`: The canonical task or spec identifier (e.g., `V6-09r`, `SPEC-009`, `HOTFIX-02`).
-- `<TYPE>`:
-  - `SPEC`: Formal specification and requirements contract (issued by Z.ai).
-  - `REPORT`: Execution report with four-number accounting and honest-judge gate evidence (issued by Gemini).
-  - `AUDIT`: Verification audit comparing implementation to spec (issued by Z.ai).
-  - `REVIEW`: Independent review of code structure, edge cases, and performance (issued by Qwen).
-  - `DIRECTIVE`: Binding human decisions and acceptance overrides (issued by Operator).
+## 2 — Rules (become G8 in AGENTS-addendum.md)
 
----
-
-## 🔄 Lifecycle of a Task
-
-```mermaid
-flowchart LR
-    Z[collab/z/ <br/> Task Spec] -->|git pull| G[collab/gemini/ <br/> Execution & Gates]
-    G -->|git push| R[origin/master]
-    R -->|git pull| ZA[collab/z/ <br/> Gate Audit]
-    R -->|git pull| QW[collab/qwen/ <br/> Code Review]
-    ZA -->|Findings| OP[collab/operator/ <br/> Directive]
-    QW -->|Findings| OP
+```text
+G8 — MULTI-AGENT COLLAB FOLDERS (protocol)
+1. Each agent writes ONLY inside its own folder. No cross-folder edits, ever.
+2. One file per task, named <TASK-ID>-<TYPE>.md
+   Examples: collab/gemini/V6-09r-REPORT.md, collab/z/V206-R2-AUDIT.md,
+             collab/qwen/V206-SECURITY-REVIEW.md
+3. Cross-references are by repo path (collab/z/...), never by chat quote.
+4. Review cycle: executor posts report -> reviewers post findings -> operator
+   posts adjudication -> executor commits remediation. All via git only.
+5. The global cross-agent worklog remains OUT of git (G7 unchanged). collab/
+   files are the durable, shareable record.
+6. G5 secret scan applies to collab/ before every push: no tokens, no keys,
+   no internal endpoints with credentials, no raw env dumps.
+7. File headers must state: Task ID, author agent, base commit (short hash),
+   and verdict/status line — so agents can parse each other's folders.
 ```
 
-1. **Specification**: Z.ai writes `collab/z/<TASK-ID>-SPEC.md` specifying requirements, fences, and honest-judge failure conditions.
-2. **Execution**: Gemini pulls `origin/master`, implements the changes within allowed file fences, executes verification gates, builds images, and publishes `collab/gemini/<TASK-ID>-REPORT.md`.
-3. **Auditing & Review**:
-   - Z.ai audits the report and code against the spec, writing `collab/z/<TASK-ID>-AUDIT.md`.
-   - Qwen reviews the git diff independently, writing `collab/qwen/<TASK-ID>-REVIEW.md`.
-4. **Resolution**: If discrepancies are found, issues are remediated in an updated revision (e.g. `<TASK-ID>r2`) or the Operator adjudicates in `collab/operator/<TASK-ID>-DIRECTIVE.md`.
+## 3 — Access setup (how each agent reaches the private repo)
 
----
+| Agent | Transport | Credential | Scope |
+|---|---|---|---|
+| Gemini (local, user's machine) | HTTPS/SSH as today | user's own git auth (already works — pushed f5f25b5) | read/write |
+| Z.ai (this sandbox) | HTTPS only (**no ssh binary in sandbox — deploy keys impossible**) | **fine-grained PAT** | Contents: Read+Write on this one repo |
+| Qwen (web studio) | depends on its runtime: if it has shell+git → own read-only PAT; if not → operator pastes only the relevant `collab/<agent>/` file | fine-grained PAT (separate, Read-only) | read |
 
-## 🛡️ Mandatory Discipline Rules
+**PAT creation (GitHub → Settings → Developer settings → Fine-grained tokens):**
+1. Repository access → *Only select repositories* → `ankittomar9/ai-interview-os`
+2. Permissions → **Contents: Read and write** (for Z.ai; Read-only for Qwen's token). No metadata/admin/secret scopes.
+3. Expiry: short (7 days) and regenerate as needed; revoke at project end regardless.
+4. Z.ai stores it in a sandbox-local credential store (`git credential approve`, file perms 600) — never in the remote URL, never in any committed file, never quoted in worklog or collab content (G5).
 
-1. **G3 — Four-Number Test Accounting**:
-   Every report must specify:
-   `files=N test-cases=N assertions=N failures=N`
-   Any other format is treated as not run.
-2. **G4 — Honest-Judge Gates**:
-   Every gate must demonstrate both:
-   - **Known-Good**: passes on fixed implementation.
-   - **Deliberate-Wrong**: fails when defect logic is simulated.
-3. **G5 — Zero Plaintext Secrets**:
-   Never commit tokens, fine-grained PATs, API keys, or credentials into repository markdown or logs.
-4. **G6 — In-Repo Artifact Transport**:
-   All specs, reports, audits, and reviews must travel in-repo. No out-of-band pastes.
-5. **G7 — Worklog Scope & Forward Merges**:
-   Raw session transcripts stay out of git. Mailbox artifacts are archived before open-sourcing via forward `git mv collab/ docs/archive/collab/` (no history rewrites).
+**Cutover sequence (zero-downtime):** create PAT → paste to Z.ai → Z.ai wires + **tests fetch while repo is still public** → operator flips repo to **private** → Z.ai re-tests fetch → done. Gemini's pushes are unaffected (its own auth already works).
+
+## 4 — Privacy & end-of-project cleanup
+
+- The raw worklog **is already excluded from git by G7** — nothing to remove later; it lives only in each agent's sandbox.
+- Repo privacy until "tested well" is endorsed: audit trail stays private until the operator declares V-2.0.6 (and later rounds) closed.
+- End-of-project cleanup = **forward merge** moving superseded SPECs/reports to `docs/archive/` (or keeping `collab/` as the audit trail). **History rewrite stays forbidden** — audits cite commit hashes (`b934e78`, `f5f25b5`, …) that must remain reachable.
+- Revoke all PATs when the project closes.
+
+## 5 — Immediate next steps
+
+1. Operator: create the fine-grained PAT (Contents: Read+Write) and paste it in chat → Z.ai wires + tests.
+2. Z.ai pushes `collab/README.md` (this protocol) + G8 amendment via branch `collab/protocol-setup`, `--no-ff` merged.
+3. Gemini: adopts `collab/gemini/` for the V6-09r report (first artifact under the new protocol).
+4. Qwen: onboard with a separate read-only token (or operator-paste mode).

@@ -3,10 +3,11 @@
 | Metadata | Value |
 |---|---|
 | **Task ID** | `V6-09r` (Re-issued V-2.0.6 SPEC r1 §2 Item V6-09) |
+| **Author Agent** | Gemini (Local Antigravity Execution Agent) |
+| **Base Commit** | `f5f25b5` |
 | **Component** | `frontend` (`SelfTimer.tsx`, `Session146TimerRecorderFixes.test.ts`) |
-| **Agent** | Gemini (Local Antigravity Execution Agent) |
 | **Auditor Target** | Z.ai (`collab/z/`) & Qwen (`collab/qwen/`) |
-| **Status** | **VERIFIED & READY FOR AUDIT** |
+| **Verdict / Status** | **VERIFIED & READY FOR AUDIT** |
 | **Date** | 2026-09-28 |
 
 ---

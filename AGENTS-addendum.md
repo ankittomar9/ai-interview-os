@@ -104,6 +104,21 @@ G7 — WORKLOG SCOPE (boundary)
   per-task report file only. Any in-repo markdown must pass the G5 secret
   scan before push. History cleanup = move files to docs/archive/ in a
   forward merge; rewriting pushed history is a hard prohibition.
+
+G8 — MULTI-AGENT COLLAB FOLDERS (protocol)
+  1. Each agent writes ONLY inside its own folder. No cross-folder edits, ever.
+  2. One file per task, named <TASK-ID>-<TYPE>.md
+     Examples: collab/gemini/V6-09r-REPORT.md, collab/z/V206-R2-AUDIT.md,
+               collab/qwen/V206-SECURITY-REVIEW.md
+  3. Cross-references are by repo path (collab/z/...), never by chat quote.
+  4. Review cycle: executor posts report -> reviewers post findings -> operator
+     posts adjudication -> executor commits remediation. All via git only.
+  5. The global cross-agent worklog remains OUT of git (G7 unchanged). collab/
+     files are the durable, shareable record.
+  6. G5 secret scan applies to collab/ before every push: no tokens, no keys,
+     no internal endpoints with credentials, no raw env dumps.
+  7. File headers must state: Task ID, author agent, base commit (short hash),
+     and verdict/status line — so agents can parse each other's folders.
 ```
 
 
