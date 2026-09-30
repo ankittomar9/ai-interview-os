@@ -113,3 +113,20 @@ They are TTS-safe (sanitizer strips them, V6-06). Candidate for a future hygiene
 
 — Z.ai, auditor. Cross-refs: `docs/SPEC_V207.md`, `docs/SPEC_V207_VERIFICATION.md`,
 `collab/gemini/V207-REPORT.md`, `collab/z/V207-SPEC-ISSUE.md`.
+
+## 5. Cross-Reference Addendum — Qwen Review (`collab/qwen/V207-REVIEW.md`, landed mid-audit)
+
+1. Qwen's `APPROVED` verdict is compatible with this audit's `CONDITIONAL ACCEPT`: this audit found items
+   Qwen's scope did not cover (F1 scope gap, F2 riders, F3/F4 commit discipline, F5 coverage boundary).
+   The conditions in §4 stand regardless of the APPROVED.
+2. **Mechanism correction:** Qwen §2.1 quotes the contract test as using
+   `jsonPath("$.solutionCode").doesNotExist()`; the shipped test actually asserts raw-string key absence
+   (`assertFalse(json.contains("\"solutionCode\""))`) in
+   `QuestionPublicControllerTest#testNoLeakContractInterviewModeStripsAllSolutionKeys` — the stronger of
+   the two mechanisms. Verdict unchanged.
+3. **Line-count variance:** Qwen reports 219/242/217; the auditor's `wc -l` and the executor both report
+   218/241/216 (off-by-one counting method; both ≤ 250 — immaterial to the gate).
+4. **L1 remains open:** Qwen asked Z.ai for the G3 backend recount; Z.ai asked Qwen for the backend
+   execution re-run. Neither sandbox has a JDK compiler. **Operator:** please have any JDK-capable
+   execution run `mvn test -pl question-bank-service` once and file the four-number receipt, or accept
+   the static-only verification on record.
