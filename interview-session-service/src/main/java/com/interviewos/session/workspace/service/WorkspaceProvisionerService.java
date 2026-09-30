@@ -200,9 +200,10 @@ public class WorkspaceProvisionerService {
 
             // 4. Prepare starter files from QuestionBank
             Map<String, String> starterFiles = resolveStarterFiles(request.problemSlug());
-            if (starterFiles.isEmpty()) {
-                log.warn("[WORKSPACE_SEED_EMPTY] Session {} problem slug '{}' seeded 0 starter files into workspace volume '{}'",
+            if (starterFiles == null || starterFiles.isEmpty()) {
+                log.warn("[WORKSPACE_SEED_EMPTY] Session {} problem slug '{}' seeded 0 starter files into workspace volume '{}', applying fallback scaffold",
                         sessionId, request.problemSlug(), volumeName);
+                starterFiles = createFallbackScaffold(request.problemSlug());
             }
 
             // 5. Create and configure code-server container
@@ -410,23 +411,102 @@ public class WorkspaceProvisionerService {
         }
     }
 
-    private Map<String, String> resolveStarterFiles(String slug) {
-        if (slug == null || slug.isBlank()) return Map.of();
-        try {
-            Optional<ProblemDocument> probOpt = questionBankClient.fetchProblemBySlug(slug);
-            if (probOpt.isPresent() && probOpt.get().getStarterFiles() != null) {
-                Map<String, String> files = probOpt.get().getStarterFiles();
-                if (files.isEmpty()) {
+    Map<String, String> resolveStarterFiles(String slug) {
+        if (slug != null && !slug.isBlank()) {
+            try {
+                Optional<ProblemDocument> probOpt = questionBankClient.fetchProblemBySlug(slug);
+                if (probOpt.isPresent() && probOpt.get().getStarterFiles() != null && !probOpt.get().getStarterFiles().isEmpty()) {
+                    return probOpt.get().getStarterFiles();
+                } else if (probOpt.isPresent() && probOpt.get().getStarterFiles() != null && probOpt.get().getStarterFiles().isEmpty()) {
                     log.warn("[WORKSPACE_STARTER_FILES_EMPTY] QuestionBank returned 0 starter files for problem slug '{}'", slug);
+                } else {
+                    log.warn("[WORKSPACE_STARTER_FILES_MISSING] QuestionBank returned no problem or null starter files for problem slug '{}'", slug);
                 }
-                return files;
-            } else {
-                log.warn("[WORKSPACE_STARTER_FILES_MISSING] QuestionBank returned no problem or null starter files for problem slug '{}'", slug);
+            } catch (Exception e) {
+                log.warn("Notice fetching starter files from Question Bank for {}: {}", slug, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Notice fetching starter files from Question Bank for {}: {}", slug, e.getMessage());
         }
-        return Map.of();
+        log.warn("[WORKSPACE_FALLBACK_TRIGGERED] Seeding generic fallback workspace scaffold for problem slug '{}'", slug);
+        return createFallbackScaffold(slug);
+    }
+
+    Map<String, String> createFallbackScaffold(String slug) {
+        Map<String, String> fallback = new LinkedHashMap<>();
+        fallback.put("pom.xml", """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <project xmlns="http://maven.apache.org/POM/4.0.0"
+                     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                <modelVersion>4.0.0</modelVersion>
+
+                <groupId>com.interviewos.workspace</groupId>
+                <artifactId>workspace-solution</artifactId>
+                <version>1.0.0</version>
+
+                <properties>
+                    <maven.compiler.source>21</maven.compiler.source>
+                    <maven.compiler.target>21</maven.compiler.target>
+                    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                    <junit.jupiter.version>5.11.4</junit.jupiter.version>
+                </properties>
+
+                <dependencies>
+                    <dependency>
+                        <groupId>org.junit.jupiter</groupId>
+                        <artifactId>junit-jupiter-api</artifactId>
+                        <version>${junit.jupiter.version}</version>
+                        <scope>test</scope>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.junit.jupiter</groupId>
+                        <artifactId>junit-jupiter-engine</artifactId>
+                        <version>${junit.jupiter.version}</version>
+                        <scope>test</scope>
+                    </dependency>
+                </dependencies>
+
+                <build>
+                    <plugins>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-compiler-plugin</artifactId>
+                            <version>3.13.0</version>
+                            <configuration>
+                                <release>21</release>
+                            </configuration>
+                        </plugin>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-surefire-plugin</artifactId>
+                            <version>3.5.2</version>
+                        </plugin>
+                    </plugins>
+                </build>
+            </project>
+            """);
+
+        fallback.put("README.md", String.format("""
+            # Workspace Project (%s)
+
+            This workspace has been initialized with a fallback Java project structure.
+            Please implement your solution under `src/main/java/com/interviewos/workspace/`.
+            """, slug != null ? slug : "workspace"));
+
+        fallback.put("src/main/java/com/interviewos/workspace/Solution.java", """
+            package com.interviewos.workspace;
+
+            /**
+             * Workspace Solution Skeleton.
+             */
+            public class Solution {
+
+                public static void main(String[] args) {
+                    System.out.println("Workspace ready.");
+                }
+            }
+            """);
+
+        return fallback;
     }
 
     private void createNamedVolume(String volumeName) {
