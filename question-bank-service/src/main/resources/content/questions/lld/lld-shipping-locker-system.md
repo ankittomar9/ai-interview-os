@@ -13,7 +13,7 @@ tags:
 - design-patterns
 - strategy-pattern
 - locker-system
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -25,6 +25,388 @@ coaching:
   - Discuss delivery driver deposit workflow vs customer pickup workflow and error recovery (door stuck, parcel too big).
   - 'Address parcel expiration: what happens when a customer fails to pick up a package within 3 days? (Return to depot).'
   - 'Highlight concurrency: ensure two simultaneous drop-offs cannot be assigned to the same compartment.'
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>shipping-locker-system</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Amazon-Style Shipping Locker System
+
+    ## Overview
+    Implement an object-oriented Locker Delivery and Pickup System managing multi-sized compartments, security access codes, storage fee computation, and package pickup workflows.
+
+    ## Key Components
+    - `com.interviewos.locker.model.Locker`: Locker compartment and assignment state.
+    - `com.interviewos.locker.service.Site`: Manages locker bays and spot search.
+    - `com.interviewos.locker.service.LockerManager`: Dropoff assignment, access code verification, and pickup.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/locker/model/Locker.java`
+    2. `src/main/java/com/interviewos/locker/service/Site.java`
+    3. `src/main/java/com/interviewos/locker/service/LockerManager.java`
+  src/main/java/com/interviewos/locker/model/LockerSize.java: |
+    package com.interviewos.locker.model;
+
+    import java.math.BigDecimal;
+
+    public enum LockerSize {
+        SMALL("Small", new BigDecimal("5.00"), new BigDecimal("10.0"), new BigDecimal("10.0"), new BigDecimal("10.0")),
+        MEDIUM("Medium", new BigDecimal("10.00"), new BigDecimal("20.0"), new BigDecimal("20.0"), new BigDecimal("20.0")),
+        LARGE("Large", new BigDecimal("15.00"), new BigDecimal("30.0"), new BigDecimal("30.0"), new BigDecimal("30.0"));
+
+        private final String name;
+        private final BigDecimal dailyCharge;
+        private final BigDecimal width;
+        private final BigDecimal height;
+        private final BigDecimal depth;
+
+        LockerSize(String name, BigDecimal dailyCharge, BigDecimal width, BigDecimal height, BigDecimal depth) {
+            this.name = name;
+            this.dailyCharge = dailyCharge;
+            this.width = width;
+            this.height = height;
+            this.depth = depth;
+        }
+
+        public String getName() { return name; }
+        public BigDecimal getDailyCharge() { return dailyCharge; }
+        public BigDecimal getWidth() { return width; }
+        public BigDecimal getHeight() { return height; }
+        public BigDecimal getDepth() { return depth; }
+    }
+  src/main/java/com/interviewos/locker/model/ShippingStatus.java: |
+    package com.interviewos.locker.model;
+
+    public enum ShippingStatus {
+        CREATED,
+        IN_LOCKER,
+        RETRIEVED,
+        EXPIRED
+    }
+  src/main/java/com/interviewos/locker/model/AccountLockerPolicy.java: |
+    package com.interviewos.locker.model;
+
+    public class AccountLockerPolicy {
+        private final int freePeriodDays;
+        private final int maximumPeriodDays;
+
+        public AccountLockerPolicy(int freePeriodDays, int maximumPeriodDays) {
+            this.freePeriodDays = freePeriodDays;
+            this.maximumPeriodDays = maximumPeriodDays;
+        }
+
+        public int getFreePeriodDays() { return freePeriodDays; }
+        public int getMaximumPeriodDays() { return maximumPeriodDays; }
+    }
+  src/main/java/com/interviewos/locker/model/Account.java: |
+    package com.interviewos.locker.model;
+
+    import java.math.BigDecimal;
+
+    public class Account {
+        private final String accountId;
+        private final String ownerName;
+        private final AccountLockerPolicy policy;
+        private BigDecimal usageCharges = BigDecimal.ZERO;
+
+        public Account(String accountId, String ownerName, AccountLockerPolicy policy) {
+            this.accountId = accountId;
+            this.ownerName = ownerName;
+            this.policy = policy;
+        }
+
+        public void addUsageCharge(BigDecimal charge) {
+            if (charge != null) {
+                this.usageCharges = this.usageCharges.add(charge);
+            }
+        }
+
+        public String getAccountId() { return accountId; }
+        public String getOwnerName() { return ownerName; }
+        public AccountLockerPolicy getPolicy() { return policy; }
+        public BigDecimal getUsageCharges() { return usageCharges; }
+    }
+  src/main/java/com/interviewos/locker/model/ShippingPackage.java: |
+    package com.interviewos.locker.model;
+
+    import java.math.BigDecimal;
+
+    public class ShippingPackage {
+        private final String packageId;
+        private final Account user;
+        private final BigDecimal width;
+        private final BigDecimal height;
+        private final BigDecimal depth;
+        private ShippingStatus status = ShippingStatus.CREATED;
+
+        public ShippingPackage(String packageId, Account user, BigDecimal width, BigDecimal height, BigDecimal depth) {
+            this.packageId = packageId;
+            this.user = user;
+            this.width = width;
+            this.height = height;
+            this.depth = depth;
+        }
+
+        public LockerSize getRequiredLockerSize() {
+            for (LockerSize size : LockerSize.values()) {
+                if (size.getWidth().compareTo(width) >= 0 &&
+                    size.getHeight().compareTo(height) >= 0 &&
+                    size.getDepth().compareTo(depth) >= 0) {
+                    return size;
+                }
+            }
+            return null;
+        }
+
+        public String getPackageId() { return packageId; }
+        public Account getUser() { return user; }
+        public ShippingStatus getStatus() { return status; }
+        public void setStatus(ShippingStatus status) { this.status = status; }
+    }
+  src/main/java/com/interviewos/locker/model/Locker.java: |
+    package com.interviewos.locker.model;
+
+    import java.math.BigDecimal;
+    import java.time.LocalDate;
+    import java.time.temporal.ChronoUnit;
+    import java.util.UUID;
+
+    public class Locker {
+        private final LockerSize size;
+        private ShippingPackage currentPackage;
+        private LocalDate assignmentDate;
+        private String accessCode;
+
+        public Locker(LockerSize size) {
+            this.size = size;
+        }
+
+        public synchronized void assignPackage(ShippingPackage pkg, LocalDate date) {
+            // TODO: Store package, assignment date, and generate 6-digit accessCode
+            throw new UnsupportedOperationException("TODO: Implement assignPackage");
+        }
+
+        public synchronized void releaseLocker() {
+            // TODO: Clear package, date, and access code
+            throw new UnsupportedOperationException("TODO: Implement releaseLocker");
+        }
+
+        public synchronized BigDecimal calculateStorageCharges(LocalDate pickupDate) {
+            // TODO: Calculate days used, minus freePeriodDays, multiplied by dailyCharge
+            throw new UnsupportedOperationException("TODO: Implement calculateStorageCharges");
+        }
+
+        public synchronized boolean isAvailable() {
+            return currentPackage == null;
+        }
+
+        public synchronized boolean checkAccessCode(String code) {
+            return this.accessCode != null && this.accessCode.equals(code);
+        }
+
+        public LockerSize getSize() { return size; }
+        public ShippingPackage getCurrentPackage() { return currentPackage; }
+        public String getAccessCode() { return accessCode; }
+    }
+  src/main/java/com/interviewos/locker/service/Site.java: |
+    package com.interviewos.locker.service;
+
+    import com.interviewos.locker.model.*;
+    import java.time.LocalDate;
+    import java.util.*;
+
+    public class Site {
+        private final Map<LockerSize, List<Locker>> lockers = new EnumMap<>(LockerSize.class);
+
+        public Site(Map<LockerSize, Integer> configuration) {
+            for (LockerSize size : LockerSize.values()) {
+                lockers.put(size, new ArrayList<>());
+            }
+            if (configuration != null) {
+                configuration.forEach((size, count) -> {
+                    for (int i = 0; i < count; i++) {
+                        lockers.get(size).add(new Locker(size));
+                    }
+                });
+            }
+        }
+
+        public synchronized Locker findAvailableLocker(LockerSize size) {
+            // TODO: Find first available locker of matching size
+            throw new UnsupportedOperationException("TODO: Implement findAvailableLocker");
+        }
+
+        public synchronized Locker placePackage(ShippingPackage pkg, LocalDate date) {
+            // TODO: Determine size, find available locker, assign package, update shipping status
+            throw new UnsupportedOperationException("TODO: Implement placePackage");
+        }
+
+        public List<Locker> getLockers(LockerSize size) { return lockers.get(size); }
+    }
+  src/main/java/com/interviewos/locker/service/LockerManager.java: |
+    package com.interviewos.locker.service;
+
+    import com.interviewos.locker.model.*;
+    import java.math.BigDecimal;
+    import java.time.LocalDate;
+    import java.util.Map;
+    import java.util.concurrent.ConcurrentHashMap;
+
+    public class LockerManager {
+        private final Site site;
+        private final Map<String, Locker> accessCodeMap = new ConcurrentHashMap<>();
+
+        public LockerManager(Site site) {
+            this.site = site;
+        }
+
+        public synchronized Locker assignPackage(ShippingPackage pkg, LocalDate date) {
+            // TODO: Delegate to site.placePackage, store in accessCodeMap, return locker
+            throw new UnsupportedOperationException("TODO: Implement assignPackage");
+        }
+
+        public synchronized ShippingPackage pickUpPackage(String accessCode, LocalDate pickupDate) {
+            // TODO: Lookup locker by accessCode, compute storage charge, charge user, release locker, return package
+            throw new UnsupportedOperationException("TODO: Implement pickUpPackage");
+        }
+
+        public Site getSite() { return site; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/locker/model/Locker.java
+- src/main/java/com/interviewos/locker/service/Site.java
+- src/main/java/com/interviewos/locker/service/LockerManager.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/locker/LockerAllocationTest.java: |
+    package com.interviewos.locker;
+
+    import com.interviewos.locker.model.*;
+    import com.interviewos.locker.service.Site;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+    import java.time.LocalDate;
+    import java.util.Map;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class LockerAllocationTest {
+        @Test
+        @DisplayName("Place package allocates matching locker size and rejects oversized packages")
+        void testAllocation() {
+            Site site = new Site(Map.of(LockerSize.SMALL, 1, LockerSize.MEDIUM, 1));
+            Account user = new Account("U1", "Alice", new AccountLockerPolicy(3, 7));
+
+            ShippingPackage smallPkg = new ShippingPackage("P1", user, new BigDecimal("8.0"), new BigDecimal("8.0"), new BigDecimal("8.0"));
+            Locker l1 = site.placePackage(smallPkg, LocalDate.now());
+            assertNotNull(l1);
+            assertEquals(LockerSize.SMALL, l1.getSize());
+
+            ShippingPackage oversizePkg = new ShippingPackage("P2", user, new BigDecimal("50.0"), new BigDecimal("50.0"), new BigDecimal("50.0"));
+            assertNull(oversizePkg.getRequiredLockerSize());
+        }
+    }
+  src/test/java/com/interviewos/locker/LockerStorageChargeTest.java: |
+    package com.interviewos.locker;
+
+    import com.interviewos.locker.model.*;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+    import java.time.LocalDate;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class LockerStorageChargeTest {
+        @Test
+        @DisplayName("Storage charges apply only after free period expires")
+        void testStorageChargeCalculation() {
+            Locker locker = new Locker(LockerSize.MEDIUM); // daily charge 10.00
+            Account user = new Account("U2", "Bob", new AccountLockerPolicy(2, 7)); // 2 days free
+            ShippingPackage pkg = new ShippingPackage("PKG-2", user, new BigDecimal("15.0"), new BigDecimal("15.0"), new BigDecimal("15.0"));
+
+            LocalDate assigned = LocalDate.of(2026, 10, 1);
+            locker.assignPackage(pkg, assigned);
+
+            // Pickup on day 2 (within 2 days free) -> 0 charge
+            BigDecimal chargeFree = locker.calculateStorageCharges(LocalDate.of(2026, 10, 3));
+            assertEquals(new BigDecimal("0.00"), chargeFree);
+
+            // Pickup on day 5 (3 billable days * $10) -> $30 charge
+            BigDecimal chargeBillable = locker.calculateStorageCharges(LocalDate.of(2026, 10, 6));
+            assertEquals(new BigDecimal("30.00"), chargeBillable);
+        }
+    }
+  src/test/java/com/interviewos/locker/LockerPickupWorkflowTest.java: |
+    package com.interviewos.locker;
+
+    import com.interviewos.locker.model.*;
+    import com.interviewos.locker.service.LockerManager;
+    import com.interviewos.locker.service.Site;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+    import java.time.LocalDate;
+    import java.util.Map;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class LockerPickupWorkflowTest {
+        @Test
+        @DisplayName("Package dropoff generates access code and pickup frees locker")
+        void testDropoffAndPickup() {
+            Site site = new Site(Map.of(LockerSize.LARGE, 1));
+            LockerManager manager = new LockerManager(site);
+            Account user = new Account("U3", "Carol", new AccountLockerPolicy(3, 10));
+            ShippingPackage pkg = new ShippingPackage("P3", user, new BigDecimal("25.0"), new BigDecimal("25.0"), new BigDecimal("25.0"));
+
+            LocalDate today = LocalDate.now();
+            Locker assignedLocker = manager.assignPackage(pkg, today);
+            assertNotNull(assignedLocker);
+            String code = assignedLocker.getAccessCode();
+            assertNotNull(code);
+
+            ShippingPackage retrieved = manager.pickUpPackage(code, today);
+            assertNotNull(retrieved);
+            assertEquals(ShippingStatus.RETRIEVED, retrieved.getStatus());
+            assertTrue(assignedLocker.isAvailable());
+        }
+    }
+
 starterCode: "public class Locker {\n    // Size of the locker\nprivate final LockerSize size;\n    // Currently stored package private ShippingPackage currentPackage;\n    // Date when the current package was assigned\nprivate Date assignmentDate;\n    // Access code for retrieving the package private String accessCode;\n    public Locker(LockerSize size) {\n        this.size = size;\n    }\n    // Assigns a package to this locker and generates an access code\npublic void assignPackage(ShippingPackage pkg, Date date) {\n        this.currentPackage = pkg;\n        this.assignmentDate = date;\n        this.accessCode = generateAccessCode();\n    }\n    // Releases the locker by removing the current package and its details\npublic void releaseLocker() {\n        this.currentPackage = null;\n        this.assignmentDate = null;\n        this.accessCode = null;\n    }\n    // Calculates storage charges based on usage duration and policy\npublic BigDecimal calculateStorageCharges() {\n       \
   \ if (currentPackage == null || assignmentDate == null) {\n            return BigDecimal.ZERO;\n        }\n        AccountLockerPolicy\npolicy\n= currentPackage.getUser().getLockerPolicy();\n        long totalDaysUsed\n=\n                (new Date().getTime() - assignmentDate.getTime()) / (1000 * 60 * 60 * 24);\n        // Check if exceeds maximum period\nif (totalDaysUsed > policy.getMaximumPeriodDays()) {\n            currentPackage.updateShippingStatus(ShippingStatus.EXPIRED);\n            throw new MaximumStoragePeriodExceededException(\n                    \"Package has exceeded maximum allowed storage period of \"\n                            + policy.getMaximumPeriodDays()\n                            + \" days\");\n        }\n        // Calculate chargeable days (excluding free period)\nlong chargeableDays\n= Math.max(0, totalDaysUsed - policy.getFreePeriodDays());\n        return size.dailyCharge.multiply(new BigDecimal(chargeableDays));\n    }\n    // Checks if the locker is\
   \ available for new packages\npublic boolean isAvailable() {\n        return currentPackage == null;\n    }\n    // Verifies if the provided access code matches the locker's code\npublic boolean checkAccessCode(String code) {\n        return this.accessCode != null && accessCode.equals(code);\n    }\n    // getter and setter methods are omitted for brevity\n}\n\npublic enum LockerSize {\n    // Small locker with 10x10x10 dimensions and $5 daily charge\n    SMALL(\n            \"Small\",\n            new BigDecimal(\"5.00\"),\n            new BigDecimal(\"10.00\"),\n            new BigDecimal(\"10.00\"),\n            new BigDecimal(\"10.00\")),\n    // Medium locker with 20x20x20 dimensions and $10 daily charge\n    MEDIUM(\n            \"Medium\",\n            new BigDecimal(\"10.00\"),\n            new BigDecimal(\"20.00\"),\n            new BigDecimal(\"20.00\"),\n            new BigDecimal(\"20.00\")),\n    // Large locker with 30x30x30 dimensions and $15 daily charge\n    LARGE(\n\

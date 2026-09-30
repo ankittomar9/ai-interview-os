@@ -14,7 +14,7 @@ tags:
 - specification-pattern
 - composite-pattern
 - file-system
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -26,6 +26,318 @@ coaching:
   - Explain how the Open/Closed Principle allows adding new filters (e.g., OwnerFilter, ModifiedTimeFilter) without modifying existing search engine code.
   - Discuss directory recursion versus iterative stack-based traversal for deeply nested file trees to avoid stack overflow.
   - Explain how short-circuit evaluation in AND/OR filters optimizes performance on massive directories.
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>unix-file-search</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Unix File Search Command (find)
+
+    ## Overview
+    Implement an object-oriented Unix File Search engine using the Specification / Filter pattern and Composite pattern to search hierarchical directories.
+
+    ## Key Components
+    - `com.interviewos.filesearch.model.File`: File tree composite node.
+    - `com.interviewos.filesearch.predicate.*`: Simple and composite boolean search filters.
+    - `com.interviewos.filesearch.service.FileSearch`: Recursive or iterative directory search coordinator.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/filesearch/service/FileSearch.java`
+    2. `src/main/java/com/interviewos/filesearch/predicate/SimplePredicate.java`
+    3. `src/main/java/com/interviewos/filesearch/predicate/AndPredicate.java`
+  src/main/java/com/interviewos/filesearch/model/FileAttribute.java: |
+    package com.interviewos.filesearch.model;
+
+    public enum FileAttribute {
+        IS_DIRECTORY,
+        SIZE,
+        OWNER,
+        FILENAME
+    }
+  src/main/java/com/interviewos/filesearch/model/File.java: |
+    package com.interviewos.filesearch.model;
+
+    import java.util.*;
+
+    public class File {
+        private final boolean isDirectory;
+        private final int size;
+        private final String owner;
+        private final String filename;
+        private final List<File> entries = new ArrayList<>();
+
+        public File(boolean isDirectory, int size, String owner, String filename) {
+            this.isDirectory = isDirectory;
+            this.size = size;
+            this.owner = owner;
+            this.filename = filename;
+        }
+
+        public Object extract(FileAttribute attribute) {
+            return switch (attribute) {
+                case IS_DIRECTORY -> isDirectory;
+                case SIZE -> size;
+                case OWNER -> owner;
+                case FILENAME -> filename;
+            };
+        }
+
+        public void addEntry(File child) {
+            if (child != null) {
+                entries.add(child);
+            }
+        }
+
+        public boolean isDirectory() { return isDirectory; }
+        public int getSize() { return size; }
+        public String getOwner() { return owner; }
+        public String getFilename() { return filename; }
+        public List<File> getEntries() { return Collections.unmodifiableList(entries); }
+    }
+  src/main/java/com/interviewos/filesearch/predicate/ComparisonOperator.java: |
+    package com.interviewos.filesearch.predicate;
+
+    public interface ComparisonOperator<T> {
+        boolean isMatch(T actual, T expected);
+    }
+  src/main/java/com/interviewos/filesearch/predicate/EqualsOperator.java: |
+    package com.interviewos.filesearch.predicate;
+
+    import java.util.Objects;
+
+    public class EqualsOperator<T> implements ComparisonOperator<T> {
+        @Override
+        public boolean isMatch(T actual, T expected) {
+            return Objects.equals(actual, expected);
+        }
+    }
+  src/main/java/com/interviewos/filesearch/predicate/GreaterThanOperator.java: |
+    package com.interviewos.filesearch.predicate;
+
+    public class GreaterThanOperator<T extends Number> implements ComparisonOperator<T> {
+        @Override
+        public boolean isMatch(T actual, T expected) {
+            return actual != null && expected != null && actual.doubleValue() > expected.doubleValue();
+        }
+    }
+  src/main/java/com/interviewos/filesearch/predicate/RegexMatchOperator.java: |
+    package com.interviewos.filesearch.predicate;
+
+    import java.util.regex.Pattern;
+
+    public class RegexMatchOperator implements ComparisonOperator<String> {
+        @Override
+        public boolean isMatch(String actual, String pattern) {
+            return actual != null && pattern != null && Pattern.matches(pattern, actual);
+        }
+    }
+  src/main/java/com/interviewos/filesearch/predicate/Predicate.java: |
+    package com.interviewos.filesearch.predicate;
+
+    import com.interviewos.filesearch.model.File;
+
+    public interface Predicate {
+        boolean isMatch(File file);
+    }
+  src/main/java/com/interviewos/filesearch/predicate/SimplePredicate.java: |
+    package com.interviewos.filesearch.predicate;
+
+    import com.interviewos.filesearch.model.File;
+    import com.interviewos.filesearch.model.FileAttribute;
+
+    public class SimplePredicate<T> implements Predicate {
+        private final FileAttribute attribute;
+        private final ComparisonOperator<T> operator;
+        private final T expectedValue;
+
+        public SimplePredicate(FileAttribute attribute, ComparisonOperator<T> operator, T expectedValue) {
+            this.attribute = attribute;
+            this.operator = operator;
+            this.expectedValue = expectedValue;
+        }
+
+        @Override
+        public boolean isMatch(File file) {
+            // TODO: Extract attribute value from file and evaluate via operator against expectedValue
+            throw new UnsupportedOperationException("TODO: Implement isMatch");
+        }
+    }
+  src/main/java/com/interviewos/filesearch/predicate/AndPredicate.java: |
+    package com.interviewos.filesearch.predicate;
+
+    import com.interviewos.filesearch.model.File;
+    import java.util.List;
+
+    public class AndPredicate implements Predicate {
+        private final List<Predicate> operands;
+
+        public AndPredicate(List<Predicate> operands) {
+            this.operands = operands != null ? operands : List.of();
+        }
+
+        @Override
+        public boolean isMatch(File file) {
+            // TODO: Return true if all operands match file
+            throw new UnsupportedOperationException("TODO: Implement isMatch in AndPredicate");
+        }
+    }
+  src/main/java/com/interviewos/filesearch/predicate/FileSearchCriteria.java: |
+    package com.interviewos.filesearch.predicate;
+
+    import com.interviewos.filesearch.model.File;
+
+    public class FileSearchCriteria {
+        private final Predicate predicate;
+
+        public FileSearchCriteria(Predicate predicate) {
+            this.predicate = predicate;
+        }
+
+        public boolean isMatch(File file) {
+            return predicate != null && predicate.isMatch(file);
+        }
+    }
+  src/main/java/com/interviewos/filesearch/service/FileSearch.java: |
+    package com.interviewos.filesearch.service;
+
+    import com.interviewos.filesearch.model.File;
+    import com.interviewos.filesearch.predicate.FileSearchCriteria;
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class FileSearch {
+        public List<File> search(File root, FileSearchCriteria criteria) {
+            // TODO: Recursively traverse directory tree and collect all matching File nodes
+            throw new UnsupportedOperationException("TODO: Implement search");
+        }
+    }
+editablePaths:
+- src/main/java/com/interviewos/filesearch/service/FileSearch.java
+- src/main/java/com/interviewos/filesearch/predicate/SimplePredicate.java
+- src/main/java/com/interviewos/filesearch/predicate/AndPredicate.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/filesearch/FileSearchCriteriaTest.java: |
+    package com.interviewos.filesearch;
+
+    import com.interviewos.filesearch.model.File;
+    import com.interviewos.filesearch.model.FileAttribute;
+    import com.interviewos.filesearch.predicate.*;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class FileSearchCriteriaTest {
+        @Test
+        @DisplayName("SimplePredicate matches file size and name regex")
+        void testSimplePredicateMatching() {
+            File f1 = new File(false, 500, "alice", "report.pdf");
+
+            SimplePredicate<Integer> sizePred = new SimplePredicate<>(FileAttribute.SIZE, new GreaterThanOperator<>(), 200);
+            assertTrue(sizePred.isMatch(f1));
+
+            SimplePredicate<String> namePred = new SimplePredicate<>(FileAttribute.FILENAME, new RegexMatchOperator(), ".*\\.pdf");
+            assertTrue(namePred.isMatch(f1));
+        }
+    }
+  src/test/java/com/interviewos/filesearch/CompositePredicateTest.java: |
+    package com.interviewos.filesearch;
+
+    import com.interviewos.filesearch.model.File;
+    import com.interviewos.filesearch.model.FileAttribute;
+    import com.interviewos.filesearch.predicate.*;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.util.List;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class CompositePredicateTest {
+        @Test
+        @DisplayName("AndPredicate requires both child predicates to match")
+        void testAndComposition() {
+            File file = new File(false, 1024, "root", "system.log");
+
+            Predicate p1 = new SimplePredicate<>(FileAttribute.OWNER, new EqualsOperator<>(), "root");
+            Predicate p2 = new SimplePredicate<>(FileAttribute.SIZE, new GreaterThanOperator<>(), 500);
+            Predicate p3 = new SimplePredicate<>(FileAttribute.FILENAME, new RegexMatchOperator(), ".*\\.tmp");
+
+            AndPredicate matchingAnd = new AndPredicate(List.of(p1, p2));
+            assertTrue(matchingAnd.isMatch(file));
+
+            AndPredicate failingAnd = new AndPredicate(List.of(p1, p3));
+            assertFalse(failingAnd.isMatch(file));
+        }
+    }
+  src/test/java/com/interviewos/filesearch/FileSearchRecursionTest.java: |
+    package com.interviewos.filesearch;
+
+    import com.interviewos.filesearch.model.File;
+    import com.interviewos.filesearch.model.FileAttribute;
+    import com.interviewos.filesearch.predicate.*;
+    import com.interviewos.filesearch.service.FileSearch;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.util.List;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class FileSearchRecursionTest {
+        @Test
+        @DisplayName("FileSearch traverses nested directories and finds all matching files")
+        void testRecursiveSearch() {
+            File root = new File(true, 0, "root", "/");
+            File home = new File(true, 0, "root", "home");
+            File doc1 = new File(false, 100, "john", "a.txt");
+            File doc2 = new File(false, 300, "john", "b.txt");
+            File hidden = new File(false, 50, "john", ".secret");
+
+            home.addEntry(doc1);
+            home.addEntry(doc2);
+            home.addEntry(hidden);
+            root.addEntry(home);
+
+            FileSearch searcher = new FileSearch();
+            Predicate txtPred = new SimplePredicate<>(FileAttribute.FILENAME, new RegexMatchOperator(), ".*\\.txt");
+            List<File> results = searcher.search(root, new FileSearchCriteria(txtPred));
+
+            assertEquals(2, results.size());
+        }
+    }
+
 starterCode: "// Represents a file or directory in the file system\n// Contains basic file attributes and supports hierarchical structure\npublic class File {\n    private final boolean isDirectory;\n    private final int size;\n    private final String owner;\n    private final String filename;\n    // Set of directory entries (files and subdirectories)\nprivate final Set<File> entries = new HashSet<>();\n    // Creates a new file with the specified attributes\npublic File(\n            final boolean isDirectory,\n            final int size,\n            final String owner,\n            final String filename) {\n        this.isDirectory = isDirectory;\n        this.size = size;\n        this.owner = owner;\n        this.filename = filename;\n    }\n    // Extracts the value of a specified file attribute\npublic Object extract(final FileAttribute attributeName) {\n        switch (attributeName) {\n            case SIZE -> {\n                return size;\n            }\n            case OWNER\
   \ -> {\n                return owner;\n            }\n            case IS_DIRECTORY -> {\n                return isDirectory;\n            }\n            case FILENAME -> {\n                return filename;\n            }\n        }\n        throw new IllegalArgumentException(\"invalid filter criteria type\");\n    }\n    // Adds a file or directory entry to this directory\npublic void addEntry(final File entry) {\n        entries.add(entry);\n    }\n    // getter methods omitted for brevity\n}\n// Represents the different attributes that can be checked for a file\npublic enum FileAttribute {\n    IS_DIRECTORY,\n    SIZE,\n    OWNER,\n    FILENAME\n}\n\n// Base interface for all file search predicates\npublic interface Predicate {\n    // Checks if the given file matches the search condition\nboolean isMatch(final File inputFile);\n}\n\n// Base interface for all comparison operations in the file search system\npublic interface ComparisonOperator<T> {\n    boolean isMatch(final T attributeValue,\
   \ final T expectedValue);\n}"
