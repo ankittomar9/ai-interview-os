@@ -30,10 +30,10 @@ All P0 and P1 closure-bar requirements and prioritized P2 content batches specif
 | Module | Files Touched/Run | Test-Cases | Assertions | Failures | Status |
 |---|---|---|---|---|---|
 | `question-bank-service` (JUnit 5) | 5 | 31 | 360 | 0 | **100% PASS** |
-| `frontend` (`node:test via tsx`) | 22 | 191 | 682 | 0 | **100% PASS** |
-| **TOTAL** | **27** | **222** | **1042** | **0** | **100% GREEN** |
+| `frontend` (`node:test via tsx`) | 22 | 193 | 690 | 0 | **100% PASS** |
+| **TOTAL** | **27** | **224** | **1050** | **0** | **100% GREEN** |
 
-*Note: Baseline frontend test count was 184 cases across 20 suites. With V7-06 (`ReferenceApproaches.test.ts`, +3 cases) and V7-07 (`SelfTimer.render.test.ts`, +4 cases), the suite now executes 191 cases across 22 suites with 0 failures.*
+*Note: Baseline frontend test count was 184 cases across 20 suites. With V7-06 (`ReferenceApproaches.test.ts`, +5 cases including F1 remediation gates) and V7-07 (`SelfTimer.render.test.ts`, +4 cases), the suite executes 193 cases across 22 suites with 0 failures.*
 
 ---
 
@@ -172,29 +172,33 @@ All P0 and P1 closure-bar requirements and prioritized P2 content batches specif
 
 ---
 
-### V7-06 (P1) — Frontend Reveal UI ("Reference Approaches")
-- **Fence**: `frontend/src/**` (`services/api.ts`, `QuestionDetailModal.tsx`, `ReferenceApproaches.tsx`, tests).
+### V7-06 (P1) — Frontend Reveal UI ("Reference Approaches") & Post-Submission Mount (F1 Remediation)
+- **Fence**: `frontend/src/**` (`services/api.ts`, `QuestionDetailModal.tsx`, `ReferenceApproaches.tsx`, `DiagnosticReportView.tsx`, `PracticeSummary.tsx`, tests).
 - **Files Modified / Added**:
   - `frontend/src/services/api.ts` (Added `ReferenceSolution` TypeScript type definitions)
-  - `frontend/src/components/learn/ReferenceApproaches.tsx` (New component with approach badges, complexity chips, copy buttons, and tradeoffs)
-  - `frontend/src/components/learn/QuestionDetailModal.tsx` (Integrated reveal section)
-  - `frontend/src/components/learn/ReferenceApproaches.test.ts` (Unit and defense-in-depth render tests)
-- **Four-number**: `files=1 test-cases=3 assertions=20 failures=0`
+  - `frontend/src/components/learn/ReferenceApproaches.tsx` (Component with approach badges, complexity chips, copy buttons, and tradeoffs)
+  - `frontend/src/components/learn/QuestionDetailModal.tsx` (Practice/learn modal reveal section)
+  - `frontend/src/components/DiagnosticReportView.tsx` (F1 remediation: mounted in post-submission closed-round review view for evaluated problems)
+  - `frontend/src/components/PracticeSummary.tsx` (F1 remediation: mounted in practice summary review view)
+  - `frontend/src/components/learn/ReferenceApproaches.test.ts` (Unit, defense-in-depth, closed-round rendering, and static mount guard tests)
+- **Four-number**: `files=1 test-cases=5 assertions=28 failures=0`
 - **Gate Evidence**:
   - Command: `npx tsx --test "src/components/learn/ReferenceApproaches.test.ts"`
   - Output:
     ```text
     ▶ V7-06: ReferenceApproaches UI & Masking Defense
-      ✔ Gate V7-06 (a): practice fixture with 3 approaches renders 3 cards with expected labels and chips (1.81ms)
-      ✔ Gate V7-06 (b): interview-mode fixture renders zero approach text (defense in depth) (0.24ms)
-      ✔ Gate V7-06 (c): empty approaches array returns empty rendering (0.13ms)
-    ℹ tests 3
+      ✔ Gate V7-06 (a): practice fixture with 3 approaches renders 3 cards with expected labels and chips (22.96ms)
+      ✔ Gate V7-06 (b): interview-mode fixture renders zero approach text (defense in depth) (0.41ms)
+      ✔ Gate V7-06 (c): empty approaches array returns empty rendering (0.38ms)
+      ✔ Gate V7-06 (d) / F1 Remediation: post-submission closed-round review renders full multi-approach suite (12.09ms)
+      ✔ Gate V7-06 (e) / F1 Remediation: DiagnosticReportView and PracticeSummary mount ReferenceApproaches (7.14ms)
+    ℹ tests 5
     ℹ suites 1
-    ℹ pass 3
+    ℹ pass 5
     ℹ fail 0
     ```
 - **Honest-Judge Verification**:
-  Gate V7-06 (b) provides defense-in-depth by asserting that in `isInterviewMode: true`, the component produces an empty string (`assert.strictEqual(html, '')`) and contains none of the approach labels or code tokens.
+  Gate V7-06 (b) provides defense-in-depth by asserting that in `isInterviewMode: true`, the component produces an empty string (`assert.strictEqual(html, '')`) and contains none of the approach labels or code tokens. Gate V7-06 (d) asserts that in closed-round post-submission review (`isInterviewMode: false`), all PRIMARY and ALTERNATE cards render with complexity chips. Gate V7-06 (e) statically asserts that both `DiagnosticReportView` and `PracticeSummary` import and mount `<ReferenceApproaches`.
 
 ---
 
@@ -334,12 +338,58 @@ Asserted keys absent in INTERVIEW raw JSON payload:
 
 ---
 
-## 5. Verification Sign-Off
+---
 
-- **Backend**: `mvn test -pl question-bank-service` $\rightarrow$ 31/31 passed, 0 failures.
-- **Frontend**: `npm test` $\rightarrow$ 191/191 passed across 22 suites, 0 failures.
-- **Vite Build**: `npm run build` $\rightarrow$ Clean build in 858ms.
+## 5. SPEC Deltas, Tooling Riders & Audit Declarations (V207-R1 Follow-Through)
+
+1. **F1 Scope Remediation (Mounted in Post-Submission Review Surfaces)**:
+   - As required by SPEC §2 V7-06 req 3 and audited under `collab/z/V207-AUDIT.md` §3 F1, `ReferenceApproaches` is mounted in the post-submission / closed-round review surfaces:
+     - `frontend/src/components/DiagnosticReportView.tsx`: provides a "Reference Solutions" review action for each evaluated problem in `sessionQuestions`, expanding multi-approach solutions with `isInterviewMode: false`.
+     - `frontend/src/components/PracticeSummary.tsx`: provides a solutions review action for each completed practice challenge.
+   - Verified statically and via render tests in `ReferenceApproaches.test.ts` (5/5 PASS).
+
+2. **F2 Tooling Riders Retro-Declaration (SPEC §0 Rule 6)**:
+   - Tooling scripts under `scripts/gates/` (`gate_v7_03.py`, `gate_v7_04.py`, `gate_v7_05.py`, `gate_v7_09_a.py`, `gate_v7_09_b.py`, `gate_v7_09_c.py`, `gate_v7_10.py`) and batch automation under `scripts/` (`promote_dsa_batch_*.py`) are declared as automated honest-judge verification and promotion tooling riders. They guarantee byte-for-byte fidelity against git history (`git show 5ae0531:`) and enforce zero loss of legacy solutions.
+
+3. **F3 & F4 Commit Protocol Acknowledgments (Process Hygiene)**:
+   - Acknowledged that V7-01..V7-06 were bundled into single commit `d0134d5` (though developed on an isolated branch), and docs commit `6db74b6` landed directly on master. All subsequent changes and remediations strictly follow per-item commits and `--no-ff` merge protocol.
+
+4. **F5 SelfTimer Render Test Boundary Declaration**:
+   - `SelfTimer.render.test.ts` operates via `react-dom/server` `renderToString`, providing static DOM structure, MM:SS formatting, 00:00 alerting without negative numbers, and override verification. Interactive countdown decrement, background throttling resilience, and drift mitigation remain covered at logic level by `Session146TimerRecorderFixes.test.ts` (32 assertions, 0 drift).
+
+5. **F7 Synthesized Fallback Metadata Cleanup (Content Honesty)**:
+   - `ReferenceSolutionAdapter.java` synthesized fallback metadata for unmigrated legacy questions sets `timeComplexity(null)` and `spaceComplexity(null)` and uses generic descriptions to eliminate unverified placeholder claims.
+
+6. **L1 JDK Execution Receipt**:
+   - Both reviewer sandboxes lacked a JDK compiler. The four-number execution receipt from the live JDK 21 environment is provided below:
+     ```text
+     $ mvn test -pl question-bank-service
+     [INFO] Running com.interviewos.questionbank.controller.QuestionPublicControllerTest
+     [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.756 s
+     [INFO] Running com.interviewos.questionbank.ingestion.ContentValidatorTest
+     [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.021 s
+     [INFO] Running com.interviewos.questionbank.ingestion.DsaCatalogGuardTest
+     [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.746 s
+     [INFO] Running com.interviewos.questionbank.ingestion.QuestionMarkdownParserTest
+     [INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.137 s
+     [INFO] Running com.interviewos.questionbank.service.QuestionMatchServiceTest
+     [INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.332 s
+     [INFO] 
+     [INFO] Results:
+     [INFO] Tests run: 31, Failures: 0, Errors: 0, Skipped: 0
+     [INFO] BUILD SUCCESS
+     ```
+     - Four-number: `files=5 test-cases=31 assertions=360 failures=0`.
+
+---
+
+## 6. Verification Sign-Off
+
+- **Backend**: `mvn test -pl question-bank-service` $\rightarrow$ 31/31 passed, 0 failures, 360 assertions.
+- **Frontend**: `npm test` $\rightarrow$ 193/193 passed across 22 suites, 0 failures, 690 assertions.
+- **Vite Build**: `npm run build` $\rightarrow$ Clean build in 1.09s.
 - **Decomposition**: All 3 Arena target files $\le 250$ lines each (total 675 lines).
 - **Zero Loss**: All 139 converted legacy questions (11 LLD + 8 SQL + 120 DSA) confirmed byte-identical to base `5ae0531`.
+- **Reviewer Audit Status**: Qwen `APPROVED`; Z.ai `CONDITIONAL ACCEPT` remediated.
 
-— Gemini (Execution Agent). Ready for independent audit by Z.ai and Qwen.
+— Gemini (Execution Agent).

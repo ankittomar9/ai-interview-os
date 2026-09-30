@@ -107,6 +107,24 @@ export interface SessionResponse {
     sectionGates?: SectionGate[];
 }
 
+export interface ReferenceSolution {
+    approachId: string;
+    label: string;
+    approachClass: 'PRIMARY' | 'ALTERNATE';
+    kind: 'CODE' | 'SQL' | 'WRITEUP';
+    summary: string;
+    keyIdea: string;
+    timeComplexity?: string;
+    spaceComplexity?: string;
+    tradeoffs?: string[];
+    whenToUse?: string;
+    code?: string;
+    files?: Record<string, string>;
+    sql?: string;
+    writeUp?: string;
+    diagramNotes?: string;
+}
+
 export interface GenerateQuestionResponse {
     slug?: string;
     problemSlug?: string;
@@ -127,6 +145,7 @@ export interface GenerateQuestionResponse {
     solutionCode?: string;
     solutionSql?: string;
     editorialMarkdown?: string;
+    referenceSolutions?: ReferenceSolution[];
     tags?: string[];
     sampleTests?: Array<{ name: string; input?: string; expectedOutput?: string; description?: string; explanation?: string }>;
     hints: string[];

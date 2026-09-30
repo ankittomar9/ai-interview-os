@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { DiagnosticReportResponse, DimensionScore, SessionMessage } from '../types';
-import { fetchSessionTranscript, getVerification, type VerificationReceipt, getSessionQuestions, type SessionQuestionItem } from '../services/api';
+import { fetchSessionTranscript, getVerification, type VerificationReceipt, getSessionQuestions, type SessionQuestionItem, getCatalogQuestionDetail, type CatalogQuestionDetail } from '../services/api';
 import { ProgressChart } from './ProgressChart';
 import {
   CheckCircle2,
@@ -20,7 +20,9 @@ import {
   Video,
   VideoOff,
   Mic,
-  MicOff
+  MicOff,
+  Eye,
+  Sparkles
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
@@ -30,6 +32,7 @@ import { RubricCard } from './ui/RubricCard';
 import { FloatingAiOrb } from './ai/FloatingAiOrb';
 import { AiAssistantPanel } from './ai/AiAssistantPanel';
 import { ReplayStreamToggle } from './ui/ReplayStreamToggle';
+import { ReferenceApproaches } from './learn/ReferenceApproaches';
 
 interface Props {
   report: DiagnosticReportResponse;
@@ -73,6 +76,31 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
 
   const [verificationReceipt, setVerificationReceipt] = useState<VerificationReceipt | null>(null);
   const [sessionStatus, setSessionStatus] = useState<string | null>(null);
+  const [reviewQuestionSlug, setReviewQuestionSlug] = useState<string | null>(null);
+  const [reviewDetailsCache, setReviewDetailsCache] = useState<Record<string, CatalogQuestionDetail>>({});
+  const [loadingReviewDetail, setLoadingReviewDetail] = useState(false);
+
+  const handleToggleQuestionSolutions = async (slug: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (reviewQuestionSlug === slug) {
+      setReviewQuestionSlug(null);
+      return;
+    }
+    setReviewQuestionSlug(slug);
+    if (!reviewDetailsCache[slug]) {
+      setLoadingReviewDetail(true);
+      try {
+        const detail = await getCatalogQuestionDetail(slug, true);
+        if (detail) {
+          setReviewDetailsCache((prev) => ({ ...prev, [slug]: detail }));
+        }
+      } catch (err) {
+        console.warn('Could not load question reference approaches for review:', err);
+      } finally {
+        setLoadingReviewDetail(false);
+      }
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -543,6 +571,16 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleQuestionSolutions(q.questionSlug, e)}
+                          className="px-2.5 py-1 text-xs rounded-md font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                          title="Inspect reference approaches for this problem"
+                          data-testid={`btn-review-approaches-${q.questionSlug}`}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>{reviewQuestionSlug === q.questionSlug ? 'Hide Solutions' : 'Reference Solutions'}</span>
+                        </button>
                         {q.verdict === 'PASSED' && (
                           <Chip variant="success" size="sm">PASSED</Chip>
                         )}
@@ -556,6 +594,47 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
                     </div>
                   ))}
                 </div>
+
+                {/* POST-ROUND REFERENCE APPROACHES (V7-06 Req 3 / F1 Remediation) */}
+                {reviewQuestionSlug && (
+                  <div
+                    className="mt-4 p-5 rounded-xl border border-primary/30 bg-elevated/60 space-y-4 animate-fade-in shadow-sm"
+                    data-testid="post-round-reference-approaches-panel"
+                  >
+                    <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <h3 className="text-sm font-bold text-text">
+                          Post-Round Reference Approaches:{' '}
+                          <span className="font-mono text-primary">{reviewQuestionSlug}</span>
+                        </h3>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setReviewQuestionSlug(null)}
+                        className="text-xs text-text-3 hover:text-text cursor-pointer"
+                      >
+                        Close
+                      </Button>
+                    </div>
+
+                    {loadingReviewDetail && !reviewDetailsCache[reviewQuestionSlug] ? (
+                      <div className="text-xs text-text-3 py-6 text-center animate-pulse">
+                        Loading verified interview-accepted reference approaches...
+                      </div>
+                    ) : reviewDetailsCache[reviewQuestionSlug]?.referenceSolutions && reviewDetailsCache[reviewQuestionSlug].referenceSolutions!.length > 0 ? (
+                      <ReferenceApproaches
+                        approaches={reviewDetailsCache[reviewQuestionSlug].referenceSolutions}
+                        isInterviewMode={false}
+                      />
+                    ) : (
+                      <div className="p-4 rounded-lg bg-surface/50 text-xs text-text-3 text-center">
+                        No multi-approach reference solutions recorded for this challenge yet.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

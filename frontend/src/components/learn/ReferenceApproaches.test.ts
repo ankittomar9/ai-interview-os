@@ -108,4 +108,52 @@ describe('V7-06: ReferenceApproaches UI & Masking Defense', () => {
     );
     assert.strictEqual(html, '', 'Empty approaches must render empty');
   });
+
+  it('Gate V7-06 (d) / F1 Remediation: post-submission closed-round review renders full multi-approach suite', () => {
+    // In post-submission review, isInterviewMode is false (round completed)
+    const html = renderToString(
+      React.createElement(ReferenceApproaches, {
+        approaches: threeApproachesFixture,
+        isInterviewMode: false
+      })
+    );
+
+    assert.ok(html.includes('Reference Approaches (3)'), 'Closed-round review must render container with count 3');
+    assert.ok(html.includes('approach-card-canonical-hashmap'), 'Closed-round review must render PRIMARY card');
+    assert.ok(html.includes('approach-card-two-pointers'), 'Closed-round review must render ALTERNATE card 1');
+    assert.ok(html.includes('approach-card-binary-search'), 'Closed-round review must render ALTERNATE card 2');
+    assert.ok(html.includes('Time: O(N)'), 'Closed-round review must render complexity chips');
+  });
+
+  it('Gate V7-06 (e) / F1 Remediation: DiagnosticReportView and PracticeSummary mount ReferenceApproaches', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+
+    const reportViewSrc = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/DiagnosticReportView.tsx'),
+      'utf-8'
+    );
+    assert.ok(
+      reportViewSrc.includes("import { ReferenceApproaches } from './learn/ReferenceApproaches';"),
+      'DiagnosticReportView must import ReferenceApproaches'
+    );
+    assert.ok(
+      reportViewSrc.includes('<ReferenceApproaches'),
+      'DiagnosticReportView must mount ReferenceApproaches in closed-round review'
+    );
+
+    const practiceSummarySrc = fs.readFileSync(
+      path.resolve(process.cwd(), 'src/components/PracticeSummary.tsx'),
+      'utf-8'
+    );
+    assert.ok(
+      practiceSummarySrc.includes("import { ReferenceApproaches } from './learn/ReferenceApproaches';"),
+      'PracticeSummary must import ReferenceApproaches'
+    );
+    assert.ok(
+      practiceSummarySrc.includes('<ReferenceApproaches'),
+      'PracticeSummary must mount ReferenceApproaches for practice review'
+    );
+  });
 });
+

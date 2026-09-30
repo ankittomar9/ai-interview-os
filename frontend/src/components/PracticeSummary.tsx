@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { GenerateQuestionResponse } from '../types';
 import { usePlaygroundProgress } from '../hooks/usePlaygroundProgress';
 import { CheckCircle2, Eye, HelpCircle, ArrowRight, RotateCcw, Home, Sparkles } from 'lucide-react';
+import { ReferenceApproaches } from './learn/ReferenceApproaches';
 
 interface Props {
   questions: GenerateQuestionResponse[];
@@ -21,6 +22,7 @@ export const PracticeSummary: React.FC<Props> = ({
   onBrowseCatalog
 }) => {
   const { allProgress } = usePlaygroundProgress();
+  const [selectedPracticeSlug, setSelectedPracticeSlug] = useState<string | null>(null);
 
   let solvedCount = 0;
   let assistedCount = 0;
@@ -95,12 +97,14 @@ export const PracticeSummary: React.FC<Props> = ({
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Best Runtime</th>
                 <th className="py-3 px-4 text-right">Runs</th>
+                <th className="py-3 px-4 text-right">Solutions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
               {questions.map((q) => {
                 const slug = q.problemSlug || q.slug || '';
                 const prog = allProgress[slug] || { status: 'untouched', attempts: 0, solutionViewed: false };
+                const hasSolutions = q.referenceSolutions && q.referenceSolutions.length > 0;
 
                 return (
                   <tr key={slug} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
@@ -136,12 +140,53 @@ export const PracticeSummary: React.FC<Props> = ({
                     <td className="py-3 px-4 text-right font-mono text-slate-700 dark:text-slate-300">
                       {prog.attempts || 0}
                     </td>
+                    <td className="py-3 px-4 text-right">
+                      {hasSolutions ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPracticeSlug(selectedPracticeSlug === slug ? null : slug)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-all cursor-pointer"
+                          data-testid={`btn-practice-solution-${slug}`}
+                        >
+                          {selectedPracticeSlug === slug ? 'Hide' : 'Review'}
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+
+        {/* Practice Session Reference Approaches Reveal */}
+        {selectedPracticeSlug && (() => {
+          const selectedQ = questions.find((q) => (q.problemSlug || q.slug || '') === selectedPracticeSlug);
+          if (!selectedQ?.referenceSolutions || selectedQ.referenceSolutions.length === 0) return null;
+          return (
+            <div
+              className="mb-8 p-6 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-slate-50 dark:bg-slate-900/60 shadow-sm animate-fade-in"
+              data-testid="practice-reference-approaches-panel"
+            >
+              <div className="flex items-center justify-between mb-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  Reference Approaches: <span className="font-mono text-indigo-600">{selectedQ.title}</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPracticeSlug(null)}
+                  className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+              <ReferenceApproaches approaches={selectedQ.referenceSolutions} isInterviewMode={false} />
+            </div>
+          );
+        })()}
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
