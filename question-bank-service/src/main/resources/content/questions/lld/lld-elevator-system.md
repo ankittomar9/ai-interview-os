@@ -14,7 +14,7 @@ tags:
 - state-pattern
 - concurrency
 - dispatcher
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -26,6 +26,300 @@ coaching:
   - Differentiate between external hall calls (source floor + desired direction UP/DOWN) and internal car requests (destination floor).
   - 'Explain the dispatching policy: how does the system pick which elevator car services an external request to minimize wait time?'
   - Address thread safety and synchronization when concurrent button presses register from both inside and outside the car.
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>elevator-system</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Elevator System
+
+    ## Overview
+    Implement an object-oriented Elevator System with configurable dispatching algorithms (Shortest Seek Time First / FCFS) and car motion state management.
+
+    ## Key Components
+    - `com.interviewos.elevator.model.ElevatorCar`: Tracks floor positions, queue of target floors, and direction.
+    - `com.interviewos.elevator.strategy.DispatchingStrategy`: Strategy interface for elevator selection.
+    - `com.interviewos.elevator.service.ElevatorSystem`: Primary controller handling hall calls and floor selections.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/elevator/service/ElevatorSystem.java`
+    2. `src/main/java/com/interviewos/elevator/strategy/ShortestSeekTimeFirstStrategy.java`
+    3. `src/main/java/com/interviewos/elevator/model/ElevatorCar.java`
+  src/main/java/com/interviewos/elevator/model/Direction.java: |
+    package com.interviewos.elevator.model;
+
+    public enum Direction {
+        UP,
+        DOWN,
+        IDLE
+    }
+  src/main/java/com/interviewos/elevator/model/ElevatorStatus.java: |
+    package com.interviewos.elevator.model;
+
+    public class ElevatorStatus {
+        private final int currentFloor;
+        private final Direction direction;
+
+        public ElevatorStatus(int currentFloor, Direction direction) {
+            this.currentFloor = currentFloor;
+            this.direction = direction;
+        }
+
+        public int getCurrentFloor() { return currentFloor; }
+        public Direction getDirection() { return direction; }
+    }
+  src/main/java/com/interviewos/elevator/model/ElevatorCar.java: |
+    package com.interviewos.elevator.model;
+
+    import java.util.LinkedList;
+    import java.util.Queue;
+
+    public class ElevatorCar {
+        private final int id;
+        private int currentFloor;
+        private Direction direction;
+        private final Queue<Integer> targetFloors;
+
+        public ElevatorCar(int id, int startingFloor) {
+            this.id = id;
+            this.currentFloor = startingFloor;
+            this.direction = Direction.IDLE;
+            this.targetFloors = new LinkedList<>();
+        }
+
+        public synchronized void addFloorRequest(int floor) {
+            // TODO: Enqueue floor if not present, update direction
+            throw new UnsupportedOperationException("TODO: Implement addFloorRequest");
+        }
+
+        public synchronized void step() {
+            // TODO: Move towards head target floor, pop when reached, set IDLE if queue empty
+            throw new UnsupportedOperationException("TODO: Implement step");
+        }
+
+        public synchronized boolean isIdle() {
+            return targetFloors.isEmpty();
+        }
+
+        public synchronized int getId() { return id; }
+        public synchronized int getCurrentFloor() { return currentFloor; }
+        public synchronized Direction getDirection() { return direction; }
+        public synchronized ElevatorStatus getStatus() { return new ElevatorStatus(currentFloor, direction); }
+        public synchronized Queue<Integer> getTargetFloors() { return new LinkedList<>(targetFloors); }
+    }
+  src/main/java/com/interviewos/elevator/strategy/DispatchingStrategy.java: |
+    package com.interviewos.elevator.strategy;
+
+    import com.interviewos.elevator.model.Direction;
+    import com.interviewos.elevator.model.ElevatorCar;
+    import java.util.List;
+
+    public interface DispatchingStrategy {
+        ElevatorCar selectElevator(List<ElevatorCar> elevators, int requestedFloor, Direction requestedDirection);
+    }
+  src/main/java/com/interviewos/elevator/strategy/ShortestSeekTimeFirstStrategy.java: |
+    package com.interviewos.elevator.strategy;
+
+    import com.interviewos.elevator.model.Direction;
+    import com.interviewos.elevator.model.ElevatorCar;
+    import java.util.List;
+
+    public class ShortestSeekTimeFirstStrategy implements DispatchingStrategy {
+        @Override
+        public ElevatorCar selectElevator(List<ElevatorCar> elevators, int requestedFloor, Direction requestedDirection) {
+            // TODO: Pick closest elevator that is either idle or moving in requested direction towards requestedFloor
+            throw new UnsupportedOperationException("TODO: Implement selectElevator in ShortestSeekTimeFirstStrategy");
+        }
+    }
+  src/main/java/com/interviewos/elevator/service/ElevatorDispatch.java: |
+    package com.interviewos.elevator.service;
+
+    import com.interviewos.elevator.model.Direction;
+    import com.interviewos.elevator.model.ElevatorCar;
+    import com.interviewos.elevator.strategy.DispatchingStrategy;
+    import java.util.List;
+
+    public class ElevatorDispatch {
+        private final DispatchingStrategy strategy;
+
+        public ElevatorDispatch(DispatchingStrategy strategy) {
+            this.strategy = strategy;
+        }
+
+        public ElevatorCar dispatchElevatorCar(int floor, Direction direction, List<ElevatorCar> elevators) {
+            ElevatorCar selected = strategy.selectElevator(elevators, floor, direction);
+            if (selected != null) {
+                selected.addFloorRequest(floor);
+            }
+            return selected;
+        }
+    }
+  src/main/java/com/interviewos/elevator/service/ElevatorSystem.java: |
+    package com.interviewos.elevator.service;
+
+    import com.interviewos.elevator.model.Direction;
+    import com.interviewos.elevator.model.ElevatorCar;
+    import com.interviewos.elevator.model.ElevatorStatus;
+    import com.interviewos.elevator.strategy.DispatchingStrategy;
+    import java.util.ArrayList;
+    import java.util.List;
+
+    public class ElevatorSystem {
+        private final List<ElevatorCar> elevators;
+        private final ElevatorDispatch dispatchController;
+
+        public ElevatorSystem(List<ElevatorCar> elevators, DispatchingStrategy strategy) {
+            this.elevators = elevators != null ? elevators : new ArrayList<>();
+            this.dispatchController = new ElevatorDispatch(strategy);
+        }
+
+        public List<ElevatorStatus> getAllElevatorStatuses() {
+            List<ElevatorStatus> statuses = new ArrayList<>();
+            for (ElevatorCar car : elevators) {
+                statuses.add(car.getStatus());
+            }
+            return statuses;
+        }
+
+        public ElevatorCar requestElevator(int currentFloor, Direction direction) {
+            // TODO: Delegate to dispatchController
+            throw new UnsupportedOperationException("TODO: Implement requestElevator");
+        }
+
+        public void selectFloor(ElevatorCar car, int destinationFloor) {
+            // TODO: Enqueue destination floor on car
+            throw new UnsupportedOperationException("TODO: Implement selectFloor");
+        }
+
+        public List<ElevatorCar> getElevators() { return elevators; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/elevator/service/ElevatorSystem.java
+- src/main/java/com/interviewos/elevator/strategy/ShortestSeekTimeFirstStrategy.java
+- src/main/java/com/interviewos/elevator/model/ElevatorCar.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/elevator/ElevatorDispatchTest.java: |
+    package com.interviewos.elevator;
+
+    import com.interviewos.elevator.model.Direction;
+    import com.interviewos.elevator.model.ElevatorCar;
+    import com.interviewos.elevator.strategy.ShortestSeekTimeFirstStrategy;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.util.List;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class ElevatorDispatchTest {
+        @Test
+        @DisplayName("SSTF strategy selects closest idle elevator")
+        void testSelectClosestIdle() {
+            ElevatorCar car1 = new ElevatorCar(1, 1);
+            ElevatorCar car2 = new ElevatorCar(2, 8);
+            ElevatorCar car3 = new ElevatorCar(3, 15);
+
+            ShortestSeekTimeFirstStrategy strategy = new ShortestSeekTimeFirstStrategy();
+            ElevatorCar selected = strategy.selectElevator(List.of(car1, car2, car3), 7, Direction.UP);
+
+            assertNotNull(selected);
+            assertEquals(2, selected.getId(), "Car 2 at floor 8 is closest to floor 7");
+        }
+    }
+  src/test/java/com/interviewos/elevator/ElevatorCarMovementTest.java: |
+    package com.interviewos.elevator;
+
+    import com.interviewos.elevator.model.Direction;
+    import com.interviewos.elevator.model.ElevatorCar;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class ElevatorCarMovementTest {
+        @Test
+        @DisplayName("ElevatorCar sets direction and steps toward destination")
+        void testCarStepping() {
+            ElevatorCar car = new ElevatorCar(1, 0);
+            assertTrue(car.isIdle());
+
+            car.addFloorRequest(2);
+            assertFalse(car.isIdle());
+            assertEquals(Direction.UP, car.getDirection());
+
+            car.step();
+            assertEquals(1, car.getCurrentFloor());
+            assertEquals(Direction.UP, car.getDirection());
+
+            car.step();
+            assertEquals(2, car.getCurrentFloor());
+            assertTrue(car.isIdle());
+            assertEquals(Direction.IDLE, car.getDirection());
+        }
+    }
+  src/test/java/com/interviewos/elevator/ElevatorSystemIntegrationTest.java: |
+    package com.interviewos.elevator;
+
+    import com.interviewos.elevator.model.Direction;
+    import com.interviewos.elevator.model.ElevatorCar;
+    import com.interviewos.elevator.service.ElevatorSystem;
+    import com.interviewos.elevator.strategy.ShortestSeekTimeFirstStrategy;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.util.List;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class ElevatorSystemIntegrationTest {
+        @Test
+        @DisplayName("Elevator system coordinates hall request and internal floor selection")
+        void testSystemIntegration() {
+            ElevatorCar car1 = new ElevatorCar(1, 1);
+            ElevatorCar car2 = new ElevatorCar(2, 10);
+            ElevatorSystem system = new ElevatorSystem(List.of(car1, car2), new ShortestSeekTimeFirstStrategy());
+
+            ElevatorCar dispatched = system.requestElevator(2, Direction.UP);
+            assertNotNull(dispatched);
+            assertEquals(1, dispatched.getId());
+
+            system.selectFloor(dispatched, 6);
+            assertEquals(2, dispatched.getTargetFloors().size());
+            assertEquals(2, system.getAllElevatorStatuses().size());
+        }
+    }
+
 starterCode: "public class ElevatorSystem {\n    private final List<ElevatorCar> elevators;\n    private final ElevatorDispatch dispatchController;\n    public ElevatorSystem(List<ElevatorCar> elevators, DispatchingStrategy strategy) {\n        this.elevators = elevators;\n        this.dispatchController = new ElevatorDispatch(strategy);\n    }\n    // Returns the current status of all elevators in the system\npublic List<ElevatorStatus> getAllElevatorStatuses() {\n        List<ElevatorStatus> statuses = new ArrayList<>();\n        for (ElevatorCar elevator : elevators) {\n            statuses.add(elevator.getStatus());\n        }\n        return statuses;\n    }\n    // Handles a request for an elevator from a specific floor and direction\npublic void requestElevator(int currentFloor, Direction direction) {\n        dispatchController.dispatchElevatorCar(currentFloor, direction, elevators);\n    }\n    // Handles a floor selection request from inside an elevator\npublic void selectFloor(ElevatorCar\
   \ car, int destinationFloor) {\n        car.addFloorRequest(destinationFloor);\n    }\n}\n\npublic class ElevatorCar {\n    private ElevatorStatus status;\n    private final Queue<Integer> targetFloors;\n    public ElevatorCar(int startingFloor) {\n        this.status = new ElevatorStatus(startingFloor, Direction.IDLE);\n        this.targetFloors = new LinkedList<>();\n    }\n    // Returns the current state of the elevator\npublic ElevatorStatus getStatus() {\n        return status;\n    }\n    // Adds a new floor request if it's not already in the queue\npublic void addFloorRequest(int floor) {\n        if (!targetFloors.contains(floor)) {\n            targetFloors.offer(floor);\n            updateDirection(floor);\n        }\n    }\n    // Checks if elevator has no pending floor requests\npublic boolean isIdle() {\n        return targetFloors.isEmpty();\n    }\n    // Updates elevator direction based on target floor position\nprivate void updateDirection(int targetFloor) {\n       \
   \ if (status.getCurrentFloor() < targetFloor) {\n            status = new ElevatorStatus(status.getCurrentFloor(), Direction.UP);\n        } else\nif (status.getCurrentFloor() > targetFloor) {\n            status = new ElevatorStatus(status.getCurrentFloor(), Direction.DOWN);\n        }\n    }\n    // getters are omitted for brevity\n}\n\npublic class ElevatorDispatch {\n    private final DispatchingStrategy strategy;\n    public ElevatorDispatch(DispatchingStrategy strategy) {\n        this.strategy = strategy;\n    }\n    // Handles requests from the hallway button and assigns an elevator based on the dispatching\n// strategy.\npublic void dispatchElevatorCar(int floor, Direction direction, List<ElevatorCar> elevators) {\n        ElevatorCar\nselectedElevator\n= strategy.selectElevator(elevators, floor, direction);\n        if (selectedElevator != null) {\n            selectedElevator.addFloorRequest(floor);\n        }\n    }\n}"

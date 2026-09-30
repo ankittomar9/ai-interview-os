@@ -14,7 +14,7 @@ tags:
 - state-pattern
 - concurrency
 - booking-system
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -26,6 +26,456 @@ coaching:
   - 'Address concurrency head-on: what happens when 50 users select seat G12 at the same instant during a blockbuster release?'
   - Differentiate between physical Cinema/Hall entities and ephemeral Show/Booking instances.
   - Highlight how the payment flow decouples from the seat reservation engine using event notifications or reservation states.
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>movie-ticket-booking</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Movie Ticket Booking System
+
+    ## Overview
+    Implement an object-oriented Movie Ticket Booking System supporting cinema layout, temporary TTL seat reservations, and booking confirmation with pluggable pricing strategies.
+
+    ## Key Components
+    - `com.interviewos.booking.service.SeatLockManager`: TTL seat lock management to prevent race conditions and double bookings.
+    - `com.interviewos.booking.service.ScreeningManager`: Scheduled showtimes, seat availability, and confirmed ticket ledger.
+    - `com.interviewos.booking.service.MovieBookingSystem`: Facade for booking workflow.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/booking/service/ScreeningManager.java`
+    2. `src/main/java/com/interviewos/booking/service/MovieBookingSystem.java`
+    3. `src/main/java/com/interviewos/booking/service/SeatLockManager.java`
+  src/main/java/com/interviewos/booking/model/Movie.java: |
+    package com.interviewos.booking.model;
+
+    import java.time.Duration;
+
+    public class Movie {
+        private final String title;
+        private final String genre;
+        private final int durationInMinutes;
+
+        public Movie(String title, String genre, int durationInMinutes) {
+            this.title = title;
+            this.genre = genre;
+            this.durationInMinutes = durationInMinutes;
+        }
+
+        public String getTitle() { return title; }
+        public String getGenre() { return genre; }
+        public Duration getDuration() { return Duration.ofMinutes(durationInMinutes); }
+    }
+  src/main/java/com/interviewos/booking/strategy/PricingStrategy.java: |
+    package com.interviewos.booking.strategy;
+
+    import java.math.BigDecimal;
+
+    public interface PricingStrategy {
+        BigDecimal getPrice();
+    }
+  src/main/java/com/interviewos/booking/strategy/NormalRate.java: |
+    package com.interviewos.booking.strategy;
+
+    import java.math.BigDecimal;
+
+    public class NormalRate implements PricingStrategy {
+        private final BigDecimal price;
+
+        public NormalRate(BigDecimal price) {
+            this.price = price;
+        }
+
+        @Override
+        public BigDecimal getPrice() {
+            return price;
+        }
+    }
+  src/main/java/com/interviewos/booking/strategy/VIPRate.java: |
+    package com.interviewos.booking.strategy;
+
+    import java.math.BigDecimal;
+
+    public class VIPRate implements PricingStrategy {
+        private final BigDecimal price;
+
+        public VIPRate(BigDecimal price) {
+            this.price = price;
+        }
+
+        @Override
+        public BigDecimal getPrice() {
+            return price;
+        }
+    }
+  src/main/java/com/interviewos/booking/model/Seat.java: |
+    package com.interviewos.booking.model;
+
+    import com.interviewos.booking.strategy.PricingStrategy;
+
+    public class Seat {
+        private final String seatNumber;
+        private final PricingStrategy pricingStrategy;
+
+        public Seat(String seatNumber, PricingStrategy pricingStrategy) {
+            this.seatNumber = seatNumber;
+            this.pricingStrategy = pricingStrategy;
+        }
+
+        public String getSeatNumber() { return seatNumber; }
+        public PricingStrategy getPricingStrategy() { return pricingStrategy; }
+    }
+  src/main/java/com/interviewos/booking/model/Layout.java: |
+    package com.interviewos.booking.model;
+
+    import java.util.*;
+
+    public class Layout {
+        private final int rows;
+        private final int columns;
+        private final Map<String, Seat> seatsByNumber = new HashMap<>();
+
+        public Layout(int rows, int columns) {
+            this.rows = rows;
+            this.columns = columns;
+        }
+
+        public void addSeat(Seat seat) {
+            if (seat != null) {
+                seatsByNumber.put(seat.getSeatNumber(), seat);
+            }
+        }
+
+        public Seat getSeatByNumber(String seatNumber) {
+            return seatsByNumber.get(seatNumber);
+        }
+
+        public List<Seat> getAllSeats() {
+            return new ArrayList<>(seatsByNumber.values());
+        }
+    }
+  src/main/java/com/interviewos/booking/model/Room.java: |
+    package com.interviewos.booking.model;
+
+    public class Room {
+        private final String roomNumber;
+        private final Layout layout;
+
+        public Room(String roomNumber, Layout layout) {
+            this.roomNumber = roomNumber;
+            this.layout = layout;
+        }
+
+        public String getRoomNumber() { return roomNumber; }
+        public Layout getLayout() { return layout; }
+    }
+  src/main/java/com/interviewos/booking/model/Screening.java: |
+    package com.interviewos.booking.model;
+
+    import java.time.LocalDateTime;
+
+    public class Screening {
+        private final String id;
+        private final Movie movie;
+        private final Room room;
+        private final LocalDateTime startTime;
+
+        public Screening(String id, Movie movie, Room room, LocalDateTime startTime) {
+            this.id = id;
+            this.movie = movie;
+            this.room = room;
+            this.startTime = startTime;
+        }
+
+        public String getId() { return id; }
+        public Movie getMovie() { return movie; }
+        public Room getRoom() { return room; }
+        public LocalDateTime getStartTime() { return startTime; }
+    }
+  src/main/java/com/interviewos/booking/model/Ticket.java: |
+    package com.interviewos.booking.model;
+
+    import java.math.BigDecimal;
+
+    public class Ticket {
+        private final Screening screening;
+        private final Seat seat;
+        private final BigDecimal price;
+
+        public Ticket(Screening screening, Seat seat, BigDecimal price) {
+            this.screening = screening;
+            this.seat = seat;
+            this.price = price;
+        }
+
+        public Screening getScreening() { return screening; }
+        public Seat getSeat() { return seat; }
+        public BigDecimal getPrice() { return price; }
+    }
+  src/main/java/com/interviewos/booking/service/ScreeningManager.java: |
+    package com.interviewos.booking.service;
+
+    import com.interviewos.booking.model.*;
+    import java.util.*;
+    import java.util.concurrent.ConcurrentHashMap;
+
+    public class ScreeningManager {
+        private final Map<String, List<Screening>> screeningsByMovieTitle = new ConcurrentHashMap<>();
+        private final Map<String, List<Ticket>> ticketsByScreeningId = new ConcurrentHashMap<>();
+
+        public void addScreening(Screening screening) {
+            if (screening != null) {
+                screeningsByMovieTitle.computeIfAbsent(screening.getMovie().getTitle(), k -> new ArrayList<>()).add(screening);
+            }
+        }
+
+        public List<Screening> getScreeningsForMovie(String movieTitle) {
+            return screeningsByMovieTitle.getOrDefault(movieTitle, List.of());
+        }
+
+        public synchronized void addTicket(Screening screening, Ticket ticket) {
+            // TODO: Record confirmed ticket for screening
+            throw new UnsupportedOperationException("TODO: Implement addTicket");
+        }
+
+        public synchronized List<Seat> getAvailableSeats(Screening screening) {
+            // TODO: Return all layout seats minus already booked seats
+            throw new UnsupportedOperationException("TODO: Implement getAvailableSeats");
+        }
+
+        public synchronized boolean isSeatBooked(Screening screening, Seat seat) {
+            // TODO: Check if seat is booked in ticketsByScreeningId
+            throw new UnsupportedOperationException("TODO: Implement isSeatBooked");
+        }
+
+        public List<Ticket> getTicketsForScreening(String screeningId) {
+            return ticketsByScreeningId.getOrDefault(screeningId, List.of());
+        }
+    }
+  src/main/java/com/interviewos/booking/service/SeatLockManager.java: |
+    package com.interviewos.booking.service;
+
+    import com.interviewos.booking.model.Screening;
+    import com.interviewos.booking.model.Seat;
+    import java.time.Duration;
+    import java.time.LocalDateTime;
+    import java.util.Map;
+    import java.util.concurrent.ConcurrentHashMap;
+
+    public class SeatLockManager {
+        private final Map<String, LockEntry> locks = new ConcurrentHashMap<>();
+        private final Duration lockDuration;
+
+        public SeatLockManager(Duration lockDuration) {
+            this.lockDuration = lockDuration != null ? lockDuration : Duration.ofMinutes(10);
+        }
+
+        public synchronized boolean lockSeat(Screening screening, Seat seat, String userId) {
+            // TODO: Check if already locked and not expired. If free/expired, set new lock with userId and expiration.
+            throw new UnsupportedOperationException("TODO: Implement lockSeat");
+        }
+
+        public synchronized boolean isLocked(Screening screening, Seat seat) {
+            // TODO: Return true if seat has an active non-expired lock
+            throw new UnsupportedOperationException("TODO: Implement isLocked");
+        }
+
+        public synchronized void unlockSeat(Screening screening, Seat seat) {
+            locks.remove(getKey(screening, seat));
+        }
+
+        private String getKey(Screening screening, Seat seat) {
+            return screening.getId() + "#" + seat.getSeatNumber();
+        }
+
+        private static class LockEntry {
+            final String userId;
+            final LocalDateTime expiry;
+            LockEntry(String userId, LocalDateTime expiry) {
+                this.userId = userId;
+                this.expiry = expiry;
+            }
+            boolean isExpired() {
+                return LocalDateTime.now().isAfter(expiry);
+            }
+        }
+    }
+  src/main/java/com/interviewos/booking/service/MovieBookingSystem.java: |
+    package com.interviewos.booking.service;
+
+    import com.interviewos.booking.model.*;
+    import java.math.BigDecimal;
+    import java.util.List;
+
+    public class MovieBookingSystem {
+        private final ScreeningManager screeningManager;
+        private final SeatLockManager seatLockManager;
+
+        public MovieBookingSystem(ScreeningManager screeningManager, SeatLockManager seatLockManager) {
+            this.screeningManager = screeningManager;
+            this.seatLockManager = seatLockManager;
+        }
+
+        public Ticket bookTicket(Screening screening, Seat seat, String userId) {
+            // TODO: Verify seat is locked by userId or available, not booked; record ticket via screeningManager; release lock
+            throw new UnsupportedOperationException("TODO: Implement bookTicket");
+        }
+
+        public List<Seat> getAvailableSeats(Screening screening) {
+            return screeningManager.getAvailableSeats(screening);
+        }
+
+        public ScreeningManager getScreeningManager() { return screeningManager; }
+        public SeatLockManager getSeatLockManager() { return seatLockManager; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/booking/service/ScreeningManager.java
+- src/main/java/com/interviewos/booking/service/MovieBookingSystem.java
+- src/main/java/com/interviewos/booking/service/SeatLockManager.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/booking/SeatLockManagerTest.java: |
+    package com.interviewos.booking;
+
+    import com.interviewos.booking.model.*;
+    import com.interviewos.booking.service.SeatLockManager;
+    import com.interviewos.booking.strategy.NormalRate;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+    import java.time.Duration;
+    import java.time.LocalDateTime;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class SeatLockManagerTest {
+        @Test
+        @DisplayName("Locking a seat reserves it and prevents concurrent lock by another user")
+        void testLockContention() {
+            SeatLockManager lockManager = new SeatLockManager(Duration.ofMinutes(10));
+            Screening screening = new Screening("S1", new Movie("Inception", "Sci-Fi", 148), new Room("R1", new Layout(5, 5)), LocalDateTime.now());
+            Seat seat = new Seat("A1", new NormalRate(new BigDecimal("12.00")));
+
+            assertTrue(lockManager.lockSeat(screening, seat, "user-101"));
+            assertTrue(lockManager.isLocked(screening, seat));
+
+            // Second user must be rejected while lock is active
+            assertFalse(lockManager.lockSeat(screening, seat, "user-202"));
+        }
+    }
+  src/test/java/com/interviewos/booking/BookingPricingTest.java: |
+    package com.interviewos.booking;
+
+    import com.interviewos.booking.strategy.NormalRate;
+    import com.interviewos.booking.strategy.VIPRate;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class BookingPricingTest {
+        @Test
+        @DisplayName("Normal and VIP pricing strategies yield configured price tiers")
+        void testPricing() {
+            NormalRate normal = new NormalRate(new BigDecimal("12.50"));
+            VIPRate vip = new VIPRate(new BigDecimal("25.00"));
+
+            assertEquals(new BigDecimal("12.50"), normal.getPrice());
+            assertEquals(new BigDecimal("25.00"), vip.getPrice());
+            assertTrue(vip.getPrice().compareTo(normal.getPrice()) > 0);
+        }
+    }
+  src/test/java/com/interviewos/booking/MovieBookingSystemTest.java: |
+    package com.interviewos.booking;
+
+    import com.interviewos.booking.model.*;
+    import com.interviewos.booking.service.MovieBookingSystem;
+    import com.interviewos.booking.service.ScreeningManager;
+    import com.interviewos.booking.service.SeatLockManager;
+    import com.interviewos.booking.strategy.NormalRate;
+    import org.junit.jupiter.api.BeforeEach;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+    import java.time.Duration;
+    import java.time.LocalDateTime;
+    import java.util.List;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class MovieBookingSystemTest {
+        private MovieBookingSystem system;
+        private Screening screening;
+        private Seat seat1;
+        private Seat seat2;
+
+        @BeforeEach
+        void setUp() {
+            Layout layout = new Layout(2, 2);
+            seat1 = new Seat("A1", new NormalRate(new BigDecimal("10.00")));
+            seat2 = new Seat("A2", new NormalRate(new BigDecimal("10.00")));
+            layout.addSeat(seat1);
+            layout.addSeat(seat2);
+
+            Room room = new Room("R1", layout);
+            Movie movie = new Movie("Interstellar", "Sci-Fi", 169);
+            screening = new Screening("SCR-1", movie, room, LocalDateTime.now().plusHours(2));
+
+            ScreeningManager sm = new ScreeningManager();
+            sm.addScreening(screening);
+            SeatLockManager lm = new SeatLockManager(Duration.ofMinutes(10));
+            system = new MovieBookingSystem(sm, lm);
+        }
+
+        @Test
+        @DisplayName("Booking confirmed seat removes it from available seat list")
+        void testBookingRemovesAvailableSeat() {
+            List<Seat> initialSeats = system.getAvailableSeats(screening);
+            assertEquals(2, initialSeats.size());
+
+            Ticket ticket = system.bookTicket(screening, seat1, "user-1");
+            assertNotNull(ticket);
+            assertEquals("A1", ticket.getSeat().getSeatNumber());
+
+            List<Seat> remainingSeats = system.getAvailableSeats(screening);
+            assertEquals(1, remainingSeats.size());
+            assertEquals("A2", remainingSeats.get(0).getSeatNumber());
+        }
+    }
+
 starterCode: "public class Movie {\n    private final String title;\n    private final String genre;\n    private final int durationInMinutes;\n    public Movie(String title, String genre, int durationInMinutes) {\n        this.title = title;\n        this.genre = genre;\n        this.durationInMinutes = durationInMinutes;\n    }\n    public Duration getDuration() {\n        return Duration.ofMinutes(durationInMinutes);\n    }\n    // getter methods are omitted for brevity\n}\n\npublic class Cinema {\n    private final String name;\n    private final String location;\n    private final List<Room> rooms;\n    public Cinema(String name, String location) {\n        this.name = name;\n        this.location = location;\n        this.rooms = new ArrayList<>();\n    }\n    public void addRoom(Room room) {\n        rooms.add(room);\n    }\n    // getter and setter methods are omitted for brevity\n}\n\npublic class Room {\n    private final String roomNumber;\n    private final Layout layout;\n \
   \   public Room(String roomNumber, Layout layout) {\n        this.roomNumber = roomNumber;\n        this.layout = layout;\n    }\n    // getter and setter methods are omitted for brevity\n}"
 solutionCode: "public class Movie {\n    private final String title;\n    private final String genre;\n    private final int durationInMinutes;\n    public Movie(String title, String genre, int durationInMinutes) {\n        this.title = title;\n        this.genre = genre;\n        this.durationInMinutes = durationInMinutes;\n    }\n    public Duration getDuration() {\n        return Duration.ofMinutes(durationInMinutes);\n    }\n    // getter methods are omitted for brevity\n}\n\npublic class Cinema {\n    private final String name;\n    private final String location;\n    private final List<Room> rooms;\n    public Cinema(String name, String location) {\n        this.name = name;\n        this.location = location;\n        this.rooms = new ArrayList<>();\n    }\n    public void addRoom(Room room) {\n        rooms.add(room);\n    }\n    // getter and setter methods are omitted for brevity\n}\n\npublic class Room {\n    private final String roomNumber;\n    private final Layout layout;\n\
