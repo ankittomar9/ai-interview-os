@@ -45,6 +45,11 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
 
   const [hintsRevealed, setHintsRevealed] = useState<Record<string, number>>({});
   const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, boolean>>({});
+  const [hasWorkspaceRunAttempt, setHasWorkspaceRunAttempt] = useState(false);
+
+  useEffect(() => {
+    setHasWorkspaceRunAttempt(false);
+  }, [question?.slug, props.activeQuestionIndex]);
 
   useEffect(() => {
     if (!providerError || !onClearProviderError) return;
@@ -140,7 +145,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
                   question={question}
                   sessionId={sessionId}
                   isPracticeMode={isPlayground}
-                  hasRunAttempt={executionResult !== null}
+                  hasRunAttempt={executionResult !== null || hasWorkspaceRunAttempt}
                   isSolved={isPlayground && questionStatusMap[activeSlug] === 'PASSED'}
                   isBookmarked={!!bookmarkedMap[activeSlug]}
                   onToggleBookmark={() => setBookmarkedMap((p) => ({ ...p, [activeSlug]: !p[activeSlug] }))}
@@ -172,6 +177,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
                 onNextStage={onNextStage}
                 onSelectTrack={onSwitchTrack}
                 isApproachGateLocked={props.isApproachGateLocked}
+                onRunAttempt={() => setHasWorkspaceRunAttempt(true)}
               />
             </Panel>
           </Group>

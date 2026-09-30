@@ -36,6 +36,7 @@ interface TrackScreenRouterProps {
   onSelectTrack?: (track: InterviewTrack) => void;
   onBrowseCatalog?: () => void;
   isApproachGateLocked?: boolean;
+  onRunAttempt?: () => void;
 }
 
 export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
@@ -62,7 +63,8 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   candidateName,
   onSelectTrack,
   onBrowseCatalog,
-  isApproachGateLocked
+  isApproachGateLocked,
+  onRunAttempt
 }) => {
   const resolveSectionType = (): SectionType => {
     if (sectionType) return sectionType;
@@ -144,6 +146,7 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
             question={question}
             onSubmitProject={onSubmitSolution}
             isApproachGateLocked={isApproachGateLocked}
+            onRunAttempt={onRunAttempt}
           />
         );
 
