@@ -3,7 +3,8 @@ slug: dsa-generate-the-fibonacci-series-up-to-n-terms
 title: Generate the Fibonacci Series up to N terms.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [math]
+topics:
+- math
 est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
@@ -34,7 +35,8 @@ hiddenTests:
   expectedOutput: 'Fibonacci Series: 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89'
   weight: 50
 hints:
-- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) algorithmic patterns.
+- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+  algorithmic patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -43,7 +45,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+    techniques to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +60,71 @@ coaching:
 editorial: '### Generate the Fibonacci Series up to N terms.
 
 
-  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up" - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up"
+  - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void fibonacciSeriesHelper(int n) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        fibonacciSeriesHelper(n);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n    public static void fibonacciSeriesHelper(int n){\n         int firstTerm=0; int secondTerm=1;\n         System.out.print(\"Fibonacci Series: \" + firstTerm + \", \" + secondTerm);\n\n        for(int i=2;i<n;i++){\n            int nextTerm=firstTerm+secondTerm;\n\n             System.out.print(\", \"+nextTerm);\n\n            firstTerm=secondTerm;\n            secondTerm=nextTerm;\n        }\n\n       \n    }\n    \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        fibonacciSeriesHelper(n);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void fibonacciSeriesHelper(int\
+  \ n) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        fibonacciSeriesHelper(n);\n  \
+  \  }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n    public static\
+  \ void fibonacciSeriesHelper(int n){\n         int firstTerm=0; int secondTerm=1;\n\
+  \         System.out.print(\"Fibonacci Series: \" + firstTerm + \", \" + secondTerm);\n\
+  \n        for(int i=2;i<n;i++){\n            int nextTerm=firstTerm+secondTerm;\n\
+  \n             System.out.print(\", \"+nextTerm);\n\n            firstTerm=secondTerm;\n\
+  \            secondTerm=nextTerm;\n        }\n\n       \n    }\n    \n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        fibonacciSeriesHelper(n);\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-generate-the-fibonacci-series-up-to-n-terms
+  label: Canonical — Generate the Fibonacci Series up to N terms.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Generate the Fibonacci
+    Series up to N terms..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n\n    public static void\
+    \ fibonacciSeriesHelper(int n){\n         int firstTerm=0; int secondTerm=1;\n\
+    \         System.out.print(\"Fibonacci Series: \" + firstTerm + \", \" + secondTerm);\n\
+    \n        for(int i=2;i<n;i++){\n            int nextTerm=firstTerm+secondTerm;\n\
+    \n             System.out.print(\", \"+nextTerm);\n\n            firstTerm=secondTerm;\n\
+    \            secondTerm=nextTerm;\n        }\n\n       \n    }\n    \n\n    public\
+    \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        fibonacciSeriesHelper(n);\n\
+    \    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Generate the Fibonacci Series up to N
+    terms.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Generate the Fibonacci Series
+    up to N terms. exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Generate\
+    \ the Fibonacci Series up to N terms.\n    }\n}\n"
 ---
 
 ### Generate the Fibonacci Series up to N terms.

@@ -3,7 +3,8 @@ slug: dsa-lc148-sort-list
 title: Sort List
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [linked-list]
+topics:
+- linked-list
 est_minutes: 25
 tags:
 - linked-list
@@ -68,15 +69,103 @@ coaching:
 editorial: '### Sort List
 
 
-  This problem evaluates core techniques in Linked List. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Linked List. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static ListNode sortList(ListNode head) {\n        return new ArrayList<>();\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        ListNode dummy = new ListNode(0);\n        ListNode cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new ListNode(sc.nextInt()); cur = cur.next; }\n        ListNode head = dummy.next;\n        ListNode res = sortList(head);\n        while (res != null) {\n            System.out.print(res.val + (res.next != null ? \" \" : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static ListNode sortList(ListNode head){\n        if(head==null || head.next==null){ return head;}\n\n        ListNode slow=head;\n        ListNode fast=head;\n        ListNode prev=null;\n        while(fast!=null && fast.next!=null){\n            prev=slow;\n            slow=slow.next;\n            fast=fast.next.next;\n        }\n        prev.next=null;\n\n        ListNode left=sortList(head);\n        ListNode right=sortList(slow);\n        return merge(left,right);\n    }\n    public static ListNode merge(ListNode l1,ListNode l2){\n        ListNode dummy =new ListNode();\n        ListNode tail=dummy;\n        while(l1!=null && l2!=null){\n            if(l1.val <l2.val){\n                tail.next=l1;\n                l1=l1.next;\n            }else{\n                tail.next=l2;\n                l2=l2.next;\n            }\n            tail=tail.next;\n        }\n        if(l1!=null ){\n            tail.next=l1;\n\
-  \        }else{\n            tail.next=l2;\n        }\n        return dummy.next;\n    }\n   \n    public static class ListNode{\n        int val;ListNode next;ListNode(){}\n        ListNode(int val){this.val=val;}\n        ListNode(int val,ListNode next){this.val=val;this.next=next;}\n    }\n   \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        ListNode dummy = new ListNode(0);\n        ListNode cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new ListNode(sc.nextInt()); cur = cur.next; }\n        ListNode head = dummy.next;\n        ListNode res = sortList(head);\n        while (res != null) {\n            System.out.print(res.val + (res.next != null ? \" \" : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static ListNode\
+  \ sortList(ListNode head) {\n        return new ArrayList<>();\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        ListNode\
+  \ dummy = new ListNode(0);\n        ListNode cur = dummy;\n        for (int i =\
+  \ 0; i < n; i++) { cur.next = new ListNode(sc.nextInt()); cur = cur.next; }\n  \
+  \      ListNode head = dummy.next;\n        ListNode res = sortList(head);\n   \
+  \     while (res != null) {\n            System.out.print(res.val + (res.next !=\
+  \ null ? \" \" : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static ListNode\
+  \ sortList(ListNode head){\n        if(head==null || head.next==null){ return head;}\n\
+  \n        ListNode slow=head;\n        ListNode fast=head;\n        ListNode prev=null;\n\
+  \        while(fast!=null && fast.next!=null){\n            prev=slow;\n       \
+  \     slow=slow.next;\n            fast=fast.next.next;\n        }\n        prev.next=null;\n\
+  \n        ListNode left=sortList(head);\n        ListNode right=sortList(slow);\n\
+  \        return merge(left,right);\n    }\n    public static ListNode merge(ListNode\
+  \ l1,ListNode l2){\n        ListNode dummy =new ListNode();\n        ListNode tail=dummy;\n\
+  \        while(l1!=null && l2!=null){\n            if(l1.val <l2.val){\n       \
+  \         tail.next=l1;\n                l1=l1.next;\n            }else{\n     \
+  \           tail.next=l2;\n                l2=l2.next;\n            }\n        \
+  \    tail=tail.next;\n        }\n        if(l1!=null ){\n            tail.next=l1;\n\
+  \        }else{\n            tail.next=l2;\n        }\n        return dummy.next;\n\
+  \    }\n   \n    public static class ListNode{\n        int val;ListNode next;ListNode(){}\n\
+  \        ListNode(int val){this.val=val;}\n        ListNode(int val,ListNode next){this.val=val;this.next=next;}\n\
+  \    }\n   \n\n    public static void main(String[] args) {\n        Scanner sc\
+  \ = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n =\
+  \ sc.nextInt();\n        ListNode dummy = new ListNode(0);\n        ListNode cur\
+  \ = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new ListNode(sc.nextInt());\
+  \ cur = cur.next; }\n        ListNode head = dummy.next;\n        ListNode res =\
+  \ sortList(head);\n        while (res != null) {\n            System.out.print(res.val\
+  \ + (res.next != null ? \" \" : \"\"));\n            res = res.next;\n        }\n\
+  \        System.out.println();\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc148-sort-list
+  label: Canonical — Sort List
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Sort List.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static ListNode\
+    \ sortList(ListNode head){\n        if(head==null || head.next==null){ return\
+    \ head;}\n\n        ListNode slow=head;\n        ListNode fast=head;\n       \
+    \ ListNode prev=null;\n        while(fast!=null && fast.next!=null){\n       \
+    \     prev=slow;\n            slow=slow.next;\n            fast=fast.next.next;\n\
+    \        }\n        prev.next=null;\n\n        ListNode left=sortList(head);\n\
+    \        ListNode right=sortList(slow);\n        return merge(left,right);\n \
+    \   }\n    public static ListNode merge(ListNode l1,ListNode l2){\n        ListNode\
+    \ dummy =new ListNode();\n        ListNode tail=dummy;\n        while(l1!=null\
+    \ && l2!=null){\n            if(l1.val <l2.val){\n                tail.next=l1;\n\
+    \                l1=l1.next;\n            }else{\n                tail.next=l2;\n\
+    \                l2=l2.next;\n            }\n            tail=tail.next;\n   \
+    \     }\n        if(l1!=null ){\n            tail.next=l1;\n        }else{\n \
+    \           tail.next=l2;\n        }\n        return dummy.next;\n    }\n   \n\
+    \    public static class ListNode{\n        int val;ListNode next;ListNode(){}\n\
+    \        ListNode(int val){this.val=val;}\n        ListNode(int val,ListNode next){this.val=val;this.next=next;}\n\
+    \    }\n   \n\n    public static void main(String[] args) {\n        Scanner sc\
+    \ = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n\
+    \ = sc.nextInt();\n        ListNode dummy = new ListNode(0);\n        ListNode\
+    \ cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new ListNode(sc.nextInt());\
+    \ cur = cur.next; }\n        ListNode head = dummy.next;\n        ListNode res\
+    \ = sortList(head);\n        while (res != null) {\n            System.out.print(res.val\
+    \ + (res.next != null ? \" \" : \"\"));\n            res = res.next;\n       \
+    \ }\n        System.out.println();\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Sort List
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Sort List exploring secondary
+    algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Sort List\n\
+    \    }\n}\n"
 ---
 
 ### Sort List

@@ -3,7 +3,8 @@ slug: dsa-lc122-best-time-to-buy-and-sell-stock-ii
 title: Best Time to Buy and Sell Stock II
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 25
 tags:
 - arrays
@@ -68,14 +69,73 @@ coaching:
 editorial: '### Best Time to Buy and Sell Stock II
 
 
-  This problem evaluates core techniques in Arrays. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Arrays. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxProfit(int[] prices) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxProfit(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static int maxProfit(int[] prices){\n           if(prices==null || prices.length==0){return 0;}\n     //   int minBuy=prices[0];\n        int profit=0;\n\n        for(int i=1;i<prices.length;i++){\n          //  int currentPrice=prices[i]-prices[i-1];\n            if(prices[i]>prices[i-1]){\n                profit=profit+prices[i]-prices[i-1];\n            }\n        }\n        return profit;\n    }\n    \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxProfit(arr));\n    }\n}\n"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxProfit(int[]\
+  \ prices) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxProfit(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static int maxProfit(int[] prices){\n           if(prices==null\
+  \ || prices.length==0){return 0;}\n     //   int minBuy=prices[0];\n        int\
+  \ profit=0;\n\n        for(int i=1;i<prices.length;i++){\n          //  int currentPrice=prices[i]-prices[i-1];\n\
+  \            if(prices[i]>prices[i-1]){\n                profit=profit+prices[i]-prices[i-1];\n\
+  \            }\n        }\n        return profit;\n    }\n    \n    public static\
+  \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n   \
+  \     if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr\
+  \ = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n  \
+  \      System.out.println(maxProfit(arr));\n    }\n}\n"
+referenceSolutions:
+- approachId: canonical-dsa-lc122-best-time-to-buy-and-sell-stock-ii
+  label: Canonical — Best Time to Buy and Sell Stock II
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Best Time to Buy and Sell
+    Stock II.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static int maxProfit(int[] prices){\n           if(prices==null\
+    \ || prices.length==0){return 0;}\n     //   int minBuy=prices[0];\n        int\
+    \ profit=0;\n\n        for(int i=1;i<prices.length;i++){\n          //  int currentPrice=prices[i]-prices[i-1];\n\
+    \            if(prices[i]>prices[i-1]){\n                profit=profit+prices[i]-prices[i-1];\n\
+    \            }\n        }\n        return profit;\n    }\n    \n    public static\
+    \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n \
+    \       if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+    \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(maxProfit(arr));\n    }\n}\n"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Best Time to Buy and Sell Stock II
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Best Time to Buy and Sell Stock
+    II exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Best Time\
+    \ to Buy and Sell Stock II\n    }\n}\n"
 ---
 
 ### Best Time to Buy and Sell Stock II

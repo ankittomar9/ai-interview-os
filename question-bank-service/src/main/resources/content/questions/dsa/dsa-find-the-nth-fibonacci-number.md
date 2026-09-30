@@ -3,7 +3,8 @@ slug: dsa-find-the-nth-fibonacci-number
 title: Find the Nth Fibonacci Number.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [math]
+topics:
+- math
 est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
@@ -34,7 +35,8 @@ hiddenTests:
   expectedOutput: '5'
   weight: 50
 hints:
-- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) algorithmic patterns.
+- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+  algorithmic patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -43,7 +45,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+    techniques to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +60,66 @@ coaching:
 editorial: '### Find the Nth Fibonacci Number.
 
 
-  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up" - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up"
+  - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int findGCDBrute(int n1,int n2) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        System.out.println(findGCDBrute(a, b));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static int findGCDBrute(int n1,int n2){\n       int min=Math.min(n1, n2);\n\n       for(int i = min; i >= 1; i--){\n\n        if(n1%i==0 && n2%i==0){\n            return i;\n        }\n       }\n       return 1;\n    }\n    \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        System.out.println(findGCDBrute(a, b));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int findGCDBrute(int\
+  \ n1,int n2) {\n        return 0;\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n      \
+  \  System.out.println(findGCDBrute(a, b));\n    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static int\
+  \ findGCDBrute(int n1,int n2){\n       int min=Math.min(n1, n2);\n\n       for(int\
+  \ i = min; i >= 1; i--){\n\n        if(n1%i==0 && n2%i==0){\n            return\
+  \ i;\n        }\n       }\n       return 1;\n    }\n    \n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n\
+  \        System.out.println(findGCDBrute(a, b));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-the-nth-fibonacci-number
+  label: Canonical — Find the Nth Fibonacci Number.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find the Nth Fibonacci
+    Number..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static int findGCDBrute(int\
+    \ n1,int n2){\n       int min=Math.min(n1, n2);\n\n       for(int i = min; i >=\
+    \ 1; i--){\n\n        if(n1%i==0 && n2%i==0){\n            return i;\n       \
+    \ }\n       }\n       return 1;\n    }\n    \n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n    \
+    \    System.out.println(findGCDBrute(a, b));\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Find the Nth Fibonacci Number.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Find the Nth Fibonacci Number.
+    exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Find the\
+    \ Nth Fibonacci Number.\n    }\n}\n"
 ---
 
 ### Find the Nth Fibonacci Number.

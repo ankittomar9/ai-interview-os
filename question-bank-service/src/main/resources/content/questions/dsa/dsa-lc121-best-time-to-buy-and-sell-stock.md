@@ -3,7 +3,8 @@ slug: dsa-lc121-best-time-to-buy-and-sell-stock
 title: Best Time to Buy and Sell Stock
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 15
 tags:
 - arrays
@@ -68,14 +69,76 @@ coaching:
 editorial: '### Best Time to Buy and Sell Stock
 
 
-  This problem evaluates core techniques in Arrays. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Arrays. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxProfit(int[] prices ) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxProfit(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static int maxProfit(int[] prices ){\n        if(prices==null || prices.length==0){return 0;}\n        int minBuy=prices[0];\n        int maxProfit=0;\n\n        for(int i=1;i<prices.length;i++){\n            int currentProfit=prices[i]-minBuy;\n            maxProfit=Math.max(maxProfit,currentProfit );\n\n          minBuy= Math.min(minBuy, prices[i]);\n        }\n        return maxProfit;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxProfit(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxProfit(int[]\
+  \ prices ) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxProfit(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static int maxProfit(int[] prices ){\n        if(prices==null\
+  \ || prices.length==0){return 0;}\n        int minBuy=prices[0];\n        int maxProfit=0;\n\
+  \n        for(int i=1;i<prices.length;i++){\n            int currentProfit=prices[i]-minBuy;\n\
+  \            maxProfit=Math.max(maxProfit,currentProfit );\n\n          minBuy=\
+  \ Math.min(minBuy, prices[i]);\n        }\n        return maxProfit;\n    }\n\n\
+  \    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+  \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+  \        System.out.println(maxProfit(arr));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc121-best-time-to-buy-and-sell-stock
+  label: Canonical — Best Time to Buy and Sell Stock
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Best Time to Buy and Sell
+    Stock.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static int maxProfit(int[] prices ){\n        if(prices==null\
+    \ || prices.length==0){return 0;}\n        int minBuy=prices[0];\n        int\
+    \ maxProfit=0;\n\n        for(int i=1;i<prices.length;i++){\n            int currentProfit=prices[i]-minBuy;\n\
+    \            maxProfit=Math.max(maxProfit,currentProfit );\n\n          minBuy=\
+    \ Math.min(minBuy, prices[i]);\n        }\n        return maxProfit;\n    }\n\n\
+    \    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+    \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(maxProfit(arr));\n    }\n}"
+- approachId: kadane-maximum-subarray
+  label: Alternate — Kadane's Algorithm on Daily Price Differences
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Transforms prices into consecutive differences and applies Kadane's maximum
+    subarray algorithm.
+  keyIdea: Mapping maximum profit to maximum subarray sum of daily returns.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Elegant mathematical reduction to standard DP paradigm
+  - Slightly less intuitive to explain in interviews than tracking minPrice
+  whenToUse: Demonstrating deep algorithmic pattern transfer and reduction skills
+    in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static int maxProfitKadane(int[]\
+    \ prices) {\n        int maxCur = 0, maxSoFar = 0;\n        for (int i = 1; i\
+    \ < prices.length; i++) {\n            maxCur = Math.max(0, maxCur += prices[i]\
+    \ - prices[i - 1]);\n            maxSoFar = Math.max(maxCur, maxSoFar);\n    \
+    \    }\n        return maxSoFar;\n    }\n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        int[] prices = new int[n];\n\
+    \        for (int i = 0; i < n; i++) prices[i] = sc.nextInt();\n        System.out.println(maxProfitKadane(prices));\n\
+    \    }\n}\n"
 ---
 
 ### Best Time to Buy and Sell Stock

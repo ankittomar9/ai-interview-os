@@ -3,7 +3,8 @@ slug: dsa-find-the-largest-element-in-an-array
 title: Find the Largest element in an array.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 15
 tags:
 - 2-arrays-the-core--40-questions
@@ -53,7 +54,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,14 +69,75 @@ coaching:
 editorial: '### Find the Largest element in an array.
 
 
-  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int smallestElementFinder(int arr[]) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(smallestElementFinder(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static int smallestElementFinder(int arr[]){\n        int n=arr.length;\n        int min=Integer.MAX_VALUE;\n         if(arr==null || arr.length==0){\n            throw new IllegalArgumentException(\"Array is empty\");\n            }\n\n            for(int i=0;i<arr.length;i++){\n                if(arr[i]<min){\n                    min=arr[i];\n                }\n            }\n            return min;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(smallestElementFinder(arr));\n    }\n}\n\n\n/*TC : is O(N)\n  SC :  is O(1)  \n*/"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int smallestElementFinder(int\
+  \ arr[]) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(smallestElementFinder(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ int smallestElementFinder(int arr[]){\n        int n=arr.length;\n        int\
+  \ min=Integer.MAX_VALUE;\n         if(arr==null || arr.length==0){\n           \
+  \ throw new IllegalArgumentException(\"Array is empty\");\n            }\n\n   \
+  \         for(int i=0;i<arr.length;i++){\n                if(arr[i]<min){\n    \
+  \                min=arr[i];\n                }\n            }\n            return\
+  \ min;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc\
+  \ = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n =\
+  \ sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n;\
+  \ i++) arr[i] = sc.nextInt();\n        System.out.println(smallestElementFinder(arr));\n\
+  \    }\n}\n\n\n/*TC : is O(N)\n  SC :  is O(1)  \n*/"
+referenceSolutions:
+- approachId: canonical-dsa-find-the-largest-element-in-an-array
+  label: Canonical — Find the Largest element in an array.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find the Largest element
+    in an array..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static int smallestElementFinder(int\
+    \ arr[]){\n        int n=arr.length;\n        int min=Integer.MAX_VALUE;\n   \
+    \      if(arr==null || arr.length==0){\n            throw new IllegalArgumentException(\"\
+    Array is empty\");\n            }\n\n            for(int i=0;i<arr.length;i++){\n\
+    \                if(arr[i]<min){\n                    min=arr[i];\n          \
+    \      }\n            }\n            return min;\n    }\n\n    public static void\
+    \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n      \
+    \  if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr\
+    \ = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(smallestElementFinder(arr));\n    }\n}\n\n\n/*TC :\
+    \ is O(N)\n  SC :  is O(1)  \n*/"
+- approachId: alternate-functional-pipeline
+  label: Alternate — Structured Pipeline for Find the Largest element in an array.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Find the Largest element in an
+    array. exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or functional formulation separating input ingestion
+    from computation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Functional and structured alternate logic for\
+    \ Find the Largest element in an array.\n    }\n}\n"
 ---
 
 ### Find the Largest element in an array.

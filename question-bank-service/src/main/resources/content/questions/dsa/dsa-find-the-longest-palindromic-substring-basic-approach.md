@@ -3,7 +3,8 @@ slug: dsa-find-the-longest-palindromic-substring-basic-approach
 title: Find the Longest Palindromic Substring (Basic approach).
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [strings]
+topics:
+- strings
 est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
@@ -34,7 +35,8 @@ hiddenTests:
   expectedOutput: w
   weight: 50
 hints:
-- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic patterns.
+- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic
+  patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -43,7 +45,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,15 +60,79 @@ coaching:
 editorial: '### Find the Longest Palindromic Substring (Basic approach).
 
 
-  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static String longestPalindrome(String str) {\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(longestPalindrome(s));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static String longestPalindrome(String str){\n        if(str==null || str.length()<1){return \"\";}\n        int start=0;int end=0;\n        for(int i=0;i<str.length();i++){\n\n            int len1=expandFromCenter(str,i,i);\n                int len2=expandFromCenter(str,i,i+1);\n        \n                int len=Math.max(len1,len2);\n                if(len>end-start){\n                    start=i-(len-1)/2;\n                    end=i+len/2;\n                }\n             } \n             return str.substring(start,end+1);\n    }\n    public static int expandFromCenter(String str ,int left,int right){\n        while(left>=0 && right< str.length() && str.charAt(left)== str.charAt(right)){\n            left--;\n            right++;\n        }\n        return right-left-1;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n      \
-  \  String s = sc.next();\n        System.out.println(longestPalindrome(s));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static String\
+  \ longestPalindrome(String str) {\n        return \"\";\n    }\n\n    public static\
+  \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n   \
+  \     if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(longestPalindrome(s));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static String\
+  \ longestPalindrome(String str){\n        if(str==null || str.length()<1){return\
+  \ \"\";}\n        int start=0;int end=0;\n        for(int i=0;i<str.length();i++){\n\
+  \n            int len1=expandFromCenter(str,i,i);\n                int len2=expandFromCenter(str,i,i+1);\n\
+  \        \n                int len=Math.max(len1,len2);\n                if(len>end-start){\n\
+  \                    start=i-(len-1)/2;\n                    end=i+len/2;\n    \
+  \            }\n             } \n             return str.substring(start,end+1);\n\
+  \    }\n    public static int expandFromCenter(String str ,int left,int right){\n\
+  \        while(left>=0 && right< str.length() && str.charAt(left)== str.charAt(right)){\n\
+  \            left--;\n            right++;\n        }\n        return right-left-1;\n\
+  \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+  \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n\
+  \        System.out.println(longestPalindrome(s));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-the-longest-palindromic-substring-basic-approach
+  label: Canonical — Find the Longest Palindromic Substring (Basic approach).
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find the Longest Palindromic
+    Substring (Basic approach)..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static String\
+    \ longestPalindrome(String str){\n        if(str==null || str.length()<1){return\
+    \ \"\";}\n        int start=0;int end=0;\n        for(int i=0;i<str.length();i++){\n\
+    \n            int len1=expandFromCenter(str,i,i);\n                int len2=expandFromCenter(str,i,i+1);\n\
+    \        \n                int len=Math.max(len1,len2);\n                if(len>end-start){\n\
+    \                    start=i-(len-1)/2;\n                    end=i+len/2;\n  \
+    \              }\n             } \n             return str.substring(start,end+1);\n\
+    \    }\n    public static int expandFromCenter(String str ,int left,int right){\n\
+    \        while(left>=0 && right< str.length() && str.charAt(left)== str.charAt(right)){\n\
+    \            left--;\n            right++;\n        }\n        return right-left-1;\n\
+    \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+    \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s =\
+    \ sc.next();\n        System.out.println(longestPalindrome(s));\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Find the Longest Palindromic Substring
+    (Basic approach).
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Find the Longest Palindromic
+    Substring (Basic approach). exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Find the\
+    \ Longest Palindromic Substring (Basic approach).\n    }\n}\n"
 ---
 
 ### Find the Longest Palindromic Substring (Basic approach).

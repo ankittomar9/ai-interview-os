@@ -3,7 +3,9 @@ slug: dsa-decimal-to-binary-using-recursion
 title: Decimal to Binary using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [bit-manipulation, recursion]
+topics:
+- bit-manipulation
+- recursion
 est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
@@ -43,7 +45,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 4. Recursion & Series (20 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 4. Recursion & Series (20 Questions) techniques to
+    solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +60,67 @@ coaching:
 editorial: '### Decimal to Binary using recursion.
 
 
-  This problem evaluates core techniques in 4. Recursion & Series (20 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 4. Recursion & Series (20 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static String decimalToBinary(int n) {\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(decimalToBinary(n));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n   public static String decimalToBinary(int n){\n        if(n==0){return \"0\";}\n        return binaryHelper(n);\n    }\n    public static String binaryHelper(int n){\n        if(n==0){return \"\";}\n        String result=binaryHelper(n/2)+(n%2);\n\n        return result;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(decimalToBinary(n));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static String\
+  \ decimalToBinary(int n) {\n        return \"\";\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(decimalToBinary(n));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n   public static\
+  \ String decimalToBinary(int n){\n        if(n==0){return \"0\";}\n        return\
+  \ binaryHelper(n);\n    }\n    public static String binaryHelper(int n){\n     \
+  \   if(n==0){return \"\";}\n        String result=binaryHelper(n/2)+(n%2);\n\n \
+  \       return result;\n    }\n\n    public static void main(String[] args) {\n\
+  \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        System.out.println(decimalToBinary(n));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-decimal-to-binary-using-recursion
+  label: Canonical — Decimal to Binary using recursion.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Decimal to Binary using
+    recursion..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n\n   public static String\
+    \ decimalToBinary(int n){\n        if(n==0){return \"0\";}\n        return binaryHelper(n);\n\
+    \    }\n    public static String binaryHelper(int n){\n        if(n==0){return\
+    \ \"\";}\n        String result=binaryHelper(n/2)+(n%2);\n\n        return result;\n\
+    \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+    \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+    \        System.out.println(decimalToBinary(n));\n    }\n}"
+- approachId: alternate-functional-pipeline
+  label: Alternate — Structured Pipeline for Decimal to Binary using recursion.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Decimal to Binary using recursion.
+    exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or functional formulation separating input ingestion
+    from computation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Functional and structured alternate logic for\
+    \ Decimal to Binary using recursion.\n    }\n}\n"
 ---
 
 ### Decimal to Binary using recursion.

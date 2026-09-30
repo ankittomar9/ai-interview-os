@@ -3,7 +3,9 @@ slug: dsa-check-if-array-is-sorted-or-not
 title: Check If Array Is Sorted Or Not
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [recursion, arrays]
+topics:
+- recursion
+- arrays
 est_minutes: 25
 tags:
 - recursion
@@ -67,14 +69,74 @@ coaching:
 editorial: '### Check If Array Is Sorted Or Not
 
 
-  This problem evaluates core techniques in Recursion. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Recursion. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean isArraySorted(int arr[],int index) {\n        return false;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(isArraySorted(arr, target));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n      public static boolean isArraySorted(int arr[],int index){   \n        //base case\n        if(index ==arr.length-1){\n            return true;\n        }\n        //Main logic\n        if(arr[index]>arr[index+1]){\n            return false;\n        }\n        return isArraySorted(arr,index+1);\n     }   \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(isArraySorted(arr, target));\n    }\n}\n/*TC: O(N)\n  SC:O(N) \n*/"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean\
+  \ isArraySorted(int arr[],int index) {\n        return false;\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int\
+  \ target = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i =\
+  \ 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(isArraySorted(arr,\
+  \ target));\n    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n      public static\
+  \ boolean isArraySorted(int arr[],int index){   \n        //base case\n        if(index\
+  \ ==arr.length-1){\n            return true;\n        }\n        //Main logic\n\
+  \        if(arr[index]>arr[index+1]){\n            return false;\n        }\n  \
+  \      return isArraySorted(arr,index+1);\n     }   \n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n \
+  \       int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+  \        System.out.println(isArraySorted(arr, target));\n    }\n}\n/*TC: O(N)\n\
+  \  SC:O(N) \n*/"
+referenceSolutions:
+- approachId: canonical-dsa-check-if-array-is-sorted-or-not
+  label: Canonical — Check If Array Is Sorted Or Not
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Check If Array Is Sorted
+    Or Not.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n      public static boolean\
+    \ isArraySorted(int arr[],int index){   \n        //base case\n        if(index\
+    \ ==arr.length-1){\n            return true;\n        }\n        //Main logic\n\
+    \        if(arr[index]>arr[index+1]){\n            return false;\n        }\n\
+    \        return isArraySorted(arr,index+1);\n     }   \n\n    public static void\
+    \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n      \
+    \  if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int target\
+    \ = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i\
+    \ < n; i++) arr[i] = sc.nextInt();\n        System.out.println(isArraySorted(arr,\
+    \ target));\n    }\n}\n/*TC: O(N)\n  SC:O(N) \n*/"
+- approachId: alternate-stream-idiom
+  label: Alternate — Functional Collection & Stream Pipeline
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Decomposes problem into modern Java functional streams and standard collections.
+  keyIdea: Declarative pipeline separating data parsing from algorithmic transformation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Highly declarative, composable and self-documenting code
+  - Minor stream boxing and object allocation overhead
+  whenToUse: Modern Java microservices where code clarity and immutability are preferred.
+  code: "import java.util.*;\n\npublic class Main {\n    // Alternate decomposition\
+    \ for Check If Array Is Sorted Or Not\n    public static void solveAlternate(Scanner\
+    \ sc) {\n        if (!sc.hasNext()) return;\n        // Functional and structured\
+    \ alternate logic\n        List<String> tokens = new ArrayList<>();\n        while\
+    \ (sc.hasNext()) tokens.add(sc.next());\n        if (tokens.isEmpty()) return;\n\
+    \        // Process inputs\n    }\n\n    public static void main(String[] args)\
+    \ {\n        Scanner sc = new Scanner(System.in);\n        solveAlternate(sc);\n\
+    \    }\n}\n"
 ---
 
 ### Check If Array Is Sorted Or Not

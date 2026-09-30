@@ -3,7 +3,8 @@ slug: dsa-find-majority-element-element-appearing-n-2-times
 title: Find Majority Element (element appearing > N/2 times).
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
@@ -53,7 +54,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,15 +69,82 @@ coaching:
 editorial: '### Find Majority Element (element appearing > N/2 times).
 
 
-  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int findMajorityElement(int arr[]) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMajorityElement(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n    public static int  findMajorityElement(int arr[]){\n        if(arr==null || arr.length==0){            return -1;        }\n        int candidate=0;\n        int count=0;\n\n        for(int i=0;i<arr.length;i++){\n            if(count==0){\n                candidate=arr[i];\n            }else if(arr[i]==candidate){\n                count++;\n            }else{\n                count--;\n            }\n        }\n\n        int verificationCount=0;\n        for(int i=0;i<arr.length;i++){\n            if(arr[i]==candidate){\n                verificationCount++;\n            }\n        }\n        if(verificationCount>arr.length/2){\n            return candidate;\n        }\n        return -1;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for\
-  \ (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMajorityElement(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int findMajorityElement(int\
+  \ arr[]) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMajorityElement(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n\
+  \    \n    public static int  findMajorityElement(int arr[]){\n        if(arr==null\
+  \ || arr.length==0){            return -1;        }\n        int candidate=0;\n\
+  \        int count=0;\n\n        for(int i=0;i<arr.length;i++){\n            if(count==0){\n\
+  \                candidate=arr[i];\n            }else if(arr[i]==candidate){\n \
+  \               count++;\n            }else{\n                count--;\n       \
+  \     }\n        }\n\n        int verificationCount=0;\n        for(int i=0;i<arr.length;i++){\n\
+  \            if(arr[i]==candidate){\n                verificationCount++;\n    \
+  \        }\n        }\n        if(verificationCount>arr.length/2){\n           \
+  \ return candidate;\n        }\n        return -1;\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new\
+  \ int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMajorityElement(arr));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-majority-element-element-appearing-n-2-times
+  label: Canonical — Find Majority Element (element appearing > N/2 times).
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find Majority Element (element
+    appearing > N/2 times)..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n\
+    \    public static int  findMajorityElement(int arr[]){\n        if(arr==null\
+    \ || arr.length==0){            return -1;        }\n        int candidate=0;\n\
+    \        int count=0;\n\n        for(int i=0;i<arr.length;i++){\n            if(count==0){\n\
+    \                candidate=arr[i];\n            }else if(arr[i]==candidate){\n\
+    \                count++;\n            }else{\n                count--;\n    \
+    \        }\n        }\n\n        int verificationCount=0;\n        for(int i=0;i<arr.length;i++){\n\
+    \            if(arr[i]==candidate){\n                verificationCount++;\n  \
+    \          }\n        }\n        if(verificationCount>arr.length/2){\n       \
+    \     return candidate;\n        }\n        return -1;\n    }\n\n    public static\
+    \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n \
+    \       if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+    \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(findMajorityElement(arr));\n    }\n}"
+- approachId: sorting-median-majority
+  label: Alternate — Array Sorting & Midpoint Inspection
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Sorts the array so any element appearing > N/2 times is guaranteed to occupy
+    index N/2.
+  keyIdea: Pigeonhole principle on sorted arrays placing majority element at the median.
+  timeComplexity: O(N log N)
+  spaceComplexity: O(1) in-place
+  tradeoffs:
+  - Trivial 2-line implementation with zero hash map overhead
+  - O(N log N) time versus Boyer-Moore O(N) voting algorithm
+  whenToUse: Fast interview demonstration of invariant properties before implementing
+    Boyer-Moore.
+  code: "import java.util.*;\n\npublic class Main {\n    public static int majorityElementSorting(int[]\
+    \ nums) {\n        Arrays.sort(nums);\n        return nums[nums.length / 2];\n\
+    \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+    \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+    \        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] =\
+    \ sc.nextInt();\n        System.out.println(majorityElementSorting(arr));\n  \
+    \  }\n}\n"
 ---
 
 ### Find Majority Element (element appearing > N/2 times).

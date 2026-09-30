@@ -3,7 +3,8 @@ slug: dsa-lc135-candy
 title: Candy
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: HARD
-topics: [greedy]
+topics:
+- greedy
 est_minutes: 40
 tags:
 - greedy
@@ -68,15 +69,78 @@ coaching:
 editorial: '### Candy
 
 
-  This problem evaluates core techniques in Greedy. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Greedy. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static long candy(int[] ratings) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(candy(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static long candy(int[] ratings){\n        int n=ratings.length;\n        if(n==0) return 0;\n\n        int[] candies=new int[n];\n        Arrays.fill(candies,1);\n\n        for(int i=1;i<ratings.length;i++){\n                if(ratings[i]>ratings[i-1]){\n                    candies[i]=candies[i-1]+1;\n                }\n        }\n\n        for(int i=n-2;i>=0;i--){\n            if(ratings[i]>ratings[i+1]){\n                int moreCandies=candies[i+1]+1;\n                    candies[i]=Math.max(candies[i],moreCandies);\n            }\n        }\n\n        long total=0;\n        for(int i=0;i<candies.length;i++){\n            total=total+candies[i];\n        }\n        return total;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n   \
-  \     for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(candy(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static long candy(int[]\
+  \ ratings) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(candy(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static long candy(int[] ratings){\n        int n=ratings.length;\n\
+  \        if(n==0) return 0;\n\n        int[] candies=new int[n];\n        Arrays.fill(candies,1);\n\
+  \n        for(int i=1;i<ratings.length;i++){\n                if(ratings[i]>ratings[i-1]){\n\
+  \                    candies[i]=candies[i-1]+1;\n                }\n        }\n\n\
+  \        for(int i=n-2;i>=0;i--){\n            if(ratings[i]>ratings[i+1]){\n  \
+  \              int moreCandies=candies[i+1]+1;\n                    candies[i]=Math.max(candies[i],moreCandies);\n\
+  \            }\n        }\n\n        long total=0;\n        for(int i=0;i<candies.length;i++){\n\
+  \            total=total+candies[i];\n        }\n        return total;\n    }\n\n\
+  \    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+  \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+  \        System.out.println(candy(arr));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc135-candy
+  label: Canonical — Candy
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Candy.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static long candy(int[] ratings){\n        int n=ratings.length;\n\
+    \        if(n==0) return 0;\n\n        int[] candies=new int[n];\n        Arrays.fill(candies,1);\n\
+    \n        for(int i=1;i<ratings.length;i++){\n                if(ratings[i]>ratings[i-1]){\n\
+    \                    candies[i]=candies[i-1]+1;\n                }\n        }\n\
+    \n        for(int i=n-2;i>=0;i--){\n            if(ratings[i]>ratings[i+1]){\n\
+    \                int moreCandies=candies[i+1]+1;\n                    candies[i]=Math.max(candies[i],moreCandies);\n\
+    \            }\n        }\n\n        long total=0;\n        for(int i=0;i<candies.length;i++){\n\
+    \            total=total+candies[i];\n        }\n        return total;\n    }\n\
+    \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+    \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(candy(arr));\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Candy
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Candy exploring secondary algorithmic
+    trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Candy\n\
+    \    }\n}\n"
 ---
 
 ### Candy

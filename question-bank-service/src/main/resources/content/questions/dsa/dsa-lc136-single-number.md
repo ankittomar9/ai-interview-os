@@ -3,7 +3,8 @@ slug: dsa-lc136-single-number
 title: Single Number
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [bit-manipulation]
+topics:
+- bit-manipulation
 est_minutes: 15
 tags:
 - bit-manipulation
@@ -54,7 +55,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Bit Manipulation techniques to solve the problem efficiently.
+  approachHint: Utilize standard Bit Manipulation techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -68,14 +70,70 @@ coaching:
 editorial: '### Single Number
 
 
-  This problem evaluates core techniques in Bit Manipulation. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Bit Manipulation. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int singleNumber(int[] nums) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(singleNumber(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static int singleNumber(int[] nums){\n        int result=0;\n        for(int i=0;i<nums.length;i++){\n            result=result^nums[i];\n        }\n        return result;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(singleNumber(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int singleNumber(int[]\
+  \ nums) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(singleNumber(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static int singleNumber(int[] nums){\n        int result=0;\n\
+  \        for(int i=0;i<nums.length;i++){\n            result=result^nums[i];\n \
+  \       }\n        return result;\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n    \
+  \    for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(singleNumber(arr));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc136-single-number
+  label: Canonical — Single Number
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Single Number.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static int singleNumber(int[] nums){\n        int result=0;\n\
+    \        for(int i=0;i<nums.length;i++){\n            result=result^nums[i];\n\
+    \        }\n        return result;\n    }\n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n  \
+    \      for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(singleNumber(arr));\n\
+    \    }\n}"
+- approachId: hashset-deduplication
+  label: Alternate — HashSet Add/Remove Toggling
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Uses a HashSet to add numbers on first encounter and remove on second,
+    leaving only the unique element.
+  keyIdea: Collection membership toggling in O(N) time and O(N) space.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Intuitive and easy to grasp for any general collection types
+  - Allocates O(N) memory compared to optimal O(1) bitwise XOR
+  whenToUse: When elements are complex non-integer objects where bitwise XOR cannot
+    be applied.
+  code: "import java.util.*;\n\npublic class Main {\n    public static int singleNumberSet(int[]\
+    \ nums) {\n        Set<Integer> set = new HashSet<>();\n        for (int num :\
+    \ nums) {\n            if (!set.add(num)) set.remove(num);\n        }\n      \
+    \  return set.iterator().next();\n    }\n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        int[] nums = new int[n];\n \
+    \       for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        System.out.println(singleNumberSet(nums));\n\
+    \    }\n}\n"
 ---
 
 ### Single Number

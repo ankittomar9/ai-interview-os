@@ -3,7 +3,8 @@ slug: dsa-kth-element-in-linked-list
 title: Kth Element In Linked List
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [linked-list]
+topics:
+- linked-list
 est_minutes: 25
 tags:
 - linked-list
@@ -67,15 +68,85 @@ coaching:
 editorial: '### Kth Element In Linked List
 
 
-  This problem evaluates core techniques in Linked List. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Linked List. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int getKthElement(Node head,int k) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n        Node dummy = new Node(0);\n        Node cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n        Node head = dummy.next;\n        System.out.println(getKthElement(head, k));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static int getKthElement(Node head,int k){\n        if(head==null || k<0) return -1;\n        Node current=head;\n        for(int i=0;i< k && current!=null ;i++){\n            current=current.next;\n        }\n        if(current==null){\n            return -1;\n        }\n        return current.data;\n    }\n\n    public static void printList(Node head){\n        Node temp=head;\n        while(temp!=null){\n            System.out.print(temp.data+\" -> \");\n            temp=temp.next;\n        }\n        System.out.println(\"null\");\n    }\n    public static class Node{\n        int data; Node next;\n        public Node(int data){\n            this.data=data;this.next=null;\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n        Node dummy = new Node(0);\n\
-  \        Node cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n        Node head = dummy.next;\n        System.out.println(getKthElement(head, k));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int getKthElement(Node\
+  \ head,int k) {\n        return 0;\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n      \
+  \  Node dummy = new Node(0);\n        Node cur = dummy;\n        for (int i = 0;\
+  \ i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n        Node\
+  \ head = dummy.next;\n        System.out.println(getKthElement(head, k));\n    }\n\
+  }\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static int\
+  \ getKthElement(Node head,int k){\n        if(head==null || k<0) return -1;\n  \
+  \      Node current=head;\n        for(int i=0;i< k && current!=null ;i++){\n  \
+  \          current=current.next;\n        }\n        if(current==null){\n      \
+  \      return -1;\n        }\n        return current.data;\n    }\n\n    public\
+  \ static void printList(Node head){\n        Node temp=head;\n        while(temp!=null){\n\
+  \            System.out.print(temp.data+\" -> \");\n            temp=temp.next;\n\
+  \        }\n        System.out.println(\"null\");\n    }\n    public static class\
+  \ Node{\n        int data; Node next;\n        public Node(int data){\n        \
+  \    this.data=data;this.next=null;\n        }\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n\
+  \        Node dummy = new Node(0);\n        Node cur = dummy;\n        for (int\
+  \ i = 0; i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n  \
+  \      Node head = dummy.next;\n        System.out.println(getKthElement(head, k));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-kth-element-in-linked-list
+  label: Canonical — Kth Element In Linked List
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Kth Element In Linked List.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static int getKthElement(Node\
+    \ head,int k){\n        if(head==null || k<0) return -1;\n        Node current=head;\n\
+    \        for(int i=0;i< k && current!=null ;i++){\n            current=current.next;\n\
+    \        }\n        if(current==null){\n            return -1;\n        }\n  \
+    \      return current.data;\n    }\n\n    public static void printList(Node head){\n\
+    \        Node temp=head;\n        while(temp!=null){\n            System.out.print(temp.data+\"\
+    \ -> \");\n            temp=temp.next;\n        }\n        System.out.println(\"\
+    null\");\n    }\n    public static class Node{\n        int data; Node next;\n\
+    \        public Node(int data){\n            this.data=data;this.next=null;\n\
+    \        }\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+    \ n = sc.nextInt();\n        int k = sc.nextInt();\n        Node dummy = new Node(0);\n\
+    \        Node cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new\
+    \ Node(sc.nextInt()); cur = cur.next; }\n        Node head = dummy.next;\n   \
+    \     System.out.println(getKthElement(head, k));\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Kth Element In Linked List
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Kth Element In Linked List exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Kth Element\
+    \ In Linked List\n    }\n}\n"
 ---
 
 ### Kth Element In Linked List

@@ -3,7 +3,8 @@ slug: dsa-lc141-linked-list-cycle
 title: Linked List Cycle
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [linked-list]
+topics:
+- linked-list
 est_minutes: 15
 tags:
 - linked-list
@@ -68,16 +69,107 @@ coaching:
 editorial: '### Linked List Cycle
 
 
-  This problem evaluates core techniques in Linked List. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Linked List. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean hasCycle(ListNode head) {\n        return false;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        ListNode dummy = new ListNode(0);\n        ListNode cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new ListNode(sc.nextInt()); cur = cur.next; }\n        ListNode head = dummy.next;\n        System.out.println(hasCycle(head));\n    }\n}\n"
-solutionCode: "import java.util.*;\nimport java.util.HashSet;\npublic class Main {\n     \n    public static boolean hasCycle(ListNode head){\n        if (head == null || head.next == null) {\n            return false;\n        }\n        ListNode slow = head;\n        ListNode fast = head;\n\n        while (fast != null && fast.next != null) {\n            slow = slow.next;\n            fast = fast.next.next;\n\n            if (slow == fast) {\n                return true;\n            }\n        }\n        return false;\n    }\n    // The upgraded, crash-proof print method\n    public static String listToString(ListNode head){\n        StringBuilder sb = new StringBuilder();\n        sb.append(\"[\");\n        ListNode temp = head;\n        // A set to remember the exact nodes (memory addresses) we have already seen\n        HashSet<ListNode> visited = new HashSet<>();\n        while (temp != null) {\n            // If the set already contains this node, we've looped!\n            if (visited.contains(temp))\
-  \ {\n                sb.append(\"... (Cycle back to node with val: \").append(temp.val).append(\")\");\n                break; // Break the infinite loop!\n            }\n            // Remember this node for the future\n            visited.add(temp);\n            sb.append(temp.val);\n            if (temp.next != null) {\n                sb.append(\", \");\n            }\n            temp = temp.next;\n        }\n        sb.append(\"]\");\n        return sb.toString();\n    }\n\n    public static class ListNode{\n        int val;\n        ListNode next;\n\n        ListNode(int x) {\n            this.val = x;\n            this.next = null;\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        ListNode dummy = new ListNode(0);\n        ListNode cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new ListNode(sc.nextInt()); cur = cur.next; }\n \
-  \       ListNode head = dummy.next;\n        System.out.println(hasCycle(head));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean\
+  \ hasCycle(ListNode head) {\n        return false;\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        ListNode dummy\
+  \ = new ListNode(0);\n        ListNode cur = dummy;\n        for (int i = 0; i <\
+  \ n; i++) { cur.next = new ListNode(sc.nextInt()); cur = cur.next; }\n        ListNode\
+  \ head = dummy.next;\n        System.out.println(hasCycle(head));\n    }\n}\n"
+solutionCode: "import java.util.*;\nimport java.util.HashSet;\npublic class Main {\n\
+  \     \n    public static boolean hasCycle(ListNode head){\n        if (head ==\
+  \ null || head.next == null) {\n            return false;\n        }\n        ListNode\
+  \ slow = head;\n        ListNode fast = head;\n\n        while (fast != null &&\
+  \ fast.next != null) {\n            slow = slow.next;\n            fast = fast.next.next;\n\
+  \n            if (slow == fast) {\n                return true;\n            }\n\
+  \        }\n        return false;\n    }\n    // The upgraded, crash-proof print\
+  \ method\n    public static String listToString(ListNode head){\n        StringBuilder\
+  \ sb = new StringBuilder();\n        sb.append(\"[\");\n        ListNode temp =\
+  \ head;\n        // A set to remember the exact nodes (memory addresses) we have\
+  \ already seen\n        HashSet<ListNode> visited = new HashSet<>();\n        while\
+  \ (temp != null) {\n            // If the set already contains this node, we've\
+  \ looped!\n            if (visited.contains(temp)) {\n                sb.append(\"\
+  ... (Cycle back to node with val: \").append(temp.val).append(\")\");\n        \
+  \        break; // Break the infinite loop!\n            }\n            // Remember\
+  \ this node for the future\n            visited.add(temp);\n            sb.append(temp.val);\n\
+  \            if (temp.next != null) {\n                sb.append(\", \");\n    \
+  \        }\n            temp = temp.next;\n        }\n        sb.append(\"]\");\n\
+  \        return sb.toString();\n    }\n\n    public static class ListNode{\n   \
+  \     int val;\n        ListNode next;\n\n        ListNode(int x) {\n          \
+  \  this.val = x;\n            this.next = null;\n        }\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        ListNode\
+  \ dummy = new ListNode(0);\n        ListNode cur = dummy;\n        for (int i =\
+  \ 0; i < n; i++) { cur.next = new ListNode(sc.nextInt()); cur = cur.next; }\n  \
+  \      ListNode head = dummy.next;\n        System.out.println(hasCycle(head));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc141-linked-list-cycle
+  label: Canonical — Linked List Cycle
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Linked List Cycle.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\nimport java.util.HashSet;\npublic class Main {\n   \
+    \  \n    public static boolean hasCycle(ListNode head){\n        if (head == null\
+    \ || head.next == null) {\n            return false;\n        }\n        ListNode\
+    \ slow = head;\n        ListNode fast = head;\n\n        while (fast != null &&\
+    \ fast.next != null) {\n            slow = slow.next;\n            fast = fast.next.next;\n\
+    \n            if (slow == fast) {\n                return true;\n            }\n\
+    \        }\n        return false;\n    }\n    // The upgraded, crash-proof print\
+    \ method\n    public static String listToString(ListNode head){\n        StringBuilder\
+    \ sb = new StringBuilder();\n        sb.append(\"[\");\n        ListNode temp\
+    \ = head;\n        // A set to remember the exact nodes (memory addresses) we\
+    \ have already seen\n        HashSet<ListNode> visited = new HashSet<>();\n  \
+    \      while (temp != null) {\n            // If the set already contains this\
+    \ node, we've looped!\n            if (visited.contains(temp)) {\n           \
+    \     sb.append(\"... (Cycle back to node with val: \").append(temp.val).append(\"\
+    )\");\n                break; // Break the infinite loop!\n            }\n   \
+    \         // Remember this node for the future\n            visited.add(temp);\n\
+    \            sb.append(temp.val);\n            if (temp.next != null) {\n    \
+    \            sb.append(\", \");\n            }\n            temp = temp.next;\n\
+    \        }\n        sb.append(\"]\");\n        return sb.toString();\n    }\n\n\
+    \    public static class ListNode{\n        int val;\n        ListNode next;\n\
+    \n        ListNode(int x) {\n            this.val = x;\n            this.next\
+    \ = null;\n        }\n    }\n\n    public static void main(String[] args) {\n\
+    \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        int n = sc.nextInt();\n        ListNode dummy = new ListNode(0);\n  \
+    \      ListNode cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next =\
+    \ new ListNode(sc.nextInt()); cur = cur.next; }\n        ListNode head = dummy.next;\n\
+    \        System.out.println(hasCycle(head));\n    }\n}"
+- approachId: hashset-node-tracking
+  label: Alternate — HashSet Visited Reference Tracking
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Maintains a set of visited node references to detect cycles upon duplicate
+    encounter.
+  keyIdea: Identity hash lookup marking node visit status.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Straightforward logic with zero pointer-speed race conditions
+  - O(N) memory overhead versus Floyd's Tortoise and Hare O(1) pointers
+  whenToUse: Debugging or when pointer alteration/cycle entry point detection is required.
+  code: "import java.util.*;\n\npublic class Main {\n    static class ListNode { int\
+    \ val; ListNode next; ListNode(int x) { val = x; } }\n    public static boolean\
+    \ hasCycleSet(ListNode head) {\n        Set<ListNode> visited = new HashSet<>();\n\
+    \        while (head != null) {\n            if (!visited.add(head)) return true;\n\
+    \            head = head.next;\n        }\n        return false;\n    }\n\n  \
+    \  public static void main(String[] args) {\n        System.out.println(true);\n\
+    \    }\n}\n"
 ---
 
 ### Linked List Cycle

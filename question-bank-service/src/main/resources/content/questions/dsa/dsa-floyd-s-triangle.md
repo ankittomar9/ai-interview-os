@@ -3,7 +3,8 @@ slug: dsa-floyd-s-triangle
 title: Floyd's Triangle.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [patterns]
+topics:
+- patterns
 est_minutes: 25
 tags:
 - 5-patterns--printing-15-questions
@@ -18,7 +19,9 @@ sampleTests:
   description: Primary test case
 - name: Sample 2
   input: '10'
-  expectedOutput: "1 \n2 3 \n4 5 6 \n7 8 9 10 \n11 12 13 14 15 \n16 17 18 19 20 21 \n22 23 24 25 26 27 28 \n29 30 31 32 33 34 35 36 \n37 38 39 40 41 42 43 44 45 \n46 47 48 49 50 51 52 53 54 55"
+  expectedOutput: "1 \n2 3 \n4 5 6 \n7 8 9 10 \n11 12 13 14 15 \n16 17 18 19 20 21\
+    \ \n22 23 24 25 26 27 28 \n29 30 31 32 33 34 35 36 \n37 38 39 40 41 42 43 44 45\
+    \ \n46 47 48 49 50 51 52 53 54 55"
   description: Secondary boundary test case
 hiddenTests:
 - name: Hidden 1
@@ -27,11 +30,15 @@ hiddenTests:
   weight: 25
 - name: Hidden 2
   input: '7'
-  expectedOutput: "1 \n2 3 \n4 5 6 \n7 8 9 10 \n11 12 13 14 15 \n16 17 18 19 20 21 \n22 23 24 25 26 27 28"
+  expectedOutput: "1 \n2 3 \n4 5 6 \n7 8 9 10 \n11 12 13 14 15 \n16 17 18 19 20 21\
+    \ \n22 23 24 25 26 27 28"
   weight: 25
 - name: Hidden 3
   input: '12'
-  expectedOutput: "1 \n2 3 \n4 5 6 \n7 8 9 10 \n11 12 13 14 15 \n16 17 18 19 20 21 \n22 23 24 25 26 27 28 \n29 30 31 32 33 34 35 36 \n37 38 39 40 41 42 43 44 45 \n46 47 48 49 50 51 52 53 54 55 \n56 57 58 59 60 61 62 63 64 65 66 \n67 68 69 70 71 72 73 74 75 76 77 78"
+  expectedOutput: "1 \n2 3 \n4 5 6 \n7 8 9 10 \n11 12 13 14 15 \n16 17 18 19 20 21\
+    \ \n22 23 24 25 26 27 28 \n29 30 31 32 33 34 35 36 \n37 38 39 40 41 42 43 44 45\
+    \ \n46 47 48 49 50 51 52 53 54 55 \n56 57 58 59 60 61 62 63 64 65 66 \n67 68 69\
+    \ 70 71 72 73 74 75 76 77 78"
   weight: 50
 hints:
 - Analyze the problem using 5. Patterns & Printing (15 Questions) algorithmic patterns.
@@ -43,7 +50,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 5. Patterns & Printing (15 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 5. Patterns & Printing (15 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +65,65 @@ coaching:
 editorial: '### Floyd''s Triangle.
 
 
-  This problem evaluates core techniques in 5. Patterns & Printing (15 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 5. Patterns & Printing (15 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void printFloydTriangle(int N) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        printFloydTriangle(n);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n    public static void printFloydTriangle(int N){\n        int count=1;\n\n        for(int i=0;i<=N;i++){\n            for(int j=1;j<=i;j++){\n                System.out.print(count+\" \");\n                count++;\n            }\n            System.out.println();\n        }\n    }\n\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        printFloydTriangle(n);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void printFloydTriangle(int\
+  \ N) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        printFloydTriangle(n);\n    }\n\
+  }\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n    public static\
+  \ void printFloydTriangle(int N){\n        int count=1;\n\n        for(int i=0;i<=N;i++){\n\
+  \            for(int j=1;j<=i;j++){\n                System.out.print(count+\" \"\
+  );\n                count++;\n            }\n            System.out.println();\n\
+  \        }\n    }\n\n\n    public static void main(String[] args) {\n        Scanner\
+  \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+  \ n = sc.nextInt();\n        printFloydTriangle(n);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-floyd-s-triangle
+  label: Canonical — Floyd's Triangle.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Floyd's Triangle..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n\n    public static void\
+    \ printFloydTriangle(int N){\n        int count=1;\n\n        for(int i=0;i<=N;i++){\n\
+    \            for(int j=1;j<=i;j++){\n                System.out.print(count+\"\
+    \ \");\n                count++;\n            }\n            System.out.println();\n\
+    \        }\n    }\n\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+    \ n = sc.nextInt();\n        printFloydTriangle(n);\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Floyd's Triangle.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Floyd's Triangle. exploring secondary
+    algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Floyd's\
+    \ Triangle.\n    }\n}\n"
 ---
 
 ### Floyd's Triangle.

@@ -3,7 +3,8 @@ slug: dsa-find-a-missing-number-in-an-array-of-1-to-n
 title: Find a Missing Number in an array of 1 to N.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
@@ -53,7 +54,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,14 +69,76 @@ coaching:
 editorial: '### Find a Missing Number in an array of 1 to N.
 
 
-  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int findMissing(int[] arr) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMissing(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static int findMissing(int[] arr){\n            if(arr==null || arr.length==0)return 1;\n            long n=arr.length+1;\n\n            long expectedSum=(n*(n+1))/2;\n\n            long actualSum=0;\n\n            for(int i=0;i<arr.length;i++){\n                actualSum=actualSum+arr[i];\n            }\n            long result=expectedSum-actualSum;\n            return (int)result;\n        }\n    \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMissing(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int findMissing(int[]\
+  \ arr) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMissing(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static int findMissing(int[] arr){\n            if(arr==null\
+  \ || arr.length==0)return 1;\n            long n=arr.length+1;\n\n            long\
+  \ expectedSum=(n*(n+1))/2;\n\n            long actualSum=0;\n\n            for(int\
+  \ i=0;i<arr.length;i++){\n                actualSum=actualSum+arr[i];\n        \
+  \    }\n            long result=expectedSum-actualSum;\n            return (int)result;\n\
+  \        }\n    \n\n    public static void main(String[] args) {\n        Scanner\
+  \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+  \ n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i\
+  \ < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMissing(arr));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-a-missing-number-in-an-array-of-1-to-n
+  label: Canonical — Find a Missing Number in an array of 1 to N.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find a Missing Number in
+    an array of 1 to N..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static int findMissing(int[] arr){\n            if(arr==null\
+    \ || arr.length==0)return 1;\n            long n=arr.length+1;\n\n           \
+    \ long expectedSum=(n*(n+1))/2;\n\n            long actualSum=0;\n\n         \
+    \   for(int i=0;i<arr.length;i++){\n                actualSum=actualSum+arr[i];\n\
+    \            }\n            long result=expectedSum-actualSum;\n            return\
+    \ (int)result;\n        }\n    \n\n    public static void main(String[] args)\
+    \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n  \
+    \      for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(findMissing(arr));\n\
+    \    }\n}"
+- approachId: bitwise-xor-missing
+  label: Alternate — Bitwise XOR Cancellation
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Computes missing element using XOR cancellation property (x ^ x = 0).
+  keyIdea: XOR all expected numbers with actual array elements to cancel duplicates.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Completely immune to integer overflow that can occur with Gauss arithmetic sum
+    n*(n+1)/2
+  - Requires linear scan of size N
+  whenToUse: Best when array values or N approach Integer.MAX_VALUE where sum would
+    overflow.
+  code: "import java.util.*;\n\npublic class Main {\n    public static int findMissingXor(int[]\
+    \ nums, int n) {\n        int xor = 0;\n        for (int i = 1; i <= n; i++) xor\
+    \ ^= i;\n        for (int num : nums) xor ^= num;\n        return xor;\n    }\n\
+    \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+    \ arr = new int[n - 1];\n        for (int i = 0; i < n - 1; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(findMissingXor(arr, n));\n    }\n}\n"
 ---
 
 ### Find a Missing Number in an array of 1 to N.

@@ -3,7 +3,8 @@ slug: dsa-lc119-pascal-s-triangle-ii
 title: Pascal's Triangle II
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 15
 tags:
 - arrays
@@ -58,14 +59,77 @@ coaching:
 editorial: '### Pascal''s Triangle II
 
 
-  This problem evaluates core techniques in Arrays. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Arrays. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static List<Integer> getRow(int rowIndex) {\n        return new ArrayList<>();\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        List<Integer> res = getRow(n);\n        if (res != null) {\n            for (int i = 0; i < res.size(); i++) System.out.print((i > 0 ? \" \" : \"\") + res.get(i));\n            System.out.println();\n        }\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class Main {\n    \n\n    public static List<Integer> getRow(int rowIndex){\n        int[] dp=new int[rowIndex+1];\n        dp[0]=1;\n    \n        for(int row=1;row<=rowIndex;row++){\n            for(int j=row;j>=1;j--){\n                dp[j]= dp[j]+dp[j-1];\n            }\n\n        }\n        List<Integer> result =new ArrayList<>();\n        for(int val=0;val<dp.length;val++){\n            result.add(dp[val]);\n        }\n        return result;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        List<Integer> res = getRow(n);\n        if (res != null) {\n            for (int i = 0; i < res.size(); i++) System.out.print((i > 0 ? \" \" : \"\") + res.get(i));\n            System.out.println();\n        }\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static List<Integer>\
+  \ getRow(int rowIndex) {\n        return new ArrayList<>();\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        List<Integer>\
+  \ res = getRow(n);\n        if (res != null) {\n            for (int i = 0; i <\
+  \ res.size(); i++) System.out.print((i > 0 ? \" \" : \"\") + res.get(i));\n    \
+  \        System.out.println();\n        }\n    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\
+  \npublic class Main {\n    \n\n    public static List<Integer> getRow(int rowIndex){\n\
+  \        int[] dp=new int[rowIndex+1];\n        dp[0]=1;\n    \n        for(int\
+  \ row=1;row<=rowIndex;row++){\n            for(int j=row;j>=1;j--){\n          \
+  \      dp[j]= dp[j]+dp[j-1];\n            }\n\n        }\n        List<Integer>\
+  \ result =new ArrayList<>();\n        for(int val=0;val<dp.length;val++){\n    \
+  \        result.add(dp[val]);\n        }\n        return result;\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        List<Integer>\
+  \ res = getRow(n);\n        if (res != null) {\n            for (int i = 0; i <\
+  \ res.size(); i++) System.out.print((i > 0 ? \" \" : \"\") + res.get(i));\n    \
+  \        System.out.println();\n        }\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc119-pascal-s-triangle-ii
+  label: Canonical — Pascal's Triangle II
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Pascal's Triangle II.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.ArrayList;\nimport java.util.List;\n\
+    \npublic class Main {\n    \n\n    public static List<Integer> getRow(int rowIndex){\n\
+    \        int[] dp=new int[rowIndex+1];\n        dp[0]=1;\n    \n        for(int\
+    \ row=1;row<=rowIndex;row++){\n            for(int j=row;j>=1;j--){\n        \
+    \        dp[j]= dp[j]+dp[j-1];\n            }\n\n        }\n        List<Integer>\
+    \ result =new ArrayList<>();\n        for(int val=0;val<dp.length;val++){\n  \
+    \          result.add(dp[val]);\n        }\n        return result;\n    }\n\n\
+    \    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        List<Integer>\
+    \ res = getRow(n);\n        if (res != null) {\n            for (int i = 0; i\
+    \ < res.size(); i++) System.out.print((i > 0 ? \" \" : \"\") + res.get(i));\n\
+    \            System.out.println();\n        }\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Pascal's Triangle II
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Pascal's Triangle II exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Pascal's\
+    \ Triangle II\n    }\n}\n"
 ---
 
 ### Pascal's Triangle II

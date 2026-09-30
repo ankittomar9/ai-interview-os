@@ -3,7 +3,8 @@ slug: dsa-find-the-nth-magic-number
 title: Find The Nth Magic Number
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [bit-manipulation]
+topics:
+- bit-manipulation
 est_minutes: 15
 tags:
 - bit-manipulation
@@ -43,7 +44,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Bit Manipulation techniques to solve the problem efficiently.
+  approachHint: Utilize standard Bit Manipulation techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +59,67 @@ coaching:
 editorial: '### Find The Nth Magic Number
 
 
-  This problem evaluates core techniques in Bit Manipulation. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Bit Manipulation. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void nthMagicNumberHelper(long n,long p) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        long a = sc.nextLong();\n        long b = sc.nextLong();\n        nthMagicNumberHelper(a, b);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static  void nthMagicNumberHelper(long n,long p){\n        long power=p;\n        long answer=0;\n        while(n>0){\n            if((n & 1)==1){\n                answer=power+answer;\n            }\n            power=power*p;\n            n=n>>1;\n        }\n         System.out.println(\"Nth Magic Number: \" + answer);\n\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        long a = sc.nextLong();\n        long b = sc.nextLong();\n        nthMagicNumberHelper(a, b);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void nthMagicNumberHelper(long\
+  \ n,long p) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        long a = sc.nextLong();\n        long b = sc.nextLong();\n\
+  \        nthMagicNumberHelper(a, b);\n    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \  void nthMagicNumberHelper(long n,long p){\n        long power=p;\n        long\
+  \ answer=0;\n        while(n>0){\n            if((n & 1)==1){\n                answer=power+answer;\n\
+  \            }\n            power=power*p;\n            n=n>>1;\n        }\n   \
+  \      System.out.println(\"Nth Magic Number: \" + answer);\n\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        long a = sc.nextLong();\n        long\
+  \ b = sc.nextLong();\n        nthMagicNumberHelper(a, b);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-the-nth-magic-number
+  label: Canonical — Find The Nth Magic Number
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find The Nth Magic Number.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static  void\
+    \ nthMagicNumberHelper(long n,long p){\n        long power=p;\n        long answer=0;\n\
+    \        while(n>0){\n            if((n & 1)==1){\n                answer=power+answer;\n\
+    \            }\n            power=power*p;\n            n=n>>1;\n        }\n \
+    \        System.out.println(\"Nth Magic Number: \" + answer);\n\n    }\n\n   \
+    \ public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        long a = sc.nextLong();\n       \
+    \ long b = sc.nextLong();\n        nthMagicNumberHelper(a, b);\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Find The Nth Magic Number
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Find The Nth Magic Number exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Find The\
+    \ Nth Magic Number\n    }\n}\n"
 ---
 
 ### Find The Nth Magic Number

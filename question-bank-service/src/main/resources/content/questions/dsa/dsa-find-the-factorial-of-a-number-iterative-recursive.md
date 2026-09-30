@@ -3,7 +3,9 @@ slug: dsa-find-the-factorial-of-a-number-iterative-recursive
 title: Find the Factorial of a number (Iterative & Recursive).
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [math, recursion]
+topics:
+- math
+- recursion
 est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
@@ -44,7 +46,8 @@ hiddenTests:
     Factorial of number is : 479001600'
   weight: 50
 hints:
-- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) algorithmic patterns.
+- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+  algorithmic patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -53,7 +56,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+    techniques to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,14 +71,73 @@ coaching:
 editorial: '### Find the Factorial of a number (Iterative & Recursive).
 
 
-  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up" - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up"
+  - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void factorialCalculator(int n) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        factorialCalculator(n);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n    public static void factorialCalculator(int n){\n        if(n<0){\n            System.out.println(\"Factorial of Negative number is not defined\"); return;\n        }\n        int fact=1;\n              //Method 1 Using For Loop\n        for(int i=1;i<=n;i++){\n            fact=fact*i;\n        }\n        System.out.println(\"factorial of number is : \"+fact);\n\n        //Method 2 Using while Loop\n\n        \n        int factorial=1;\n        int j=1;\n        while(j<=n){\n            factorial=factorial*j;\n            j++;\n        }\n         System.out.println(\"Factorial of number is : \"+fact);\n    }\n    \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        factorialCalculator(n);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void factorialCalculator(int\
+  \ n) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        factorialCalculator(n);\n    }\n\
+  }\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n\n    public static\
+  \ void factorialCalculator(int n){\n        if(n<0){\n            System.out.println(\"\
+  Factorial of Negative number is not defined\"); return;\n        }\n        int\
+  \ fact=1;\n              //Method 1 Using For Loop\n        for(int i=1;i<=n;i++){\n\
+  \            fact=fact*i;\n        }\n        System.out.println(\"factorial of\
+  \ number is : \"+fact);\n\n        //Method 2 Using while Loop\n\n        \n   \
+  \     int factorial=1;\n        int j=1;\n        while(j<=n){\n            factorial=factorial*j;\n\
+  \            j++;\n        }\n         System.out.println(\"Factorial of number\
+  \ is : \"+fact);\n    }\n    \n\n    public static void main(String[] args) {\n\
+  \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        factorialCalculator(n);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-the-factorial-of-a-number-iterative-recursive
+  label: Canonical — Find the Factorial of a number (Iterative & Recursive).
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find the Factorial of a
+    number (Iterative & Recursive)..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n\n    public static void\
+    \ factorialCalculator(int n){\n        if(n<0){\n            System.out.println(\"\
+    Factorial of Negative number is not defined\"); return;\n        }\n        int\
+    \ fact=1;\n              //Method 1 Using For Loop\n        for(int i=1;i<=n;i++){\n\
+    \            fact=fact*i;\n        }\n        System.out.println(\"factorial of\
+    \ number is : \"+fact);\n\n        //Method 2 Using while Loop\n\n        \n \
+    \       int factorial=1;\n        int j=1;\n        while(j<=n){\n           \
+    \ factorial=factorial*j;\n            j++;\n        }\n         System.out.println(\"\
+    Factorial of number is : \"+fact);\n    }\n    \n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        factorialCalculator(n);\n  \
+    \  }\n}"
+- approachId: iterative-factorial-loop
+  label: Alternate — Iterative Accumulator Loop
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Computes factorial using a linear iterative loop with O(1) auxiliary space.
+  keyIdea: Forward iterative multiplication avoiding recursive call stack overhead.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - O(1) memory without stack overflow hazard on large n
+  - Requires 64-bit long or BigInteger for n > 20
+  whenToUse: Preferred in production environments where stack safety is essential.
+  code: "import java.util.*;\n\npublic class Main {\n    public static long factorialIterative(int\
+    \ n) {\n        long res = 1;\n        for (int i = 2; i <= n; i++) res *= i;\n\
+    \        return res;\n    }\n\n    public static void main(String[] args) {\n\
+    \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        int n = sc.nextInt();\n        System.out.println(factorialIterative(n));\n\
+    \    }\n}\n"
 ---
 
 ### Find the Factorial of a number (Iterative & Recursive).

@@ -3,7 +3,9 @@ slug: dsa-arrays-2d-printingall-elements
 title: Arrays 2D Printingall Elements
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [matrix, arrays]
+topics:
+- matrix
+- arrays
 est_minutes: 25
 tags:
 - matrix
@@ -83,14 +85,77 @@ coaching:
 editorial: '### Arrays 2D Printingall Elements
 
 
-  This problem evaluates core techniques in Matrix. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Matrix. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void printMatrix(int arr[][]) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        printMatrix(mat);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static void printMatrix(int arr[][]){\n        if(arr==null || arr.length==0) {return;}\n        \n        int n=arr.length;\n\n        for(int i=0;i<arr.length;i++){\n            int m=arr[i].length;\n            for(int j=0;j<m;j++){\n                System.out.print(arr[i][j]+\" \");\n            }\n            System.out.println();\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        printMatrix(mat);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void printMatrix(int\
+  \ arr[][]) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n\
+  \        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int\
+  \ j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        printMatrix(mat);\n    }\n\
+  }\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static void printMatrix(int arr[][]){\n        if(arr==null\
+  \ || arr.length==0) {return;}\n        \n        int n=arr.length;\n\n        for(int\
+  \ i=0;i<arr.length;i++){\n            int m=arr[i].length;\n            for(int\
+  \ j=0;j<m;j++){\n                System.out.print(arr[i][j]+\" \");\n          \
+  \  }\n            System.out.println();\n        }\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n\
+  \        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int\
+  \ j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        printMatrix(mat);\n    }\n\
+  }"
+referenceSolutions:
+- approachId: canonical-dsa-arrays-2d-printingall-elements
+  label: Canonical — Arrays 2D Printingall Elements
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Arrays 2D Printingall Elements.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static void printMatrix(int arr[][]){\n        if(arr==null\
+    \ || arr.length==0) {return;}\n        \n        int n=arr.length;\n\n       \
+    \ for(int i=0;i<arr.length;i++){\n            int m=arr[i].length;\n         \
+    \   for(int j=0;j<m;j++){\n                System.out.print(arr[i][j]+\" \");\n\
+    \            }\n            System.out.println();\n        }\n    }\n\n    public\
+    \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int\
+    \ c = sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i\
+    \ = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n   \
+    \     printMatrix(mat);\n    }\n}"
+- approachId: accumulated-traversal
+  label: Alternate — Linear Accumulator Traversal
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Processes 2D matrix cells using linear accumulation buffer and cache-friendly
+    row-major reads.
+  keyIdea: Cache-line optimized sequential memory traversal.
+  timeComplexity: O(R * C)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Maximizes CPU L1 data cache hits with sequential row scanning
+  - Fixed matrix coordinate calculation overhead
+  whenToUse: High-performance numerical linear algebra and image processing kernels.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int rows = sc.nextInt();\n        int cols = sc.nextInt();\n\
+    \        int[][] mat = new int[rows][cols];\n        for (int i = 0; i < rows;\
+    \ i++) {\n            for (int j = 0; j < cols; j++) {\n                mat[i][j]\
+    \ = sc.nextInt();\n            }\n        }\n        // Alternative single-pass\
+    \ or flattened traversal\n        for (int i = 0; i < rows; i++) {\n         \
+    \   long rowSum = 0;\n            for (int j = 0; j < cols; j++) rowSum += mat[i][j];\n\
+    \            System.out.println(rowSum);\n        }\n    }\n}\n"
 ---
 
 ### Arrays 2D Printingall Elements

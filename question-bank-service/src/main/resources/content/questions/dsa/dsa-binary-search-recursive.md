@@ -3,7 +3,9 @@ slug: dsa-binary-search-recursive
 title: Binary Search (Recursive).
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [binary-search, recursion]
+topics:
+- binary-search
+- recursion
 est_minutes: 15
 tags:
 - 6-sorting--searching-15-questions
@@ -53,7 +55,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 6. Sorting & Searching (15 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 6. Sorting & Searching (15 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,15 +70,84 @@ coaching:
 editorial: '### Binary Search (Recursive).
 
 
-  This problem evaluates core techniques in 6. Sorting & Searching (15 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 6. Sorting & Searching (15 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int binarySearch(int arr[],int target) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(binarySearch(arr, target));\n    }\n}\n"
-solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n    public static int binarySearch(int arr[],int target){\n  if(arr==null || arr.length ==0){System.out.println(\"Array is null or empty\");\n            return -1; \n        }\n        return binarySearchHelper(arr,target,0,arr.length-1);\n    }\n    public static int binarySearchHelper(int arr[],int target,int low,int high){\n        if(low>high){\n            return -1;\n        }\n        int mid=low+(high-low)/2;\n        if(arr[mid]==target){\n            return mid;\n        }\n        if(arr[mid]<target){\n            return binarySearchHelper(arr, target, mid+1, high);\n        }\n         return binarySearchHelper(arr, target, low,mid-1);\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i\
-  \ = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(binarySearch(arr, target));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int binarySearch(int\
+  \ arr[],int target) {\n        return 0;\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n \
+  \       int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+  \        System.out.println(binarySearch(arr, target));\n    }\n}\n"
+solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n\
+  \    \n    public static int binarySearch(int arr[],int target){\n  if(arr==null\
+  \ || arr.length ==0){System.out.println(\"Array is null or empty\");\n         \
+  \   return -1; \n        }\n        return binarySearchHelper(arr,target,0,arr.length-1);\n\
+  \    }\n    public static int binarySearchHelper(int arr[],int target,int low,int\
+  \ high){\n        if(low>high){\n            return -1;\n        }\n        int\
+  \ mid=low+(high-low)/2;\n        if(arr[mid]==target){\n            return mid;\n\
+  \        }\n        if(arr[mid]<target){\n            return binarySearchHelper(arr,\
+  \ target, mid+1, high);\n        }\n         return binarySearchHelper(arr, target,\
+  \ low,mid-1);\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+  \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+  \ n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] arr = new\
+  \ int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(binarySearch(arr,\
+  \ target));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-binary-search-recursive
+  label: Canonical — Binary Search (Recursive).
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Binary Search (Recursive)..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n\
+    \    public static int binarySearch(int arr[],int target){\n  if(arr==null ||\
+    \ arr.length ==0){System.out.println(\"Array is null or empty\");\n          \
+    \  return -1; \n        }\n        return binarySearchHelper(arr,target,0,arr.length-1);\n\
+    \    }\n    public static int binarySearchHelper(int arr[],int target,int low,int\
+    \ high){\n        if(low>high){\n            return -1;\n        }\n        int\
+    \ mid=low+(high-low)/2;\n        if(arr[mid]==target){\n            return mid;\n\
+    \        }\n        if(arr[mid]<target){\n            return binarySearchHelper(arr,\
+    \ target, mid+1, high);\n        }\n         return binarySearchHelper(arr, target,\
+    \ low,mid-1);\n    }\n\n    public static void main(String[] args) {\n       \
+    \ Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n \
+    \       int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[]\
+    \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(binarySearch(arr, target));\n    }\n}"
+- approachId: iterative-binary-search
+  label: Alternate — Iterative Two-Pointer Bounds
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Iteratively narrows low and high search pointers to locate target element
+    in O(1) auxiliary space.
+  keyIdea: Iterative loop with mid calculation avoiding recursion overhead.
+  timeComplexity: O(log N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - O(1) strict auxiliary memory without stack risk
+  - Loop boundary conditions require careful off-by-one verification
+  whenToUse: Standard industrial approach for production binary search on sorted random-access
+    arrays.
+  code: "import java.util.*;\n\npublic class Main {\n    public static int binarySearchIterative(int[]\
+    \ arr, int target) {\n        int low = 0, high = arr.length - 1;\n        while\
+    \ (low <= high) {\n            int mid = low + (high - low) / 2;\n           \
+    \ if (arr[mid] == target) return mid;\n            else if (arr[mid] < target)\
+    \ low = mid + 1;\n            else high = mid - 1;\n        }\n        return\
+    \ -1;\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+    \ n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] arr = new\
+    \ int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n      \
+    \  System.out.println(binarySearchIterative(arr, target));\n    }\n}\n"
 ---
 
 ### Binary Search (Recursive).

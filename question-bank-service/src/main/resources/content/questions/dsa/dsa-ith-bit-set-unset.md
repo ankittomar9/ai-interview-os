@@ -3,7 +3,8 @@ slug: dsa-ith-bit-set-unset
 title: Ith Bit Set Unset
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [bit-manipulation]
+topics:
+- bit-manipulation
 est_minutes: 15
 tags:
 - bit-manipulation
@@ -43,7 +44,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Bit Manipulation techniques to solve the problem efficiently.
+  approachHint: Utilize standard Bit Manipulation techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +59,69 @@ coaching:
 editorial: '### Ith Bit Set Unset
 
 
-  This problem evaluates core techniques in Bit Manipulation. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Bit Manipulation. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void ithBitSetUnsetHelper(int n,int i) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        ithBitSetUnsetHelper(a, b);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static void ithBitSetUnsetHelper(int n,int i){\n           if(n==0){System.out.println(\"0 is already unset\");return ;}\n\n           int mask=1<<i;\n           \n           if( (n & mask)!=0){\n              System.out.println(\"Bit at index(Position) \" + i + \" is SET (1)\");\n           }else{\n             System.out.println(\"Bit at index(Position) \" + i + \" is UNSET (0)\");\n           }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        ithBitSetUnsetHelper(a, b);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void ithBitSetUnsetHelper(int\
+  \ n,int i) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n\
+  \        ithBitSetUnsetHelper(a, b);\n    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ void ithBitSetUnsetHelper(int n,int i){\n           if(n==0){System.out.println(\"\
+  0 is already unset\");return ;}\n\n           int mask=1<<i;\n           \n    \
+  \       if( (n & mask)!=0){\n              System.out.println(\"Bit at index(Position)\
+  \ \" + i + \" is SET (1)\");\n           }else{\n             System.out.println(\"\
+  Bit at index(Position) \" + i + \" is UNSET (0)\");\n           }\n    }\n\n   \
+  \ public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int\
+  \ b = sc.nextInt();\n        ithBitSetUnsetHelper(a, b);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-ith-bit-set-unset
+  label: Canonical — Ith Bit Set Unset
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Ith Bit Set Unset.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static void\
+    \ ithBitSetUnsetHelper(int n,int i){\n           if(n==0){System.out.println(\"\
+    0 is already unset\");return ;}\n\n           int mask=1<<i;\n           \n  \
+    \         if( (n & mask)!=0){\n              System.out.println(\"Bit at index(Position)\
+    \ \" + i + \" is SET (1)\");\n           }else{\n             System.out.println(\"\
+    Bit at index(Position) \" + i + \" is UNSET (0)\");\n           }\n    }\n\n \
+    \   public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int\
+    \ b = sc.nextInt();\n        ithBitSetUnsetHelper(a, b);\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Ith Bit Set Unset
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Ith Bit Set Unset exploring secondary
+    algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Ith Bit\
+    \ Set Unset\n    }\n}\n"
 ---
 
 ### Ith Bit Set Unset

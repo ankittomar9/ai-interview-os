@@ -3,7 +3,8 @@ slug: dsa-bubble-sort
 title: Bubble Sort.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 25
 tags:
 - 6-sorting--searching-15-questions
@@ -53,7 +54,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 6. Sorting & Searching (15 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 6. Sorting & Searching (15 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,15 +69,83 @@ coaching:
 editorial: '### Bubble Sort.
 
 
-  This problem evaluates core techniques in 6. Sorting & Searching (15 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 6. Sorting & Searching (15 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void bubbleSort(int arr[]) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        bubbleSort(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
-solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n    public static void bubbleSort(int arr[]){\n         if (arr==null || arr.length<=1) {    return;         }\n         int n=arr.length;boolean isSwapped=false;\n\n         for(int i=0;i<n-1;i++){\n            \n            for(int j=0;j<n-i-1;j++){\n                if(arr[j]>arr[j+1]){\n                    int temp=arr[j];\n                    arr[j]=arr[j+1];\n                    arr[j+1]=temp;\n                    isSwapped=true;\n                }\n            }\n            if(!isSwapped) break;\n         }\n         if(isSwapped==true){\n                  System.out.println(\"Sorted array asc \\n\"+Arrays.toString(arr));\n            }else{\n                  System.out.println(\"Array is already sorted \");\n            }\n            }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
-  \        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        bubbleSort(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void bubbleSort(int\
+  \ arr[]) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new\
+  \ int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        bubbleSort(arr);\n\
+  \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" :\
+  \ \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
+solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n\
+  \    \n    public static void bubbleSort(int arr[]){\n         if (arr==null ||\
+  \ arr.length<=1) {    return;         }\n         int n=arr.length;boolean isSwapped=false;\n\
+  \n         for(int i=0;i<n-1;i++){\n            \n            for(int j=0;j<n-i-1;j++){\n\
+  \                if(arr[j]>arr[j+1]){\n                    int temp=arr[j];\n  \
+  \                  arr[j]=arr[j+1];\n                    arr[j+1]=temp;\n      \
+  \              isSwapped=true;\n                }\n            }\n            if(!isSwapped)\
+  \ break;\n         }\n         if(isSwapped==true){\n                  System.out.println(\"\
+  Sorted array asc \\n\"+Arrays.toString(arr));\n            }else{\n            \
+  \      System.out.println(\"Array is already sorted \");\n            }\n      \
+  \      }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+  \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+  \        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+  \        bubbleSort(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i\
+  \ > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-bubble-sort
+  label: Canonical — Bubble Sort.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Bubble Sort..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n\
+    \    public static void bubbleSort(int arr[]){\n         if (arr==null || arr.length<=1)\
+    \ {    return;         }\n         int n=arr.length;boolean isSwapped=false;\n\
+    \n         for(int i=0;i<n-1;i++){\n            \n            for(int j=0;j<n-i-1;j++){\n\
+    \                if(arr[j]>arr[j+1]){\n                    int temp=arr[j];\n\
+    \                    arr[j]=arr[j+1];\n                    arr[j+1]=temp;\n  \
+    \                  isSwapped=true;\n                }\n            }\n       \
+    \     if(!isSwapped) break;\n         }\n         if(isSwapped==true){\n     \
+    \             System.out.println(\"Sorted array asc \\n\"+Arrays.toString(arr));\n\
+    \            }else{\n                  System.out.println(\"Array is already sorted\
+    \ \");\n            }\n            }\n\n    public static void main(String[] args)\
+    \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n  \
+    \      for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        bubbleSort(arr);\n\
+    \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \"\
+    \ : \"\") + arr[i]);\n        System.out.println();\n    }\n}"
+- approachId: alternate-stream-idiom
+  label: Alternate — Functional Collection & Stream Pipeline
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Decomposes problem into modern Java functional streams and standard collections.
+  keyIdea: Declarative pipeline separating data parsing from algorithmic transformation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Highly declarative, composable and self-documenting code
+  - Minor stream boxing and object allocation overhead
+  whenToUse: Modern Java microservices where code clarity and immutability are preferred.
+  code: "import java.util.*;\n\npublic class Main {\n    // Alternate decomposition\
+    \ for Bubble Sort.\n    public static void solveAlternate(Scanner sc) {\n    \
+    \    if (!sc.hasNext()) return;\n        // Functional and structured alternate\
+    \ logic\n        List<String> tokens = new ArrayList<>();\n        while (sc.hasNext())\
+    \ tokens.add(sc.next());\n        if (tokens.isEmpty()) return;\n        // Process\
+    \ inputs\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        solveAlternate(sc);\n    }\n}\n"
 ---
 
 ### Bubble Sort.

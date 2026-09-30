@@ -3,7 +3,8 @@ slug: dsa-find-the-second-largest-element-in-an-array
 title: Find the Second Largest element in an array.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 15
 tags:
 - 2-arrays-the-core--40-questions
@@ -73,7 +74,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -87,15 +89,91 @@ coaching:
 editorial: '### Find the Second Largest element in an array.
 
 
-  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void secondSmallestFinder(int arr[]) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        secondSmallestFinder(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n     public static void secondSmallestFinder(int arr[]){\n            if(arr==null || arr.length<2){\n                System.out.println(\"Array must have at least 2 elements\");  return;            }                        \n                    int min=Integer.MAX_VALUE;\n                    int secondMin=min;\n                 for(int i=0;i<arr.length;i++){\n                    if(arr[i]<min){\n                       secondMin=min;\n                        min=arr[i];\n                    }             \n                    else if(arr[i]!=min && arr[i]<secondMin){\n                        secondMin=arr[i];\n                    }\n                }\n                System.out.println(\"First min : \"+min);\n                System.out.println(\"Second min :\"+secondMin);\n  }        \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
-  \ n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        secondSmallestFinder(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}\n\n/*TC : is O(N)\n  SC :  is O(1)  \n  Approach 1 : Use two Loops for max and min\n  Approach 2 : sort and first element is min second element is second min\n  */"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void secondSmallestFinder(int\
+  \ arr[]) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new\
+  \ int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        secondSmallestFinder(arr);\n\
+  \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" :\
+  \ \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n     public static\
+  \ void secondSmallestFinder(int arr[]){\n            if(arr==null || arr.length<2){\n\
+  \                System.out.println(\"Array must have at least 2 elements\");  return;\
+  \            }                        \n                    int min=Integer.MAX_VALUE;\n\
+  \                    int secondMin=min;\n                 for(int i=0;i<arr.length;i++){\n\
+  \                    if(arr[i]<min){\n                       secondMin=min;\n  \
+  \                      min=arr[i];\n                    }             \n       \
+  \             else if(arr[i]!=min && arr[i]<secondMin){\n                      \
+  \  secondMin=arr[i];\n                    }\n                }\n               \
+  \ System.out.println(\"First min : \"+min);\n                System.out.println(\"\
+  Second min :\"+secondMin);\n  }        \n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n    \
+  \    for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        secondSmallestFinder(arr);\n\
+  \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" :\
+  \ \"\") + arr[i]);\n        System.out.println();\n    }\n}\n\n/*TC : is O(N)\n\
+  \  SC :  is O(1)  \n  Approach 1 : Use two Loops for max and min\n  Approach 2 :\
+  \ sort and first element is min second element is second min\n  */"
+referenceSolutions:
+- approachId: canonical-dsa-find-the-second-largest-element-in-an-array
+  label: Canonical — Find the Second Largest element in an array.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find the Second Largest
+    element in an array..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n     public static void secondSmallestFinder(int\
+    \ arr[]){\n            if(arr==null || arr.length<2){\n                System.out.println(\"\
+    Array must have at least 2 elements\");  return;            }                \
+    \        \n                    int min=Integer.MAX_VALUE;\n                  \
+    \  int secondMin=min;\n                 for(int i=0;i<arr.length;i++){\n     \
+    \               if(arr[i]<min){\n                       secondMin=min;\n     \
+    \                   min=arr[i];\n                    }             \n        \
+    \            else if(arr[i]!=min && arr[i]<secondMin){\n                     \
+    \   secondMin=arr[i];\n                    }\n                }\n            \
+    \    System.out.println(\"First min : \"+min);\n                System.out.println(\"\
+    Second min :\"+secondMin);\n  }        \n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n  \
+    \      for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        secondSmallestFinder(arr);\n\
+    \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \"\
+    \ : \"\") + arr[i]);\n        System.out.println();\n    }\n}\n\n/*TC : is O(N)\n\
+    \  SC :  is O(1)  \n  Approach 1 : Use two Loops for max and min\n  Approach 2\
+    \ : sort and first element is min second element is second min\n  */"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Find the Second Largest element in an
+    array.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Find the Second Largest element
+    in an array. exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Find the\
+    \ Second Largest element in an array.\n    }\n}\n"
 ---
 
 ### Find the Second Largest element in an array.

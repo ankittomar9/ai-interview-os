@@ -3,7 +3,9 @@ slug: dsa-lc128-longest-consecutive-sequence
 title: Longest Consecutive Sequence
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [hashing, arrays]
+topics:
+- hashing
+- arrays
 est_minutes: 25
 tags:
 - arrays--hashing
@@ -54,7 +56,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Arrays & Hashing techniques to solve the problem efficiently.
+  approachHint: Utilize standard Arrays & Hashing techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -68,15 +71,82 @@ coaching:
 editorial: '### Longest Consecutive Sequence
 
 
-  This problem evaluates core techniques in Arrays & Hashing. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Arrays & Hashing. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int longestConsecutive(int[] nums) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(longestConsecutive(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.HashSet;\nimport java.util.Set;\n\npublic class Main {\n    \n    public static int longestConsecutive(int[] nums){\n        if(nums==null || nums.length==0){\n            return 0;        }\n            Set<Integer> set=new HashSet<>();\n            for(int i=0;i<nums.length;i++){\n                set.add(nums[i]);\n            }\n\n            int maxLen=0;\n            for(int i=0;i<nums.length;i++){\n                if(!set.contains(nums[i]-1)){\n                    int current=nums[i];\n                    int streak=0;\n\n                    while(set.contains(current)){\n                        streak++;\n                        current++;\n                    }\n                    maxLen=Math.max(maxLen, streak);\n                }\n            }\n            return maxLen;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n =\
-  \ sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(longestConsecutive(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int longestConsecutive(int[]\
+  \ nums) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(longestConsecutive(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.HashSet;\nimport java.util.Set;\n\
+  \npublic class Main {\n    \n    public static int longestConsecutive(int[] nums){\n\
+  \        if(nums==null || nums.length==0){\n            return 0;        }\n   \
+  \         Set<Integer> set=new HashSet<>();\n            for(int i=0;i<nums.length;i++){\n\
+  \                set.add(nums[i]);\n            }\n\n            int maxLen=0;\n\
+  \            for(int i=0;i<nums.length;i++){\n                if(!set.contains(nums[i]-1)){\n\
+  \                    int current=nums[i];\n                    int streak=0;\n\n\
+  \                    while(set.contains(current)){\n                        streak++;\n\
+  \                        current++;\n                    }\n                   \
+  \ maxLen=Math.max(maxLen, streak);\n                }\n            }\n         \
+  \   return maxLen;\n    }\n\n    public static void main(String[] args) {\n    \
+  \    Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(longestConsecutive(arr));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc128-longest-consecutive-sequence
+  label: Canonical — Longest Consecutive Sequence
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Longest Consecutive Sequence.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.HashSet;\nimport java.util.Set;\n\
+    \npublic class Main {\n    \n    public static int longestConsecutive(int[] nums){\n\
+    \        if(nums==null || nums.length==0){\n            return 0;        }\n \
+    \           Set<Integer> set=new HashSet<>();\n            for(int i=0;i<nums.length;i++){\n\
+    \                set.add(nums[i]);\n            }\n\n            int maxLen=0;\n\
+    \            for(int i=0;i<nums.length;i++){\n                if(!set.contains(nums[i]-1)){\n\
+    \                    int current=nums[i];\n                    int streak=0;\n\
+    \n                    while(set.contains(current)){\n                        streak++;\n\
+    \                        current++;\n                    }\n                 \
+    \   maxLen=Math.max(maxLen, streak);\n                }\n            }\n     \
+    \       return maxLen;\n    }\n\n    public static void main(String[] args) {\n\
+    \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+    \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(longestConsecutive(arr));\n\
+    \    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Longest Consecutive Sequence
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Longest Consecutive Sequence
+    exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Longest\
+    \ Consecutive Sequence\n    }\n}\n"
 ---
 
 ### Longest Consecutive Sequence

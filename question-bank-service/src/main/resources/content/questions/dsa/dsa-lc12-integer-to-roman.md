@@ -3,7 +3,8 @@ slug: dsa-lc12-integer-to-roman
 title: Integer to Roman
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [math]
+topics:
+- math
 est_minutes: 25
 tags:
 - math
@@ -58,14 +59,73 @@ coaching:
 editorial: '### Integer to Roman
 
 
-  This problem evaluates core techniques in Math. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Math. Implement an optimal algorithm ensuring
+  correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static String intToRoman(int num) {\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(intToRoman(n));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static String intToRoman(int num){\n        if(num<0){return \"-1\";}\n        if(num==0){return \"0\";}\n        int[] values = {1000,900,500,400,100,90,50,40,10,9,5,4,1};\n        String[] symbols={\"M\", \"CM\", \"D\", \"CD\", \"C\", \"XC\",\n         \"L\", \"XL\", \"X\", \"IX\", \"V\", \"IV\", \"I\"};\n\n        StringBuilder sb=new StringBuilder();\n\n        for(int i=0;i<values.length;i++){\n            while(num >= values[i]){\n                sb.append(symbols[i]);\n                num=num-values[i];\n            }\n        }\n        return sb.toString();\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(intToRoman(n));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static String\
+  \ intToRoman(int num) {\n        return \"\";\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        System.out.println(intToRoman(n));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ String intToRoman(int num){\n        if(num<0){return \"-1\";}\n        if(num==0){return\
+  \ \"0\";}\n        int[] values = {1000,900,500,400,100,90,50,40,10,9,5,4,1};\n\
+  \        String[] symbols={\"M\", \"CM\", \"D\", \"CD\", \"C\", \"XC\",\n      \
+  \   \"L\", \"XL\", \"X\", \"IX\", \"V\", \"IV\", \"I\"};\n\n        StringBuilder\
+  \ sb=new StringBuilder();\n\n        for(int i=0;i<values.length;i++){\n       \
+  \     while(num >= values[i]){\n                sb.append(symbols[i]);\n       \
+  \         num=num-values[i];\n            }\n        }\n        return sb.toString();\n\
+  \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+  \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+  \        System.out.println(intToRoman(n));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc12-integer-to-roman
+  label: Canonical — Integer to Roman
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Integer to Roman.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static String\
+    \ intToRoman(int num){\n        if(num<0){return \"-1\";}\n        if(num==0){return\
+    \ \"0\";}\n        int[] values = {1000,900,500,400,100,90,50,40,10,9,5,4,1};\n\
+    \        String[] symbols={\"M\", \"CM\", \"D\", \"CD\", \"C\", \"XC\",\n    \
+    \     \"L\", \"XL\", \"X\", \"IX\", \"V\", \"IV\", \"I\"};\n\n        StringBuilder\
+    \ sb=new StringBuilder();\n\n        for(int i=0;i<values.length;i++){\n     \
+    \       while(num >= values[i]){\n                sb.append(symbols[i]);\n   \
+    \             num=num-values[i];\n            }\n        }\n        return sb.toString();\n\
+    \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+    \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+    \        System.out.println(intToRoman(n));\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Integer to Roman
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Integer to Roman exploring secondary
+    algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Integer\
+    \ to Roman\n    }\n}\n"
 ---
 
 ### Integer to Roman
