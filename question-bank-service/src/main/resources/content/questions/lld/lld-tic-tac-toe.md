@@ -12,7 +12,7 @@ tags:
 - java
 - design-patterns
 - game-design
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -24,6 +24,276 @@ coaching:
   - 'Show clean separation of concerns: Board (grid state), Player (metadata + piece symbol), and Game (turn loop, rules, referee).'
   - Explain how the $O(1)$ win evaluation algorithm works using row/column counters (+1 for Player 1, -1 for Player 2).
   - 'Highlight edge cases: full board tie detection, invalid move on occupied cell, moves after game over.'
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>tic-tac-toe</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Tic Tac Toe Game
+
+    ## Overview
+    Implement an object-oriented $N \times N$ Tic Tac Toe game engine with turn tracking, move validation, win condition evaluation, and score management.
+
+    ## Key Components
+    - `com.interviewos.tictactoe.model.Board`: Grid representation and win checking.
+    - `com.interviewos.tictactoe.service.Game`: Turn coordination and move execution.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/tictactoe/service/Game.java`
+    2. `src/main/java/com/interviewos/tictactoe/model/Board.java`
+  src/main/java/com/interviewos/tictactoe/model/Player.java: |
+    package com.interviewos.tictactoe.model;
+
+    public class Player {
+        private final String name;
+        private final char symbol;
+
+        public Player(String name, char symbol) {
+            this.name = name;
+            this.symbol = symbol;
+        }
+
+        public String getName() { return name; }
+        public char getSymbol() { return symbol; }
+    }
+  src/main/java/com/interviewos/tictactoe/model/GameCondition.java: |
+    package com.interviewos.tictactoe.model;
+
+    public enum GameCondition {
+        IN_PROGRESS,
+        ENDED
+    }
+  src/main/java/com/interviewos/tictactoe/model/Board.java: |
+    package com.interviewos.tictactoe.model;
+
+    import java.util.Arrays;
+    import java.util.Objects;
+    import java.util.Optional;
+
+    public class Board {
+        private final int size;
+        private final Player[][] grid;
+
+        public Board() {
+            this(3);
+        }
+
+        public Board(int size) {
+            this.size = size;
+            this.grid = new Player[size][size];
+        }
+
+        public void updateBoard(int row, int col, Player player) {
+            // TODO: Place player symbol at (row, col)
+            throw new UnsupportedOperationException("TODO: Implement updateBoard");
+        }
+
+        public Optional<Player> getWinner() {
+            // TODO: Check rows, cols, diagonals for winner
+            throw new UnsupportedOperationException("TODO: Implement getWinner");
+        }
+
+        public boolean isFull() {
+            // TODO: Check if all cells are filled
+            throw new UnsupportedOperationException("TODO: Implement isFull");
+        }
+
+        public void reset() {
+            for (Player[] row : grid) {
+                Arrays.fill(row, null);
+            }
+        }
+
+        public Player getPlayerAt(int row, int col) {
+            return grid[row][col];
+        }
+
+        public int getSize() { return size; }
+    }
+  src/main/java/com/interviewos/tictactoe/service/Game.java: |
+    package com.interviewos.tictactoe.service;
+
+    import com.interviewos.tictactoe.model.*;
+    import java.util.Optional;
+
+    public class Game {
+        private final Board board;
+        private final Player[] players;
+        private int currentPlayerIndex = 0;
+
+        public Game(Player player1, Player player2) {
+            this.board = new Board(3);
+            this.players = new Player[]{player1, player2};
+        }
+
+        public void makeMove(int row, int col, Player player) {
+            // TODO: Validate game in progress, valid player turn, unoccupied cell; update board; alternate turn
+            throw new UnsupportedOperationException("TODO: Implement makeMove");
+        }
+
+        public GameCondition getGameStatus() {
+            // TODO: Return ENDED if winner present or board full, else IN_PROGRESS
+            throw new UnsupportedOperationException("TODO: Implement getGameStatus");
+        }
+
+        public Optional<Player> getWinner() {
+            return board.getWinner();
+        }
+
+        public Player getCurrentPlayer() {
+            return players[currentPlayerIndex];
+        }
+
+        public Board getBoard() { return board; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/tictactoe/service/Game.java
+- src/main/java/com/interviewos/tictactoe/model/Board.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/tictactoe/BoardWinConditionTest.java: |
+    package com.interviewos.tictactoe;
+
+    import com.interviewos.tictactoe.model.Board;
+    import com.interviewos.tictactoe.model.Player;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.util.Optional;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class BoardWinConditionTest {
+        @Test
+        @DisplayName("Winner detected on full horizontal row")
+        void testRowWin() {
+            Board board = new Board(3);
+            Player p1 = new Player("Alice", 'X');
+
+            board.updateBoard(0, 0, p1);
+            board.updateBoard(0, 1, p1);
+            board.updateBoard(0, 2, p1);
+
+            Optional<Player> winner = board.getWinner();
+            assertTrue(winner.isPresent());
+            assertEquals("Alice", winner.get().getName());
+        }
+
+        @Test
+        @DisplayName("Winner detected on main diagonal")
+        void testDiagonalWin() {
+            Board board = new Board(3);
+            Player p2 = new Player("Bob", 'O');
+
+            board.updateBoard(0, 0, p2);
+            board.updateBoard(1, 1, p2);
+            board.updateBoard(2, 2, p2);
+
+            Optional<Player> winner = board.getWinner();
+            assertTrue(winner.isPresent());
+            assertEquals("Bob", winner.get().getName());
+        }
+    }
+  src/test/java/com/interviewos/tictactoe/GameTurnAndValidationTest.java: |
+    package com.interviewos.tictactoe;
+
+    import com.interviewos.tictactoe.model.Player;
+    import com.interviewos.tictactoe.service.Game;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class GameTurnAndValidationTest {
+        @Test
+        @DisplayName("Game rejects move from wrong player turn or already occupied position")
+        void testTurnAndCellValidation() {
+            Player p1 = new Player("Alice", 'X');
+            Player p2 = new Player("Bob", 'O');
+            Game game = new Game(p1, p2);
+
+            // p2 tries to play out of turn
+            assertThrows(IllegalArgumentException.class, () -> game.makeMove(0, 0, p2));
+
+            // p1 plays valid move
+            game.makeMove(0, 0, p1);
+            assertEquals(p2, game.getCurrentPlayer());
+
+            // p2 tries to play on occupied position
+            assertThrows(IllegalArgumentException.class, () -> game.makeMove(0, 0, p2));
+        }
+    }
+  src/test/java/com/interviewos/tictactoe/GameTieAndEndStateTest.java: |
+    package com.interviewos.tictactoe;
+
+    import com.interviewos.tictactoe.model.GameCondition;
+    import com.interviewos.tictactoe.model.Player;
+    import com.interviewos.tictactoe.service.Game;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class GameTieAndEndStateTest {
+        @Test
+        @DisplayName("Full board with no winner ends in draw, moves after game over are rejected")
+        void testDrawAndPostGameRejection() {
+            Player p1 = new Player("Alice", 'X');
+            Player p2 = new Player("Bob", 'O');
+            Game game = new Game(p1, p2);
+
+            // Alice: X, Bob: O
+            // X O X
+            // X X O
+            // O X O
+            game.makeMove(0, 0, p1); // X
+            game.makeMove(0, 1, p2); // O
+            game.makeMove(0, 2, p1); // X
+            game.makeMove(1, 2, p2); // O
+            game.makeMove(1, 0, p1); // X
+            game.makeMove(2, 0, p2); // O
+            game.makeMove(1, 1, p1); // X
+            game.makeMove(2, 2, p2); // O
+            game.makeMove(2, 1, p1); // X
+
+            assertEquals(GameCondition.ENDED, game.getGameStatus());
+            assertTrue(game.getWinner().isEmpty());
+
+            // Further moves after end throw IllegalStateException
+            assertThrows(IllegalStateException.class, () -> game.makeMove(0, 0, p2));
+        }
+    }
+
 starterCode: "public class Game {\n    // Core game components\nprivate final Board board; // Manages the game board state\nprivate final ScoreTracker scoreTracker; // Keeps track of player scores\nprivate Player[] players; // Array of players in the game\nprivate int currentPlayerIndex; // Index of the current player's turn\n// Constructor initializes game components and starts a new game\npublic Game(Player playerX, Player playerY) {\n        board = new Board();\n        scoreTracker = new ScoreTracker();\n        startNewGame(playerX, playerY);\n    }\n    // Resets the game state and initializes players for a new game\npublic void startNewGame(Player playerX, Player playerY) {\n        board.reset();\n        players = new Player[] `{playerX, playerY}`;\n        currentPlayerIndex = 0;\n    }\n    // Processes a player's move, validates it, and updates game state\npublic void makeMove(int colIndex, int rowIndex, Player player) {\n        if (getGameStatus().equals(GameCondition.ENDED))\
   \ {\n            throw new IllegalStateException(\"game ended\");\n        }\n        if (players[currentPlayerIndex] != player) {\n            throw new IllegalArgumentException(\"not the current player\");\n        }\n        if (board.getPlayerAt(colIndex, rowIndex) != null) {\n            throw new IllegalArgumentException(\"board position is taken\");\n        }\n        board.updateBoard(colIndex, rowIndex, player);\n        final Move\nnewMove\n=\nnew Move(colIndex, rowIndex, player);\n        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;\n        if (getGameStatus().equals(GameCondition.ENDED)) {\n            scoreTracker.reportGameResult(players[0], players[1], board.getWinner());\n        }\n    }\n    // Determines if the game is in progress or has ended\npublic GameCondition getGameStatus() {\n        Optional<Player> winner = board.getWinner();\n        if (winner.isPresent()) {\n            return GameCondition.ENDED;\n        }\n        return board.isFull()\
   \ ? GameCondition.ENDED : GameCondition.IN_PROGRESS;\n    }\n    // Returns the player whose turn it is\npublic Player getCurrentPlayer() {\n        return players[currentPlayerIndex];\n    }\n    // Returns the score tracker for accessing game statistics\npublic ScoreTracker getScoreTracker() {\n        return scoreTracker;\n    }\n}\n\npublic class Board {\n    // 3x3 grid to store player moves\nprivate final Player[][] grid = new Player[3][3];\n    // Updates the board with a player's move at the specified position\npublic void updateBoard(int colIndex, int rowIndex, Player player) {\n        if (grid[colIndex][rowIndex] == null) {\n            grid[colIndex][rowIndex] = player;\n        }\n    }\n    // Checks for a winner by examining rows, columns, and diagonals\npublic Optional<Player> getWinner() {\n        // Check rows for three in a row\nfor (int i\n=\n0; i < grid.length; i++) {\n            Player\nfirst\n= grid[i][0];\n            if (first != null && Arrays.stream(grid[i]).allMatch(p\

@@ -1,5 +1,6 @@
 package com.interviewos.session.sandbox.document;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,6 +40,7 @@ public class ProblemDocument {
     @Builder.Default
     private List<String> editablePaths = new ArrayList<>();
 
+    @JsonIgnore
     @Builder.Default
     private Map<String, String> hiddenTestFiles = Map.of();
 
@@ -62,6 +64,7 @@ public class ProblemDocument {
     @Builder.Default
     private List<TestCase> sampleTests = new ArrayList<>();
 
+    @JsonIgnore
     @Builder.Default
     private List<HiddenTestCase> hiddenTests = new ArrayList<>();
 

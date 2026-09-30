@@ -4,7 +4,7 @@ import lombok.Builder;
 
 import java.util.List;
 
-@Builder
+@Builder(toBuilder = true)
 public record ExecutionResultResponse(
         String status, // PASSED, PARTIAL, FAILED, COMPILE_ERROR, TIMEOUT, MEMORY_EXCEEDED
         int totalTests,
@@ -14,7 +14,8 @@ public record ExecutionResultResponse(
         String stdout,
         String stderr,
         String compilerOutput,
-        List<TestCaseResult> testResults
+        List<TestCaseResult> testResults,
+        Integer droppedFilesCount
 ) {
     @Builder
     public record TestCaseResult(

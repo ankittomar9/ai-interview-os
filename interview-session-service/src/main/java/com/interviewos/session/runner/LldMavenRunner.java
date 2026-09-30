@@ -107,7 +107,9 @@ public class LldMavenRunner implements TrackRunner {
 
     @Override
     public boolean supports(ProblemDocument problem) {
-        return problem != null && "maven-spring".equalsIgnoreCase(problem.getBuildProfile());
+        if (problem == null) return false;
+        String profile = problem.getBuildProfile();
+        return "maven-spring".equalsIgnoreCase(profile) || "maven-workspace".equalsIgnoreCase(profile);
     }
 
     @Override
@@ -128,15 +130,35 @@ public class LldMavenRunner implements TrackRunner {
 
             // 3. Overwrite with Candidate's files (STRICTLY constrained to editablePaths whitelist)
             Set<String> allowedPaths = new HashSet<>(problem.getEditablePaths() != null ? problem.getEditablePaths() : List.of());
+            int droppedCount = 0;
+            List<String> droppedPaths = new ArrayList<>();
             if (candidateFiles != null) {
                 for (Map.Entry<String, String> entry : candidateFiles.entrySet()) {
                     String relativePath = entry.getKey().replace('\\', '/').trim();
-                    if (allowedPaths.contains(relativePath)) {
+                    boolean isAllowed = allowedPaths.contains(relativePath);
+                    if (!isAllowed) {
+                        for (String allowed : allowedPaths) {
+                            if (allowed.endsWith("/**")) {
+                                String prefix = allowed.substring(0, allowed.length() - 3);
+                                if (relativePath.startsWith(prefix)) {
+                                    isAllowed = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (isAllowed) {
                         writeFile(tempWorkspace, relativePath, entry.getValue());
                     } else {
-                        log.debug("🔒 Candidate attempted to overwrite non-editable file: '{}'. Ignored.", relativePath);
+                        droppedCount++;
+                        droppedPaths.add(relativePath);
+                        log.warn("🔒 Candidate attempted to overwrite non-editable file: '{}'. Ignored.", relativePath);
                     }
                 }
+            }
+            if (droppedCount > 0) {
+                log.warn("[LLD_RUNNER_DROPPED_PATHS] Session {} problem '{}': dropped {} candidate file(s) outside editablePaths whitelist: {}",
+                        sessionId, problem.getProblemSlug(), droppedCount, droppedPaths);
             }
 
             // 4. Inject Server-Only Hidden JUnit Test Files (under src/test/java/)
@@ -150,11 +172,16 @@ public class LldMavenRunner implements TrackRunner {
             ensureDockerInitialized();
 
             // 6. Execute via Docker container
+            ExecutionResultResponse resp;
             if (isDockerAvailable && dockerClient != null) {
-                return executeInDocker(tempWorkspace.toFile());
+                resp = executeInDocker(tempWorkspace.toFile());
             } else {
-                return executeFallbackSimulation(problem, candidateFiles);
+                resp = executeFallbackSimulation(problem, candidateFiles);
             }
+            if (droppedCount > 0 && resp != null) {
+                resp = resp.toBuilder().droppedFilesCount(droppedCount).build();
+            }
+            return resp;
 
         } catch (Exception e) {
             log.error("Failed executing LLD Maven project: {}", e.getMessage(), e);

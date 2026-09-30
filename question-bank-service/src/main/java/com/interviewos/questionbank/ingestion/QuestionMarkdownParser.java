@@ -74,6 +74,7 @@ public class QuestionMarkdownParser {
             Map<String, String> starterCodeMap = getStringMap(yamlMap, "starterCodeMap");
             Map<String, String> starterFiles = getStringMap(yamlMap, "starterFiles");
             Map<String, String> solutionFiles = getStringMap(yamlMap, "solutionFiles");
+            Map<String, String> hiddenTestFiles = getStringMap(yamlMap, "hiddenTestFiles");
 
             List<QuestionDocument.TestCase> sampleTests = parseSampleTests(yamlMap.get("sampleTests"));
             List<QuestionDocument.HiddenTestCase> hiddenTests = parseHiddenTests(yamlMap.get("hiddenTests"));
@@ -115,6 +116,7 @@ public class QuestionMarkdownParser {
                     .starterCodeMap(starterCodeMap)
                     .starterFiles(starterFiles)
                     .editablePaths(editablePaths)
+                    .hiddenTestFiles(hiddenTestFiles)
                     .sampleTests(sampleTests)
                     .hiddenTests(hiddenTests)
                     .buildProfile(buildProfile)

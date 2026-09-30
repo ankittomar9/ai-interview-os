@@ -14,7 +14,7 @@ tags:
 - strategy-pattern
 - observer-pattern
 - billing
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -26,6 +26,342 @@ coaching:
   - Explain how the billing engine iterates through line items, applies eligible coupon/discount strategies, and computes sales tax.
   - 'Demonstrate extensibility: how easy is it to add a ''Buy 2 Get 1 at 50% Off'' discount without changing the Cart or Cashier classes?'
   - Discuss barcode scanning and weight scale integration as input adapters.
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>grocery-store-checkout</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Grocery Store Checkout System
+
+    ## Overview
+    Implement an object-oriented Grocery Store Checkout System with catalog and inventory tracking, cart items, pluggable discount strategies, and change calculation.
+
+    ## Key Components
+    - `com.interviewos.grocerystore.model.Catalog`: Manages registered grocery items.
+    - `com.interviewos.grocerystore.model.Inventory`: Tracks stock levels.
+    - `com.interviewos.grocerystore.service.Checkout`: Order transaction workflow.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/grocerystore/service/Checkout.java`
+    2. `src/main/java/com/interviewos/grocerystore/model/Order.java`
+    3. `src/main/java/com/interviewos/grocerystore/strategy/PercentageDiscountStrategy.java`
+  src/main/java/com/interviewos/grocerystore/model/Item.java: |
+    package com.interviewos.grocerystore.model;
+
+    import java.math.BigDecimal;
+
+    public class Item {
+        private final String name;
+        private final String barcode;
+        private final String category;
+        private final BigDecimal price;
+
+        public Item(String name, String barcode, String category, BigDecimal price) {
+            this.name = name;
+            this.barcode = barcode;
+            this.category = category;
+            this.price = price;
+        }
+
+        public String getName() { return name; }
+        public String getBarcode() { return barcode; }
+        public String getCategory() { return category; }
+        public BigDecimal getPrice() { return price; }
+    }
+  src/main/java/com/interviewos/grocerystore/model/Catalog.java: |
+    package com.interviewos.grocerystore.model;
+
+    import java.util.Map;
+    import java.util.concurrent.ConcurrentHashMap;
+
+    public class Catalog {
+        private final Map<String, Item> items = new ConcurrentHashMap<>();
+
+        public void updateItem(Item item) {
+            if (item != null) {
+                items.put(item.getBarcode(), item);
+            }
+        }
+
+        public void removeItem(String barcode) {
+            items.remove(barcode);
+        }
+
+        public Item getItem(String barcode) {
+            return items.get(barcode);
+        }
+    }
+  src/main/java/com/interviewos/grocerystore/model/Inventory.java: |
+    package com.interviewos.grocerystore.model;
+
+    import java.util.Map;
+    import java.util.concurrent.ConcurrentHashMap;
+
+    public class Inventory {
+        private final Map<String, Integer> stock = new ConcurrentHashMap<>();
+
+        public void addStock(String barcode, int count) {
+            stock.merge(barcode, count, Integer::sum);
+        }
+
+        public boolean reduceStock(String barcode, int count) {
+            int current = stock.getOrDefault(barcode, 0);
+            if (current >= count) {
+                stock.put(barcode, current - count);
+                return true;
+            }
+            return false;
+        }
+
+        public int getStock(String barcode) {
+            return stock.getOrDefault(barcode, 0);
+        }
+    }
+  src/main/java/com/interviewos/grocerystore/model/OrderItem.java: |
+    package com.interviewos.grocerystore.model;
+
+    import java.math.BigDecimal;
+
+    public class OrderItem {
+        private final Item item;
+        private final int quantity;
+
+        public OrderItem(Item item, int quantity) {
+            this.item = item;
+            this.quantity = quantity;
+        }
+
+        public BigDecimal calculatePrice() {
+            return item.getPrice().multiply(BigDecimal.valueOf(quantity));
+        }
+
+        public Item getItem() { return item; }
+        public int getQuantity() { return quantity; }
+    }
+  src/main/java/com/interviewos/grocerystore/model/Order.java: |
+    package com.interviewos.grocerystore.model;
+
+    import com.interviewos.grocerystore.strategy.DiscountCalculationStrategy;
+    import java.math.BigDecimal;
+    import java.util.ArrayList;
+    import java.util.List;
+    import java.util.UUID;
+
+    public class Order {
+        private final String orderId = UUID.randomUUID().toString();
+        private final List<OrderItem> items = new ArrayList<>();
+        private DiscountCalculationStrategy discountStrategy;
+        private BigDecimal paymentAmount = BigDecimal.ZERO;
+
+        public void addItem(OrderItem item) {
+            items.add(item);
+        }
+
+        public BigDecimal calculateSubtotal() {
+            // TODO: Sum subtotal of all items
+            throw new UnsupportedOperationException("TODO: Implement calculateSubtotal");
+        }
+
+        public BigDecimal calculateTotal() {
+            // TODO: Apply discountStrategy to subtotal if present, else return subtotal
+            throw new UnsupportedOperationException("TODO: Implement calculateTotal");
+        }
+
+        public BigDecimal calculateChange() {
+            // TODO: Return paymentAmount minus calculateTotal
+            throw new UnsupportedOperationException("TODO: Implement calculateChange");
+        }
+
+        public void setPaymentAmount(BigDecimal paymentAmount) { this.paymentAmount = paymentAmount; }
+        public void setDiscountStrategy(DiscountCalculationStrategy discountStrategy) { this.discountStrategy = discountStrategy; }
+        public List<OrderItem> getItems() { return items; }
+        public String getOrderId() { return orderId; }
+    }
+  src/main/java/com/interviewos/grocerystore/strategy/DiscountCalculationStrategy.java: |
+    package com.interviewos.grocerystore.strategy;
+
+    import java.math.BigDecimal;
+
+    public interface DiscountCalculationStrategy {
+        BigDecimal calculateDiscountedPrice(BigDecimal originalPrice);
+    }
+  src/main/java/com/interviewos/grocerystore/strategy/PercentageDiscountStrategy.java: |
+    package com.interviewos.grocerystore.strategy;
+
+    import java.math.BigDecimal;
+
+    public class PercentageDiscountStrategy implements DiscountCalculationStrategy {
+        private final BigDecimal percentage;
+
+        public PercentageDiscountStrategy(BigDecimal percentage) {
+            this.percentage = percentage;
+        }
+
+        @Override
+        public BigDecimal calculateDiscountedPrice(BigDecimal originalPrice) {
+            // TODO: Apply percentage discount to originalPrice
+            throw new UnsupportedOperationException("TODO: Implement calculateDiscountedPrice");
+        }
+
+        public BigDecimal getPercentage() { return percentage; }
+    }
+  src/main/java/com/interviewos/grocerystore/service/Checkout.java: |
+    package com.interviewos.grocerystore.service;
+
+    import com.interviewos.grocerystore.model.*;
+    import com.interviewos.grocerystore.strategy.DiscountCalculationStrategy;
+    import java.math.BigDecimal;
+
+    public class Checkout {
+        private Order currentOrder = new Order();
+
+        public void startNewOrder() {
+            this.currentOrder = new Order();
+        }
+
+        public void addItem(Item item, int quantity) {
+            // TODO: Add OrderItem to currentOrder
+            throw new UnsupportedOperationException("TODO: Implement addItem");
+        }
+
+        public void applyDiscount(DiscountCalculationStrategy strategy) {
+            currentOrder.setDiscountStrategy(strategy);
+        }
+
+        public BigDecimal processPayment(BigDecimal paymentAmount) {
+            // TODO: Record payment, return change
+            throw new UnsupportedOperationException("TODO: Implement processPayment");
+        }
+
+        public BigDecimal getOrderTotal() {
+            return currentOrder.calculateTotal();
+        }
+
+        public Order getCurrentOrder() { return currentOrder; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/grocerystore/service/Checkout.java
+- src/main/java/com/interviewos/grocerystore/model/Order.java
+- src/main/java/com/interviewos/grocerystore/strategy/PercentageDiscountStrategy.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/grocerystore/InventoryAndCatalogTest.java: |
+    package com.interviewos.grocerystore;
+
+    import com.interviewos.grocerystore.model.*;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class InventoryAndCatalogTest {
+        @Test
+        @DisplayName("Catalog registers items and Inventory updates stock levels")
+        void testInventoryUpdates() {
+            Catalog catalog = new Catalog();
+            Inventory inventory = new Inventory();
+
+            Item milk = new Item("Whole Milk", "BC-101", "DAIRY", new BigDecimal("3.50"));
+            catalog.updateItem(milk);
+
+            assertEquals("Whole Milk", catalog.getItem("BC-101").getName());
+
+            inventory.addStock("BC-101", 10);
+            assertEquals(10, inventory.getStock("BC-101"));
+
+            assertTrue(inventory.reduceStock("BC-101", 3));
+            assertEquals(7, inventory.getStock("BC-101"));
+        }
+    }
+  src/test/java/com/interviewos/grocerystore/DiscountStrategyTest.java: |
+    package com.interviewos.grocerystore;
+
+    import com.interviewos.grocerystore.strategy.PercentageDiscountStrategy;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class DiscountStrategyTest {
+        @Test
+        @DisplayName("Percentage discount reduces price correctly")
+        void testPercentageDiscount() {
+            PercentageDiscountStrategy strategy = new PercentageDiscountStrategy(new BigDecimal("20.00"));
+            BigDecimal original = new BigDecimal("100.00");
+            BigDecimal discounted = strategy.calculateDiscountedPrice(original);
+
+            assertEquals(new BigDecimal("80.00"), discounted);
+        }
+    }
+  src/test/java/com/interviewos/grocerystore/CheckoutIntegrationTest.java: |
+    package com.interviewos.grocerystore;
+
+    import com.interviewos.grocerystore.model.Item;
+    import com.interviewos.grocerystore.service.Checkout;
+    import com.interviewos.grocerystore.strategy.PercentageDiscountStrategy;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class CheckoutIntegrationTest {
+        @Test
+        @DisplayName("End-to-end checkout: item additions, discount, payment & change calculation")
+        void testCheckoutProcess() {
+            Checkout checkout = new Checkout();
+            Item bread = new Item("Sourdough", "BC-201", "BAKERY", new BigDecimal("4.00"));
+            Item cheese = new Item("Cheddar", "BC-202", "DAIRY", new BigDecimal("6.00"));
+
+            checkout.addItem(bread, 2);  // 8.00
+            checkout.addItem(cheese, 1); // 6.00
+            // subtotal = 14.00
+
+            checkout.applyDiscount(new PercentageDiscountStrategy(new BigDecimal("10.00")));
+            // total after 10% = 12.60
+
+            assertEquals(new BigDecimal("12.60"), checkout.getOrderTotal());
+
+            BigDecimal change = checkout.processPayment(new BigDecimal("20.00"));
+            assertEquals(new BigDecimal("7.40"), change);
+        }
+    }
+
 starterCode: "public class Item {\n    private final String name;\n    private final String barcode;\n    private final String category;\n    private BigDecimal price;\n    public Item(String name, String barcode, String category, BigDecimal price) {\n        this.name = name;\n        this.barcode = barcode;\n        this.category = category;\n        this.price = price;\n    }\n    // getter and setter methods are omitted for brevity\n}\n\npublic class Catalog {\n    // Map of barcodes to their corresponding items\nprivate final Map<String, Item> items = new HashMap<>();\n    public void updateItem(Item item) {\n        items.put(item.getBarcode(), item);\n    }\n    public void removeItem(String barcode) {\n        items.remove(barcode);\n    }\n    public Item getItem(String barcode) {\n        return items.get(barcode);\n    }\n}\n\npublic class Inventory {\n    // Map of barcodes to their stock quantities\nprivate final Map<String, Integer> stock = new HashMap<>();\n    public void\
   \ addStock(String barcode, int count) {\n        stock.put(barcode, stock.getOrDefault(barcode, 0) + count);\n    }\n    public void reduceStock(String barcode, int count) {\n        stock.put(barcode, stock.getOrDefault(barcode, 0) - count);\n    }\n    public int getStock(String barcode) {\n        return stock.getOrDefault(barcode, 0);\n    }\n}"
 solutionCode: "public class Item {\n    private final String name;\n    private final String barcode;\n    private final String category;\n    private BigDecimal price;\n    public Item(String name, String barcode, String category, BigDecimal price) {\n        this.name = name;\n        this.barcode = barcode;\n        this.category = category;\n        this.price = price;\n    }\n    // getter and setter methods are omitted for brevity\n}\n\npublic class Catalog {\n    // Map of barcodes to their corresponding items\nprivate final Map<String, Item> items = new HashMap<>();\n    public void updateItem(Item item) {\n        items.put(item.getBarcode(), item);\n    }\n    public void removeItem(String barcode) {\n        items.remove(barcode);\n    }\n    public Item getItem(String barcode) {\n        return items.get(barcode);\n    }\n}\n\npublic class Inventory {\n    // Map of barcodes to their stock quantities\nprivate final Map<String, Integer> stock = new HashMap<>();\n    public void\

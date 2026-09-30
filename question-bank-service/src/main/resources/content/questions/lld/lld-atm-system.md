@@ -14,7 +14,7 @@ tags:
 - state-pattern
 - chain-of-responsibility
 - atm
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -26,6 +26,721 @@ coaching:
   - 'Explain why the Chain of Responsibility is ideal for cash dispensing: each dispenser handles its denomination and forwards remainder to the next.'
   - 'Walk through PIN authentication security: track failed attempts and transition to CardRetainedState after 3 failures.'
   - Discuss hardware failure recovery (cash jam, network timeout during debit).
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>atm-system</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Automated Teller Machine (ATM) System
+
+    ## Overview
+    Implement an object-oriented ATM system supporting card authentication, account queries, deposits, and cash withdrawals using the State Pattern and Chain of Responsibility.
+
+    ## Key Components
+    - `com.interviewos.atm.bank.Bank`: Manages accounts, PIN verification, and balance ledger.
+    - `com.interviewos.atm.service.ATMMachine`: Central controller delegating operations to current ATM state.
+    - `com.interviewos.atm.state.*`: State pattern implementations (`IdleState`, `PinEntryState`, `WithdrawAmountEntryState`, `TransactionSelectionState`).
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/atm/bank/Bank.java`
+    2. `src/main/java/com/interviewos/atm/service/ATMMachine.java`
+    3. `src/main/java/com/interviewos/atm/state/IdleState.java`
+    4. `src/main/java/com/interviewos/atm/state/PinEntryState.java`
+    5. `src/main/java/com/interviewos/atm/state/WithdrawAmountEntryState.java`
+  src/main/java/com/interviewos/atm/model/AccountType.java: |
+    package com.interviewos.atm.model;
+
+    public enum AccountType {
+        CHECKING,
+        SAVING
+    }
+  src/main/java/com/interviewos/atm/model/Account.java: |
+    package com.interviewos.atm.model;
+
+    import java.math.BigDecimal;
+    import java.security.MessageDigest;
+    import java.security.NoSuchAlgorithmException;
+    import java.util.Arrays;
+
+    public class Account {
+        private final String accountNumber;
+        private final AccountType accountType;
+        private final String cardNumber;
+        private final byte[] cardPinHash;
+        private BigDecimal balance;
+
+        public Account(String accountNumber, AccountType type, String cardNumber, String pin) {
+            this.accountNumber = accountNumber;
+            this.accountType = type;
+            this.cardNumber = cardNumber;
+            this.cardPinHash = calculateHash(pin);
+            this.balance = BigDecimal.ZERO;
+        }
+
+        public boolean validatePin(String pinNumber) {
+            if (pinNumber == null) return false;
+            byte[] entryPinHash = calculateHash(pinNumber);
+            return Arrays.equals(cardPinHash, entryPinHash);
+        }
+
+        public void updateBalanceWithTransaction(BigDecimal delta) {
+            if (delta != null) {
+                this.balance = this.balance.add(delta);
+            }
+        }
+
+        public String getAccountNumber() { return accountNumber; }
+        public AccountType getAccountType() { return accountType; }
+        public String getCardNumber() { return cardNumber; }
+        public BigDecimal getBalance() { return balance; }
+
+        private static byte[] calculateHash(String input) {
+            try {
+                MessageDigest md = MessageDigest.getInstance("SHA-256");
+                return md.digest(input.getBytes());
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException("SHA-256 not available", e);
+            }
+        }
+    }
+  src/main/java/com/interviewos/atm/model/TransactionType.java: |
+    package com.interviewos.atm.model;
+
+    public enum TransactionType {
+        WITHDRAW,
+        DEPOSIT,
+        BALANCE_INQUIRY
+    }
+  src/main/java/com/interviewos/atm/bank/BankInterface.java: |
+    package com.interviewos.atm.bank;
+
+    import com.interviewos.atm.model.Account;
+    import com.interviewos.atm.model.AccountType;
+    import java.math.BigDecimal;
+
+    public interface BankInterface {
+        void addAccount(String accountNumber, AccountType type, String cardNumber, String pin);
+        boolean validateCard(String cardNumber);
+        boolean checkPin(String cardNumber, String pinNumber);
+        Account getAccountByAccountNumber(String accountNumber);
+        Account getAccountByCard(String cardNumber);
+        boolean withdrawFunds(Account account, BigDecimal amount);
+    }
+  src/main/java/com/interviewos/atm/bank/Bank.java: |
+    package com.interviewos.atm.bank;
+
+    import com.interviewos.atm.model.Account;
+    import com.interviewos.atm.model.AccountType;
+    import java.math.BigDecimal;
+    import java.util.Map;
+    import java.util.concurrent.ConcurrentHashMap;
+
+    public class Bank implements BankInterface {
+        private final Map<String, Account> accounts = new ConcurrentHashMap<>();
+        private final Map<String, Account> accountByCard = new ConcurrentHashMap<>();
+
+        @Override
+        public void addAccount(String accountNumber, AccountType type, String cardNumber, String pin) {
+            // TODO: Implement account creation and indexing
+            throw new UnsupportedOperationException("TODO: Implement addAccount");
+        }
+
+        @Override
+        public boolean validateCard(String cardNumber) {
+            // TODO: Validate card presence
+            throw new UnsupportedOperationException("TODO: Implement validateCard");
+        }
+
+        @Override
+        public boolean checkPin(String cardNumber, String pinNumber) {
+            // TODO: Validate PIN against card account
+            throw new UnsupportedOperationException("TODO: Implement checkPin");
+        }
+
+        @Override
+        public Account getAccountByAccountNumber(String accountNumber) {
+            // TODO: Retrieve account by number
+            throw new UnsupportedOperationException("TODO: Implement getAccountByAccountNumber");
+        }
+
+        @Override
+        public Account getAccountByCard(String cardNumber) {
+            // TODO: Retrieve account by card
+            throw new UnsupportedOperationException("TODO: Implement getAccountByCard");
+        }
+
+        @Override
+        public boolean withdrawFunds(Account account, BigDecimal amount) {
+            // TODO: Deduct funds if balance suffices
+            throw new UnsupportedOperationException("TODO: Implement withdrawFunds");
+        }
+    }
+  src/main/java/com/interviewos/atm/hardware/CardProcessor.java: |
+    package com.interviewos.atm.hardware;
+
+    public class CardProcessor {
+        private String currentCardNumber;
+
+        public void readCard(String cardNumber) {
+            this.currentCardNumber = cardNumber;
+        }
+
+        public void clearCard() {
+            this.currentCardNumber = null;
+        }
+
+        public String getCardNumber() {
+            return currentCardNumber;
+        }
+    }
+  src/main/java/com/interviewos/atm/hardware/CashDispenser.java: |
+    package com.interviewos.atm.hardware;
+
+    import java.math.BigDecimal;
+
+    public class CashDispenser {
+        private BigDecimal cashReserve;
+
+        public CashDispenser(BigDecimal initialReserve) {
+            this.cashReserve = initialReserve != null ? initialReserve : BigDecimal.ZERO;
+        }
+
+        public synchronized boolean hasSufficientCash(BigDecimal amount) {
+            return amount != null && cashReserve.compareTo(amount) >= 0;
+        }
+
+        public synchronized boolean dispenseCash(BigDecimal amount) {
+            if (hasSufficientCash(amount)) {
+                cashReserve = cashReserve.subtract(amount);
+                return true;
+            }
+            return false;
+        }
+
+        public synchronized BigDecimal getCashReserve() {
+            return cashReserve;
+        }
+    }
+  src/main/java/com/interviewos/atm/hardware/DepositBox.java: |
+    package com.interviewos.atm.hardware;
+
+    import java.math.BigDecimal;
+
+    public class DepositBox {
+        private BigDecimal totalDeposited = BigDecimal.ZERO;
+
+        public synchronized void collectDeposit(BigDecimal amount) {
+            if (amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
+                totalDeposited = totalDeposited.add(amount);
+            }
+        }
+
+        public synchronized BigDecimal getTotalDeposited() {
+            return totalDeposited;
+        }
+    }
+  src/main/java/com/interviewos/atm/hardware/Display.java: |
+    package com.interviewos.atm.hardware;
+
+    public class Display {
+        private String lastMessage = "";
+
+        public void showMessage(String message) {
+            this.lastMessage = message != null ? message : "";
+        }
+
+        public String getLastMessage() {
+            return lastMessage;
+        }
+    }
+  src/main/java/com/interviewos/atm/hardware/Keypad.java: |
+    package com.interviewos.atm.hardware;
+
+    public class Keypad {
+        private String buffer = "";
+
+        public void enterInput(String input) {
+            this.buffer = input;
+        }
+
+        public String readInput() {
+            return buffer;
+        }
+    }
+  src/main/java/com/interviewos/atm/state/ATMState.java: |
+    package com.interviewos.atm.state;
+
+    import com.interviewos.atm.service.ATMMachine;
+    import java.math.BigDecimal;
+
+    public interface ATMState {
+        void processCardInsertion(ATMMachine atm, String cardNumber);
+        void processCardEjection(ATMMachine atm);
+        void processPinEntry(ATMMachine atm, String pin);
+        void processWithdrawalRequest(ATMMachine atm);
+        void processDepositRequest(ATMMachine atm);
+        void processAmountEntry(ATMMachine atm, BigDecimal amount);
+        String getStateName();
+    }
+  src/main/java/com/interviewos/atm/state/IdleState.java: |
+    package com.interviewos.atm.state;
+
+    import com.interviewos.atm.service.ATMMachine;
+    import java.math.BigDecimal;
+
+    public class IdleState implements ATMState {
+        @Override
+        public void processCardInsertion(ATMMachine atm, String cardNumber) {
+            // TODO: Validate card and transition to PinEntryState if valid
+            throw new UnsupportedOperationException("TODO: Implement processCardInsertion");
+        }
+
+        @Override
+        public void processCardEjection(ATMMachine atm) {
+            atm.getDisplay().showMessage("No card to eject.");
+        }
+
+        @Override
+        public void processPinEntry(ATMMachine atm, String pin) {
+            atm.getDisplay().showMessage("Please insert card first.");
+        }
+
+        @Override
+        public void processWithdrawalRequest(ATMMachine atm) {
+            atm.getDisplay().showMessage("Please insert card first.");
+        }
+
+        @Override
+        public void processDepositRequest(ATMMachine atm) {
+            atm.getDisplay().showMessage("Please insert card first.");
+        }
+
+        @Override
+        public void processAmountEntry(ATMMachine atm, BigDecimal amount) {
+            atm.getDisplay().showMessage("Please insert card first.");
+        }
+
+        @Override
+        public String getStateName() {
+            return "IDLE";
+        }
+    }
+  src/main/java/com/interviewos/atm/state/PinEntryState.java: |
+    package com.interviewos.atm.state;
+
+    import com.interviewos.atm.service.ATMMachine;
+    import java.math.BigDecimal;
+
+    public class PinEntryState implements ATMState {
+        private int attempts = 0;
+
+        @Override
+        public void processCardInsertion(ATMMachine atm, String cardNumber) {
+            atm.getDisplay().showMessage("Card already inserted.");
+        }
+
+        @Override
+        public void processCardEjection(ATMMachine atm) {
+            // TODO: Eject card and transition to IdleState
+            throw new UnsupportedOperationException("TODO: Implement processCardEjection");
+        }
+
+        @Override
+        public void processPinEntry(ATMMachine atm, String pin) {
+            // TODO: Validate PIN with bank. If valid -> TransactionSelectionState. If invalid >= 3 times -> retain card & IdleState.
+            throw new UnsupportedOperationException("TODO: Implement processPinEntry");
+        }
+
+        @Override
+        public void processWithdrawalRequest(ATMMachine atm) {
+            atm.getDisplay().showMessage("Please enter PIN first.");
+        }
+
+        @Override
+        public void processDepositRequest(ATMMachine atm) {
+            atm.getDisplay().showMessage("Please enter PIN first.");
+        }
+
+        @Override
+        public void processAmountEntry(ATMMachine atm, BigDecimal amount) {
+            atm.getDisplay().showMessage("Please enter PIN first.");
+        }
+
+        @Override
+        public String getStateName() {
+            return "PIN_ENTRY";
+        }
+    }
+  src/main/java/com/interviewos/atm/state/TransactionSelectionState.java: |
+    package com.interviewos.atm.state;
+
+    import com.interviewos.atm.service.ATMMachine;
+    import java.math.BigDecimal;
+
+    public class TransactionSelectionState implements ATMState {
+        @Override
+        public void processCardInsertion(ATMMachine atm, String cardNumber) {
+            atm.getDisplay().showMessage("Transaction in progress.");
+        }
+
+        @Override
+        public void processCardEjection(ATMMachine atm) {
+            atm.getCardProcessor().clearCard();
+            atm.getDisplay().showMessage("Card ejected.");
+            atm.transitionToState(new IdleState());
+        }
+
+        @Override
+        public void processPinEntry(ATMMachine atm, String pin) {
+            atm.getDisplay().showMessage("PIN already verified.");
+        }
+
+        @Override
+        public void processWithdrawalRequest(ATMMachine atm) {
+            atm.transitionToState(new WithdrawAmountEntryState());
+            atm.getDisplay().showMessage("Please enter withdrawal amount.");
+        }
+
+        @Override
+        public void processDepositRequest(ATMMachine atm) {
+            atm.getDisplay().showMessage("Please insert deposit envelope.");
+        }
+
+        @Override
+        public void processAmountEntry(ATMMachine atm, BigDecimal amount) {
+            atm.getDisplay().showMessage("Select transaction type first.");
+        }
+
+        @Override
+        public String getStateName() {
+            return "TRANSACTION_SELECTION";
+        }
+    }
+  src/main/java/com/interviewos/atm/state/WithdrawAmountEntryState.java: |
+    package com.interviewos.atm.state;
+
+    import com.interviewos.atm.model.Account;
+    import com.interviewos.atm.service.ATMMachine;
+    import java.math.BigDecimal;
+
+    public class WithdrawAmountEntryState implements ATMState {
+        @Override
+        public void processCardInsertion(ATMMachine atm, String cardNumber) {
+            atm.getDisplay().showMessage("Transaction in progress.");
+        }
+
+        @Override
+        public void processCardEjection(ATMMachine atm) {
+            atm.getCardProcessor().clearCard();
+            atm.getDisplay().showMessage("Transaction cancelled, card ejected.");
+            atm.transitionToState(new IdleState());
+        }
+
+        @Override
+        public void processPinEntry(ATMMachine atm, String pin) {
+            atm.getDisplay().showMessage("PIN already verified.");
+        }
+
+        @Override
+        public void processWithdrawalRequest(ATMMachine atm) {
+            atm.getDisplay().showMessage("Already in withdrawal mode.");
+        }
+
+        @Override
+        public void processDepositRequest(ATMMachine atm) {
+            atm.getDisplay().showMessage("Complete withdrawal or cancel first.");
+        }
+
+        @Override
+        public void processAmountEntry(ATMMachine atm, BigDecimal amount) {
+            // TODO: Withdraw funds from account via bank, dispense cash via dispenser, return to TransactionSelectionState
+            throw new UnsupportedOperationException("TODO: Implement processAmountEntry");
+        }
+
+        @Override
+        public String getStateName() {
+            return "WITHDRAW_AMOUNT_ENTRY";
+        }
+    }
+  src/main/java/com/interviewos/atm/service/ATMMachine.java: |
+    package com.interviewos.atm.service;
+
+    import com.interviewos.atm.bank.BankInterface;
+    import com.interviewos.atm.hardware.*;
+    import com.interviewos.atm.state.ATMState;
+    import com.interviewos.atm.state.IdleState;
+    import java.math.BigDecimal;
+
+    public class ATMMachine {
+        private ATMState currentState;
+        private final BankInterface bank;
+        private final CardProcessor cardProcessor;
+        private final CashDispenser cashDispenser;
+        private final DepositBox depositBox;
+        private final Display display;
+        private final Keypad keypad;
+
+        public ATMMachine(BankInterface bank, CashDispenser cashDispenser) {
+            this.bank = bank;
+            this.cashDispenser = cashDispenser;
+            this.cardProcessor = new CardProcessor();
+            this.depositBox = new DepositBox();
+            this.display = new Display();
+            this.keypad = new Keypad();
+            this.currentState = new IdleState();
+        }
+
+        public void insertCard(String cardNumber) {
+            // TODO: Forward to currentState
+            throw new UnsupportedOperationException("TODO: Implement insertCard");
+        }
+
+        public void ejectCard() {
+            // TODO: Forward to currentState
+            throw new UnsupportedOperationException("TODO: Implement ejectCard");
+        }
+
+        public void enterPin(String pin) {
+            // TODO: Forward to currentState
+            throw new UnsupportedOperationException("TODO: Implement enterPin");
+        }
+
+        public void requestWithdrawal() {
+            // TODO: Forward to currentState
+            throw new UnsupportedOperationException("TODO: Implement requestWithdrawal");
+        }
+
+        public void enterAmount(BigDecimal amount) {
+            // TODO: Forward to currentState
+            throw new UnsupportedOperationException("TODO: Implement enterAmount");
+        }
+
+        public void transitionToState(ATMState nextState) {
+            this.currentState = nextState;
+        }
+
+        public ATMState getCurrentState() { return currentState; }
+        public BankInterface getBank() { return bank; }
+        public CardProcessor getCardProcessor() { return cardProcessor; }
+        public CashDispenser getCashDispenser() { return cashDispenser; }
+        public DepositBox getDepositBox() { return depositBox; }
+        public Display getDisplay() { return display; }
+        public Keypad getKeypad() { return keypad; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/atm/bank/Bank.java
+- src/main/java/com/interviewos/atm/service/ATMMachine.java
+- src/main/java/com/interviewos/atm/state/IdleState.java
+- src/main/java/com/interviewos/atm/state/PinEntryState.java
+- src/main/java/com/interviewos/atm/state/WithdrawAmountEntryState.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/atm/AtmAuthenticationTest.java: |
+    package com.interviewos.atm;
+
+    import com.interviewos.atm.bank.Bank;
+    import com.interviewos.atm.hardware.CashDispenser;
+    import com.interviewos.atm.model.AccountType;
+    import com.interviewos.atm.service.ATMMachine;
+    import org.junit.jupiter.api.BeforeEach;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class AtmAuthenticationTest {
+        private Bank bank;
+        private ATMMachine atm;
+
+        @BeforeEach
+        void setUp() {
+            bank = new Bank();
+            bank.addAccount("ACCT-101", AccountType.CHECKING, "4000-1111-2222-3333", "1234");
+            CashDispenser dispenser = new CashDispenser(new BigDecimal("10000"));
+            atm = new ATMMachine(bank, dispenser);
+        }
+
+        @Test
+        @DisplayName("Valid card insertion transitions ATM to PIN_ENTRY state")
+        void testValidCardInsertion() {
+            atm.insertCard("4000-1111-2222-3333");
+            assertEquals("PIN_ENTRY", atm.getCurrentState().getStateName());
+            assertEquals("4000-1111-2222-3333", atm.getCardProcessor().getCardNumber());
+        }
+
+        @Test
+        @DisplayName("Invalid card insertion stays in IDLE state with error message")
+        void testInvalidCardInsertion() {
+            atm.insertCard("9999-9999-9999-9999");
+            assertEquals("IDLE", atm.getCurrentState().getStateName());
+            assertTrue(atm.getDisplay().getLastMessage().toLowerCase().contains("invalid"));
+        }
+
+        @Test
+        @DisplayName("Correct PIN transitions ATM to TRANSACTION_SELECTION state")
+        void testCorrectPinAuthentication() {
+            atm.insertCard("4000-1111-2222-3333");
+            atm.enterPin("1234");
+            assertEquals("TRANSACTION_SELECTION", atm.getCurrentState().getStateName());
+        }
+
+        @Test
+        @DisplayName("Three consecutive wrong PIN entries eject card and reset to IDLE")
+        void testThreeWrongPinsRetainsOrEjectsCard() {
+            atm.insertCard("4000-1111-2222-3333");
+            atm.enterPin("0000");
+            assertEquals("PIN_ENTRY", atm.getCurrentState().getStateName());
+            atm.enterPin("0000");
+            assertEquals("PIN_ENTRY", atm.getCurrentState().getStateName());
+            atm.enterPin("0000");
+            assertEquals("IDLE", atm.getCurrentState().getStateName());
+            assertNull(atm.getCardProcessor().getCardNumber());
+        }
+    }
+  src/test/java/com/interviewos/atm/AtmWithdrawalTest.java: |
+    package com.interviewos.atm;
+
+    import com.interviewos.atm.bank.Bank;
+    import com.interviewos.atm.hardware.CashDispenser;
+    import com.interviewos.atm.model.Account;
+    import com.interviewos.atm.model.AccountType;
+    import com.interviewos.atm.service.ATMMachine;
+    import org.junit.jupiter.api.BeforeEach;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class AtmWithdrawalTest {
+        private Bank bank;
+        private ATMMachine atm;
+        private CashDispenser dispenser;
+
+        @BeforeEach
+        void setUp() {
+            bank = new Bank();
+            bank.addAccount("ACCT-202", AccountType.CHECKING, "4000-5555-6666-7777", "4321");
+            Account acc = bank.getAccountByAccountNumber("ACCT-202");
+            acc.updateBalanceWithTransaction(new BigDecimal("500.00"));
+
+            dispenser = new CashDispenser(new BigDecimal("2000.00"));
+            atm = new ATMMachine(bank, dispenser);
+        }
+
+        @Test
+        @DisplayName("Successful withdrawal deducts balance and dispenses cash")
+        void testSuccessfulWithdrawal() {
+            atm.insertCard("4000-5555-6666-7777");
+            atm.enterPin("4321");
+            atm.requestWithdrawal();
+            assertEquals("WITHDRAW_AMOUNT_ENTRY", atm.getCurrentState().getStateName());
+
+            atm.enterAmount(new BigDecimal("200.00"));
+            Account acc = bank.getAccountByAccountNumber("ACCT-202");
+            assertEquals(new BigDecimal("300.00"), acc.getBalance());
+            assertEquals(new BigDecimal("1800.00"), dispenser.getCashReserve());
+            assertEquals("TRANSACTION_SELECTION", atm.getCurrentState().getStateName());
+        }
+
+        @Test
+        @DisplayName("Withdrawal with insufficient account funds fails gracefully")
+        void testInsufficientFundsWithdrawal() {
+            atm.insertCard("4000-5555-6666-7777");
+            atm.enterPin("4321");
+            atm.requestWithdrawal();
+
+            atm.enterAmount(new BigDecimal("1000.00"));
+            Account acc = bank.getAccountByAccountNumber("ACCT-202");
+            assertEquals(new BigDecimal("500.00"), acc.getBalance());
+            assertEquals(new BigDecimal("2000.00"), dispenser.getCashReserve());
+            assertTrue(atm.getDisplay().getLastMessage().toLowerCase().contains("insufficient"));
+        }
+    }
+  src/test/java/com/interviewos/atm/AtmLifecycleStateTest.java: |
+    package com.interviewos.atm;
+
+    import com.interviewos.atm.bank.Bank;
+    import com.interviewos.atm.hardware.CashDispenser;
+    import com.interviewos.atm.model.AccountType;
+    import com.interviewos.atm.service.ATMMachine;
+    import org.junit.jupiter.api.BeforeEach;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class AtmLifecycleStateTest {
+        private Bank bank;
+        private ATMMachine atm;
+
+        @BeforeEach
+        void setUp() {
+            bank = new Bank();
+            bank.addAccount("ACCT-303", AccountType.SAVING, "4000-8888-9999-0000", "9876");
+            CashDispenser dispenser = new CashDispenser(new BigDecimal("5000"));
+            atm = new ATMMachine(bank, dispenser);
+        }
+
+        @Test
+        @DisplayName("Ejecting card during PIN entry returns to IDLE")
+        void testEjectDuringPinEntry() {
+            atm.insertCard("4000-8888-9999-0000");
+            assertEquals("PIN_ENTRY", atm.getCurrentState().getStateName());
+
+            atm.ejectCard();
+            assertEquals("IDLE", atm.getCurrentState().getStateName());
+            assertNull(atm.getCardProcessor().getCardNumber());
+        }
+
+        @Test
+        @DisplayName("Ejecting card during transaction selection returns to IDLE")
+        void testEjectDuringTxSelection() {
+            atm.insertCard("4000-8888-9999-0000");
+            atm.enterPin("9876");
+            assertEquals("TRANSACTION_SELECTION", atm.getCurrentState().getStateName());
+
+            atm.ejectCard();
+            assertEquals("IDLE", atm.getCurrentState().getStateName());
+            assertNull(atm.getCardProcessor().getCardNumber());
+        }
+    }
+
 starterCode: "// Represents a bank account with balance, card details, and PIN security\npublic class Account {\n    private BigDecimal balance;\n    private final String accountNumber;\n    private final String cardNumber;\n    private final byte[] cardPinHash;\n    private final AccountType accountType;\n    // Creates a new account with initial zero balance and hashed PIN\npublic Account(\n            final String accountNumber,\n            final AccountType type,\n            final String cardNumber,\n            final String pin) {\n        this.accountNumber = accountNumber;\n        this.accountType = type;\n        this.cardNumber = cardNumber;\n        this.cardPinHash = calculateMd5(pin); // PIN is hashed for security\nthis.balance = BigDecimal.ZERO;\n    }\n    // Validates the entered PIN against stored hash\npublic boolean validatePin(String pinNumber) {\n        byte[] entryPinHash = calculateMd5(pinNumber);\n        return Arrays.equals(cardPinHash, entryPinHash);\n    }\n\
   \    // Updates account balance by adding the specified amount\npublic void updateBalanceWithTransaction(final BigDecimal balanceChange) {\n        this.balance = this.balance.add(balanceChange);\n    }\n    // getter methods omitted for brevity\n}\n// Defines the type of bank account\npublic enum AccountType {\n    // Regular checking account for daily transactions\n    CHECKING,\n    // Interest-bearing savings account\n    SAVING\n}\n\npublic interface BankInterface {\n    void addAccount(String accountNumber, AccountType type, String cardNumber, String pin);\n    boolean validateCard(String cardNumber);\n    boolean checkPin(String cardNumber, String pinNumber);\n    Account getAccountByAccountNumber(String accountNumber);\n    Account getAccountByCard(String cardNumber);\n    boolean withdrawFunds(Account account, BigDecimal amount);\n}\n// Manages bank accounts and provides banking operations like validation and transactions\npublic class Bank\nimplements BankInterface {\n    private\
   \ final Map<String, Account> accounts = new HashMap<>();\n    private final Map<String, Account> accountByCard = new HashMap<>();\n    // Creates a new account and stores it in both account and card maps\n@Override\n    public void addAccount(\n            final String accountNumber,\n            final AccountType type,\n            final String cardNumber,\n            final String pin) {\n        final Account\nnewAccount\n=\nnew Account(accountNumber, type, cardNumber, pin);\n        accounts.put(newAccount.getAccountNumber(), newAccount);\n        accountByCard.put(newAccount.getCardNumber(), newAccount);\n    }\n    // Checks if a card number exists in the bank's records\n@Override\n    public boolean validateCard(final String cardNumber) {\n        return getAccountByCard(cardNumber) != null;\n    }\n    // Verifies if the provided PIN matches the card's stored PIN\n@Override\n    public boolean checkPin(String cardNumber, String pinNumber) {\n        Account\naccount\n= getAccountByCard(cardNumber);\n\

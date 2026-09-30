@@ -14,7 +14,7 @@ tags:
 - strategy-pattern
 - facade-pattern
 - parking-lot
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -26,6 +26,538 @@ coaching:
   - Clarify spot types (Motorcycle, Compact, Large, Electric) and matching rules before sketching classes.
   - Discuss concurrency control when two vehicles attempt to take the last remaining spot simultaneously.
   - Explain how the design adheres to the Open/Closed Principle when adding new vehicle types or spot categories.
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>parking-lot</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Parking Lot System
+
+    ## Overview
+    Implement an object-oriented Parking Lot system supporting multi-tier vehicle parking, spot allocation, ticket issuance, and pluggable fare calculation strategies.
+
+    ## Key Components
+    - `com.interviewos.parkinglot.service.ParkingManager`: Manages spots, vehicle allocations, and lookup.
+    - `com.interviewos.parkinglot.service.ParkingLot`: Facade handling vehicle entry and exit workflows.
+    - `com.interviewos.parkinglot.strategy.FareStrategy`: Strategy interface for pricing.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/parkinglot/service/ParkingManager.java`
+    2. `src/main/java/com/interviewos/parkinglot/service/ParkingLot.java`
+    3. `src/main/java/com/interviewos/parkinglot/strategy/BaseFareStrategy.java`
+  src/main/java/com/interviewos/parkinglot/model/VehicleSize.java: |
+    package com.interviewos.parkinglot.model;
+
+    public enum VehicleSize {
+        SMALL,
+        MEDIUM,
+        LARGE
+    }
+  src/main/java/com/interviewos/parkinglot/model/Vehicle.java: |
+    package com.interviewos.parkinglot.model;
+
+    public interface Vehicle {
+        String getLicensePlate();
+        VehicleSize getSize();
+    }
+  src/main/java/com/interviewos/parkinglot/model/Car.java: |
+    package com.interviewos.parkinglot.model;
+
+    public class Car implements Vehicle {
+        private final String licensePlate;
+
+        public Car(String licensePlate) {
+            this.licensePlate = licensePlate;
+        }
+
+        @Override
+        public String getLicensePlate() {
+            return licensePlate;
+        }
+
+        @Override
+        public VehicleSize getSize() {
+            return VehicleSize.MEDIUM;
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/model/Motorcycle.java: |
+    package com.interviewos.parkinglot.model;
+
+    public class Motorcycle implements Vehicle {
+        private final String licensePlate;
+
+        public Motorcycle(String licensePlate) {
+            this.licensePlate = licensePlate;
+        }
+
+        @Override
+        public String getLicensePlate() {
+            return licensePlate;
+        }
+
+        @Override
+        public VehicleSize getSize() {
+            return VehicleSize.SMALL;
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/model/Truck.java: |
+    package com.interviewos.parkinglot.model;
+
+    public class Truck implements Vehicle {
+        private final String licensePlate;
+
+        public Truck(String licensePlate) {
+            this.licensePlate = licensePlate;
+        }
+
+        @Override
+        public String getLicensePlate() {
+            return licensePlate;
+        }
+
+        @Override
+        public VehicleSize getSize() {
+            return VehicleSize.LARGE;
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/model/ParkingSpot.java: |
+    package com.interviewos.parkinglot.model;
+
+    public interface ParkingSpot {
+        int getSpotNumber();
+        VehicleSize getSize();
+        boolean isAvailable();
+        void occupy(Vehicle vehicle);
+        void vacate();
+        Vehicle getOccupyingVehicle();
+    }
+  src/main/java/com/interviewos/parkinglot/model/CompactSpot.java: |
+    package com.interviewos.parkinglot.model;
+
+    public class CompactSpot implements ParkingSpot {
+        private final int spotNumber;
+        private Vehicle vehicle;
+
+        public CompactSpot(int spotNumber) {
+            this.spotNumber = spotNumber;
+        }
+
+        @Override
+        public int getSpotNumber() { return spotNumber; }
+
+        @Override
+        public VehicleSize getSize() { return VehicleSize.MEDIUM; }
+
+        @Override
+        public synchronized boolean isAvailable() { return vehicle == null; }
+
+        @Override
+        public synchronized void occupy(Vehicle vehicle) {
+            this.vehicle = vehicle;
+        }
+
+        @Override
+        public synchronized void vacate() {
+            this.vehicle = null;
+        }
+
+        @Override
+        public synchronized Vehicle getOccupyingVehicle() {
+            return vehicle;
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/model/MotorcycleSpot.java: |
+    package com.interviewos.parkinglot.model;
+
+    public class MotorcycleSpot implements ParkingSpot {
+        private final int spotNumber;
+        private Vehicle vehicle;
+
+        public MotorcycleSpot(int spotNumber) {
+            this.spotNumber = spotNumber;
+        }
+
+        @Override
+        public int getSpotNumber() { return spotNumber; }
+
+        @Override
+        public VehicleSize getSize() { return VehicleSize.SMALL; }
+
+        @Override
+        public synchronized boolean isAvailable() { return vehicle == null; }
+
+        @Override
+        public synchronized void occupy(Vehicle vehicle) {
+            this.vehicle = vehicle;
+        }
+
+        @Override
+        public synchronized void vacate() {
+            this.vehicle = null;
+        }
+
+        @Override
+        public synchronized Vehicle getOccupyingVehicle() {
+            return vehicle;
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/model/LargeSpot.java: |
+    package com.interviewos.parkinglot.model;
+
+    public class LargeSpot implements ParkingSpot {
+        private final int spotNumber;
+        private Vehicle vehicle;
+
+        public LargeSpot(int spotNumber) {
+            this.spotNumber = spotNumber;
+        }
+
+        @Override
+        public int getSpotNumber() { return spotNumber; }
+
+        @Override
+        public VehicleSize getSize() { return VehicleSize.LARGE; }
+
+        @Override
+        public synchronized boolean isAvailable() { return vehicle == null; }
+
+        @Override
+        public synchronized void occupy(Vehicle vehicle) {
+            this.vehicle = vehicle;
+        }
+
+        @Override
+        public synchronized void vacate() {
+            this.vehicle = null;
+        }
+
+        @Override
+        public synchronized Vehicle getOccupyingVehicle() {
+            return vehicle;
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/model/Ticket.java: |
+    package com.interviewos.parkinglot.model;
+
+    import java.math.BigDecimal;
+    import java.time.Duration;
+    import java.time.LocalDateTime;
+    import java.util.Objects;
+
+    public class Ticket {
+        private final String ticketId;
+        private final Vehicle vehicle;
+        private final ParkingSpot parkingSpot;
+        private final LocalDateTime entryTime;
+        private LocalDateTime exitTime;
+
+        public Ticket(String ticketId, Vehicle vehicle, ParkingSpot parkingSpot, LocalDateTime entryTime) {
+            this.ticketId = ticketId;
+            this.vehicle = vehicle;
+            this.parkingSpot = parkingSpot;
+            this.entryTime = entryTime;
+        }
+
+        public BigDecimal calculateDurationMinutes() {
+            LocalDateTime end = Objects.requireNonNullElseGet(exitTime, LocalDateTime::now);
+            long minutes = Math.max(1, Duration.between(entryTime, end).toMinutes());
+            return BigDecimal.valueOf(minutes);
+        }
+
+        public String getTicketId() { return ticketId; }
+        public Vehicle getVehicle() { return vehicle; }
+        public ParkingSpot getParkingSpot() { return parkingSpot; }
+        public LocalDateTime getEntryTime() { return entryTime; }
+        public LocalDateTime getExitTime() { return exitTime; }
+        public void setExitTime(LocalDateTime exitTime) { this.exitTime = exitTime; }
+    }
+  src/main/java/com/interviewos/parkinglot/strategy/FareStrategy.java: |
+    package com.interviewos.parkinglot.strategy;
+
+    import com.interviewos.parkinglot.model.Ticket;
+    import java.math.BigDecimal;
+
+    public interface FareStrategy {
+        BigDecimal calculateFare(Ticket ticket, BigDecimal baseFare);
+    }
+  src/main/java/com/interviewos/parkinglot/strategy/BaseFareStrategy.java: |
+    package com.interviewos.parkinglot.strategy;
+
+    import com.interviewos.parkinglot.model.Ticket;
+    import java.math.BigDecimal;
+
+    public class BaseFareStrategy implements FareStrategy {
+        public static final BigDecimal SMALL_RATE = new BigDecimal("1.00");
+        public static final BigDecimal MEDIUM_RATE = new BigDecimal("2.00");
+        public static final BigDecimal LARGE_RATE = new BigDecimal("3.00");
+
+        @Override
+        public BigDecimal calculateFare(Ticket ticket, BigDecimal baseFare) {
+            // TODO: Calculate rate based on vehicle size and duration, add to baseFare
+            throw new UnsupportedOperationException("TODO: Implement BaseFareStrategy.calculateFare");
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/service/ParkingManager.java: |
+    package com.interviewos.parkinglot.service;
+
+    import com.interviewos.parkinglot.model.ParkingSpot;
+    import com.interviewos.parkinglot.model.Vehicle;
+    import com.interviewos.parkinglot.model.VehicleSize;
+    import java.util.*;
+
+    public class ParkingManager {
+        private final Map<VehicleSize, List<ParkingSpot>> availableSpots = new EnumMap<>(VehicleSize.class);
+        private final Map<String, ParkingSpot> activeAllocations = new HashMap<>();
+
+        public ParkingManager(Map<VehicleSize, List<ParkingSpot>> initialSpots) {
+            for (VehicleSize size : VehicleSize.values()) {
+                availableSpots.put(size, new ArrayList<>());
+            }
+            if (initialSpots != null) {
+                initialSpots.forEach((k, v) -> availableSpots.get(k).addAll(v));
+            }
+        }
+
+        public synchronized ParkingSpot findSpotForVehicle(Vehicle vehicle) {
+            // TODO: Find first available spot matching or exceeding vehicle size
+            throw new UnsupportedOperationException("TODO: Implement findSpotForVehicle");
+        }
+
+        public synchronized ParkingSpot parkVehicle(Vehicle vehicle) {
+            // TODO: Find spot, occupy it, record allocation
+            throw new UnsupportedOperationException("TODO: Implement parkVehicle");
+        }
+
+        public synchronized boolean unparkVehicle(Vehicle vehicle) {
+            // TODO: Free spot and remove allocation
+            throw new UnsupportedOperationException("TODO: Implement unparkVehicle");
+        }
+
+        public synchronized ParkingSpot getSpotForVehicle(String licensePlate) {
+            return activeAllocations.get(licensePlate);
+        }
+    }
+  src/main/java/com/interviewos/parkinglot/service/ParkingLot.java: |
+    package com.interviewos.parkinglot.service;
+
+    import com.interviewos.parkinglot.model.ParkingSpot;
+    import com.interviewos.parkinglot.model.Ticket;
+    import com.interviewos.parkinglot.model.Vehicle;
+    import com.interviewos.parkinglot.strategy.FareStrategy;
+    import java.math.BigDecimal;
+    import java.time.LocalDateTime;
+    import java.util.Map;
+    import java.util.UUID;
+    import java.util.concurrent.ConcurrentHashMap;
+
+    public class ParkingLot {
+        private final ParkingManager parkingManager;
+        private final FareStrategy fareStrategy;
+        private final Map<String, Ticket> activeTickets = new ConcurrentHashMap<>();
+
+        public ParkingLot(ParkingManager parkingManager, FareStrategy fareStrategy) {
+            this.parkingManager = parkingManager;
+            this.fareStrategy = fareStrategy;
+        }
+
+        public Ticket enterVehicle(Vehicle vehicle) {
+            // TODO: Delegate to parkingManager, generate Ticket, store active ticket
+            throw new UnsupportedOperationException("TODO: Implement enterVehicle");
+        }
+
+        public BigDecimal leaveVehicle(String ticketId) {
+            // TODO: Validate ticket, unpark vehicle, calculate fare via strategy, remove ticket
+            throw new UnsupportedOperationException("TODO: Implement leaveVehicle");
+        }
+
+        public ParkingManager getParkingManager() { return parkingManager; }
+        public FareStrategy getFareStrategy() { return fareStrategy; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/parkinglot/service/ParkingManager.java
+- src/main/java/com/interviewos/parkinglot/service/ParkingLot.java
+- src/main/java/com/interviewos/parkinglot/strategy/BaseFareStrategy.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/parkinglot/SpotAllocationTest.java: |
+    package com.interviewos.parkinglot;
+
+    import com.interviewos.parkinglot.model.*;
+    import com.interviewos.parkinglot.service.ParkingManager;
+    import org.junit.jupiter.api.BeforeEach;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.util.*;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class SpotAllocationTest {
+        private ParkingManager manager;
+
+        @BeforeEach
+        void setUp() {
+            Map<VehicleSize, List<ParkingSpot>> spots = new EnumMap<>(VehicleSize.class);
+            spots.put(VehicleSize.SMALL, new ArrayList<>(List.of(new MotorcycleSpot(1))));
+            spots.put(VehicleSize.MEDIUM, new ArrayList<>(List.of(new CompactSpot(2))));
+            spots.put(VehicleSize.LARGE, new ArrayList<>(List.of(new LargeSpot(3))));
+            manager = new ParkingManager(spots);
+        }
+
+        @Test
+        @DisplayName("Allocate spot for Car, Motorcycle, Truck based on size compatibility")
+        void testAllocationBySize() {
+            Vehicle moto = new Motorcycle("M-1");
+            Vehicle car = new Car("C-1");
+            Vehicle truck = new Truck("T-1");
+
+            ParkingSpot s1 = manager.parkVehicle(moto);
+            assertNotNull(s1);
+            assertEquals(1, s1.getSpotNumber());
+
+            ParkingSpot s2 = manager.parkVehicle(car);
+            assertNotNull(s2);
+            assertEquals(2, s2.getSpotNumber());
+
+            ParkingSpot s3 = manager.parkVehicle(truck);
+            assertNotNull(s3);
+            assertEquals(3, s3.getSpotNumber());
+        }
+
+        @Test
+        @DisplayName("Full lot returns null when no matching size spots remain")
+        void testFullLotRejection() {
+            Vehicle truck1 = new Truck("T-1");
+            Vehicle truck2 = new Truck("T-2");
+
+            assertNotNull(manager.parkVehicle(truck1));
+            assertNull(manager.parkVehicle(truck2), "Second truck must be rejected when single LARGE spot occupied");
+        }
+    }
+  src/test/java/com/interviewos/parkinglot/FareCalculationTest.java: |
+    package com.interviewos.parkinglot;
+
+    import com.interviewos.parkinglot.model.*;
+    import com.interviewos.parkinglot.strategy.BaseFareStrategy;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+    import java.time.LocalDateTime;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class FareCalculationTest {
+        @Test
+        @DisplayName("Base fare strategy calculates cost proportionally to vehicle rate and duration")
+        void testFareCalculation() {
+            BaseFareStrategy strategy = new BaseFareStrategy();
+            Vehicle car = new Car("CAR-99");
+            ParkingSpot spot = new CompactSpot(10);
+            LocalDateTime entry = LocalDateTime.now().minusMinutes(60);
+            Ticket ticket = new Ticket("TKT-1", car, spot, entry);
+            ticket.setExitTime(entry.plusMinutes(60));
+
+            BigDecimal fare = strategy.calculateFare(ticket, BigDecimal.ZERO);
+            // 60 minutes * 2.00 = 120.00
+            assertEquals(new BigDecimal("120.00"), fare);
+        }
+
+        @Test
+        @DisplayName("Large vehicle has higher fare multiplier than small vehicle")
+        void testVehicleMultiplier() {
+            BaseFareStrategy strategy = new BaseFareStrategy();
+            LocalDateTime entry = LocalDateTime.now().minusMinutes(30);
+
+            Ticket truckTicket = new Ticket("T1", new Truck("TRK-1"), new LargeSpot(1), entry);
+            truckTicket.setExitTime(entry.plusMinutes(30));
+
+            Ticket motoTicket = new Ticket("T2", new Motorcycle("MOT-1"), new MotorcycleSpot(2), entry);
+            motoTicket.setExitTime(entry.plusMinutes(30));
+
+            BigDecimal truckFare = strategy.calculateFare(truckTicket, BigDecimal.ZERO);
+            BigDecimal motoFare = strategy.calculateFare(motoTicket, BigDecimal.ZERO);
+
+            assertTrue(truckFare.compareTo(motoFare) > 0);
+        }
+    }
+  src/test/java/com/interviewos/parkinglot/ParkingLifecycleTest.java: |
+    package com.interviewos.parkinglot;
+
+    import com.interviewos.parkinglot.model.*;
+    import com.interviewos.parkinglot.service.ParkingLot;
+    import com.interviewos.parkinglot.service.ParkingManager;
+    import com.interviewos.parkinglot.strategy.BaseFareStrategy;
+    import org.junit.jupiter.api.BeforeEach;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.math.BigDecimal;
+    import java.util.*;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class ParkingLifecycleTest {
+        private ParkingLot lot;
+
+        @BeforeEach
+        void setUp() {
+            Map<VehicleSize, List<ParkingSpot>> spots = new EnumMap<>(VehicleSize.class);
+            spots.put(VehicleSize.MEDIUM, new ArrayList<>(List.of(new CompactSpot(101))));
+            ParkingManager manager = new ParkingManager(spots);
+            lot = new ParkingLot(manager, new BaseFareStrategy());
+        }
+
+        @Test
+        @DisplayName("Complete parking lifecycle: enter -> park -> leave -> spot freed")
+        void testEndToEndLifecycle() {
+            Car car = new Car("NYC-4455");
+            Ticket ticket = lot.enterVehicle(car);
+            assertNotNull(ticket);
+            assertEquals(101, ticket.getParkingSpot().getSpotNumber());
+
+            BigDecimal fare = lot.leaveVehicle(ticket.getTicketId());
+            assertNotNull(fare);
+            assertTrue(fare.compareTo(BigDecimal.ZERO) >= 0);
+
+            // Spot should now be freed and available for next car
+            Car car2 = new Car("BOS-9988");
+            Ticket ticket2 = lot.enterVehicle(car2);
+            assertNotNull(ticket2, "Spot 101 should be available again after unparking");
+            assertEquals(101, ticket2.getParkingSpot().getSpotNumber());
+        }
+    }
+
 starterCode: "public interface Vehicle {\n    String getLicensePlate();\n    VehicleSize getSize();\n}\npublic class Car\nimplements Vehicle {\n    private String licensePlate;\n    public Car(String licensePlate) {\n        this.licensePlate = licensePlate;\n    }\n    @Override\n    public String getLicensePlate() {\n        return this.licensePlate;\n    }\n    @Override\n    public VehicleSize getSize() {\n        return VehicleSize.MEDIUM;\n    }\n}\npublic enum VehicleSize {\n    SMALL,\n    MEDIUM,\n    LARGE\n}\n\npublic interface ParkingSpot {\n    boolean isAvailable();\n    void occupy(Vehicle vehicle);\n    void vacate();\n    int getSpotNumber();\n    VehicleSize getSize();\n}\n\npublic class CompactSpot\nimplements ParkingSpot {\n    private int spotNumber;\n    private Vehicle vehicle; // The vehicle currently occupying this spot\npublic CompactSpot(int spotNumber) {\n        this.spotNumber = spotNumber;\n        this.vehicle = null; // No vehicle occupying initially\n  \
   \  }\n    @Override\n    public int getSpotNumber() {\n        return spotNumber;\n    }\n    @Override\n    public boolean isAvailable() {\n        return vehicle == null;\n    }\n    @Override\n    public void occupy(Vehicle vehicle) {\n        if (isAvailable()) {\n            this.vehicle = vehicle;\n        } else {\n            // Spot is already occupied.\n        }\n    }\n    @Override\n    public void vacate() {\n        this.vehicle = null; // Make the spot available\n    }\n    @Override\n    public VehicleSize getSize() {\n        return VehicleSize.SMALL; // Compact spots fit small vehicles\n    }\n}"
 solutionCode: "public interface Vehicle {\n    String getLicensePlate();\n    VehicleSize getSize();\n}\npublic class Car\nimplements Vehicle {\n    private String licensePlate;\n    public Car(String licensePlate) {\n        this.licensePlate = licensePlate;\n    }\n    @Override\n    public String getLicensePlate() {\n        return this.licensePlate;\n    }\n    @Override\n    public VehicleSize getSize() {\n        return VehicleSize.MEDIUM;\n    }\n}\npublic enum VehicleSize {\n    SMALL,\n    MEDIUM,\n    LARGE\n}\n\npublic interface ParkingSpot {\n    boolean isAvailable();\n    void occupy(Vehicle vehicle);\n    void vacate();\n    int getSpotNumber();\n    VehicleSize getSize();\n}\n\npublic class CompactSpot\nimplements ParkingSpot {\n    private int spotNumber;\n    private Vehicle vehicle; // The vehicle currently occupying this spot\npublic CompactSpot(int spotNumber) {\n        this.spotNumber = spotNumber;\n        this.vehicle = null; // No vehicle occupying initially\n \
