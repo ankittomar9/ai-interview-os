@@ -3,7 +3,9 @@ slug: dsa-lc108-convert-sorted-array-to-binary-search-tree
 title: Convert Sorted Array to Binary Search Tree
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [trees, binary-search]
+topics:
+- trees
+- binary-search
 est_minutes: 15
 tags:
 - binary-search-tree
@@ -54,7 +56,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Binary Search Tree techniques to solve the problem efficiently.
+  approachHint: Utilize standard Binary Search Tree techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -68,15 +71,106 @@ coaching:
 editorial: '### Convert Sorted Array to Binary Search Tree
 
 
-  This problem evaluates core techniques in Binary Search Tree. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Binary Search Tree. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static TreeNode sortedArrayToBST(int[] nums) {\n        return null;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        TreeNode res = sortedArrayToBST(arr);\n        if (res == null) System.out.println(\"null\");\n        else {\n            Queue<TreeNode> q = new LinkedList<>();\n            q.offer(res);\n            StringBuilder sb = new StringBuilder();\n            while (!q.isEmpty()) {\n                TreeNode c = q.poll();\n                if (c != null) { sb.append(c.val).append(\" \"); q.offer(c.left); q.offer(c.right); }\n            }\n            System.out.println(sb.toString().trim());\n        }\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static TreeNode sortedArrayToBST(int[] nums){\n        if(nums==null || nums.length==0){return null;}\n        return buildBST(nums, 0, nums.length-1);\n    }\n    public static class TreeNode{\n        int val;TreeNode left; TreeNode right;\n        TreeNode(){} TreeNode(int val){this.val=val;}\n        TreeNode(int val,TreeNode left,TreeNode right){\n            this.val=val;\n            this.left=left;\n            this.right=right;\n        }\n    }\n    public static TreeNode buildBST(int[] nums,int left,int right){\n        if(left>right) return null;\n        \n        int mid=left+(right-left)/2;\n        TreeNode root=new TreeNode(nums[mid]);\n        \n        root.left=buildBST(nums, left, mid-1);\n        root.right=buildBST(nums, mid+1, right);\n        \n        return root;\n    }\n    public static void printInorder(TreeNode node){\n        if(node==null){return;}\n        printInorder(node.left);\n\
-  \        System.out.print(node.val+\" \");\n        printInorder(node.right);\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        TreeNode res = sortedArrayToBST(arr);\n        if (res == null) System.out.println(\"null\");\n        else {\n            Queue<TreeNode> q = new LinkedList<>();\n            q.offer(res);\n            StringBuilder sb = new StringBuilder();\n            while (!q.isEmpty()) {\n                TreeNode c = q.poll();\n                if (c != null) { sb.append(c.val).append(\" \"); q.offer(c.left); q.offer(c.right); }\n            }\n            System.out.println(sb.toString().trim());\n        }\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static TreeNode\
+  \ sortedArrayToBST(int[] nums) {\n        return null;\n    }\n\n    public static\
+  \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n   \
+  \     if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr\
+  \ = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n  \
+  \      TreeNode res = sortedArrayToBST(arr);\n        if (res == null) System.out.println(\"\
+  null\");\n        else {\n            Queue<TreeNode> q = new LinkedList<>();\n\
+  \            q.offer(res);\n            StringBuilder sb = new StringBuilder();\n\
+  \            while (!q.isEmpty()) {\n                TreeNode c = q.poll();\n  \
+  \              if (c != null) { sb.append(c.val).append(\" \"); q.offer(c.left);\
+  \ q.offer(c.right); }\n            }\n            System.out.println(sb.toString().trim());\n\
+  \        }\n    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ TreeNode sortedArrayToBST(int[] nums){\n        if(nums==null || nums.length==0){return\
+  \ null;}\n        return buildBST(nums, 0, nums.length-1);\n    }\n    public static\
+  \ class TreeNode{\n        int val;TreeNode left; TreeNode right;\n        TreeNode(){}\
+  \ TreeNode(int val){this.val=val;}\n        TreeNode(int val,TreeNode left,TreeNode\
+  \ right){\n            this.val=val;\n            this.left=left;\n            this.right=right;\n\
+  \        }\n    }\n    public static TreeNode buildBST(int[] nums,int left,int right){\n\
+  \        if(left>right) return null;\n        \n        int mid=left+(right-left)/2;\n\
+  \        TreeNode root=new TreeNode(nums[mid]);\n        \n        root.left=buildBST(nums,\
+  \ left, mid-1);\n        root.right=buildBST(nums, mid+1, right);\n        \n  \
+  \      return root;\n    }\n    public static void printInorder(TreeNode node){\n\
+  \        if(node==null){return;}\n        printInorder(node.left);\n        System.out.print(node.val+\"\
+  \ \");\n        printInorder(node.right);\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n    \
+  \    for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        TreeNode res =\
+  \ sortedArrayToBST(arr);\n        if (res == null) System.out.println(\"null\");\n\
+  \        else {\n            Queue<TreeNode> q = new LinkedList<>();\n         \
+  \   q.offer(res);\n            StringBuilder sb = new StringBuilder();\n       \
+  \     while (!q.isEmpty()) {\n                TreeNode c = q.poll();\n         \
+  \       if (c != null) { sb.append(c.val).append(\" \"); q.offer(c.left); q.offer(c.right);\
+  \ }\n            }\n            System.out.println(sb.toString().trim());\n    \
+  \    }\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc108-convert-sorted-array-to-binary-search-tree
+  label: Canonical — Convert Sorted Array to Binary Search Tree
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Convert Sorted Array to
+    Binary Search Tree.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static TreeNode\
+    \ sortedArrayToBST(int[] nums){\n        if(nums==null || nums.length==0){return\
+    \ null;}\n        return buildBST(nums, 0, nums.length-1);\n    }\n    public\
+    \ static class TreeNode{\n        int val;TreeNode left; TreeNode right;\n   \
+    \     TreeNode(){} TreeNode(int val){this.val=val;}\n        TreeNode(int val,TreeNode\
+    \ left,TreeNode right){\n            this.val=val;\n            this.left=left;\n\
+    \            this.right=right;\n        }\n    }\n    public static TreeNode buildBST(int[]\
+    \ nums,int left,int right){\n        if(left>right) return null;\n        \n \
+    \       int mid=left+(right-left)/2;\n        TreeNode root=new TreeNode(nums[mid]);\n\
+    \        \n        root.left=buildBST(nums, left, mid-1);\n        root.right=buildBST(nums,\
+    \ mid+1, right);\n        \n        return root;\n    }\n    public static void\
+    \ printInorder(TreeNode node){\n        if(node==null){return;}\n        printInorder(node.left);\n\
+    \        System.out.print(node.val+\" \");\n        printInorder(node.right);\n\
+    \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+    \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+    \        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] =\
+    \ sc.nextInt();\n        TreeNode res = sortedArrayToBST(arr);\n        if (res\
+    \ == null) System.out.println(\"null\");\n        else {\n            Queue<TreeNode>\
+    \ q = new LinkedList<>();\n            q.offer(res);\n            StringBuilder\
+    \ sb = new StringBuilder();\n            while (!q.isEmpty()) {\n            \
+    \    TreeNode c = q.poll();\n                if (c != null) { sb.append(c.val).append(\"\
+    \ \"); q.offer(c.left); q.offer(c.right); }\n            }\n            System.out.println(sb.toString().trim());\n\
+    \        }\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Convert Sorted Array to Binary Search
+    Tree
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Convert Sorted Array to Binary
+    Search Tree exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Convert\
+    \ Sorted Array to Binary Search Tree\n    }\n}\n"
 ---
 
 ### Convert Sorted Array to Binary Search Tree

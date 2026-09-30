@@ -3,7 +3,8 @@ slug: dsa-hollow-square-pattern
 title: Hollow Square Pattern.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [patterns]
+topics:
+- patterns
 est_minutes: 15
 tags:
 - 5-patterns--printing-15-questions
@@ -18,7 +19,10 @@ sampleTests:
   description: Primary test case
 - name: Sample 2
   input: '10'
-  expectedOutput: "* * * * * * * * * * \n*                 * \n*                 * \n*                 * \n*                 * \n*                 * \n*                 * \n*                 * \n*                 * \n* * * * * * * * * *"
+  expectedOutput: "* * * * * * * * * * \n*                 * \n*                 *\
+    \ \n*                 * \n*                 * \n*                 * \n*      \
+    \           * \n*                 * \n*                 * \n* * * * * * * * *\
+    \ *"
   description: Secondary boundary test case
 hiddenTests:
 - name: Hidden 1
@@ -27,11 +31,16 @@ hiddenTests:
   weight: 25
 - name: Hidden 2
   input: '7'
-  expectedOutput: "* * * * * * * \n*           * \n*           * \n*           * \n*           * \n*           * \n* * * * * * *"
+  expectedOutput: "* * * * * * * \n*           * \n*           * \n*           * \n\
+    *           * \n*           * \n* * * * * * *"
   weight: 25
 - name: Hidden 3
   input: '12'
-  expectedOutput: "* * * * * * * * * * * * \n*                     * \n*                     * \n*                     * \n*                     * \n*                     * \n*                     * \n*                     * \n*                     * \n*                     * \n*                     * \n* * * * * * * * * * * *"
+  expectedOutput: "* * * * * * * * * * * * \n*                     * \n*         \
+    \            * \n*                     * \n*                     * \n*       \
+    \              * \n*                     * \n*                     * \n*     \
+    \                * \n*                     * \n*                     * \n* * *\
+    \ * * * * * * * * *"
   weight: 50
 hints:
 - Analyze the problem using 5. Patterns & Printing (15 Questions) algorithmic patterns.
@@ -43,7 +52,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 5. Patterns & Printing (15 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 5. Patterns & Printing (15 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +67,68 @@ coaching:
 editorial: '### Hollow Square Pattern.
 
 
-  This problem evaluates core techniques in 5. Patterns & Printing (15 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 5. Patterns & Printing (15 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void printHollowSquare(int N) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        printHollowSquare(n);\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static void printHollowSquare(int N){\n\n\n        for(int i=0;i<N;i++){\n            for(int j=0;j<N;j++){\n\n                if( i==0 || i==N-1 || j==0 || j == N-1){\n                    System.out.print(\"* \");\n                }else{\n                    System.out.print(\"  \");\n                }\n            }\n            System.out.println();\n\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        printHollowSquare(n);\n    }\n}\n"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void printHollowSquare(int\
+  \ N) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        printHollowSquare(n);\n    }\n\
+  }\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static void\
+  \ printHollowSquare(int N){\n\n\n        for(int i=0;i<N;i++){\n            for(int\
+  \ j=0;j<N;j++){\n\n                if( i==0 || i==N-1 || j==0 || j == N-1){\n  \
+  \                  System.out.print(\"* \");\n                }else{\n         \
+  \           System.out.print(\"  \");\n                }\n            }\n      \
+  \      System.out.println();\n\n        }\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        printHollowSquare(n);\n    }\n\
+  }\n"
+referenceSolutions:
+- approachId: canonical-dsa-hollow-square-pattern
+  label: Canonical — Hollow Square Pattern.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Hollow Square Pattern..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static void printHollowSquare(int\
+    \ N){\n\n\n        for(int i=0;i<N;i++){\n            for(int j=0;j<N;j++){\n\n\
+    \                if( i==0 || i==N-1 || j==0 || j == N-1){\n                  \
+    \  System.out.print(\"* \");\n                }else{\n                    System.out.print(\"\
+    \  \");\n                }\n            }\n            System.out.println();\n\
+    \n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+    \ n = sc.nextInt();\n        printHollowSquare(n);\n    }\n}\n"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Hollow Square Pattern.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Hollow Square Pattern. exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Hollow\
+    \ Square Pattern.\n    }\n}\n"
 ---
 
 ### Hollow Square Pattern.

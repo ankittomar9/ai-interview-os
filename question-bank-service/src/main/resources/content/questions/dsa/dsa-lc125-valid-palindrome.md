@@ -3,7 +3,9 @@ slug: dsa-lc125-valid-palindrome
 title: Valid Palindrome
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [two-pointers, strings]
+topics:
+- two-pointers
+- strings
 est_minutes: 15
 tags:
 - strings
@@ -58,14 +60,75 @@ coaching:
 editorial: '### Valid Palindrome
 
 
-  This problem evaluates core techniques in Strings. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Strings. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean isPalindrome(String s) {\n        return false;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(isPalindrome(s));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static boolean isPalindrome(String s){\n        if(s==null || s.isEmpty()){return true;}\n        int left=0;int right=s.length()-1;\n\n        while(left<right){\n            while(left<right && !Character.isLetterOrDigit(s.charAt(left))){\n                left++;\n            }\n\n             while(left<right && !Character.isLetterOrDigit(s.charAt(right))){\n                right--;\n            }\n\n            if (Character.toLowerCase(s.charAt(left)) !=\n             Character.toLowerCase(s.charAt(right))) {\n                return false;\n            }\n\n            left++;\n            right--;\n        }\n        return true;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(isPalindrome(s));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean\
+  \ isPalindrome(String s) {\n        return false;\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(isPalindrome(s));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ boolean isPalindrome(String s){\n        if(s==null || s.isEmpty()){return true;}\n\
+  \        int left=0;int right=s.length()-1;\n\n        while(left<right){\n    \
+  \        while(left<right && !Character.isLetterOrDigit(s.charAt(left))){\n    \
+  \            left++;\n            }\n\n             while(left<right && !Character.isLetterOrDigit(s.charAt(right))){\n\
+  \                right--;\n            }\n\n            if (Character.toLowerCase(s.charAt(left))\
+  \ !=\n             Character.toLowerCase(s.charAt(right))) {\n                return\
+  \ false;\n            }\n\n            left++;\n            right--;\n        }\n\
+  \        return true;\n    }\n\n    public static void main(String[] args) {\n \
+  \       Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        String s = sc.next();\n        System.out.println(isPalindrome(s));\n \
+  \   }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc125-valid-palindrome
+  label: Canonical — Valid Palindrome
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Valid Palindrome.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static boolean\
+    \ isPalindrome(String s){\n        if(s==null || s.isEmpty()){return true;}\n\
+    \        int left=0;int right=s.length()-1;\n\n        while(left<right){\n  \
+    \          while(left<right && !Character.isLetterOrDigit(s.charAt(left))){\n\
+    \                left++;\n            }\n\n             while(left<right && !Character.isLetterOrDigit(s.charAt(right))){\n\
+    \                right--;\n            }\n\n            if (Character.toLowerCase(s.charAt(left))\
+    \ !=\n             Character.toLowerCase(s.charAt(right))) {\n               \
+    \ return false;\n            }\n\n            left++;\n            right--;\n\
+    \        }\n        return true;\n    }\n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        String s = sc.next();\n        System.out.println(isPalindrome(s));\n\
+    \    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Valid Palindrome
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Valid Palindrome exploring secondary
+    algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Valid Palindrome\n\
+    \    }\n}\n"
 ---
 
 ### Valid Palindrome

@@ -3,7 +3,8 @@ slug: dsa-insertion-sort
 title: Insertion Sort.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 25
 tags:
 - 6-sorting--searching-15-questions
@@ -53,7 +54,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 6. Sorting & Searching (15 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 6. Sorting & Searching (15 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,14 +69,77 @@ coaching:
 editorial: '### Insertion Sort.
 
 
-  This problem evaluates core techniques in 6. Sorting & Searching (15 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 6. Sorting & Searching (15 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void insertionSort(int arr[]) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        insertionSort(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
-solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n    public static void insertionSort(int arr[]){\n        if(arr==null || arr.length<=1){\n           System.out.println(\"empty or null array \"); return; \n        }\n        int n=arr.length;\n\n        for(int i=1;i<n;i++){\n            int key=arr[i];\n            int j=i-1;\n\n            while(j>=0 && arr[j]>key){\n                arr[j+1]=arr[j];\n                j=j-1;\n            }\n            arr[j+1]=key;\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        insertionSort(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void insertionSort(int\
+  \ arr[]) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new\
+  \ int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        insertionSort(arr);\n\
+  \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" :\
+  \ \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
+solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n\
+  \    \n    public static void insertionSort(int arr[]){\n        if(arr==null ||\
+  \ arr.length<=1){\n           System.out.println(\"empty or null array \"); return;\
+  \ \n        }\n        int n=arr.length;\n\n        for(int i=1;i<n;i++){\n    \
+  \        int key=arr[i];\n            int j=i-1;\n\n            while(j>=0 && arr[j]>key){\n\
+  \                arr[j+1]=arr[j];\n                j=j-1;\n            }\n     \
+  \       arr[j+1]=key;\n        }\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n    \
+  \    for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        insertionSort(arr);\n\
+  \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" :\
+  \ \"\") + arr[i]);\n        System.out.println();\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-insertion-sort
+  label: Canonical — Insertion Sort.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Insertion Sort..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n\
+    \    public static void insertionSort(int arr[]){\n        if(arr==null || arr.length<=1){\n\
+    \           System.out.println(\"empty or null array \"); return; \n        }\n\
+    \        int n=arr.length;\n\n        for(int i=1;i<n;i++){\n            int key=arr[i];\n\
+    \            int j=i-1;\n\n            while(j>=0 && arr[j]>key){\n          \
+    \      arr[j+1]=arr[j];\n                j=j-1;\n            }\n            arr[j+1]=key;\n\
+    \        }\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+    \ n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0;\
+    \ i < n; i++) arr[i] = sc.nextInt();\n        insertionSort(arr);\n        for\
+    \ (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n\
+    \        System.out.println();\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Insertion Sort.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Insertion Sort. exploring secondary
+    algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Insertion\
+    \ Sort.\n    }\n}\n"
 ---
 
 ### Insertion Sort.

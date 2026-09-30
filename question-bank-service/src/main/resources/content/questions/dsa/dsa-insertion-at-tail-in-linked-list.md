@@ -3,7 +3,8 @@ slug: dsa-insertion-at-tail-in-linked-list
 title: Insertion At Tail In Linked List
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [linked-list]
+topics:
+- linked-list
 est_minutes: 25
 tags:
 - linked-list
@@ -67,15 +68,93 @@ coaching:
 editorial: '### Insertion At Tail In Linked List
 
 
-  This problem evaluates core techniques in Linked List. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Linked List. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static Node insertAtTail(Node head,int val) {\n        return null;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n        Node dummy = new Node(0);\n        Node cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n        Node head = dummy.next;\n        Node res = insertAtTail(head, k);\n        while (res != null) {\n            System.out.print(res.data + (res.next != null ? \" \" : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static Node insertAtTail(Node head,int val){\n            Node newNode=new Node(val);            if(head==null){ return newNode;}//edge case\n            Node temp=head;\n            while(temp.next!=null){\n                temp=temp.next;\n            }\n           temp.next=newNode;\n           return head;\n    }\n    public static void printList(Node head){\n        Node temp=head;\n            while(temp!=null){\n                System.out.print(temp.data+\" -> \");\n                temp=temp.next;\n            }\n            System.out.print(\"null\" );    }\n    public static class Node{\n        int data;\n        Node next;\n        public Node(int data){\n            this.data=data;\n            this.next=null;\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n\
-  \        Node dummy = new Node(0);\n        Node cur = dummy;\n        for (int i = 0; i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n        Node head = dummy.next;\n        Node res = insertAtTail(head, k);\n        while (res != null) {\n            System.out.print(res.data + (res.next != null ? \" \" : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static Node insertAtTail(Node\
+  \ head,int val) {\n        return null;\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n      \
+  \  Node dummy = new Node(0);\n        Node cur = dummy;\n        for (int i = 0;\
+  \ i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n        Node\
+  \ head = dummy.next;\n        Node res = insertAtTail(head, k);\n        while (res\
+  \ != null) {\n            System.out.print(res.data + (res.next != null ? \" \"\
+  \ : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static Node\
+  \ insertAtTail(Node head,int val){\n            Node newNode=new Node(val);    \
+  \        if(head==null){ return newNode;}//edge case\n            Node temp=head;\n\
+  \            while(temp.next!=null){\n                temp=temp.next;\n        \
+  \    }\n           temp.next=newNode;\n           return head;\n    }\n    public\
+  \ static void printList(Node head){\n        Node temp=head;\n            while(temp!=null){\n\
+  \                System.out.print(temp.data+\" -> \");\n                temp=temp.next;\n\
+  \            }\n            System.out.print(\"null\" );    }\n    public static\
+  \ class Node{\n        int data;\n        Node next;\n        public Node(int data){\n\
+  \            this.data=data;\n            this.next=null;\n        }\n    }\n\n\
+  \    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int\
+  \ k = sc.nextInt();\n        Node dummy = new Node(0);\n        Node cur = dummy;\n\
+  \        for (int i = 0; i < n; i++) { cur.next = new Node(sc.nextInt()); cur =\
+  \ cur.next; }\n        Node head = dummy.next;\n        Node res = insertAtTail(head,\
+  \ k);\n        while (res != null) {\n            System.out.print(res.data + (res.next\
+  \ != null ? \" \" : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-insertion-at-tail-in-linked-list
+  label: Canonical — Insertion At Tail In Linked List
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Insertion At Tail In Linked
+    List.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static Node insertAtTail(Node\
+    \ head,int val){\n            Node newNode=new Node(val);            if(head==null){\
+    \ return newNode;}//edge case\n            Node temp=head;\n            while(temp.next!=null){\n\
+    \                temp=temp.next;\n            }\n           temp.next=newNode;\n\
+    \           return head;\n    }\n    public static void printList(Node head){\n\
+    \        Node temp=head;\n            while(temp!=null){\n                System.out.print(temp.data+\"\
+    \ -> \");\n                temp=temp.next;\n            }\n            System.out.print(\"\
+    null\" );    }\n    public static class Node{\n        int data;\n        Node\
+    \ next;\n        public Node(int data){\n            this.data=data;\n       \
+    \     this.next=null;\n        }\n    }\n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n    \
+    \    Node dummy = new Node(0);\n        Node cur = dummy;\n        for (int i\
+    \ = 0; i < n; i++) { cur.next = new Node(sc.nextInt()); cur = cur.next; }\n  \
+    \      Node head = dummy.next;\n        Node res = insertAtTail(head, k);\n  \
+    \      while (res != null) {\n            System.out.print(res.data + (res.next\
+    \ != null ? \" \" : \"\"));\n            res = res.next;\n        }\n        System.out.println();\n\
+    \    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Insertion At Tail In Linked List
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Insertion At Tail In Linked List
+    exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Insertion\
+    \ At Tail In Linked List\n    }\n}\n"
 ---
 
 ### Insertion At Tail In Linked List

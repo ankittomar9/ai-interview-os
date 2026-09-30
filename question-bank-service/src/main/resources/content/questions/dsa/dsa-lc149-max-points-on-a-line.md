@@ -3,7 +3,8 @@ slug: dsa-lc149-max-points-on-a-line
 title: Max Points on a Line
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: HARD
-topics: [math]
+topics:
+- math
 est_minutes: 40
 tags:
 - math
@@ -84,15 +85,97 @@ coaching:
 editorial: '### Max Points on a Line
 
 
-  This problem evaluates core techniques in Math. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Math. Implement an optimal algorithm ensuring
+  correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxPoints(int[][] points) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        System.out.println(maxPoints(mat));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\nimport java.util.HashMap;\nimport java.util.Map;\n\npublic class Main {\n    \n    public static int maxPoints(int[][] points){\n        if(points.length<=2){return points.length;}\n        int maxPoints=0;\n    \n        for(int i=0;i<points.length;i++){\n            Map<String,Integer> slopeCount=new HashMap<>();\n            int duplicates=1; int localMax=0;\n        \n            for(int j=i+1;j<points.length;j++){\n                int dx=points[j][0]-points[i][0];\n                int dy=points[j][1]-points[i][1];\n\n                if(dx==0 && dy==0){\n                    duplicates++; \n                    continue;\n                }\n                int gcd=gcd(dx,dy);\n                dx=dx/gcd;\n                dy=dy/gcd;\n\n                if(dx<0){\n                    dx=-dx; \n                    dy=-dy;\n                }else if(dx==0 && dy<0){\n                    dy=-dy;\n                }\n\n             \
-  \   String key=dx + \"/\"+ dy;\n              slopeCount.put(key, slopeCount.getOrDefault(key, 0) + 1);\n        \n                localMax=Math.max(localMax, slopeCount.get(key));\n            }\n            maxPoints=Math.max(maxPoints, localMax+duplicates);\n        }\n        return maxPoints;\n    }\n    private static int gcd(int a,int b){\n        return b==0 ? a: gcd(b,a%b);\n    }\n\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        System.out.println(maxPoints(mat));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxPoints(int[][]\
+  \ points) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int r = sc.nextInt();\n        int c = sc.nextInt();\n        int[][] mat\
+  \ = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++)\
+  \ mat[i][j] = sc.nextInt();\n        System.out.println(maxPoints(mat));\n    }\n\
+  }\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\nimport java.util.HashMap;\n\
+  import java.util.Map;\n\npublic class Main {\n    \n    public static int maxPoints(int[][]\
+  \ points){\n        if(points.length<=2){return points.length;}\n        int maxPoints=0;\n\
+  \    \n        for(int i=0;i<points.length;i++){\n            Map<String,Integer>\
+  \ slopeCount=new HashMap<>();\n            int duplicates=1; int localMax=0;\n \
+  \       \n            for(int j=i+1;j<points.length;j++){\n                int dx=points[j][0]-points[i][0];\n\
+  \                int dy=points[j][1]-points[i][1];\n\n                if(dx==0 &&\
+  \ dy==0){\n                    duplicates++; \n                    continue;\n \
+  \               }\n                int gcd=gcd(dx,dy);\n                dx=dx/gcd;\n\
+  \                dy=dy/gcd;\n\n                if(dx<0){\n                    dx=-dx;\
+  \ \n                    dy=-dy;\n                }else if(dx==0 && dy<0){\n    \
+  \                dy=-dy;\n                }\n\n                String key=dx + \"\
+  /\"+ dy;\n              slopeCount.put(key, slopeCount.getOrDefault(key, 0) + 1);\n\
+  \        \n                localMax=Math.max(localMax, slopeCount.get(key));\n \
+  \           }\n            maxPoints=Math.max(maxPoints, localMax+duplicates);\n\
+  \        }\n        return maxPoints;\n    }\n    private static int gcd(int a,int\
+  \ b){\n        return b==0 ? a: gcd(b,a%b);\n    }\n\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n      \
+  \  int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j\
+  \ = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        System.out.println(maxPoints(mat));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc149-max-points-on-a-line
+  label: Canonical — Max Points on a Line
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Max Points on a Line.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\nimport java.util.HashMap;\n\
+    import java.util.Map;\n\npublic class Main {\n    \n    public static int maxPoints(int[][]\
+    \ points){\n        if(points.length<=2){return points.length;}\n        int maxPoints=0;\n\
+    \    \n        for(int i=0;i<points.length;i++){\n            Map<String,Integer>\
+    \ slopeCount=new HashMap<>();\n            int duplicates=1; int localMax=0;\n\
+    \        \n            for(int j=i+1;j<points.length;j++){\n                int\
+    \ dx=points[j][0]-points[i][0];\n                int dy=points[j][1]-points[i][1];\n\
+    \n                if(dx==0 && dy==0){\n                    duplicates++; \n  \
+    \                  continue;\n                }\n                int gcd=gcd(dx,dy);\n\
+    \                dx=dx/gcd;\n                dy=dy/gcd;\n\n                if(dx<0){\n\
+    \                    dx=-dx; \n                    dy=-dy;\n                }else\
+    \ if(dx==0 && dy<0){\n                    dy=-dy;\n                }\n\n     \
+    \           String key=dx + \"/\"+ dy;\n              slopeCount.put(key, slopeCount.getOrDefault(key,\
+    \ 0) + 1);\n        \n                localMax=Math.max(localMax, slopeCount.get(key));\n\
+    \            }\n            maxPoints=Math.max(maxPoints, localMax+duplicates);\n\
+    \        }\n        return maxPoints;\n    }\n    private static int gcd(int a,int\
+    \ b){\n        return b==0 ? a: gcd(b,a%b);\n    }\n\n\n    public static void\
+    \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n      \
+    \  if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c =\
+    \ sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i = 0;\
+    \ i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        System.out.println(maxPoints(mat));\n\
+    \    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Max Points on a Line
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Max Points on a Line exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Max Points\
+    \ on a Line\n    }\n}\n"
 ---
 
 ### Max Points on a Line

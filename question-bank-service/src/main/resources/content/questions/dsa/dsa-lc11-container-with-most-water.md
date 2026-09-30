@@ -3,7 +3,8 @@ slug: dsa-lc11-container-with-most-water
 title: Container With Most Water
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [two-pointers]
+topics:
+- two-pointers
 est_minutes: 25
 tags:
 - two-pointers
@@ -68,14 +69,80 @@ coaching:
 editorial: '### Container With Most Water
 
 
-  This problem evaluates core techniques in Two Pointers. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Two Pointers. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxArea(int[] height) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxArea(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n\n    public static int maxArea(int[] height){\n        if(height==null || height.length<2){return 0;}\n    \n        int left=0;int right=height.length-1;int maxArea=0; \n\n        while(left<right){\n            int currentArea=Math.min(height[left], height[right]);\n            int area=currentArea*(right-left);\n            maxArea=Math.max(maxArea, area);\n\n            if(height[left]<height[right]){\n                left++;\n            }else{\n                right--;\n            }\n        }\n        return maxArea;\n    \n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxArea(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int maxArea(int[]\
+  \ height) {\n        return 0;\n    }\n\n    public static void main(String[] args)\
+  \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxArea(arr));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n\n    public static int maxArea(int[] height){\n        if(height==null\
+  \ || height.length<2){return 0;}\n    \n        int left=0;int right=height.length-1;int\
+  \ maxArea=0; \n\n        while(left<right){\n            int currentArea=Math.min(height[left],\
+  \ height[right]);\n            int area=currentArea*(right-left);\n            maxArea=Math.max(maxArea,\
+  \ area);\n\n            if(height[left]<height[right]){\n                left++;\n\
+  \            }else{\n                right--;\n            }\n        }\n      \
+  \  return maxArea;\n    \n    }\n\n    public static void main(String[] args) {\n\
+  \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int\
+  \ i = 0; i < n; i++) arr[i] = sc.nextInt();\n        System.out.println(maxArea(arr));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-lc11-container-with-most-water
+  label: Canonical — Container With Most Water
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Container With Most Water.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n\n    public static int maxArea(int[] height){\n        if(height==null\
+    \ || height.length<2){return 0;}\n    \n        int left=0;int right=height.length-1;int\
+    \ maxArea=0; \n\n        while(left<right){\n            int currentArea=Math.min(height[left],\
+    \ height[right]);\n            int area=currentArea*(right-left);\n          \
+    \  maxArea=Math.max(maxArea, area);\n\n            if(height[left]<height[right]){\n\
+    \                left++;\n            }else{\n                right--;\n     \
+    \       }\n        }\n        return maxArea;\n    \n    }\n\n    public static\
+    \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n \
+    \       if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+    \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        System.out.println(maxArea(arr));\n    }\n}"
+- approachId: brute-force-all-pairs
+  label: Alternate — Exhaustive All-Pairs Evaluation
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Exhaustively checks every boundary pair (i, j) to compute water volume
+    and track global maximum.
+  keyIdea: O(N^2) baseline proving correctness before introducing optimal two-pointer
+    squeeze.
+  timeComplexity: O(N^2)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Unambiguous correctness baseline that validates edge cases
+  - Times out on large competitive programming inputs
+  whenToUse: Explaining problem foundation and verifying correctness in testing harnesses.
+  code: "import java.util.*;\n\npublic class Main {\n    public static int maxAreaBruteForce(int[]\
+    \ height) {\n        int max = 0;\n        for (int i = 0; i < height.length;\
+    \ i++) {\n            for (int j = i + 1; j < height.length; j++) {\n        \
+    \        int area = Math.min(height[i], height[j]) * (j - i);\n              \
+    \  max = Math.max(max, area);\n            }\n        }\n        return max;\n\
+    \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+    \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+    \        int[] height = new int[n];\n        for (int i = 0; i < n; i++) height[i]\
+    \ = sc.nextInt();\n        System.out.println(maxAreaBruteForce(height));\n  \
+    \  }\n}\n"
 ---
 
 ### Container With Most Water

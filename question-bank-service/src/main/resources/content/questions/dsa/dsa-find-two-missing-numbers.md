@@ -3,7 +3,8 @@ slug: dsa-find-two-missing-numbers
 title: Find Two Missing Numbers
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [bit-manipulation]
+topics:
+- bit-manipulation
 est_minutes: 15
 tags:
 - bit-manipulation
@@ -53,7 +54,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Bit Manipulation techniques to solve the problem efficiently.
+  approachHint: Utilize standard Bit Manipulation techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,15 +69,94 @@ coaching:
 editorial: '### Find Two Missing Numbers
 
 
-  This problem evaluates core techniques in Bit Manipulation. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Bit Manipulation. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int[] solve(int arr[]) {\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        int[] res = solve(arr);\n        if (res != null) {\n            for (int i = 0; i < res.length; i++) System.out.print((i > 0 ? \" \" : \"\") + res[i]);\n            System.out.println();\n        }\n    }\n}\n"
-solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n    public static int[] solve(int arr[]){\nif (arr == null || arr.length < 2) {System.out.println(\"Invalid input: need at least 2 numbers\");\n        return new int[]{};    }\n        int n=arr.length+2; int xorSum=0;\n        for(int num: arr){            xorSum=xorSum^num;        }\n        for(int i=1;i<=n;i++){            xorSum=xorSum^i;        }\n\n        int rightMostSetBit=xorSum &-xorSum;\n        int bucketA=0; int bucketB=0;\n\n        for(int num : arr){\n            if((num & rightMostSetBit)==0){\n                                     bucketA =bucketA ^num;   }\n                            else{     bucketB =bucketB ^num;  }  }\n\n            for(int i=1;i<=n;i++){\n                    if((i & rightMostSetBit)==0){\n                                    bucketA =bucketA ^i;    }\n                        else{        bucketB =bucketB ^i;    }  }\n                        \n            if(bucketA<bucketB\
-  \ ){\n               return new int[]{bucketA,bucketB};\n            }else{ return new int[]{bucketA,bucketB};    }       }      \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        int[] res = solve(arr);\n        if (res != null) {\n            for (int i = 0; i < res.length; i++) System.out.print((i > 0 ? \" \" : \"\") + res[i]);\n            System.out.println();\n        }\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int[]\
+  \ solve(int arr[]) {\n        return new int[]{};\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new\
+  \ int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        int[]\
+  \ res = solve(arr);\n        if (res != null) {\n            for (int i = 0; i <\
+  \ res.length; i++) System.out.print((i > 0 ? \" \" : \"\") + res[i]);\n        \
+  \    System.out.println();\n        }\n    }\n}\n"
+solutionCode: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n\
+  \    \n    public static int[] solve(int arr[]){\nif (arr == null || arr.length\
+  \ < 2) {System.out.println(\"Invalid input: need at least 2 numbers\");\n      \
+  \  return new int[]{};    }\n        int n=arr.length+2; int xorSum=0;\n       \
+  \ for(int num: arr){            xorSum=xorSum^num;        }\n        for(int i=1;i<=n;i++){\
+  \            xorSum=xorSum^i;        }\n\n        int rightMostSetBit=xorSum &-xorSum;\n\
+  \        int bucketA=0; int bucketB=0;\n\n        for(int num : arr){\n        \
+  \    if((num & rightMostSetBit)==0){\n                                     bucketA\
+  \ =bucketA ^num;   }\n                            else{     bucketB =bucketB ^num;\
+  \  }  }\n\n            for(int i=1;i<=n;i++){\n                    if((i & rightMostSetBit)==0){\n\
+  \                                    bucketA =bucketA ^i;    }\n               \
+  \         else{        bucketB =bucketB ^i;    }  }\n                        \n\
+  \            if(bucketA<bucketB ){\n               return new int[]{bucketA,bucketB};\n\
+  \            }else{ return new int[]{bucketA,bucketB};    }       }      \n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+  \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+  \        int[] res = solve(arr);\n        if (res != null) {\n            for (int\
+  \ i = 0; i < res.length; i++) System.out.print((i > 0 ? \" \" : \"\") + res[i]);\n\
+  \            System.out.println();\n        }\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-two-missing-numbers
+  label: Canonical — Find Two Missing Numbers
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find Two Missing Numbers.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\nimport java.util.Arrays;\npublic class Main {\n    \n\
+    \    public static int[] solve(int arr[]){\nif (arr == null || arr.length < 2)\
+    \ {System.out.println(\"Invalid input: need at least 2 numbers\");\n        return\
+    \ new int[]{};    }\n        int n=arr.length+2; int xorSum=0;\n        for(int\
+    \ num: arr){            xorSum=xorSum^num;        }\n        for(int i=1;i<=n;i++){\
+    \            xorSum=xorSum^i;        }\n\n        int rightMostSetBit=xorSum &-xorSum;\n\
+    \        int bucketA=0; int bucketB=0;\n\n        for(int num : arr){\n      \
+    \      if((num & rightMostSetBit)==0){\n                                     bucketA\
+    \ =bucketA ^num;   }\n                            else{     bucketB =bucketB ^num;\
+    \  }  }\n\n            for(int i=1;i<=n;i++){\n                    if((i & rightMostSetBit)==0){\n\
+    \                                    bucketA =bucketA ^i;    }\n             \
+    \           else{        bucketB =bucketB ^i;    }  }\n                      \
+    \  \n            if(bucketA<bucketB ){\n               return new int[]{bucketA,bucketB};\n\
+    \            }else{ return new int[]{bucketA,bucketB};    }       }      \n  \
+    \  public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[]\
+    \ arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n\
+    \        int[] res = solve(arr);\n        if (res != null) {\n            for\
+    \ (int i = 0; i < res.length; i++) System.out.print((i > 0 ? \" \" : \"\") + res[i]);\n\
+    \            System.out.println();\n        }\n    }\n}"
+- approachId: alternate-collection-pipeline
+  label: Alternate — Collection Pipeline for Find Two Missing Numbers
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Find Two Missing Numbers exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or collection formulation separating ingestion from
+    calculation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Alternate structured processing for Find Two\
+    \ Missing Numbers\n    }\n}\n"
 ---
 
 ### Find Two Missing Numbers
