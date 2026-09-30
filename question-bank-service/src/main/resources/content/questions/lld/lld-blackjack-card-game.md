@@ -13,7 +13,7 @@ tags:
 - design-patterns
 - card-game
 - state-pattern
-buildProfile: judge0
+buildProfile: maven-workspace
 source: inspired-by:bytebytego/ood-interview
 status: PUBLISHED
 hints:
@@ -25,6 +25,428 @@ coaching:
   - 'Explain how the Hand score dynamically computes Aces: count as 11 until the total exceeds 21, then downgrade Aces to 1.'
   - Demonstrate how dealer rules (must hit on soft 17) are encapsulated in an automated DealerPlayer policy.
   - Discuss how the Shoe supports reshuffling when cut-card penetration is reached.
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.lld</groupId>
+        <artifactId>blackjack-card-game</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Blackjack Card Game
+
+    ## Overview
+    Implement an object-oriented Blackjack card game supporting dynamic Ace valuation (1 or 11), multi-player turn management, dealer automated rules (hit on < 17), and bet payout resolution.
+
+    ## Key Components
+    - `com.interviewos.blackjack.model.Hand`: Encapsulates cards and dynamic score calculation.
+    - `com.interviewos.blackjack.service.BlackJackGame`: Coordinates game phases, card dealing, hit/stand actions, and payouts.
+
+    ## Candidate Task
+    Implement the TODO methods in:
+    1. `src/main/java/com/interviewos/blackjack/model/Hand.java`
+    2. `src/main/java/com/interviewos/blackjack/service/BlackJackGame.java`
+  src/main/java/com/interviewos/blackjack/model/Suit.java: |
+    package com.interviewos.blackjack.model;
+
+    public enum Suit {
+        HEARTS,
+        SPADES,
+        CLUBS,
+        DIAMONDS
+    }
+  src/main/java/com/interviewos/blackjack/model/Rank.java: |
+    package com.interviewos.blackjack.model;
+
+    public enum Rank {
+        ACE(new int[]{1, 11}),
+        TWO(new int[]{2}),
+        THREE(new int[]{3}),
+        FOUR(new int[]{4}),
+        FIVE(new int[]{5}),
+        SIX(new int[]{6}),
+        SEVEN(new int[]{7}),
+        EIGHT(new int[]{8}),
+        NINE(new int[]{9}),
+        TEN(new int[]{10}),
+        JACK(new int[]{10}),
+        QUEEN(new int[]{10}),
+        KING(new int[]{10});
+
+        private final int[] rankValues;
+
+        Rank(int[] rankValues) {
+            this.rankValues = rankValues;
+        }
+
+        public int[] getRankValues() {
+            return rankValues;
+        }
+    }
+  src/main/java/com/interviewos/blackjack/model/Card.java: |
+    package com.interviewos.blackjack.model;
+
+    public class Card {
+        private final Rank rank;
+        private final Suit suit;
+
+        public Card(Rank rank, Suit suit) {
+            this.rank = rank;
+            this.suit = suit;
+        }
+
+        public Rank getRank() { return rank; }
+        public Suit getSuit() { return suit; }
+        public int[] getRankValues() { return rank.getRankValues(); }
+    }
+  src/main/java/com/interviewos/blackjack/model/Deck.java: |
+    package com.interviewos.blackjack.model;
+
+    import java.util.*;
+
+    public class Deck {
+        private final List<Card> cards = new ArrayList<>();
+        private int nextCardIndex = 0;
+
+        public Deck() {
+            initializeDeck();
+        }
+
+        private void initializeDeck() {
+            cards.clear();
+            for (Suit suit : Suit.values()) {
+                for (Rank rank : Rank.values()) {
+                    cards.add(new Card(rank, suit));
+                }
+            }
+            nextCardIndex = 0;
+        }
+
+        public void shuffle() {
+            Collections.shuffle(cards, new Random(42));
+        }
+
+        public Card draw() {
+            if (isEmpty() || nextCardIndex >= cards.size()) {
+                throw new IllegalStateException("No more cards in deck");
+            }
+            return cards.get(nextCardIndex++);
+        }
+
+        public int getRemainingCardCount() {
+            return cards.size() - nextCardIndex;
+        }
+
+        public boolean isEmpty() {
+            return getRemainingCardCount() == 0;
+        }
+
+        public void reset() {
+            nextCardIndex = 0;
+        }
+    }
+  src/main/java/com/interviewos/blackjack/model/Hand.java: |
+    package com.interviewos.blackjack.model;
+
+    import java.util.*;
+
+    public class Hand {
+        private final List<Card> cards = new ArrayList<>();
+        private final SortedSet<Integer> possibleValues = new TreeSet<>();
+
+        public void addCard(Card card) {
+            // TODO: Add card and update all possible hand values considering Aces (1 or 11)
+            throw new UnsupportedOperationException("TODO: Implement addCard");
+        }
+
+        public boolean isBust() {
+            // TODO: Return true if lowest possible value > 21
+            throw new UnsupportedOperationException("TODO: Implement isBust");
+        }
+
+        public int getBestValue() {
+            // TODO: Return highest possible value <= 21, or lowest if all bust
+            throw new UnsupportedOperationException("TODO: Implement getBestValue");
+        }
+
+        public List<Card> getCards() { return Collections.unmodifiableList(cards); }
+        public SortedSet<Integer> getPossibleValues() { return Collections.unmodifiableSortedSet(possibleValues); }
+        public void clear() {
+            cards.clear();
+            possibleValues.clear();
+        }
+    }
+  src/main/java/com/interviewos/blackjack/model/Action.java: |
+    package com.interviewos.blackjack.model;
+
+    public enum Action {
+        HIT,
+        STAND
+    }
+  src/main/java/com/interviewos/blackjack/model/GamePhase.java: |
+    package com.interviewos.blackjack.model;
+
+    public enum GamePhase {
+        STARTED,
+        BET_PLACED,
+        INITIAL_CARD_DRAWN,
+        END
+    }
+  src/main/java/com/interviewos/blackjack/model/Player.java: |
+    package com.interviewos.blackjack.model;
+
+    public interface Player {
+        void bet(int amount);
+        void loseBet();
+        void returnBet();
+        void payout();
+        boolean isBust();
+        Hand getHand();
+        int getBalance();
+        String getName();
+        int getBet();
+    }
+  src/main/java/com/interviewos/blackjack/model/RealPlayer.java: |
+    package com.interviewos.blackjack.model;
+
+    public class RealPlayer implements Player {
+        private final String name;
+        private final Hand hand = new Hand();
+        private int balance;
+        private int bet = 0;
+
+        public RealPlayer(String name, int startBalance) {
+            this.name = name;
+            this.balance = startBalance;
+        }
+
+        @Override
+        public void bet(int amount) {
+            if (amount > balance) throw new IllegalArgumentException("Bet exceeds balance");
+            this.bet = amount;
+            this.balance -= amount;
+        }
+
+        @Override
+        public void loseBet() {
+            this.bet = 0;
+        }
+
+        @Override
+        public void returnBet() {
+            this.balance += this.bet;
+            this.bet = 0;
+        }
+
+        @Override
+        public void payout() {
+            this.balance += this.bet * 2;
+            this.bet = 0;
+        }
+
+        @Override
+        public boolean isBust() { return hand.isBust(); }
+        @Override
+        public Hand getHand() { return hand; }
+        @Override
+        public int getBalance() { return balance; }
+        @Override
+        public String getName() { return name; }
+        @Override
+        public int getBet() { return bet; }
+    }
+  src/main/java/com/interviewos/blackjack/model/DealerPlayer.java: |
+    package com.interviewos.blackjack.model;
+
+    public class DealerPlayer implements Player {
+        private final Hand hand = new Hand();
+
+        @Override
+        public void bet(int amount) {}
+        @Override
+        public void loseBet() {}
+        @Override
+        public void returnBet() {}
+        @Override
+        public void payout() {}
+        @Override
+        public boolean isBust() { return hand.isBust(); }
+        @Override
+        public Hand getHand() { return hand; }
+        @Override
+        public int getBalance() { return 0; }
+        @Override
+        public String getName() { return "Dealer"; }
+        @Override
+        public int getBet() { return 0; }
+    }
+  src/main/java/com/interviewos/blackjack/service/BlackJackGame.java: |
+    package com.interviewos.blackjack.service;
+
+    import com.interviewos.blackjack.model.*;
+    import java.util.*;
+
+    public class BlackJackGame {
+        private final Deck deck = new Deck();
+        private final List<Player> players = new ArrayList<>();
+        private final Player dealer = new DealerPlayer();
+        private GamePhase currentPhase = GamePhase.STARTED;
+
+        public BlackJackGame(List<Player> players) {
+            if (players != null) {
+                this.players.addAll(players);
+            }
+            deck.shuffle();
+        }
+
+        public void placeBet(Player player, int amount) {
+            // TODO: Validate phase STARTED and record bet
+            throw new UnsupportedOperationException("TODO: Implement placeBet");
+        }
+
+        public void dealInitialCards() {
+            // TODO: Deal 2 cards to each player and dealer
+            throw new UnsupportedOperationException("TODO: Implement dealInitialCards");
+        }
+
+        public void hit(Player player) {
+            // TODO: Draw card and add to player hand
+            throw new UnsupportedOperationException("TODO: Implement hit");
+        }
+
+        public void stand(Player player) {
+            // TODO: Finalize player turn
+            throw new UnsupportedOperationException("TODO: Implement stand");
+        }
+
+        public void dealerTurn() {
+            // TODO: Dealer hits until best value >= 17, then finalize bets
+            throw new UnsupportedOperationException("TODO: Implement dealerTurn");
+        }
+
+        public Deck getDeck() { return deck; }
+        public List<Player> getPlayers() { return players; }
+        public Player getDealer() { return dealer; }
+        public GamePhase getCurrentPhase() { return currentPhase; }
+    }
+editablePaths:
+- src/main/java/com/interviewos/blackjack/model/Hand.java
+- src/main/java/com/interviewos/blackjack/service/BlackJackGame.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/blackjack/BlackjackHandScoringTest.java: |
+    package com.interviewos.blackjack;
+
+    import com.interviewos.blackjack.model.*;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class BlackjackHandScoringTest {
+        @Test
+        @DisplayName("Ace dynamically values as 11 or 1 to prevent bust")
+        void testAceValuation() {
+            Hand hand = new Hand();
+            hand.addCard(new Card(Rank.ACE, Suit.SPADES));
+            hand.addCard(new Card(Rank.NINE, Suit.HEARTS));
+
+            assertEquals(20, hand.getBestValue(), "Ace + 9 should value as 20");
+            assertFalse(hand.isBust());
+
+            hand.addCard(new Card(Rank.FIVE, Suit.CLUBS));
+            assertEquals(15, hand.getBestValue(), "Ace + 9 + 5 should downgrade Ace to 1, totaling 15");
+            assertFalse(hand.isBust());
+        }
+
+        @Test
+        @DisplayName("Hand exceeds 21 is marked as bust")
+        void testBust() {
+            Hand hand = new Hand();
+            hand.addCard(new Card(Rank.TEN, Suit.HEARTS));
+            hand.addCard(new Card(Rank.JACK, Suit.DIAMONDS));
+            hand.addCard(new Card(Rank.FIVE, Suit.SPADES));
+
+            assertTrue(hand.isBust());
+            assertTrue(hand.getBestValue() > 21);
+        }
+    }
+  src/test/java/com/interviewos/blackjack/BlackjackDeckTest.java: |
+    package com.interviewos.blackjack;
+
+    import com.interviewos.blackjack.model.*;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class BlackjackDeckTest {
+        @Test
+        @DisplayName("Deck initializes with 52 unique cards and decrements on draw")
+        void testDeckDraw() {
+            Deck deck = new Deck();
+            assertEquals(52, deck.getRemainingCardCount());
+
+            Card c = deck.draw();
+            assertNotNull(c);
+            assertEquals(51, deck.getRemainingCardCount());
+        }
+    }
+  src/test/java/com/interviewos/blackjack/BlackjackGameFlowTest.java: |
+    package com.interviewos.blackjack;
+
+    import com.interviewos.blackjack.model.*;
+    import com.interviewos.blackjack.service.BlackJackGame;
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+
+    import java.util.List;
+
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class BlackjackGameFlowTest {
+        @Test
+        @DisplayName("Bet placement transitions phase and deducts balance")
+        void testGameBetting() {
+            RealPlayer player = new RealPlayer("Bob", 100);
+            BlackJackGame game = new BlackJackGame(List.of(player));
+
+            game.placeBet(player, 25);
+            assertEquals(25, player.getBet());
+            assertEquals(75, player.getBalance());
+
+            game.dealInitialCards();
+            assertEquals(2, player.getHand().getCards().size());
+            assertEquals(2, game.getDealer().getHand().getCards().size());
+        }
+    }
+
 starterCode: "public class Card {\n    public final Rank rank;\n    public final Suit suit;\n    public Card(Rank rank, Suit suit) {\n        this.rank = rank;\n        this.suit = suit;\n    }\n    public int[] getRankValues() {\n        return rank.getRankValues();\n    }\n}\n\npublic enum Rank {\n    ACE(new int[] `{1, 11}`),\n    TWO(new int[] `{2}`),\n    THREE(new int[] `{3}`),\n    FOUR(new int[] `{4}`),\n    FIVE(new int[] `{5}`),\n    SIX(new int[] `{6}`),\n    SEVEN(new int[] `{7}`),\n    EIGHT(new int[] `{8}`),\n    NINE(new int[] `{9}`),\n    TEN(new int[] `{10}`),\n    JACK(new int[] `{10}`),\n    QUEEN(new int[] `{10}`),\n    KING(new int[] `{10}`);\n    private final int[] rankValues;\n    Rank(int[] rankValues) {\n        this.rankValues = rankValues;\n    }\n    // Returns the possible values for the rank\npublic int[] getRankValues() {\n        return this.rankValues;\n    }\n}\n\npublic enum Suit {\n    HEARTS,\n    SPADES,\n    CLUBS,\n    DIAMONDS\n}"
 solutionCode: "public class Card {\n    public final Rank rank;\n    public final Suit suit;\n    public Card(Rank rank, Suit suit) {\n        this.rank = rank;\n        this.suit = suit;\n    }\n    public int[] getRankValues() {\n        return rank.getRankValues();\n    }\n}\n\npublic enum Rank {\n    ACE(new int[] `{1, 11}`),\n    TWO(new int[] `{2}`),\n    THREE(new int[] `{3}`),\n    FOUR(new int[] `{4}`),\n    FIVE(new int[] `{5}`),\n    SIX(new int[] `{6}`),\n    SEVEN(new int[] `{7}`),\n    EIGHT(new int[] `{8}`),\n    NINE(new int[] `{9}`),\n    TEN(new int[] `{10}`),\n    JACK(new int[] `{10}`),\n    QUEEN(new int[] `{10}`),\n    KING(new int[] `{10}`);\n    private final int[] rankValues;\n    Rank(int[] rankValues) {\n        this.rankValues = rankValues;\n    }\n    // Returns the possible values for the rank\npublic int[] getRankValues() {\n        return this.rankValues;\n    }\n}\n\npublic enum Suit {\n    HEARTS,\n    SPADES,\n    CLUBS,\n    DIAMONDS\n}\n\npublic class\
   \ Deck {\n    int nextCardIndex\n=\n0;\n    List<Card> cards;\n    // Constructor initializes the deck\npublic Deck() {\n        initializeDeck();\n    }\n    // Initializes the deck with all cards\nprivate void initializeDeck() {\n        cards = new ArrayList<>();\n        for (Suit suit : Suit.values()) {\n            for (Rank rank : Rank.values()) {\n                cards.add(new Card(rank, suit));\n            }\n        }\n        nextCardIndex = 0; // Reset to start drawing from the first card\n    }\n    // Shuffles the deck using current time as seed\npublic void shuffle() {\n        Collections.shuffle(cards, new Random(System.currentTimeMillis()));\n    }\n    // Draws the next card from the deck\npublic Card draw() {\n        if (isEmpty() || nextCardIndex >= cards.size()) {\n            throw new IllegalStateException(\"No more cards in deck\");\n        }\n        Card\ndrawCard\n= cards.get(nextCardIndex);\n        nextCardIndex++;\n        return drawCard;\n    }\n   \
