@@ -200,6 +200,10 @@ public class WorkspaceProvisionerService {
 
             // 4. Prepare starter files from QuestionBank
             Map<String, String> starterFiles = resolveStarterFiles(request.problemSlug());
+            if (starterFiles.isEmpty()) {
+                log.warn("[WORKSPACE_SEED_EMPTY] Session {} problem slug '{}' seeded 0 starter files into workspace volume '{}'",
+                        sessionId, request.problemSlug(), volumeName);
+            }
 
             // 5. Create and configure code-server container
             ExposedPort exposedPort = ExposedPort.tcp(8080);
@@ -411,7 +415,13 @@ public class WorkspaceProvisionerService {
         try {
             Optional<ProblemDocument> probOpt = questionBankClient.fetchProblemBySlug(slug);
             if (probOpt.isPresent() && probOpt.get().getStarterFiles() != null) {
-                return probOpt.get().getStarterFiles();
+                Map<String, String> files = probOpt.get().getStarterFiles();
+                if (files.isEmpty()) {
+                    log.warn("[WORKSPACE_STARTER_FILES_EMPTY] QuestionBank returned 0 starter files for problem slug '{}'", slug);
+                }
+                return files;
+            } else {
+                log.warn("[WORKSPACE_STARTER_FILES_MISSING] QuestionBank returned no problem or null starter files for problem slug '{}'", slug);
             }
         } catch (Exception e) {
             log.warn("Notice fetching starter files from Question Bank for {}: {}", slug, e.getMessage());
