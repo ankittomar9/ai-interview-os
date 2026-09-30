@@ -82,6 +82,11 @@ public class ContentValidator {
                 errors.add("SQL Question requires solutionSql");
             }
         } else if ("SPRING_LLD".equals(track) || "maven-workspace".equalsIgnoreCase(doc.getBuildProfile())) {
+            // Rule 0: track SPRING_LLD requires buildProfile 'maven-workspace'
+            if ("SPRING_LLD".equals(track) && !"maven-workspace".equalsIgnoreCase(doc.getBuildProfile())) {
+                errors.add("Track SPRING_LLD requires buildProfile 'maven-workspace' (found: '" + doc.getBuildProfile() + "')");
+            }
+
             // Rule 1: starterFiles non-empty and contains pom.xml
             if (doc.getStarterFiles() == null || doc.getStarterFiles().isEmpty()) {
                 errors.add("Workspace Question requires non-empty starterFiles");

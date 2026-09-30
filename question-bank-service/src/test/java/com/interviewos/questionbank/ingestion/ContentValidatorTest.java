@@ -201,4 +201,19 @@ class ContentValidatorTest {
         assertEquals("DRAFT", result.status());
         assertTrue(result.errors().stream().anyMatch(e -> e.contains("must be located under 'src/test/java/'")));
     }
+
+    @Test
+    @DisplayName("V8-05 / V8-g5 Negative: SPRING_LLD question with non-maven-workspace buildProfile fails")
+    void testWorkspaceSpringLldMismatchedBuildProfileFails() {
+        QuestionDocument doc = createValidWorkspaceQuestionBuilder()
+                .track("SPRING_LLD")
+                .buildProfile("judge0")
+                .build();
+        ContentValidator.ValidationResult result = validator.validate(doc, "markdown");
+
+        assertFalse(result.isValid());
+        assertEquals("DRAFT", result.status());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("Track SPRING_LLD requires buildProfile 'maven-workspace'")));
+    }
 }
+
