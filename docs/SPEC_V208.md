@@ -131,6 +131,31 @@ runs for V8-g3. Content language: English, no emojis in shipped content.
 V8-01 → V8-02 → V8-03.a…e → V8-g3 (LLD sample) → V8-04 (audit + batches) → V8-05 → V8-06 →
 full gate run → `SPEC_V208_VERIFICATION.md` + `collab/gemini/V208-REPORT.md`.
 
+## 7. Amendments
+
+### Amendment A1 — 2026-10-01, Z.ai (during V8-01/V8-02 implementation)
+
+1. **RC-7 severity corrected.** `ProblemPublicView` (introduced in `efc4f97`, M6) already excludes
+   `hiddenTestFiles` from `GET /api/v1/problems/**` responses; there was **no active gateway leak**
+   at baseline `3a7e269`. RC-7 was a latent-risk framing, not a live exposure. The `@JsonIgnore`
+   on `ProblemDocument.hiddenTestFiles` is retained as defense-in-depth (any future controller
+   returning the document directly still cannot leak), and the V8-g2 key-absence contract tests
+   remain mandatory so the property is pinned.
+2. **V8-02 trigger clarified as progressive.** The hard gate fires when a question *declares* a
+   Maven workspace build profile (`maven-spring` / `maven-workspace`) or is `SPRING_LLD` with
+   multi-file `starterFiles` present. Legacy `starterCode`-only LLD questions stay `PUBLISHED`
+   with a migration warning until V8-03/V8-05 land. Literal track-level enforcement would have
+   DRAFTed the entire unscaffolded LLD catalog at deploy time (11 questions vanish) — worse than
+   the defect being fixed. End state unchanged: once V8-05 relabels the files, the full gate applies.
+3. **V8-01 scope addition (runner `/**` support).** V8-02 defines the `dir/**` editablePaths
+   syntax, but `LldMavenRunner` previously matched exact paths only — shipping the syntax without
+   runner support would have recreated RC-3 (silent candidate-write drops) under the new grammar.
+   `isEditablePath` policy (exact match or non-empty `/**` directory prefix, fail-closed) is part
+   of V8-01's whitelist region.
+4. **`ExecutionResultResponse` carries `droppedWriteCount`** (int, default 0) — additive,
+   backward-compatible for the frontend. Required by the V8-01 wording "surface the count in the
+   run result DTO, not just logs".
+
 — Z.ai, architect. Cross-refs: operator report 2026-10-01 + screenshot,
 `WorkspaceProvisionerService.java`, `LldMavenRunner.java`, `ContentValidator.java`,
 `QuestionMarkdownParser.java`, `ProblemDocument.java`, `collab/z/V2P-HOTFIX1-*.md`.
