@@ -1,9 +1,12 @@
 package com.interviewos.questionbank.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.interviewos.questionbank.document.QuestionDocument;
+import com.interviewos.questionbank.document.ReferenceSolution;
 import lombok.Builder;
 
 import java.util.List;
+import java.util.Map;
 
 public class CatalogDtos {
 
@@ -50,6 +53,7 @@ public class CatalogDtos {
     ) {}
 
     @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record QuestionDetail(
             String slug,
             String title,
@@ -58,11 +62,18 @@ public class CatalogDtos {
             List<String> topics,
             Integer estMinutes,
             String problemStatement,
+            String statement,
             String starterCode,
+            Map<String, String> starterFiles,
             List<QuestionDocument.TestCase> sampleTests,
             List<HiddenTestCaseMeta> hiddenTests,
             String solutionVideoUrl,
             String solutionCode,
+            String solution,
+            String solutionSql,
+            Map<String, String> solutionFiles,
+            List<ReferenceSolution> referenceSolutions,
+            String editorialMarkdown,
             String buildProfile,
             List<String> hints,
             List<String> constraints,
@@ -84,11 +95,18 @@ public class CatalogDtos {
                     .topics(doc.getTopics() != null ? doc.getTopics() : List.of())
                     .estMinutes(doc.getEstMinutes())
                     .problemStatement(doc.getProblemStatement())
+                    .statement(doc.getProblemStatement())
                     .starterCode(doc.getStarterCode())
+                    .starterFiles(doc.getStarterFiles())
                     .sampleTests(doc.getSampleTests())
                     .hiddenTests(hiddenMetas)
-                    .solutionVideoUrl(doc.getSolutionVideoUrl())
+                    .solutionVideoUrl(revealSolution ? doc.getSolutionVideoUrl() : null)
                     .solutionCode(revealSolution ? doc.getSolutionCode() : null)
+                    .solution(revealSolution ? doc.getSolutionCode() : null)
+                    .solutionSql(revealSolution ? doc.getSolutionSql() : null)
+                    .solutionFiles(revealSolution ? doc.getSolutionFiles() : null)
+                    .referenceSolutions(revealSolution ? ReferenceSolutionAdapter.resolve(doc) : null)
+                    .editorialMarkdown(revealSolution ? doc.getEditorialMarkdown() : null)
                     .buildProfile(doc.getBuildProfile())
                     .hints(doc.getHints())
                     .constraints(doc.getConstraints())

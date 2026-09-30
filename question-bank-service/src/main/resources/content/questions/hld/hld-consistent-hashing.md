@@ -3,7 +3,8 @@ slug: hld-consistent-hashing
 title: Design Consistent Hashing
 track: SYSTEM_DESIGN
 difficulty: MEDIUM
-topics: [system-design]
+topics:
+- system-design
 est_minutes: 45
 tags:
 - distributed-systems
@@ -27,8 +28,7 @@ editorial: '### Architectural Walkthrough & System Analysis: Design Consistent H
 
   #### 1. System Requirements & Scope
 
-  - **Core Objectives**: Design a distributed consistent hashing mechanism to route request keys across a dynamic cluster
-  of cache/storage nodes with minimal key movement during topology changes.
+  - **Core Objectives**: Design a distributed consistent hashing mechanism to route request keys across a dynamic cluster of cache/storage nodes with minimal key movement during topology changes.
 
   - **Scale Requirements**: Built for planet-scale traffic with horizontal elasticity and fault tolerance.
 
@@ -58,7 +58,91 @@ editorial: '### Architectural Walkthrough & System Analysis: Design Consistent H
   - Comprehensive telemetry tracking latency (P95/P99), error rates, throughput, and queue lag.
 
   - Automated failover and health checks ensure rapid recovery with zero data loss.'
+referenceSolutions:
+- approachId: virtual-node-hash-ring
+  label: Primary — Consistent Hash Ring with Virtual Nodes (MD5/Murmur3)
+  approachClass: PRIMARY
+  kind: WRITEUP
+  summary: Distributed hash ring with virtual nodes (tokens) per physical server, minimizing data re-distribution during node joins/leaves to 1/N and preventing hotspot clustering.
+  keyIdea: Map both server tokens and data keys onto a circular 2^64 integer space using Murmur3, assigning keys to the first clockwise node.
+  tradeoffs:
+  - Uniform load balancing across heterogeneous physical hardware via weighted virtual node counts
+  - Ring routing table must be synchronized across clients or coordinators via Gossip protocol
+  whenToUse: Standard architecture for distributed storage clusters, caches, and load balancers (Cassandra, DynamoDB, Memcached routers).
+  diagramNotes: Clients -> Hash Ring Router (Binary Search / TreeMap) -> Virtual Nodes on Circular Ring (Node A-1, B-1, C-1, A-2, B-2...) -> Target Physical Storage Nodes.
+  writeUp: '### 1. Requirements Recap
+
+    - **Functional**: Distribute keys across N dynamic storage nodes with minimal key movement on node scale-up or failure.
+
+    - **Scale**: Millions of keys, hundreds of nodes, sub-millisecond route resolution.
+
+
+    ### 2. Component Breakdown
+
+    - **Ring Coordinator / Client Router**: Maintains an in-memory sorted map (`TreeMap` in Java, red-black tree) of 64-bit hash positions.
+
+    - **Virtual Node Mapping**: Each physical node is hashed $V$ times (typically $V = 100$ to $256$) using seeds like `node-ip:port#vnode_index`.
+
+    - **Membership Consensus**: Gossip protocol (SWIM or Scuttlebutt) to detect node join/leave events and synchronize token assignments.
+
+
+    ### 3. Data Flow
+
+    1. Client requests key `user_102938`.
+
+    2. Router computes `h = MurmurHash3(key)`.
+
+    3. Router looks up `tailMap(h).firstKey()`; if empty, wraps around to `ring.firstKey()`.
+
+    4. Selected virtual node points to physical server `Node-3`. Request forwarded to `Node-3`.
+
+
+    ### 4. Capacity & Consistency Notes
+
+    - **Rebalance Overhead**: When adding a node to an $N$-node cluster, only $1/(N+1)$ fraction of keys migrate.
+
+    - **Memory Footprint**: 1,000 physical nodes * 200 virtual tokens = 200,000 entries in memory (~5 MB per client).'
+- approachId: rendezvous-highest-random-weight
+  label: Alternate — Highest Random Weight (Rendezvous Hashing)
+  approachClass: ALTERNATE
+  kind: WRITEUP
+  summary: Stateless Rendezvous Hashing (HRW) where every key computes a hash score against all active nodes and selects the node with the highest score, eliminating ring maintenance entirely.
+  keyIdea: Compute hash(key, node_id) for every active node and route to the node yielding the maximum value.
+  tradeoffs:
+  - Zero ring data structures required; entirely stateless calculation
+  - Routing cost is O(N) where N is active nodes, making it ideal for small-to-medium clusters (N <= 100)
+  whenToUse: Proxy caches, distributed microservice request routing, and environments where maintaining a synchronized hash ring table is difficult.
+  diagramNotes: Key K -> Hash Function [hash(K, Node1), hash(K, Node2)...] -> ArgMax Evaluator -> Target Node.
+  writeUp: '### 1. Requirements Recap
+
+    - **Functional**: Stateless key routing without shared global coordinate ring metadata.
+
+    - **Scale**: Dozens to hundreds of routing nodes with independent failure domains.
+
+
+    ### 2. Component Breakdown
+
+    - **Stateless Router**: Evaluates hash function $weight = H(key + node_id)$ across the node list.
+
+    - **Node Registry**: Service discovery registry (Consul / Eureka) publishing healthy node lists.
+
+
+    ### 3. Data Flow
+
+    1. Key $K$ arrives at client.
+
+    2. Client iterates over list of healthy nodes, computing $w_i = H(K, Node_i)$.
+
+    3. The node with $\max(w_i)$ receives the request.
+
+
+    ### 4. Capacity & Consistency Notes
+
+    - **Complexity**: $O(N)$ calculation per request, optimizable to $O(\log N)$ using skeletal tree structures.
+
+    - **Distribution**: Equivalent mathematical key uniformity to consistent hashing.'
 ---
+
 ### Problem Scope: Design Consistent Hashing
 
 Design a distributed consistent hashing mechanism to route request keys across a dynamic cluster of cache/storage nodes with minimal key movement during topology changes.

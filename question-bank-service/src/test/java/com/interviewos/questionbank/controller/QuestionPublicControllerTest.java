@@ -18,6 +18,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.Optional;
 
+import com.interviewos.questionbank.document.ReferenceSolution;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -87,6 +91,98 @@ class QuestionPublicControllerTest {
                 .andExpect(jsonPath("$.slug").value("lru-cache"))
                 .andExpect(jsonPath("$.hiddenTests[0].name").value("Hidden 1"))
                 .andExpect(jsonPath("$.solutionCode").value("public class Solution {}"));
+    }
+
+    @Test
+    @DisplayName("V7-02: No-leak contract test in INTERVIEW mode - raw JSON omits all solution keys")
+    void testNoLeakContractInterviewModeStripsAllSolutionKeys() throws Exception {
+        ReferenceSolution primary = ReferenceSolution.builder()
+                .approachId("canonical-lru")
+                .label("Canonical LRU")
+                .approachClass(ReferenceSolution.ApproachClass.PRIMARY)
+                .kind(ReferenceSolution.Kind.CODE)
+                .summary("Doubly-linked list with hash map.")
+                .keyIdea("O(1) get and put via hash table and DLL.")
+                .timeComplexity("O(1)")
+                .spaceComplexity("O(capacity)")
+                .tradeoffs(List.of("Optimal time complexity"))
+                .whenToUse("Standard interview approach.")
+                .code("class LRUCache {}")
+                .build();
+
+        QuestionDocument doc = QuestionDocument.builder()
+                .slug("lru-cache")
+                .title("LRU Cache Implementation")
+                .track("ALGORITHMS_DATA_STRUCTURES")
+                .difficulty("SENIOR")
+                .status("PUBLISHED")
+                .problemStatement("Implement LRU Cache")
+                .solutionCode("public class Solution {}")
+                .solutionSql("SELECT * FROM cache")
+                .solutionVideoUrl("https://example.com/lru-video")
+                .editorialMarkdown("## LRU Cache Architectural Analysis")
+                .referenceSolutions(List.of(primary))
+                .hiddenTests(List.of(new QuestionDocument.HiddenTestCase("Hidden 1", "in", "out", 1)))
+                .build();
+
+        when(questionRepository.findBySlug(eq("lru-cache"))).thenReturn(Optional.of(doc));
+
+        var result = mockMvc.perform(get("/api/v1/questions/lru-cache").param("sessionMode", "INTERVIEW"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        assertFalse(json.contains("\"referenceSolutions\""), "INTERVIEW JSON must not leak referenceSolutions");
+        assertFalse(json.contains("\"solutionCode\""), "INTERVIEW JSON must not leak solutionCode");
+        assertFalse(json.contains("\"solutionSql\""), "INTERVIEW JSON must not leak solutionSql");
+        assertFalse(json.contains("\"editorialMarkdown\""), "INTERVIEW JSON must not leak editorialMarkdown");
+        assertFalse(json.contains("\"solutionVideoUrl\""), "INTERVIEW JSON must not leak solutionVideoUrl");
+    }
+
+    @Test
+    @DisplayName("V7-02: No-leak contract test in PLAYGROUND mode - raw JSON exposes solution keys")
+    void testNoLeakContractPlaygroundModeIncludesSolutionKeys() throws Exception {
+        ReferenceSolution primary = ReferenceSolution.builder()
+                .approachId("canonical-lru")
+                .label("Canonical LRU")
+                .approachClass(ReferenceSolution.ApproachClass.PRIMARY)
+                .kind(ReferenceSolution.Kind.CODE)
+                .summary("Doubly-linked list with hash map.")
+                .keyIdea("O(1) get and put via hash table and DLL.")
+                .timeComplexity("O(1)")
+                .spaceComplexity("O(capacity)")
+                .tradeoffs(List.of("Optimal time complexity"))
+                .whenToUse("Standard interview approach.")
+                .code("class LRUCache {}")
+                .build();
+
+        QuestionDocument doc = QuestionDocument.builder()
+                .slug("lru-cache")
+                .title("LRU Cache Implementation")
+                .track("ALGORITHMS_DATA_STRUCTURES")
+                .difficulty("SENIOR")
+                .status("PUBLISHED")
+                .problemStatement("Implement LRU Cache")
+                .solutionCode("public class Solution {}")
+                .solutionSql("SELECT * FROM cache")
+                .solutionVideoUrl("https://example.com/lru-video")
+                .editorialMarkdown("## LRU Cache Architectural Analysis")
+                .referenceSolutions(List.of(primary))
+                .hiddenTests(List.of(new QuestionDocument.HiddenTestCase("Hidden 1", "in", "out", 1)))
+                .build();
+
+        when(questionRepository.findBySlug(eq("lru-cache"))).thenReturn(Optional.of(doc));
+
+        var result = mockMvc.perform(get("/api/v1/questions/lru-cache").param("sessionMode", "PLAYGROUND"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String json = result.getResponse().getContentAsString();
+        assertTrue(json.contains("\"referenceSolutions\""), "PLAYGROUND JSON must include referenceSolutions");
+        assertTrue(json.contains("\"solutionCode\""), "PLAYGROUND JSON must include solutionCode");
+        assertTrue(json.contains("\"solutionSql\""), "PLAYGROUND JSON must include solutionSql");
+        assertTrue(json.contains("\"editorialMarkdown\""), "PLAYGROUND JSON must include editorialMarkdown");
+        assertTrue(json.contains("\"solutionVideoUrl\""), "PLAYGROUND JSON must include solutionVideoUrl");
     }
 
     @Test

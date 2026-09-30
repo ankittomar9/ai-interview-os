@@ -78,6 +78,8 @@ public class QuestionDocument {
 
     private String solutionSql;
 
+    private List<ReferenceSolution> referenceSolutions;
+
     private List<String> hints;
 
     private String editorialMarkdown;

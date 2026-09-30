@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.interviewos.questionbank.document.QuestionDocument;
+import com.interviewos.questionbank.document.ReferenceSolution;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -81,6 +82,24 @@ public class QuestionMarkdownParser {
             QuestionDocument.ExecutionLimits limits = parseLimits(yamlMap.get("limits"));
             QuestionDocument.InterviewerNotes interviewerNotes = parseInterviewerNotes(yamlMap.get("interviewerNotes"));
             List<QuestionDocument.ResourceItem> resources = parseResources(yamlMap.get("resources"));
+            List<ReferenceSolution> referenceSolutions = parseReferenceSolutions(yamlMap.get("referenceSolutions"), slug);
+            if (referenceSolutions != null && !referenceSolutions.isEmpty()) {
+                Optional<ReferenceSolution> primary = referenceSolutions.stream()
+                        .filter(a -> a.approachClass() == ReferenceSolution.ApproachClass.PRIMARY)
+                        .findFirst();
+                if (primary.isPresent()) {
+                    ReferenceSolution p = primary.get();
+                    if (solutionCode == null && p.kind() == ReferenceSolution.Kind.CODE && p.code() != null) {
+                        solutionCode = p.code();
+                    }
+                    if (solutionFiles == null && p.kind() == ReferenceSolution.Kind.CODE && p.files() != null) {
+                        solutionFiles = p.files();
+                    }
+                    if (solutionSql == null && p.kind() == ReferenceSolution.Kind.SQL && p.sql() != null) {
+                        solutionSql = p.sql();
+                    }
+                }
+            }
 
             return QuestionDocument.builder()
                     .slug(slug)
@@ -107,6 +126,7 @@ public class QuestionMarkdownParser {
                     .solutionCode(solutionCode)
                     .solutionFiles(solutionFiles)
                     .solutionSql(solutionSql)
+                    .referenceSolutions(referenceSolutions)
                     .hints(hints)
                     .editorialMarkdown(editorial)
                     .evaluationCriteria(evaluationCriteria.isEmpty() ? List.of("Correctness", "Time Complexity", "Clean Code") : evaluationCriteria)
@@ -243,5 +263,157 @@ public class QuestionMarkdownParser {
             }
         }
         return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ReferenceSolution> parseReferenceSolutions(Object obj, String slug) {
+        if (obj == null) {
+            return null;
+        }
+        if (!(obj instanceof List<?> list)) {
+            throw new IllegalArgumentException("referenceSolutions in slug " + slug + " must be a YAML list");
+        }
+        if (list.isEmpty()) {
+            throw new IllegalArgumentException("missing or multiple PRIMARY approaches in slug " + slug + ": expected exactly 1, found 0");
+        }
+
+        List<ReferenceSolution> approaches = new ArrayList<>();
+        Set<String> seenIds = new HashSet<>();
+        int primaryCount = 0;
+
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> m)) {
+                throw new IllegalArgumentException("Each referenceSolution in slug " + slug + " must be a map");
+            }
+
+            // approachId
+            String approachId = m.get("approachId") != null ? m.get("approachId").toString().trim() : null;
+            if (approachId == null || approachId.isBlank() || !approachId.matches("^[a-z0-9]+(?:-[a-z0-9]+)*$")) {
+                throw new IllegalArgumentException("Invalid or missing approachId '" + approachId + "' in slug " + slug + ": must be kebab-case");
+            }
+            if (seenIds.contains(approachId)) {
+                throw new IllegalArgumentException("duplicate approachId '" + approachId + "' in slug " + slug);
+            }
+            seenIds.add(approachId);
+
+            // label
+            String label = m.get("label") != null ? m.get("label").toString().trim() : null;
+            if (label == null || label.isBlank()) {
+                throw new IllegalArgumentException("missing label for approach '" + approachId + "' in slug " + slug);
+            }
+
+            // approachClass
+            String rawClass = m.get("approachClass") != null ? m.get("approachClass").toString().trim() : null;
+            if (rawClass == null) {
+                throw new IllegalArgumentException("unknown approachClass 'null' in slug " + slug);
+            }
+            ReferenceSolution.ApproachClass approachClass;
+            try {
+                approachClass = ReferenceSolution.ApproachClass.valueOf(rawClass.toUpperCase());
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("unknown approachClass '" + rawClass + "' in slug " + slug);
+            }
+            if (approachClass == ReferenceSolution.ApproachClass.PRIMARY) {
+                primaryCount++;
+            }
+
+            // kind
+            String rawKind = m.get("kind") != null ? m.get("kind").toString().trim() : null;
+            if (rawKind == null) {
+                throw new IllegalArgumentException("unknown kind 'null' in slug " + slug);
+            }
+            ReferenceSolution.Kind kind;
+            try {
+                kind = ReferenceSolution.Kind.valueOf(rawKind.toUpperCase());
+            } catch (Exception ex) {
+                throw new IllegalArgumentException("unknown kind '" + rawKind + "' in slug " + slug);
+            }
+
+            // Payloads
+            String code = m.get("code") != null ? m.get("code").toString() : null;
+            Map<String, String> files = null;
+            if (m.get("files") instanceof Map<?, ?> fMap) {
+                files = new HashMap<>();
+                for (Map.Entry<?, ?> entry : fMap.entrySet()) {
+                    files.put(entry.getKey().toString(), entry.getValue() != null ? entry.getValue().toString() : "");
+                }
+            }
+            String sql = m.get("sql") != null ? m.get("sql").toString() : null;
+            String writeUp = m.get("writeUp") != null ? m.get("writeUp").toString() : (m.get("write_up") != null ? m.get("write_up").toString() : null);
+            String diagramNotes = m.get("diagramNotes") != null ? m.get("diagramNotes").toString() : (m.get("diagram_notes") != null ? m.get("diagram_notes").toString() : null);
+
+            String timeComplexity = m.get("timeComplexity") != null ? m.get("timeComplexity").toString().trim() : (m.get("time_complexity") != null ? m.get("time_complexity").toString().trim() : null);
+            String spaceComplexity = m.get("spaceComplexity") != null ? m.get("spaceComplexity").toString().trim() : (m.get("space_complexity") != null ? m.get("space_complexity").toString().trim() : null);
+
+            // Validate payload matching kind
+            if (kind == ReferenceSolution.Kind.CODE) {
+                boolean hasCode = code != null && !code.isBlank();
+                boolean hasFiles = files != null && !files.isEmpty();
+                boolean hasSql = sql != null && !sql.isBlank();
+                boolean hasWriteUp = writeUp != null && !writeUp.isBlank();
+
+                if (hasSql || hasWriteUp || (hasCode && hasFiles) || (!hasCode && !hasFiles)) {
+                    throw new IllegalArgumentException("kind/payload mismatch: CODE approach '" + approachId + "' in slug " + slug + " must specify exactly one of code or files");
+                }
+                if (timeComplexity == null || timeComplexity.isBlank() || spaceComplexity == null || spaceComplexity.isBlank()) {
+                    throw new IllegalArgumentException("missing timeComplexity or spaceComplexity for CODE approach '" + approachId + "' in slug " + slug);
+                }
+            } else if (kind == ReferenceSolution.Kind.SQL) {
+                boolean hasCode = code != null && !code.isBlank();
+                boolean hasFiles = files != null && !files.isEmpty();
+                boolean hasSql = sql != null && !sql.isBlank();
+                boolean hasWriteUp = writeUp != null && !writeUp.isBlank();
+
+                if (!hasSql || hasCode || hasFiles || hasWriteUp) {
+                    throw new IllegalArgumentException("kind/payload mismatch: SQL approach '" + approachId + "' in slug " + slug + " must specify sql");
+                }
+                if (timeComplexity == null || timeComplexity.isBlank() || spaceComplexity == null || spaceComplexity.isBlank()) {
+                    throw new IllegalArgumentException("missing timeComplexity or spaceComplexity for SQL approach '" + approachId + "' in slug " + slug);
+                }
+            } else if (kind == ReferenceSolution.Kind.WRITEUP) {
+                boolean hasCode = code != null && !code.isBlank();
+                boolean hasFiles = files != null && !files.isEmpty();
+                boolean hasSql = sql != null && !sql.isBlank();
+                boolean hasWriteUp = writeUp != null && !writeUp.isBlank();
+
+                if (!hasWriteUp || hasCode || hasFiles || hasSql) {
+                    throw new IllegalArgumentException("kind/payload mismatch: WRITEUP approach '" + approachId + "' in slug " + slug + " must specify writeUp");
+                }
+            }
+
+            String summary = m.get("summary") != null ? m.get("summary").toString().trim() : "";
+            String keyIdea = m.get("keyIdea") != null ? m.get("keyIdea").toString().trim() : "";
+            String whenToUse = m.get("whenToUse") != null ? m.get("whenToUse").toString().trim() : "";
+            List<String> tradeoffs = new ArrayList<>();
+            if (m.get("tradeoffs") instanceof List<?> tList) {
+                for (Object t : tList) {
+                    if (t != null) tradeoffs.add(t.toString());
+                }
+            }
+
+            approaches.add(ReferenceSolution.builder()
+                    .approachId(approachId)
+                    .label(label)
+                    .approachClass(approachClass)
+                    .kind(kind)
+                    .summary(summary)
+                    .keyIdea(keyIdea)
+                    .timeComplexity(timeComplexity)
+                    .spaceComplexity(spaceComplexity)
+                    .tradeoffs(tradeoffs)
+                    .whenToUse(whenToUse)
+                    .code(code)
+                    .files(files)
+                    .sql(sql)
+                    .writeUp(writeUp)
+                    .diagramNotes(diagramNotes)
+                    .build());
+        }
+
+        if (primaryCount != 1) {
+            throw new IllegalArgumentException("missing or multiple PRIMARY approaches in slug " + slug + ": expected exactly 1, found " + primaryCount);
+        }
+
+        return approaches;
     }
 }
