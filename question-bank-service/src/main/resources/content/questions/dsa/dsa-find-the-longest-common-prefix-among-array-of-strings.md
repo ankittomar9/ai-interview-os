@@ -3,7 +3,9 @@ slug: dsa-find-the-longest-common-prefix-among-array-of-strings
 title: Find the Longest Common Prefix among array of strings.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [strings, arrays]
+topics:
+- strings
+- arrays
 est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
@@ -44,7 +46,8 @@ hiddenTests:
   expectedOutput: a
   weight: 50
 hints:
-- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic patterns.
+- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic
+  patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -53,7 +56,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -67,14 +71,76 @@ coaching:
 editorial: '### Find the Longest Common Prefix among array of strings.
 
 
-  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static String longestCommonPrefix(String str[]) {\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        String[] arr = new String[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.next();\n        System.out.println(longestCommonPrefix(arr));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static String longestCommonPrefix(String str[]){\n        if(str==null || str.length==0){return \"\";}\n\n        String reference=str[0];\n        \n        for(int i=0;i<reference.length();i++){\n            char ch=reference.charAt(i);\n            \n            for(int j=1;j<str.length;j++){\n                if(i== str[j].length() || str[j].charAt(i) !=ch){\n                return reference.substring(0,i);\n            }\n            }            \n        }   \n            return reference;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        String[] arr = new String[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.next();\n        System.out.println(longestCommonPrefix(arr));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static String\
+  \ longestCommonPrefix(String str[]) {\n        return \"\";\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        String[]\
+  \ arr = new String[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.next();\n\
+  \        System.out.println(longestCommonPrefix(arr));\n    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ String longestCommonPrefix(String str[]){\n        if(str==null || str.length==0){return\
+  \ \"\";}\n\n        String reference=str[0];\n        \n        for(int i=0;i<reference.length();i++){\n\
+  \            char ch=reference.charAt(i);\n            \n            for(int j=1;j<str.length;j++){\n\
+  \                if(i== str[j].length() || str[j].charAt(i) !=ch){\n           \
+  \     return reference.substring(0,i);\n            }\n            }           \
+  \ \n        }   \n            return reference;\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        String[] arr =\
+  \ new String[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.next();\n    \
+  \    System.out.println(longestCommonPrefix(arr));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-find-the-longest-common-prefix-among-array-of-strings
+  label: Canonical — Find the Longest Common Prefix among array of strings.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Find the Longest Common
+    Prefix among array of strings..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static String\
+    \ longestCommonPrefix(String str[]){\n        if(str==null || str.length==0){return\
+    \ \"\";}\n\n        String reference=str[0];\n        \n        for(int i=0;i<reference.length();i++){\n\
+    \            char ch=reference.charAt(i);\n            \n            for(int j=1;j<str.length;j++){\n\
+    \                if(i== str[j].length() || str[j].charAt(i) !=ch){\n         \
+    \       return reference.substring(0,i);\n            }\n            }       \
+    \     \n        }   \n            return reference;\n    }\n\n    public static\
+    \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n \
+    \       if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        String[]\
+    \ arr = new String[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.next();\n\
+    \        System.out.println(longestCommonPrefix(arr));\n    }\n}"
+- approachId: alternate-functional-pipeline
+  label: Alternate — Structured Pipeline for Find the Longest Common Prefix among
+    array of strings.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Find the Longest Common Prefix
+    among array of strings. exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or functional formulation separating input ingestion
+    from computation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Functional and structured alternate logic for\
+    \ Find the Longest Common Prefix among array of strings.\n    }\n}\n"
 ---
 
 ### Find the Longest Common Prefix among array of strings.

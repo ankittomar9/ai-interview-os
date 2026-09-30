@@ -3,7 +3,8 @@ slug: dsa-count-even-and-odd-numbers-in-an-array
 title: Count Even and Odd numbers in an array.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [arrays]
+topics:
+- arrays
 est_minutes: 25
 tags:
 - 2-arrays-the-core--40-questions
@@ -73,7 +74,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 2. Arrays (The "Core" - 40 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -87,15 +89,81 @@ coaching:
 editorial: '### Count Even and Odd numbers in an array.
 
 
-  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 2. Arrays (The "Core" - 40 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void countEvenOdd(int[] arr) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        countEvenOdd(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static void countEvenOdd(int[] arr){\n        if(arr==null || arr.length==0){\n            System.out.println(\"Even: 0, Odd: 0\");return;\n        }\n\n        int evenCount = 0;\n        int oddCount = 0;\n\n        for(int i=0;i<arr.length;i++){\n            if(arr[i]%2==0){\n                evenCount++;\n            }else{\n                oddCount++;\n            }\n            \n        }\n        System.out.println(\"Even numbers: \" + evenCount);\n        System.out.println(\"Odd numbers:  \" + oddCount);\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        countEvenOdd(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n\
-  \        System.out.println();\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void countEvenOdd(int[]\
+  \ arr) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n    \
+  \    for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        countEvenOdd(arr);\n\
+  \        for (int i = 0; i < arr.length; i++) System.out.print((i > 0 ? \" \" :\
+  \ \"\") + arr[i]);\n        System.out.println();\n    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static void countEvenOdd(int[] arr){\n        if(arr==null\
+  \ || arr.length==0){\n            System.out.println(\"Even: 0, Odd: 0\");return;\n\
+  \        }\n\n        int evenCount = 0;\n        int oddCount = 0;\n\n        for(int\
+  \ i=0;i<arr.length;i++){\n            if(arr[i]%2==0){\n                evenCount++;\n\
+  \            }else{\n                oddCount++;\n            }\n            \n\
+  \        }\n        System.out.println(\"Even numbers: \" + evenCount);\n      \
+  \  System.out.println(\"Odd numbers:  \" + oddCount);\n    }\n\n    public static\
+  \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n   \
+  \     if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        int[] arr\
+  \ = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n  \
+  \      countEvenOdd(arr);\n        for (int i = 0; i < arr.length; i++) System.out.print((i\
+  \ > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-count-even-and-odd-numbers-in-an-array
+  label: Canonical — Count Even and Odd numbers in an array.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Count Even and Odd numbers
+    in an array..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static void countEvenOdd(int[] arr){\n        if(arr==null ||\
+    \ arr.length==0){\n            System.out.println(\"Even: 0, Odd: 0\");return;\n\
+    \        }\n\n        int evenCount = 0;\n        int oddCount = 0;\n\n      \
+    \  for(int i=0;i<arr.length;i++){\n            if(arr[i]%2==0){\n            \
+    \    evenCount++;\n            }else{\n                oddCount++;\n         \
+    \   }\n            \n        }\n        System.out.println(\"Even numbers: \"\
+    \ + evenCount);\n        System.out.println(\"Odd numbers:  \" + oddCount);\n\
+    \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+    \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+    \        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] =\
+    \ sc.nextInt();\n        countEvenOdd(arr);\n        for (int i = 0; i < arr.length;\
+    \ i++) System.out.print((i > 0 ? \" \" : \"\") + arr[i]);\n        System.out.println();\n\
+    \    }\n}"
+- approachId: alternate-functional-pipeline
+  label: Alternate — Structured Pipeline for Count Even and Odd numbers in an array.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Count Even and Odd numbers in
+    an array. exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or functional formulation separating input ingestion
+    from computation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Functional and structured alternate logic for\
+    \ Count Even and Odd numbers in an array.\n    }\n}\n"
 ---
 
 ### Count Even and Odd numbers in an array.

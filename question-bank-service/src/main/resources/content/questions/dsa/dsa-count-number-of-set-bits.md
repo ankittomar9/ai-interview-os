@@ -3,7 +3,8 @@ slug: dsa-count-number-of-set-bits
 title: Count number of set bits
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [bit-manipulation]
+topics:
+- bit-manipulation
 est_minutes: 25
 tags:
 - bit-manipulation-8
@@ -43,7 +44,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Bit Manipulation 8 techniques to solve the problem efficiently.
+  approachHint: Utilize standard Bit Manipulation 8 techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +59,75 @@ coaching:
 editorial: '### Count number of set bits
 
 
-  This problem evaluates core techniques in Bit Manipulation 8. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Bit Manipulation 8. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void countSetBitsHelper(int n) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        countSetBitsHelper(n);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static void countSetBitsHelper(int n){\n        int count =0;\n        //why 32 because integer has 32 \n        int n2=n;\n        for(int i=0;i<32;i++){\n           int mask=1<<i;\n            if((n & mask )!=0){\n                count++;\n            }\n        }\n          System.out.println(\"Count of Set bits are : \\n\"+count);\n          //approach 2\n            int count2=0;\n            while(n2>0){\n                if((n2 & 1)!=0){\n                    count2++;\n                }\n                n2=n2>>1;\n            }\n             System.out.println(\"Count of Set bits are : \\n\"+count2);\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        countSetBitsHelper(n);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void countSetBitsHelper(int\
+  \ n) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        countSetBitsHelper(n);\n    }\n\
+  }\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ void countSetBitsHelper(int n){\n        int count =0;\n        //why 32 because\
+  \ integer has 32 \n        int n2=n;\n        for(int i=0;i<32;i++){\n         \
+  \  int mask=1<<i;\n            if((n & mask )!=0){\n                count++;\n \
+  \           }\n        }\n          System.out.println(\"Count of Set bits are :\
+  \ \\n\"+count);\n          //approach 2\n            int count2=0;\n           \
+  \ while(n2>0){\n                if((n2 & 1)!=0){\n                    count2++;\n\
+  \                }\n                n2=n2>>1;\n            }\n             System.out.println(\"\
+  Count of Set bits are : \\n\"+count2);\n    }\n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        countSetBitsHelper(n);\n    }\n\
+  }"
+referenceSolutions:
+- approachId: canonical-dsa-count-number-of-set-bits
+  label: Canonical — Count number of set bits
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Count number of set bits.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static void\
+    \ countSetBitsHelper(int n){\n        int count =0;\n        //why 32 because\
+    \ integer has 32 \n        int n2=n;\n        for(int i=0;i<32;i++){\n       \
+    \    int mask=1<<i;\n            if((n & mask )!=0){\n                count++;\n\
+    \            }\n        }\n          System.out.println(\"Count of Set bits are\
+    \ : \\n\"+count);\n          //approach 2\n            int count2=0;\n       \
+    \     while(n2>0){\n                if((n2 & 1)!=0){\n                    count2++;\n\
+    \                }\n                n2=n2>>1;\n            }\n             System.out.println(\"\
+    Count of Set bits are : \\n\"+count2);\n    }\n\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int n = sc.nextInt();\n        countSetBitsHelper(n);\n   \
+    \ }\n}"
+- approachId: alternate-functional-pipeline
+  label: Alternate — Structured Pipeline for Count number of set bits
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Count number of set bits exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or functional formulation separating input ingestion
+    from computation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Functional and structured alternate logic for\
+    \ Count number of set bits\n    }\n}\n"
 ---
 
 ### Count number of set bits

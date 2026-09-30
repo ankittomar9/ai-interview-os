@@ -3,7 +3,9 @@ slug: dsa-fibonacci-series-using-recursion
 title: Fibonacci Series Using Recursion
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [math, recursion]
+topics:
+- math
+- recursion
 est_minutes: 25
 tags:
 - recursion
@@ -57,14 +59,70 @@ coaching:
 editorial: '### Fibonacci Series Using Recursion
 
 
-  This problem evaluates core techniques in Recursion. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Recursion. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int fibonacci_Helper(int n) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(fibonacci_Helper(n));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    /*calculate fibonaaci series  */\n    \n    public static int fibonacci_Helper(int n){\n        // base case\n        if (n == 0) return 0;\n        if (n == 1) return 1;\n\n         int fn_1 = fibonacci_Helper(n - 1);\n            int fn_2 = fibonacci_Helper(n - 2);\n           int myResult = fn_1 + fn_2;       \n             return myResult;\n    }\n \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(fibonacci_Helper(n));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int fibonacci_Helper(int\
+  \ n) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n\
+  \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        System.out.println(fibonacci_Helper(n));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    /*calculate fibonaaci\
+  \ series  */\n    \n    public static int fibonacci_Helper(int n){\n        // base\
+  \ case\n        if (n == 0) return 0;\n        if (n == 1) return 1;\n\n       \
+  \  int fn_1 = fibonacci_Helper(n - 1);\n            int fn_2 = fibonacci_Helper(n\
+  \ - 2);\n           int myResult = fn_1 + fn_2;       \n             return myResult;\n\
+  \    }\n \n    public static void main(String[] args) {\n        Scanner sc = new\
+  \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n\
+  \        System.out.println(fibonacci_Helper(n));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-fibonacci-series-using-recursion
+  label: Canonical — Fibonacci Series Using Recursion
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Fibonacci Series Using
+    Recursion.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    /*calculate fibonaaci series\
+    \  */\n    \n    public static int fibonacci_Helper(int n){\n        // base case\n\
+    \        if (n == 0) return 0;\n        if (n == 1) return 1;\n\n         int\
+    \ fn_1 = fibonacci_Helper(n - 1);\n            int fn_2 = fibonacci_Helper(n -\
+    \ 2);\n           int myResult = fn_1 + fn_2;       \n             return myResult;\n\
+    \    }\n \n    public static void main(String[] args) {\n        Scanner sc =\
+    \ new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n =\
+    \ sc.nextInt();\n        System.out.println(fibonacci_Helper(n));\n    }\n}"
+- approachId: iterative-state-fibonacci
+  label: Alternate — Constant Space Iterative Rolling State
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Computes the Nth Fibonacci number in O(N) time using two rolling state
+    variables.
+  keyIdea: Sliding window of two variables (a, b) eliminating exponential recursive
+    branching.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Drastically drops time complexity from O(2^N) to O(N)
+  - Reduces memory consumption to strictly O(1)
+  whenToUse: Essential optimization when moving from naive recursion to production
+    code.
+  code: "import java.util.*;\n\npublic class Main {\n    public static long fibonacciIterative(int\
+    \ n) {\n        if (n <= 1) return n;\n        long a = 0, b = 1;\n        for\
+    \ (int i = 2; i <= n; i++) {\n            long c = a + b;\n            a = b;\n\
+    \            b = c;\n        }\n        return b;\n    }\n\n    public static\
+    \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n \
+    \       if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(fibonacciIterative(n));\n\
+    \    }\n}\n"
 ---
 
 ### Fibonacci Series Using Recursion

@@ -3,7 +3,9 @@ slug: dsa-factorial-of-number
 title: Factorial Of Number
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [math, recursion]
+topics:
+- math
+- recursion
 est_minutes: 25
 tags:
 - recursion
@@ -57,14 +59,64 @@ coaching:
 editorial: '### Factorial Of Number
 
 
-  This problem evaluates core techniques in Recursion. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Recursion. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static long factorialHelper(long n) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        long n = sc.nextLong();\n        System.out.println(factorialHelper(n));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static long factorialHelper(long n){\n      if (n < 0) {\n    throw new IllegalArgumentException\n    (\"Factorial is not defined for negative numbers.\");\n        }\n        if(n<=1) return 1L;\n\n        long result=n*factorialHelper(n-1);\n        return result;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        long n = sc.nextLong();\n        System.out.println(factorialHelper(n));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static long factorialHelper(long\
+  \ n) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n\
+  \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        long n = sc.nextLong();\n        System.out.println(factorialHelper(n));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ long factorialHelper(long n){\n      if (n < 0) {\n    throw new IllegalArgumentException\n\
+  \    (\"Factorial is not defined for negative numbers.\");\n        }\n        if(n<=1)\
+  \ return 1L;\n\n        long result=n*factorialHelper(n-1);\n        return result;\n\
+  \    }\n\n    public static void main(String[] args) {\n        Scanner sc = new\
+  \ Scanner(System.in);\n        if (!sc.hasNext()) return;\n        long n = sc.nextLong();\n\
+  \        System.out.println(factorialHelper(n));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-factorial-of-number
+  label: Canonical — Factorial Of Number
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Factorial Of Number.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static long\
+    \ factorialHelper(long n){\n      if (n < 0) {\n    throw new IllegalArgumentException\n\
+    \    (\"Factorial is not defined for negative numbers.\");\n        }\n      \
+    \  if(n<=1) return 1L;\n\n        long result=n*factorialHelper(n-1);\n      \
+    \  return result;\n    }\n\n    public static void main(String[] args) {\n   \
+    \     Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        long n = sc.nextLong();\n        System.out.println(factorialHelper(n));\n\
+    \    }\n}"
+- approachId: iterative-factorial-loop
+  label: Alternate — Iterative Accumulator Loop
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Computes factorial using a linear iterative loop with O(1) auxiliary space.
+  keyIdea: Forward iterative multiplication avoiding recursive call stack overhead.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - O(1) memory without stack overflow hazard on large n
+  - Requires 64-bit long or BigInteger for n > 20
+  whenToUse: Preferred in production environments where stack safety is essential.
+  code: "import java.util.*;\n\npublic class Main {\n    public static long factorialIterative(int\
+    \ n) {\n        long res = 1;\n        for (int i = 2; i <= n; i++) res *= i;\n\
+    \        return res;\n    }\n\n    public static void main(String[] args) {\n\
+    \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        int n = sc.nextInt();\n        System.out.println(factorialIterative(n));\n\
+    \    }\n}\n"
 ---
 
 ### Factorial Of Number

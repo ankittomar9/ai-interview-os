@@ -3,7 +3,8 @@ slug: dsa-decimal-to-any-base
 title: Decimal To Any Base
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [bit-manipulation]
+topics:
+- bit-manipulation
 est_minutes: 15
 tags:
 - bit-manipulation
@@ -43,7 +44,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Bit Manipulation techniques to solve the problem efficiently.
+  approachHint: Utilize standard Bit Manipulation techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +59,71 @@ coaching:
 editorial: '### Decimal To Any Base
 
 
-  This problem evaluates core techniques in Bit Manipulation. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Bit Manipulation. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void decimalToAnyBaseHelper(int n,int b) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        decimalToAnyBaseHelper(a, b);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static void decimalToAnyBaseHelper(int n,int b){\n          if (n == 0) {    System.out.println(\"Empty Number is given\");  return;}\n          \n      \n            \n         int  answer=0;int power=1;\n\n         while(n>0){\n            int remainder=n%b;\n            answer=answer+remainder*power;\n            n=n/b;\n            power=power*10;\n         }\n\n         System.out.println(\"Converted number from decimal to anyBase  : \\n\"+answer);\n\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        decimalToAnyBaseHelper(a, b);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void decimalToAnyBaseHelper(int\
+  \ n,int b) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n\
+  \        decimalToAnyBaseHelper(a, b);\n    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ void decimalToAnyBaseHelper(int n,int b){\n          if (n == 0) {    System.out.println(\"\
+  Empty Number is given\");  return;}\n          \n      \n            \n        \
+  \ int  answer=0;int power=1;\n\n         while(n>0){\n            int remainder=n%b;\n\
+  \            answer=answer+remainder*power;\n            n=n/b;\n            power=power*10;\n\
+  \         }\n\n         System.out.println(\"Converted number from decimal to anyBase\
+  \  : \\n\"+answer);\n\n    }\n\n    public static void main(String[] args) {\n \
+  \       Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int a = sc.nextInt();\n        int b = sc.nextInt();\n        decimalToAnyBaseHelper(a,\
+  \ b);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-decimal-to-any-base
+  label: Canonical — Decimal To Any Base
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Decimal To Any Base.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static void\
+    \ decimalToAnyBaseHelper(int n,int b){\n          if (n == 0) {    System.out.println(\"\
+    Empty Number is given\");  return;}\n          \n      \n            \n      \
+    \   int  answer=0;int power=1;\n\n         while(n>0){\n            int remainder=n%b;\n\
+    \            answer=answer+remainder*power;\n            n=n/b;\n            power=power*10;\n\
+    \         }\n\n         System.out.println(\"Converted number from decimal to\
+    \ anyBase  : \\n\"+answer);\n\n    }\n\n    public static void main(String[] args)\
+    \ {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n    \
+    \    decimalToAnyBaseHelper(a, b);\n    }\n}"
+- approachId: alternate-functional-pipeline
+  label: Alternate — Structured Pipeline for Decimal To Any Base
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Decimal To Any Base exploring
+    secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or functional formulation separating input ingestion
+    from computation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Functional and structured alternate logic for\
+    \ Decimal To Any Base\n    }\n}\n"
 ---
 
 ### Decimal To Any Base

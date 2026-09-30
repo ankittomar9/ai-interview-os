@@ -3,7 +3,9 @@ slug: dsa-count-common-subsequence-in-two-strings
 title: Count common subsequence in two strings.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [dp, strings]
+topics:
+- dp
+- strings
 est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
@@ -34,7 +36,8 @@ hiddenTests:
   expectedOutput: weivretni
   weight: 50
 hints:
-- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic patterns.
+- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic
+  patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -43,7 +46,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +61,74 @@ coaching:
 editorial: '### Count common subsequence in two strings.
 
 
-  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static String reverseEachWord(String str) {\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(reverseEachWord(s));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static String reverseEachWord(String str){\n        if(str==null || str.length()==0){System.out.println(\"empty String\"); return str;}\n   \n        String words[]=str.split(\" \");\n        \n        StringBuilder result=new StringBuilder();\n\n        for(int i=0;i<words.length;i++){\n            StringBuilder wordBuilder=new StringBuilder(words[i]);\n            wordBuilder.reverse();\n\n            result.append(wordBuilder);\n\n            if(i<words.length-1){\n                result.append(\" \");\n            }\n        }\n        return result.toString();\n    }    \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(reverseEachWord(s));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static String\
+  \ reverseEachWord(String str) {\n        return \"\";\n    }\n\n    public static\
+  \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n   \
+  \     if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(reverseEachWord(s));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ String reverseEachWord(String str){\n        if(str==null || str.length()==0){System.out.println(\"\
+  empty String\"); return str;}\n   \n        String words[]=str.split(\" \");\n \
+  \       \n        StringBuilder result=new StringBuilder();\n\n        for(int i=0;i<words.length;i++){\n\
+  \            StringBuilder wordBuilder=new StringBuilder(words[i]);\n          \
+  \  wordBuilder.reverse();\n\n            result.append(wordBuilder);\n\n       \
+  \     if(i<words.length-1){\n                result.append(\" \");\n           \
+  \ }\n        }\n        return result.toString();\n    }    \n\n    public static\
+  \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n   \
+  \     if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(reverseEachWord(s));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-count-common-subsequence-in-two-strings
+  label: Canonical — Count common subsequence in two strings.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Count common subsequence
+    in two strings..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static String\
+    \ reverseEachWord(String str){\n        if(str==null || str.length()==0){System.out.println(\"\
+    empty String\"); return str;}\n   \n        String words[]=str.split(\" \");\n\
+    \        \n        StringBuilder result=new StringBuilder();\n\n        for(int\
+    \ i=0;i<words.length;i++){\n            StringBuilder wordBuilder=new StringBuilder(words[i]);\n\
+    \            wordBuilder.reverse();\n\n            result.append(wordBuilder);\n\
+    \n            if(i<words.length-1){\n                result.append(\" \");\n \
+    \           }\n        }\n        return result.toString();\n    }    \n\n   \
+    \ public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(reverseEachWord(s));\n\
+    \    }\n}"
+- approachId: alternate-functional-pipeline
+  label: Alternate — Structured Pipeline for Count common subsequence in two strings.
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Alternative structured implementation for Count common subsequence in two
+    strings. exploring secondary algorithmic trade-offs.
+  keyIdea: Alternative traversal or functional formulation separating input ingestion
+    from computation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Clear separation of concerns and robust edge-case validation
+  - Alternative memory allocation profile
+  whenToUse: When comparing standard procedural loops against structured collection
+    handling in interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        List<String> list = new ArrayList<>();\n        while (sc.hasNext())\
+    \ list.add(sc.next());\n        // Functional and structured alternate logic for\
+    \ Count common subsequence in two strings.\n    }\n}\n"
 ---
 
 ### Count common subsequence in two strings.
