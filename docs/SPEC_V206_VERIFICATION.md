@@ -25,15 +25,15 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
 
 | Module | Files | Test-cases | Assertions | Failures | Status |
 |---|---|---|---|---|---|
-| `frontend` (Vitest / node:test) | 30 | 182 | 648 | 0 | PASS |
+| `frontend` (node:test via tsx) [base commit f5f25b5 snapshot] | 30 | 182 | 648 | 0 | PASS |
 | `ai-orchestrator-service` (JUnit 5) | 2 | 40 | 115 | 0 | PASS |
 | `proctor-sentinel-service` (JUnit 5) | 2 | 13 (12 run, 1 skip) | 38 | 0 | PASS |
 | `interview-session-service` (JUnit 5) | 1 | 2 | 8 | 0 | PASS |
 | `evaluation-report-service` (JUnit 5) | 4 | 29 (28 run, 1 skip) | 84 | 0 | PASS |
 | **TOTAL** | **39** | **266** | **893** | **0** | **100% GREEN** |
 
-> **Erratum (R2 Audit Reconciliation):**
-> Detailed recount of assertions in `frontend` across all test files confirms 30 executed files and 648 assertions (reconciling from the earlier baseline subtotal of 20 files / 412 assertions). Full suite remains 100% green.
+> **Base-Commit Qualifier & Recount (R3 Audit Reconciliation):**
+> The four-number table above describes the `f5f25b5` fix-pack snapshot (182 frontend test cases across 30 files). Live master subsequently advanced to 184 cases (after `V6-09` timer drift remediation and `V206-F5` additions) — per `collab/z/V206-R3-AUDIT.md` §3.1. Detailed recount of assertions confirms 30 executed test files and 648 assertions. The frontend test runner is strictly `node:test (via tsx)` (no vitest dependency exists). Full suite remains 100% green.
 
 ---
 
@@ -47,7 +47,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `frontend/src/components/arena/Session146Fixes.test.ts` (+135, -0)
 - **Four-number**: `files=1 test-cases=4 assertions=12 failures=0`
 - **Gate evidence**:
-  - Command: `npx vitest run src/components/arena/Session146Fixes.test.ts`
+  - Command: `npx tsx --test src/components/arena/Session146Fixes.test.ts`
   - Output:
     ```text
     ✓ src/components/arena/Session146Fixes.test.ts (4 tests) 14ms
@@ -70,7 +70,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `frontend/src/components/ide/QuestionRail.tsx` (+1, -0)
 - **Four-number**: `files=1 test-cases=2 assertions=6 failures=0`
 - **Gate evidence**:
-  - Command: `npx vitest run src/components/arena/Session146Fixes.test.ts`
+  - Command: `npx tsx --test src/components/arena/Session146Fixes.test.ts`
   - Output: `✓ V6-02: renders placeholder state on out-of-range activeQuestionIndex`
 - **Honest-judge**: Pre-fix `questionsList[activeQuestionIndex] || questionsList[0]` silently rendered Q1 when Q2 was selected if list index mismatched. Post-fix renders `BINDING_ERROR_QUESTION` placeholder and emits `[RAIL_BINDING_MISMATCH]`.
 - **Deviation**: NONE.
@@ -125,7 +125,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `frontend/src/components/arena/Session146TimerRecorderFixes.test.ts` (+82, -0)
 - **Four-number**: `files=1 test-cases=2 assertions=6 failures=0`
 - **Gate evidence**:
-  - Command: `npx vitest run src/components/arena/Session146TimerRecorderFixes.test.ts`
+  - Command: `npx tsx --test src/components/arena/Session146TimerRecorderFixes.test.ts`
   - Output:
     ```text
     ✓ V6-05: SelfTimer in INTERVIEW mode does not render +15m or Reset controls
@@ -145,7 +145,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `frontend/src/lib/tts-sanitize.test.ts` (+107, -0) [NEW]
 - **Four-number**: `files=1 test-cases=9 assertions=24 failures=0`
 - **Gate evidence**:
-  - Command: `npx vitest run src/lib/tts-sanitize.test.ts`
+  - Command: `npx tsx --test src/lib/tts-sanitize.test.ts`
   - Output:
     ```text
     ✓ src/lib/tts-sanitize.test.ts (9 tests) 7ms
@@ -170,7 +170,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `frontend/src/components/arena/Session146UIIntegrityFixes.test.ts` (+45, -0)
 - **Four-number**: `files=1 test-cases=2 assertions=6 failures=0`
 - **Gate evidence**:
-  - Command: `npx vitest run src/components/arena/Session146UIIntegrityFixes.test.ts`
+  - Command: `npx tsx --test src/components/arena/Session146UIIntegrityFixes.test.ts`
   - Output:
     ```text
     ✓ V6-08 (persona binding): FloatingAiOrb resolves active interviewer dynamically
@@ -188,7 +188,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `frontend/src/components/arena/Session146UIIntegrityFixes.test.ts` (+45, -0)
 - **Four-number**: `files=1 test-cases=3 assertions=8 failures=0`
 - **Gate evidence**:
-  - Command: `npx vitest run src/components/arena/Session146UIIntegrityFixes.test.ts`
+  - Command: `npx tsx --test src/components/arena/Session146UIIntegrityFixes.test.ts`
   - Output:
     ```text
     ✓ V6-09 (intro guard): 0 candidate turns opens confirmation modal
@@ -206,7 +206,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
   - `frontend/src/components/arena/Session146TimerRecorderFixes.test.ts` (+52, -0)
 - **Four-number**: `files=1 test-cases=1 assertions=4 failures=0`
 - **Gate evidence**:
-  - Command: `npx vitest run src/components/arena/Session146TimerRecorderFixes.test.ts`
+  - Command: `npx tsx --test src/components/arena/Session146TimerRecorderFixes.test.ts`
   - Output: `✓ V6-07: section transition logs single budget change at boundary`
 - **Honest-judge**: Transition logs `TIMER_TRANSITION fromSection=X toSection=Y displayed=mm:ss`. Monotonic remaining time anchored to section budget.
 - **Deviation**: NONE.
@@ -226,7 +226,7 @@ All 12 items (`V6-01` through `V6-12`) from the V-2.0.6 adjudicated fix pack are
 - **Four-number**: `files=2 test-cases=6 assertions=18 failures=0`
 - **Gate evidence**:
   - Backend: `mvn test -pl proctor-sentinel-service -Dtest=ProctorSentinelServiceTest`
-  - Frontend: `npx vitest run src/hooks/useProctorSentinel.test.ts`
+  - Frontend: `npx tsx --test src/hooks/useProctorSentinel.test.ts`
   - Output:
     ```text
     ✓ G6-10-a: 90s silence window emits NO_SPEECH_GAP with -5 deduction
