@@ -1,25 +1,18 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, SectionGate } from '../../types';
-import { getSession, getSessionResume, addMessageToSession } from '../../services/api';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import type { GenerateQuestionResponse, ModelProvider, SessionPlan } from '../../types';
 import { isApproachGateLocked } from '../../lib/approachGate';
-import { useLeaveGuard, isLeaveGuardActive } from '../../hooks/useLeaveGuard';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
-import { useExecution } from './hooks/useExecution';
-import { useDialogue } from './hooks/useDialogue';
-import { useProctoring } from './hooks/useProctoring';
-import { useCoachVoice } from './hooks/useCoachVoice';
-import { useSessionRecorder } from '../../hooks/useSessionRecorder';
-import { useMicRecorder } from '../../hooks/useMicRecorder';
 import { ArenaShell } from './ArenaShell';
 import { ShareLostOverlay } from '../ShareLostOverlay';
 import { clearVerificationStreams } from '../../services/verificationStreams';
-import { evaluateNavigationGate } from '../../lib/gating';
 import { getPersona } from '../../lib/personas';
-import { mergeSalvageText } from '../../lib/salvage-dedup';
-import type { InterviewStage } from '../StageStepper';
 import { buildNavSections } from '../../lib/plan-navigation';
-import { toast } from '../../hooks/useToast';
 import { getSubmissions } from '../../lib/submissions';
+import { useArenaCodeSession } from './hooks/useArenaCodeSession';
+import { useArenaSessionDetails } from './hooks/useArenaSessionDetails';
+import { useArenaNavigation } from './hooks/useArenaNavigation';
+import { useArenaEngines } from './hooks/useArenaEngines';
+import { buildArenaShellProps } from './hooks/useArenaShellProps';
 
 export function ensureDsaMethodSignatureBoilerplate(
   rawStarter?: string,
@@ -47,19 +40,17 @@ export function ensureDsaMethodSignatureBoilerplate(
   } else if (s.includes('two-sum')) {
     requiredMethodName = 'twoSum';
     methodStub = `    public static int[] twoSum(int[] nums, int target) {\n        // TODO: write your solution here\n        return new int[]{0, 0};\n    }\n`;
-    defaultFull = `import java.util.*;\n\npublic class Main {\n    public static int[] twoSum(int[] nums, int target) {\n        // TODO: write your solution here\n        return new int[]{0, 0};\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] nums = new int[n];\n        for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int[] ans = twoSum(nums, target);\n        System.out.println(ans[0] + " " + ans[1]);\n    }\n}\n`;
+    defaultFull = `import java.util.*;\n\npublic class Main {\n    public static int twoSum(int[] nums, int target) {\n        // TODO: write your solution here\n        return new int[]{0, 0};\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int target = sc.nextInt();\n        int[] nums = new int[n];\n        for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int[] ans = twoSum(nums, target);\n        System.out.println(ans[0] + " " + ans[1]);\n    }\n}\n`;
   }
 
   if (!trimmed || trimmed.startsWith('// No starter code shipped')) {
     return defaultFull;
   }
 
-  // If the candidate or starter already has the required method signature, return intact
   if (trimmed.includes(requiredMethodName)) {
     return rawStarter!;
   }
 
-  // If the code has a class Main, insert the missing method stub without touching anything else
   const mainClassIdx = rawStarter!.indexOf('class Main');
   if (mainClassIdx !== -1) {
     const braceIdx = rawStarter!.indexOf('{', mainClassIdx);
@@ -68,7 +59,6 @@ export function ensureDsaMethodSignatureBoilerplate(
     }
   }
 
-  // If there's non-empty candidate code but no class Main, never wipe it
   return rawStarter!;
 }
 
@@ -83,9 +73,7 @@ export function getSavedCodeForSlug(
     if (saved && saved.trim() && !saved.startsWith('// No starter code shipped')) {
       return { code: saved, source: 'autosave' };
     }
-  } catch {
-    // localStorage access may be restricted
-  }
+  } catch {}
 
   try {
     const subs = getSubmissions(sessionId, slug);
@@ -96,9 +84,7 @@ export function getSavedCodeForSlug(
         }
       }
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
 
   return { code: fallback, source: 'starter' };
 }
@@ -132,310 +118,112 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 }) => {
   const isPlayground = sessionMode === 'PLAYGROUND';
   const persona = getPersona(isPlayground);
-
   const navSections = useMemo(() => buildNavSections(plan?.sections, initialQuestion.track), [plan?.sections, initialQuestion.track]);
-  const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
-  const [pendingStageSwitch, setPendingStageSwitch] = useState<{ stage: InterviewStage; targetTrack: InterviewTrack; targetIndex?: number } | null>(null);
   const [isShareLost, setIsShareLost] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState<boolean>(() => {
-    try { return localStorage.getItem('interview-os:focus-mode') === 'true'; } catch { return false; }
-  });
 
-  useEffect(() => {
-    return () => { clearVerificationStreams(); };
-  }, []);
+  useEffect(() => () => { clearVerificationStreams(); }, []);
 
-  const toggleFocusMode = useCallback(() => {
-    setIsFocusMode((prev) => {
-      const next = !prev;
-      try { localStorage.setItem('interview-os:focus-mode', String(next)); } catch {}
-      return next;
-    });
-  }, []);
+  const { sectionGates, targetCompany, jobDescription, resumeSummary, handleAiTurnCompleted } =
+    useArenaSessionDetails({ sessionId, sessionMode, plan });
 
-  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
-
-  // Approach Gate status tracking for gated rounds (DSA, LLD, SQL)
-  const [sectionGates, setSectionGates] = useState<SectionGate[]>(() => {
-    if (isPlayground || !plan?.sections) return [];
-    return plan.sections.map((s, idx) => ({
-      index: idx,
-      sectionType: s.sectionType,
-      gateStatus: (s.sectionType === 'DSA' || s.sectionType === 'LLD' || s.sectionType === 'SQL') ? 'LOCKED' : 'OPEN'
-    }));
-  });
-
-  const [targetCompany, setTargetCompany] = useState<string | undefined>(undefined);
-  const [jobDescription, setJobDescription] = useState<string | undefined>(undefined);
-  const [resumeSummary, setResumeSummary] = useState<string | undefined>(undefined);
-  const [sessionStatus, setSessionStatus] = useState<string>('IN_PROGRESS');
-
-  // P12 / IH4: Active Interview Leave Guard
-  useLeaveGuard(isLeaveGuardActive(sessionMode, sessionStatus, true));
-
-  useEffect(() => {
-    if (sessionId) {
-      getSession(sessionId)
-        .then((res) => {
-          if (res.sectionGates && res.sectionGates.length > 0) {
-            setSectionGates(res.sectionGates);
-          }
-          if (res.status) setSessionStatus(res.status);
-          if (res.targetCompany) setTargetCompany(res.targetCompany);
-          if (res.jobDescription) setJobDescription(res.jobDescription);
-        })
-        .catch((err) => console.warn('[ArenaRoom] Failed to fetch session:', err));
-
-      getSessionResume(sessionId)
-        .then((resDoc) => {
-          if (resDoc?.summary) {
-            setResumeSummary(resDoc.summary);
-          }
-        })
-        .catch((err) => console.warn('[ArenaRoom] Failed to fetch session resume:', err));
-    }
-  }, [sessionId]);
-
-  const handleAiTurnCompleted = useCallback(async () => {
-    if (!isPlayground && sessionId) {
-      try {
-        const updated = await getSession(sessionId);
-        if (updated.sectionGates && updated.sectionGates.length > 0) {
-          setSectionGates(updated.sectionGates);
-        }
-      } catch (err) {
-        console.warn('[ArenaRoom] Failed to refresh session gates after AI turn:', err);
-      }
-    }
-  }, [isPlayground, sessionId]);
-
-  // 1. Session Catalog (Strict section-scoped query with zero cross-round bleed)
   const { questionsList, activeQuestion, activeQuestionIndex, questionStatusMap, selectQuestion, markQuestionStatus } =
     useSessionCatalog({
       defaultQuestion: initialQuestion,
       sectionQuestions,
-      activeSectionIndex,
+      activeSectionIndex: 0,
       playlistQuestions: initialQuestionsList,
-      track: activeTrack,
+      track: initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES',
       sessionMode,
       sessionId
     });
 
-  // 2. Code State (Keyed per slug to eliminate A10 cross-question bleed)
   const activeSlug = activeQuestion.problemSlug || activeQuestion.slug || `q_${activeQuestionIndex}`;
-  const fallbackStarter = ensureDsaMethodSignatureBoilerplate(
-    activeQuestion.starterCode,
-    activeSlug,
-    activeQuestion.track
-  );
-  const [codeMap, setCodeMap] = useState<Record<string, string>>(() => {
-    const initial = getSavedCodeForSlug(sessionId, activeSlug, fallbackStarter);
-    return { [activeSlug]: initial.code };
-  });
+  const fallbackStarter = ensureDsaMethodSignatureBoilerplate(activeQuestion.starterCode, activeSlug, activeQuestion.track);
+  const { code, setCode } = useArenaCodeSession({ sessionId, activeSlug, fallbackStarter });
+  const [language, setLanguage] = useState(initialQuestion.track === 'SQL' ? 'sql' : 'java');
 
-  // Reset entire map ONLY when sessionId changes
-  useEffect(() => {
-    const initial = getSavedCodeForSlug(sessionId, activeSlug, fallbackStarter);
-    setCodeMap({ [activeSlug]: initial.code });
-  }, [sessionId]);
+  const sectionChangeHandlerRef = useRef<(idx: number, stage: any) => void>(() => {});
 
-  // When switching questions or when starter code resolves, initialize new slug if not already set
-  useEffect(() => {
-    setCodeMap((prev) => {
-      const existing = prev[activeSlug];
-      if (existing !== undefined && existing !== null && !existing.startsWith('// No starter code shipped')) {
-        return prev;
-      }
-      const restored = getSavedCodeForSlug(sessionId, activeSlug, fallbackStarter);
-      if (restored.source === 'submission') {
-        toast.info('Restored your last submission for this question');
-      }
-      return { ...prev, [activeSlug]: restored.code };
-    });
-  }, [sessionId, activeSlug, fallbackStarter]);
-
-  const code = codeMap[activeSlug] ?? fallbackStarter;
-
-  // Debounced autosave to localStorage per slug
-  useEffect(() => {
-    if (!code || code === fallbackStarter) return;
-    const timer = setTimeout(() => {
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.setItem(`editor.autosave.${sessionId}.${activeSlug}`, code);
-        }
-      } catch {
-        // quota exceeded or storage disabled
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [sessionId, activeSlug, code, fallbackStarter]);
-
-  const setCode = useCallback((newCode: string) => {
-    setCodeMap((prev) => ({ ...prev, [activeSlug]: newCode }));
-  }, [activeSlug]);
-  const [language, setLanguage] = useState(activeTrack === 'SQL' ? 'sql' : 'java');
-
-  // 3. Execution Engine
-  const { isExecuting, executionResult, runCode, submitSolution } = useExecution({
-    sessionId, activeQuestion
-  });
-
-  // 4. Voice Management
-  const voice = useCoachVoice({
-    onCandidateSpeechFinal: (text, meta) => dialogue.triggerCandidateTurn(text, code, undefined, meta),
-    onCandidateSpeechPartialSalvage: (text) => dialogue.setChatInput((prev) => mergeSalvageText(prev, text)),
-    apiKey,
-    promptContext: [candidateName, activeTrack, activeQuestion?.title, activeQuestion?.difficulty].filter(Boolean).join(', '),
-    sessionId
-  });
-
-  // 5. Proctoring Sentinel
-  const proctoring = useProctoring({ sessionId, isPlayground });
-
-  // 6. Dialogue Engine
-  const dialogue = useDialogue({
-    sessionId,
-    provider,
-    apiKey,
-    isPlayground,
-    getQuestionContext: () => activeQuestion?.problemStatement || '',
-    getSectionQuestionTitle: () => activeQuestion?.title,
-    problemSlug: activeQuestion?.problemSlug || activeQuestion?.slug,
-    starterCode: fallbackStarter,
-    getStarterCode: () => activeQuestion?.starterCode || fallbackStarter,
-    getQuestionIndex: () => activeQuestionIndex,
-    getTotalQuestionsInSection: () => questionsList.length,
-    getIsApproachGateLocked: () => isApproachGateLocked({
-      sessionMode,
-      sectionType: plan?.sections?.[dialogue?.activeSectionIndex ?? 0]?.sectionType || navSections[dialogue?.activeSectionIndex ?? 0]?.sectionType || initialQuestion.track,
-      sectionIndex: dialogue?.activeSectionIndex ?? 0,
-      sectionGates
-    }),
-    candidateName,
-    initialWelcome: persona.welcomeMessage,
-    sections: plan?.sections,
-    onAiSpeechRequested: voice.speakText,
-    getIntegritySignals: proctoring.getIntegritySignals,
-    onSectionChanged: (idx, sec) => {
-      setActiveSectionIndex(idx);
-      if (sec.track && sec.track !== activeTrack) setActiveTrack(sec.track);
-    },
-    onAiTurnCompleted: handleAiTurnCompleted,
-    jobDescription,
-    targetCompany,
-    resumeSummary
-  });
-
-  // 7. Session Video Recording Engine
   const handleShareLost = useCallback(() => {
     if (!isPlayground) setIsShareLost(true);
   }, [isPlayground]);
 
-  const recorder = useSessionRecorder({
-    sessionId, isPlayground, onShareLost: handleShareLost
-  });
-
-  // 8. Dedicated Candidate Voice Track Engine (SPEC-AUDIO-1 D1)
-  const audioConsent = isPlayground || sessionStorage.getItem('interview.audioConsent') !== 'false';
-  const micRecorder = useMicRecorder({
+  const engines = useArenaEngines({
     sessionId,
-    enabled: !isPlayground && audioConsent
+    provider,
+    apiKey,
+    sessionMode,
+    candidateName,
+    initialQuestion,
+    activeQuestion,
+    activeQuestionIndex,
+    questionsList,
+    fallbackStarter,
+    code,
+    language,
+    plan,
+    navSections,
+    sectionGates,
+    welcomeMessage: persona.welcomeMessage,
+    jobDescription,
+    targetCompany,
+    resumeSummary,
+    onShareLost: handleShareLost,
+    onRegisterFinishRecorder,
+    markQuestionStatus,
+    handleAiTurnCompleted,
+    onSectionChanged: (idx, stage) => sectionChangeHandlerRef.current(idx, stage)
   });
 
-  useEffect(() => {
-    onRegisterFinishRecorder?.(async () => {
-      await Promise.allSettled([recorder.finish(), micRecorder.finish()]);
-    });
-  }, [onRegisterFinishRecorder, recorder.finish, micRecorder.finish]);
+  const nav = useArenaNavigation({
+    sessionId,
+    isPlayground,
+    initialTrack: initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES',
+    navSections,
+    dialogue: engines.dialogue,
+    activeQuestionIndex,
+    questionsCount: questionsList.length,
+    selectQuestion
+  });
+  sectionChangeHandlerRef.current = nav.handleSectionClick;
 
-  // Handlers
-  const handleRunCode = async () => { await runCode(code, language); };
-
-  const handleSubmitSolution = async () => {
-    const result = await submitSolution(code, language);
-    const isPassed = result && (result.status === 'Accepted' || (result.passedTests > 0 && result.passedTests === result.totalTests));
-    markQuestionStatus(activeQuestion.slug || `q${activeQuestionIndex + 1}`, isPassed ? 'PASSED' : 'ATTEMPTED');
-
-    await dialogue.triggerCandidateTurn(
-      `I have submitted my solution for ${activeQuestion.title || 'the problem'}.`,
-      code,
-      result
-    );
-  };
-
-  const handleSectionClick = useCallback((targetIndex: number, targetStage: InterviewStage) => {
-    const sec = navSections[targetIndex];
-    if (!sec) return;
-
-    const gate = evaluateNavigationGate(targetIndex, dialogue.activeSectionIndex, isPlayground, navSections[dialogue.activeSectionIndex]?.label);
-    if (gate.isLocked) {
-      const confirmed = window.confirm(`Finish current round first — or end the round early?\n\nDo you want to end this round early and proceed to ${sec.label}?`);
-      if (!confirmed) return;
-      dialogue.transitionSection(targetIndex, 'SKIPPED_BY_USER');
-      return;
-    }
-
-    if (sec.track && sec.track !== activeTrack) {
-      setPendingStageSwitch({ stage: targetStage, targetTrack: sec.track, targetIndex });
-    } else {
-      dialogue.transitionSection(targetIndex, 'MANUAL_JUMP');
-    }
-  }, [activeTrack, dialogue, navSections, isPlayground]);
-
-  const handleStageClick = useCallback((targetStage: InterviewStage) => {
-    const targetIdx = navSections.findIndex((s) => s.stage === targetStage);
-    if (targetIdx !== -1) handleSectionClick(targetIdx, targetStage);
-    else dialogue.transitionStage(targetStage, 'MANUAL_JUMP');
-  }, [handleSectionClick, navSections, dialogue]);
-
-  const handleNextQuestion = useCallback(() => {
-    if (activeQuestionIndex < questionsList.length - 1) selectQuestion(activeQuestionIndex + 1);
-  }, [activeQuestionIndex, questionsList.length, selectQuestion]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.sessionStorage && sessionId) {
-      const count = dialogue.stageTurnCounts['INTRODUCTION'] ?? 0;
-      window.sessionStorage.setItem(`arena_intro_turn_count_${sessionId}`, String(count));
-    }
-  }, [dialogue.stageTurnCounts, sessionId]);
-
-  const handleNextStage = useCallback((options?: { introSkipped?: boolean }) => {
-    if (options?.introSkipped) {
-      console.info('[ArenaRoom] Stage advance: introSkipped=true');
-      if (sessionId) {
-        addMessageToSession(sessionId, {
-          senderRole: 'CANDIDATE',
-          messageType: 'SYSTEM_EVENT',
-          content: '[SYSTEM_MARKER] Candidate skipped introduction.',
-          metadata: { introSkipped: 'true' }
-        }).catch(() => {});
-      }
-    }
-    if (dialogue.activeSectionIndex < navSections.length - 1) {
-      const nextSec = navSections[dialogue.activeSectionIndex + 1];
-      handleSectionClick(dialogue.activeSectionIndex + 1, nextSec.stage);
-    }
-  }, [dialogue.activeSectionIndex, navSections, handleSectionClick, sessionId]);
-
-  const handleConfirmStageSwitch = useCallback(() => {
-    if (pendingStageSwitch) {
-      setActiveTrack(pendingStageSwitch.targetTrack);
-      if (pendingStageSwitch.targetIndex !== undefined) dialogue.transitionSection(pendingStageSwitch.targetIndex, 'MANUAL_JUMP');
-      else dialogue.transitionStage(pendingStageSwitch.stage, 'MANUAL_JUMP');
-      setPendingStageSwitch(null);
-    }
-  }, [pendingStageSwitch, dialogue]);
-
-  const handleCancelStageSwitch = useCallback(() => setPendingStageSwitch(null), []);
-
-  const activeSection = plan?.sections?.[dialogue.activeSectionIndex];
-  const activeSectionType = activeSection?.sectionType || navSections[dialogue.activeSectionIndex]?.sectionType || initialQuestion.track;
   const isGateLocked = isApproachGateLocked({
     sessionMode,
-    sectionType: activeSectionType,
-    sectionIndex: dialogue.activeSectionIndex,
+    sectionType: plan?.sections?.[engines.dialogue.activeSectionIndex]?.sectionType || navSections[engines.dialogue.activeSectionIndex]?.sectionType || initialQuestion.track,
+    sectionIndex: engines.dialogue.activeSectionIndex,
     sectionGates
+  });
+
+  const shellProps = buildArenaShellProps({
+    sessionId,
+    track: nav.activeTrack,
+    sections: plan?.sections,
+    activeSectionIndex: engines.dialogue.activeSectionIndex,
+    isApproachGateLocked: isGateLocked,
+    sectionQuestions,
+    onSectionClick: nav.handleSectionClick,
+    onSwitchTrack: nav.setActiveTrack,
+    question: activeQuestion,
+    onNextQuestion: nav.handleNextQuestion,
+    onNextStage: nav.handleNextStage,
+    questionsList,
+    activeQuestionIndex,
+    onSelectQuestion: (idx) => { selectQuestion(idx); },
+    questionStatusMap,
+    code,
+    onChangeCode: setCode,
+    language,
+    onChangeLanguage: setLanguage,
+    onRunCode: engines.handleRunCode,
+    onSubmitSolution: engines.handleSubmitSolution,
+    isExecuting: engines.isExecuting,
+    executionResult: engines.executionResult,
+    provider,
+    apiKey,
+    sessionMode,
+    onFinish,
+    engines,
+    nav
   });
 
   return (
@@ -443,94 +231,11 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       {isShareLost && !isPlayground && (
         <ShareLostOverlay
           sessionId={sessionId}
-          onRestored={(newStream) => {
-            recorder.attachScreenStream(newStream);
-            setIsShareLost(false);
-          }}
+          onRestored={(stream) => { engines.recorder.attachScreenStream(stream); setIsShareLost(false); }}
           onAborted={onFinish}
         />
       )}
-      <ArenaShell
-        sessionId={sessionId}
-        track={activeTrack}
-        sections={plan?.sections}
-        activeSectionIndex={dialogue.activeSectionIndex}
-        isApproachGateLocked={isGateLocked}
-      sectionQuestions={sectionQuestions}
-      onSectionClick={handleSectionClick}
-      onSwitchTrack={setActiveTrack}
-      question={activeQuestion}
-      onNextQuestion={handleNextQuestion}
-      onNextStage={handleNextStage}
-      questionsList={questionsList}
-      activeQuestionIndex={activeQuestionIndex}
-      onSelectQuestion={(idx) => {
-        selectQuestion(idx);
-      }}
-      questionStatusMap={questionStatusMap}
-      code={code}
-      onChangeCode={setCode}
-      language={language}
-      onChangeLanguage={setLanguage}
-      onRunCode={handleRunCode}
-      onSubmitSolution={handleSubmitSolution}
-      isExecuting={isExecuting}
-      executionResult={executionResult}
-      provider={provider}
-      apiKey={apiKey}
-      sessionMode={sessionMode}
-      onFinish={onFinish}
-      messages={dialogue.messages}
-      chatInput={dialogue.chatInput}
-      setChatInput={dialogue.setChatInput}
-      onSendTurn={(text) => dialogue.triggerCandidateTurn(text, code)}
-      isAiResponding={dialogue.isAiResponding}
-      currentStage={dialogue.currentStage}
-      stageTurnCounts={dialogue.stageTurnCounts}
-      stageTransitionReasons={dialogue.stageTransitionReasons}
-      onStageClick={handleStageClick}
-      providerError={dialogue.providerError}
-      onRetryProvider={dialogue.retryLastTurn}
-      onClearProviderError={dialogue.clearProviderError}
-      onOpenProviderSettings={onFinish}
-      pendingStageSwitch={pendingStageSwitch}
-      onConfirmStageSwitch={handleConfirmStageSwitch}
-      onCancelStageSwitch={handleCancelStageSwitch}
-      isAiPanelOpen={voice.isAiPanelOpen}
-      onToggleAiPanel={voice.toggleAiPanel}
-      onCloseAiPanel={() => voice.setIsAiPanelOpen(false)}
-      isListening={voice.isListening}
-      isSpeakingNow={voice.isSpeakingNow}
-      isAiSpeaking={voice.isAiSpeaking}
-      interimTranscript={voice.interimTranscript}
-      micError={voice.micError}
-      onClearMicError={voice.clearMicError}
-      canRetryStt={voice.canRetryStt}
-      onRetryStt={voice.retryLastTranscription}
-      voiceOutputEnabled={voice.voiceOutputEnabled}
-      onToggleVoice={() => voice.setVoiceOutputEnabled(!voice.voiceOutputEnabled)}
-      onMicToggle={voice.toggleListening}
-      onStartListening={voice.startListening}
-      onStopListening={voice.stopListening}
-      onAbortVoice={voice.abortTurn}
-      hasUnreadAi={dialogue.hasUnread}
-      isWindowBlurred={proctoring.isWindowBlurred}
-      tabSwitches={proctoring.tabSwitches}
-      pasteDumps={proctoring.pasteDumps}
-      isRecording={recorder.isRecording}
-      recordingSeconds={recorder.recordingSeconds}
-      recordingInterrupted={recorder.recordingInterrupted}
-      failedChunkCount={recorder.failedChunkCount}
-      cameraActive={recorder.cameraActive}
-      screenActive={recorder.screenActive}
-      verificationBroken={recorder.verificationBroken}
-      isVoiceRecording={micRecorder.isRecording}
-      voiceUnsentCount={micRecorder.unsentCount}
-      voiceLostAt={micRecorder.lostAt}
-      audioConsent={audioConsent}
-      isFocusMode={isFocusMode}
-      onToggleFocusMode={toggleFocusMode}
-    />
-  </>
+      <ArenaShell {...shellProps} />
+    </>
   );
 };

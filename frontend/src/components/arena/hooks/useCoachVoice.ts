@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { convertBlobTo16kHzWav } from '../../../lib/audio-encoder';
-import { transcribeAudio } from '../../../services/api';
 import { playTtsUtterance } from '../../../lib/audio-tts';
+import { useAudioCapture } from './useAudioCapture';
+import { useCoachPttTranscription } from './useCoachPttTranscription';
 
 export type PttState = 'IDLE' | 'RECORDING' | 'TRANSCRIBING' | 'SPEAKING';
 
@@ -34,84 +34,79 @@ export function useCoachVoice({
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
   const [micError, setMicError] = useState<string | null>(null);
-  const [canRetryStt, setCanRetryStt] = useState(false);
-  const [lastTurnMetrics, setLastTurnMetrics] = useState<TurnMetrics>({
-    sttLatencyMs: null,
-    recordingDurationMs: null,
-    turnCompletedAt: null
-  });
-  const [lastSttInfo, setLastSttInfo] = useState<{ provider: 'groq' | 'local'; latencyMs: number } | null>(null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const lastFailedAudioBlobRef = useRef<{ blob: Blob; durationMs: number } | null>(null);
   const isAbortedRef = useRef<boolean>(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const recordingStartTimeRef = useRef<number>(0);
   const ttsEndedAtRef = useRef<number>(0);
 
-  const apiKeyRef = useRef(apiKey);
-  const promptContextRef = useRef(promptContext);
-  const sessionIdRef = useRef(sessionId);
-  const onCandidateSpeechFinalRef = useRef(onCandidateSpeechFinal);
-  const onCandidateSpeechPartialSalvageRef = useRef(onCandidateSpeechPartialSalvage);
-
-  apiKeyRef.current = apiKey;
-  promptContextRef.current = promptContext;
-  sessionIdRef.current = sessionId;
-  onCandidateSpeechFinalRef.current = onCandidateSpeechFinal;
-  onCandidateSpeechPartialSalvageRef.current = onCandidateSpeechPartialSalvage;
+  const capture = useAudioCapture();
+  const transcription = useCoachPttTranscription({
+    apiKey,
+    promptContext,
+    sessionId,
+    onCandidateSpeechFinal,
+    onCandidateSpeechPartialSalvage
+  });
 
   const toggleAiPanel = useCallback(() => setIsAiPanelOpen((prev) => !prev), []);
   const clearMicError = useCallback(() => {
     setMicError(null);
-    setCanRetryStt(false);
-  }, []);
-
-  const cleanupStream = useCallback(() => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-  }, []);
+    transcription.setCanRetryStt(false);
+  }, [transcription]);
 
   // Abort mid-turn cleanly: stops active recording or cancels in-flight STT / TTS
   const abortTurn = useCallback(() => {
     isAbortedRef.current = true;
+    transcription.cancelInFlight();
+    capture.abortCapture();
 
-    // 1. Cancel in-flight transcription fetch if any
-    if (abortControllerRef.current) {
-      try { abortControllerRef.current.abort(); } catch {}
-      abortControllerRef.current = null;
-    }
-
-    // 2. Stop media recorder and release mic
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try { mediaRecorderRef.current.stop(); } catch {}
-    }
-    mediaRecorderRef.current = null;
-    cleanupStream();
-    audioChunksRef.current = [];
-
-    // 3. Halt TTS if speaking
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
 
-    // 4. Reset states cleanly to IDLE
     setPttState('IDLE');
     setIsListening(false);
     setIsSpeakingNow(false);
     setIsAiSpeaking(false);
     setInterimTranscript('');
-  }, [cleanupStream]);
+  }, [capture, transcription]);
+
+  const sendBlobForTranscription = useCallback(
+    async (blob: Blob, duration: number) => {
+      await transcription.submitAudioBlobForTranscription(
+        blob,
+        duration,
+        capture.recordingStartTimeRef.current,
+        () => isAbortedRef.current,
+        {
+          onTranscribing: () => {
+            setPttState('TRANSCRIBING');
+            setIsListening(false);
+            setMicError(null);
+            setInterimTranscript('Transcribing with Whisper...');
+          },
+          onSuccess: () => {
+            setInterimTranscript('');
+            setPttState('IDLE');
+          },
+          onError: (msg) => {
+            setMicError(msg);
+            setInterimTranscript('');
+            setPttState('IDLE');
+          },
+          onAborted: () => {
+            setInterimTranscript('');
+            setPttState('IDLE');
+          }
+        }
+      );
+    },
+    [transcription, capture.recordingStartTimeRef]
+  );
 
   // Start Push-to-Talk Recording (Press)
   const startListening = useCallback(async () => {
     if (typeof window === 'undefined') return;
 
-    // If AI is currently speaking, interrupt it
     if (window.speechSynthesis?.speaking || isSpeakingNow) {
       window.speechSynthesis?.cancel();
       setIsSpeakingNow(false);
@@ -120,194 +115,38 @@ export function useCoachVoice({
 
     isAbortedRef.current = false;
     setMicError(null);
-    audioChunksRef.current = [];
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1
-        }
-      });
-
-      if (isAbortedRef.current) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
-
-      mediaStreamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      mediaRecorderRef.current = mediaRecorder;
-      recordingStartTimeRef.current = Date.now();
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (isAbortedRef.current) return;
-        if (e.data && e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        cleanupStream();
-
-        if (isAbortedRef.current) {
-          audioChunksRef.current = [];
-          setInterimTranscript('');
-          setPttState('IDLE');
-          setIsListening(false);
-          return;
-        }
-
-        const duration = Date.now() - recordingStartTimeRef.current;
-        if (duration < 250) {
-          // Micro-tap ignore
-          audioChunksRef.current = [];
-          setInterimTranscript('');
-          setPttState('IDLE');
-          setIsListening(false);
-          return;
-        }
-
-        if (audioChunksRef.current.length > 0) {
-          const rawBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          if (rawBlob.size > 50 * 1024 * 1024) {
-            setMicError('Recording too long (>50MB)');
-            setPttState('IDLE');
-            setIsListening(false);
-            return;
-          }
-
-          let uploadBlob: Blob = rawBlob;
-          try {
-            uploadBlob = await convertBlobTo16kHzWav(rawBlob);
-          } catch (convErr) {
-            console.warn('[useCoachVoice] 16kHz WAV conversion notice, uploading webm fallback:', convErr);
-          }
-
-          if (isAbortedRef.current) {
-            setPttState('IDLE');
-            setIsListening(false);
-            setInterimTranscript('');
-            return;
-          }
-
-          await submitAudioBlobForTranscription(uploadBlob, duration);
-        } else {
-          setInterimTranscript('');
-          setPttState('IDLE');
-          setIsListening(false);
-        }
-      };
-
-      mediaRecorder.start();
-      setPttState('RECORDING');
-      setIsListening(true);
-      setInterimTranscript('Recording speech… (Release or click to send)');
-    } catch {
-      setMicError('Mic blocked — allow permission');
-      setPttState('IDLE');
-      setIsListening(false);
-    }
-  }, [cleanupStream, isSpeakingNow]);
-
-  const submitAudioBlobForTranscription = useCallback(async (uploadBlob: Blob, durationMs: number) => {
-    setPttState('TRANSCRIBING');
-    setIsListening(false);
-    setMicError(null);
-    setCanRetryStt(false);
-    setInterimTranscript('Transcribing with Whisper...');
-
-    const abortCtrl = new AbortController();
-    abortControllerRef.current = abortCtrl;
-
-    try {
-      const t0 = Date.now();
-      const result = await transcribeAudio(
-        uploadBlob,
-        apiKeyRef.current,
-        promptContextRef.current,
-        sessionIdRef.current,
-        'en',
-        abortCtrl.signal
-      );
-      const sttLatency = Date.now() - t0;
-
-      if (isAbortedRef.current) {
+    await capture.startCapture({
+      onBlobReady: sendBlobForTranscription,
+      onMicroTap: () => {
         setInterimTranscript('');
         setPttState('IDLE');
-        return;
-      }
-
-      const isLowConfidence = (result as any).sttLowConfidence === 'true' || (result as any).status === 'TOO_SHORT';
-      if (isLowConfidence) {
-        const msg = (result as any).message || 'Recording too short — hold/toggle and speak your full approach.';
+        setIsListening(false);
+      },
+      onError: (msg) => {
         setMicError(msg);
-        setInterimTranscript('');
         setPttState('IDLE');
-        return;
+        setIsListening(false);
+      },
+      onStateRecording: () => {
+        setPttState('RECORDING');
+        setIsListening(true);
+        setInterimTranscript('Recording speech… (Release or click to send)');
       }
-
-      const text = (result as any).transcript || (result as any).text;
-      if (text && text.trim()) {
-        lastFailedAudioBlobRef.current = null;
-        setCanRetryStt(false);
-        const rawProv = (result as any).sttProvider || (result as any).provider;
-        const prov: 'groq' | 'local' = (rawProv && String(rawProv).toLowerCase().includes('groq')) ? 'groq' : 'local';
-        const latency = Number((result as any).sttMs || (result as any).latencyMs) || sttLatency;
-        setLastSttInfo({
-          provider: prov,
-          latencyMs: latency
-        });
-        setLastTurnMetrics({
-          sttLatencyMs: sttLatency,
-          recordingDurationMs: durationMs,
-          turnCompletedAt: Date.now()
-        });
-        setInterimTranscript('');
-        setPttState('IDLE');
-        const meta: Record<string, string> = {
-          isStt: 'true',
-          captureTimestamp: String(recordingStartTimeRef.current || Date.now())
-        };
-        onCandidateSpeechFinalRef.current?.(text.trim(), meta);
-      } else {
-        setMicError('No speech detected');
-        setInterimTranscript('');
-        setPttState('IDLE');
-      }
-    } catch (err: any) {
-      if (isAbortedRef.current || err?.name === 'AbortError') {
-        setInterimTranscript('');
-        setPttState('IDLE');
-        return;
-      }
-      lastFailedAudioBlobRef.current = { blob: uploadBlob, durationMs };
-      setCanRetryStt(true);
-      setMicError('Transcription failed — your audio recording is saved. Click Retry to re-transcribe.');
-      setInterimTranscript('');
-      setPttState('IDLE');
-    } finally {
-      abortControllerRef.current = null;
-    }
-  }, []);
+    });
+  }, [capture, isSpeakingNow, sendBlobForTranscription]);
 
   const retryLastTranscription = useCallback(async () => {
-    const saved = lastFailedAudioBlobRef.current;
+    const saved = transcription.getSavedFailedBlob();
     if (!saved) return;
     isAbortedRef.current = false;
-    await submitAudioBlobForTranscription(saved.blob, saved.durationMs);
-  }, [submitAudioBlobForTranscription]);
+    await sendBlobForTranscription(saved.blob, saved.durationMs);
+  }, [transcription, sendBlobForTranscription]);
 
   // Stop Push-to-Talk Recording (Release)
   const stopListening = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch {}
-    }
-  }, []);
+    capture.stopCapture();
+  }, [capture]);
 
   // Toggle PTT (Click-to-talk convenience)
   const toggleListening = useCallback(() => {
@@ -321,40 +160,34 @@ export function useCoachVoice({
   }, [pttState, startListening, stopListening, abortTurn]);
 
   // Speak response text via browser TTS
-  const speakText = useCallback((text: string) => {
-    playTtsUtterance({
-      text,
-      voiceOutputEnabled,
-      onStart: () => {
-        setPttState('SPEAKING');
-        setIsSpeakingNow(true);
-        setIsAiSpeaking(true);
-      },
-      onEnd: () => {
-        ttsEndedAtRef.current = Date.now();
-        setPttState('IDLE');
-        setIsSpeakingNow(false);
-        setIsAiSpeaking(false);
-      },
-      onError: () => {
-        ttsEndedAtRef.current = Date.now();
-        setPttState('IDLE');
-        setIsSpeakingNow(false);
-        setIsAiSpeaking(false);
-      }
-    });
-  }, [voiceOutputEnabled]);
+  const speakText = useCallback(
+    (text: string) => {
+      playTtsUtterance({
+        text,
+        voiceOutputEnabled,
+        onStart: () => {
+          setPttState('SPEAKING');
+          setIsSpeakingNow(true);
+          setIsAiSpeaking(true);
+        },
+        onEnd: () => {
+          ttsEndedAtRef.current = Date.now();
+          setPttState('IDLE');
+          setIsSpeakingNow(false);
+          setIsAiSpeaking(false);
+        },
+        onError: () => {
+          ttsEndedAtRef.current = Date.now();
+          setPttState('IDLE');
+          setIsSpeakingNow(false);
+          setIsAiSpeaking(false);
+        }
+      });
+    },
+    [voiceOutputEnabled]
+  );
 
-  // Cleanup on unmount
-  useEffect(() => () => {
-    abortTurn();
-  }, [abortTurn]);
-
-  const sttChip = lastSttInfo ? (
-    lastSttInfo.provider === 'groq'
-      ? `voice: Groq LPU · ${(lastSttInfo.latencyMs / 1000).toFixed(1)}s`
-      : `voice: local · ${(lastSttInfo.latencyMs / 1000).toFixed(1)}s`
-  ) : null;
+  useEffect(() => () => { abortTurn(); }, [abortTurn]);
 
   return {
     isAiPanelOpen,
@@ -368,7 +201,7 @@ export function useCoachVoice({
     isAiSpeaking,
     interimTranscript,
     micError,
-    canRetryStt,
+    canRetryStt: transcription.canRetryStt,
     retryLastTranscription,
     clearMicError,
     speakText,
@@ -376,8 +209,8 @@ export function useCoachVoice({
     stopListening,
     toggleListening,
     abortTurn,
-    lastTurnMetrics,
-    lastSttInfo,
-    sttChip
+    lastTurnMetrics: transcription.lastTurnMetrics,
+    lastSttInfo: transcription.lastSttInfo,
+    sttChip: transcription.sttChip
   };
 }
