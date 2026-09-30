@@ -81,10 +81,39 @@ public class ContentValidator {
             if (doc.getSolutionSql() == null || doc.getSolutionSql().isBlank()) {
                 errors.add("SQL Question requires solutionSql");
             }
-        } else if ("SPRING_LLD".equals(track)) {
-            if ((doc.getStarterFiles() == null || doc.getStarterFiles().isEmpty()) &&
-                (doc.getStarterCode() == null || doc.getStarterCode().isBlank())) {
-                errors.add("LLD Question requires starterFiles or starterCode");
+        } else if ("SPRING_LLD".equals(track) || "maven-workspace".equalsIgnoreCase(doc.getBuildProfile())) {
+            // Rule 1: starterFiles non-empty and contains pom.xml
+            if (doc.getStarterFiles() == null || doc.getStarterFiles().isEmpty()) {
+                errors.add("Workspace Question requires non-empty starterFiles");
+            } else if (!doc.getStarterFiles().containsKey("pom.xml")) {
+                errors.add("Workspace Question starterFiles must contain 'pom.xml'");
+            }
+
+            // Rule 2 & 4: editablePaths non-empty and valid against starterFiles or /** prefix
+            if (doc.getEditablePaths() == null || doc.getEditablePaths().isEmpty()) {
+                errors.add("Workspace Question requires non-empty editablePaths");
+            } else {
+                Set<String> starterFileKeys = doc.getStarterFiles() != null ? doc.getStarterFiles().keySet() : Set.of();
+                for (String path : doc.getEditablePaths()) {
+                    if (path == null || path.isBlank()) {
+                        errors.add("editablePaths entry must not be blank");
+                    } else if (path.endsWith("/**")) {
+                        // Valid directory prefix syntax
+                    } else if (!starterFileKeys.contains(path)) {
+                        errors.add("editablePaths entry '" + path + "' does not match any starterFiles path and is not a '/**' directory prefix");
+                    }
+                }
+            }
+
+            // Rule 3: hiddenTestFiles non-empty, every key under src/test/java/
+            if (doc.getHiddenTestFiles() == null || doc.getHiddenTestFiles().isEmpty()) {
+                errors.add("Workspace Question requires non-empty hiddenTestFiles");
+            } else {
+                for (String testPath : doc.getHiddenTestFiles().keySet()) {
+                    if (testPath == null || !testPath.startsWith("src/test/java/")) {
+                        errors.add("hiddenTestFiles key '" + testPath + "' must be located under 'src/test/java/'");
+                    }
+                }
             }
         }
 
