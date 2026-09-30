@@ -27,6 +27,7 @@ interface Props {
   starterFiles: Record<string, string>;
   editablePaths: string[];
   onSubmitProject?: (summary: string) => void;
+  onRunAttempt?: () => void;
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
   engine?: 'Maven';
@@ -40,6 +41,7 @@ export const ProjectWorkspace: React.FC<Props> = ({
   starterFiles,
   editablePaths,
   onSubmitProject,
+  onRunAttempt,
   isMaximized = false,
   onToggleMaximize,
   engine = 'Maven',
@@ -170,6 +172,8 @@ export const ProjectWorkspace: React.FC<Props> = ({
       console.error('Project test execution failed:', err);
       setTestStatus('failed');
       setConsoleOutput(`[Execution Error] Could not connect to Maven sandbox: ${err.message || 'Unknown network error'}`);
+    } finally {
+      onRunAttempt?.();
     }
   };
 

@@ -28,6 +28,7 @@ interface Props {
   starterFiles: Record<string, string>;
   editablePaths: string[];
   onSubmitProject?: (summary: string) => void;
+  onRunAttempt?: () => void;
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
   isApproachGateLocked?: boolean;
@@ -42,6 +43,7 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
   starterFiles,
   editablePaths,
   onSubmitProject,
+  onRunAttempt,
   isMaximized = false,
   onToggleMaximize,
   isApproachGateLocked
@@ -158,6 +160,8 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
       setTestStatus('failed');
       const msg = err instanceof Error ? err.message : 'Failed connecting to session runner';
       setConsoleOutput(`❌ Execution network error: ${msg}`);
+    } finally {
+      onRunAttempt?.();
     }
   };
 
@@ -196,6 +200,7 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
           starterFiles={starterFiles}
           editablePaths={editablePaths}
           onSubmitProject={onSubmitProject}
+          onRunAttempt={onRunAttempt}
           isMaximized={isMaximized}
           onToggleMaximize={onToggleMaximize}
         />

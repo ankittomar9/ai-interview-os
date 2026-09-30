@@ -8,13 +8,15 @@ interface LldScreenProps {
   question: GenerateQuestionResponse;
   onSubmitProject: (summary?: string) => Promise<void>;
   isApproachGateLocked?: boolean;
+  onRunAttempt?: () => void;
 }
 
 export const LldScreen: React.FC<LldScreenProps> = ({
   sessionId,
   question,
   onSubmitProject,
-  isApproachGateLocked
+  isApproachGateLocked,
+  onRunAttempt
 }) => {
   const problemSlug = question.problemSlug || question.slug || 'lld-service';
   const problemTitle = question.title || 'Spring Boot Microservice Architecture';
@@ -29,6 +31,7 @@ export const LldScreen: React.FC<LldScreenProps> = ({
         starterFiles={question.starterFiles || {}}
         editablePaths={question.editablePaths || []}
         onSubmitProject={(summary) => void onSubmitProject(summary)}
+        onRunAttempt={onRunAttempt}
         isApproachGateLocked={isApproachGateLocked}
       />
       {isApproachGateLocked && (
