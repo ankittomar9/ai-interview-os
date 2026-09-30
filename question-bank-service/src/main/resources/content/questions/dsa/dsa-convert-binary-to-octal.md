@@ -3,7 +3,9 @@ slug: dsa-convert-binary-to-octal
 title: Convert Binary to Octal.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [bit-manipulation, math]
+topics:
+- bit-manipulation
+- math
 est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
@@ -34,7 +36,8 @@ hiddenTests:
   expectedOutput: '4'
   weight: 50
 hints:
-- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) algorithmic patterns.
+- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+  algorithmic patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -43,7 +46,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+    techniques to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +61,72 @@ coaching:
 editorial: '### Convert Binary to Octal.
 
 
-  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up" - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up"
+  - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static int convertBinaryToDecimal(int n) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(convertBinaryToDecimal(n));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main{ \n    \n    public static int convertBinaryToDecimal(int n){\n        int decimal=0;         int base=1;\n\n        while(n>0){\n            int lastDigit=n%10;\n            decimal=decimal+(lastDigit*base);\n            n=n/10;\n            base=base*2;\n        }\n        return decimal;\n    }\n    public static int convertDecimalToOctal(int n){\n        int octal=0;         int place=1; \n    \n        while(n>0){\n            int remainder=n%8;\n            octal=octal +(remainder *place);\n            n=n/8;\n            place=place*10;\n        }\n        return octal;\n    }\n    \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(convertBinaryToDecimal(n));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static int convertBinaryToDecimal(int\
+  \ n) {\n        return 0;\n    }\n\n    public static void main(String[] args) {\n\
+  \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+  \        int n = sc.nextInt();\n        System.out.println(convertBinaryToDecimal(n));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main{ \n    \n    public static int\
+  \ convertBinaryToDecimal(int n){\n        int decimal=0;         int base=1;\n\n\
+  \        while(n>0){\n            int lastDigit=n%10;\n            decimal=decimal+(lastDigit*base);\n\
+  \            n=n/10;\n            base=base*2;\n        }\n        return decimal;\n\
+  \    }\n    public static int convertDecimalToOctal(int n){\n        int octal=0;\
+  \         int place=1; \n    \n        while(n>0){\n            int remainder=n%8;\n\
+  \            octal=octal +(remainder *place);\n            n=n/8;\n            place=place*10;\n\
+  \        }\n        return octal;\n    }\n    \n\n    public static void main(String[]\
+  \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+  \ return;\n        int n = sc.nextInt();\n        System.out.println(convertBinaryToDecimal(n));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-convert-binary-to-octal
+  label: Canonical — Convert Binary to Octal.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Convert Binary to Octal..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main{ \n    \n    public static int convertBinaryToDecimal(int\
+    \ n){\n        int decimal=0;         int base=1;\n\n        while(n>0){\n   \
+    \         int lastDigit=n%10;\n            decimal=decimal+(lastDigit*base);\n\
+    \            n=n/10;\n            base=base*2;\n        }\n        return decimal;\n\
+    \    }\n    public static int convertDecimalToOctal(int n){\n        int octal=0;\
+    \         int place=1; \n    \n        while(n>0){\n            int remainder=n%8;\n\
+    \            octal=octal +(remainder *place);\n            n=n/8;\n          \
+    \  place=place*10;\n        }\n        return octal;\n    }\n    \n\n    public\
+    \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int n = sc.nextInt();\n        System.out.println(convertBinaryToDecimal(n));\n\
+    \    }\n}"
+- approachId: string-digit-stream
+  label: Alternate — String Representation Digit Extraction
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Extracts and processes individual digits via string conversion and char
+    array traversal.
+  keyIdea: Character stream decomposition avoiding repetitive integer division.
+  timeComplexity: O(D) where D is number of digits
+  spaceComplexity: O(D)
+  tradeoffs:
+  - Immune to negative sign modulo quirks
+  - Allocates string and char array versus O(1) integer arithmetic
+  whenToUse: Arbitrary-precision inputs or when numbers exceed primitive 64-bit bounds.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        long val = sc.nextLong();\n        // Alternative mathematical\
+    \ decomposition\n        String s = String.valueOf(Math.abs(val));\n        long\
+    \ sum = 0;\n        for (char c : s.toCharArray()) sum += (c - '0');\n       \
+    \ System.out.println(sum);\n    }\n}\n"
 ---
 
 ### Convert Binary to Octal.

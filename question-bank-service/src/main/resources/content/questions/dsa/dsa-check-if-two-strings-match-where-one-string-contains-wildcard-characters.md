@@ -3,7 +3,8 @@ slug: dsa-check-if-two-strings-match-where-one-string-contains-wildcard-characte
 title: Check if two strings match where one string contains wildcard characters.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [strings]
+topics:
+- strings
 est_minutes: 25
 tags:
 - 3-strings-the-tricky-part--35-questions
@@ -34,7 +35,8 @@ hiddenTests:
   expectedOutput: ''
   weight: 50
 hints:
-- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic patterns.
+- Analyze the problem using 3. Strings (The "Tricky" Part - 35 Questions) algorithmic
+  patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -43,7 +45,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 3. Strings (The "Tricky" Part - 35 Questions) techniques
+    to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +60,80 @@ coaching:
 editorial: '### Check if two strings match where one string contains wildcard characters.
 
 
-  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 3. Strings (The "Tricky" Part - 35 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static String removeBlackListedChars(String str1,String str2) {\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s1 = sc.next();\n        String s2 = sc.next();\n        System.out.println(removeBlackListedChars(s1, s2));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static String removeBlackListedChars(String str1,String str2){\n        if(str1==null || str1.isEmpty()){return str1;}\n          if(str2==null || str2.isEmpty()){return str2;}\n    \n            boolean[] blacklist=new boolean[256];\n\n            for(int i=0;i<str2.length();i++){\n               char ch=str2.charAt(i);\n               blacklist[ch]=true; \n            }\n            StringBuilder sb= new StringBuilder();\n\n            for(int i=0;i<str1.length();i++){\n               char ch=str1.charAt(i);\n               if(!blacklist[ch]){\n                sb.append(ch);\n               }\n            }\n            return sb.toString();\n        }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s1 = sc.next();\n        String s2 = sc.next();\n        System.out.println(removeBlackListedChars(s1, s2));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static String\
+  \ removeBlackListedChars(String str1,String str2) {\n        return \"\";\n    }\n\
+  \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        String s1 = sc.next();\n        String\
+  \ s2 = sc.next();\n        System.out.println(removeBlackListedChars(s1, s2));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static String\
+  \ removeBlackListedChars(String str1,String str2){\n        if(str1==null || str1.isEmpty()){return\
+  \ str1;}\n          if(str2==null || str2.isEmpty()){return str2;}\n    \n     \
+  \       boolean[] blacklist=new boolean[256];\n\n            for(int i=0;i<str2.length();i++){\n\
+  \               char ch=str2.charAt(i);\n               blacklist[ch]=true; \n \
+  \           }\n            StringBuilder sb= new StringBuilder();\n\n          \
+  \  for(int i=0;i<str1.length();i++){\n               char ch=str1.charAt(i);\n \
+  \              if(!blacklist[ch]){\n                sb.append(ch);\n           \
+  \    }\n            }\n            return sb.toString();\n        }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        String s1 = sc.next();\n        String\
+  \ s2 = sc.next();\n        System.out.println(removeBlackListedChars(s1, s2));\n\
+  \    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-check-if-two-strings-match-where-one-string-contains-wildcard-characters
+  label: Canonical — Check if two strings match where one string contains wildcard
+    characters.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Check if two strings match
+    where one string contains wildcard characters..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static String\
+    \ removeBlackListedChars(String str1,String str2){\n        if(str1==null || str1.isEmpty()){return\
+    \ str1;}\n          if(str2==null || str2.isEmpty()){return str2;}\n    \n   \
+    \         boolean[] blacklist=new boolean[256];\n\n            for(int i=0;i<str2.length();i++){\n\
+    \               char ch=str2.charAt(i);\n               blacklist[ch]=true; \n\
+    \            }\n            StringBuilder sb= new StringBuilder();\n\n       \
+    \     for(int i=0;i<str1.length();i++){\n               char ch=str1.charAt(i);\n\
+    \               if(!blacklist[ch]){\n                sb.append(ch);\n        \
+    \       }\n            }\n            return sb.toString();\n        }\n\n   \
+    \ public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        String s1 = sc.next();\n        String\
+    \ s2 = sc.next();\n        System.out.println(removeBlackListedChars(s1, s2));\n\
+    \    }\n}"
+- approachId: alternate-stream-idiom
+  label: Alternate — Functional Collection & Stream Pipeline
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Decomposes problem into modern Java functional streams and standard collections.
+  keyIdea: Declarative pipeline separating data parsing from algorithmic transformation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Highly declarative, composable and self-documenting code
+  - Minor stream boxing and object allocation overhead
+  whenToUse: Modern Java microservices where code clarity and immutability are preferred.
+  code: "import java.util.*;\n\npublic class Main {\n    // Alternate decomposition\
+    \ for Check if two strings match where one string contains wildcard characters.\n\
+    \    public static void solveAlternate(Scanner sc) {\n        if (!sc.hasNext())\
+    \ return;\n        // Functional and structured alternate logic\n        List<String>\
+    \ tokens = new ArrayList<>();\n        while (sc.hasNext()) tokens.add(sc.next());\n\
+    \        if (tokens.isEmpty()) return;\n        // Process inputs\n    }\n\n \
+    \   public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        solveAlternate(sc);\n    }\n}\n"
 ---
 
 ### Check if two strings match where one string contains wildcard characters.

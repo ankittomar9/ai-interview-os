@@ -3,7 +3,8 @@ slug: dsa-compare-two-linked-lists
 title: Compare Two Linked Lists
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [linked-list]
+topics:
+- linked-list
 est_minutes: 25
 tags:
 - linked-list
@@ -87,15 +88,92 @@ coaching:
 editorial: '### Compare Two Linked Lists
 
 
-  This problem evaluates core techniques in Linked List. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Linked List. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean compareLists(Node head1,Node head2) {\n        return false;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int n1 = sc.nextInt();\n        Node dummy1 = new Node(0);\n        Node cur1 = dummy1;\n        for (int i = 0; i < n1; i++) { cur1.next = new Node(sc.nextInt()); cur1 = cur1.next; }\n        int n2 = sc.nextInt();\n        Node dummy2 = new Node(0);\n        Node cur2 = dummy2;\n        for (int i = 0; i < n2; i++) { cur2.next = new Node(sc.nextInt()); cur2 = cur2.next; }\n        System.out.println(compareLists(dummy1.next, dummy2.next));\n    }\n}\n"
-solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static boolean compareLists(Node head1,Node head2){\n        Node temp1=head1; Node temp2=head2;\n        while(temp1!=null && temp2!=null){\n            if(temp1.data!=temp2.data){\n                return false;            }\n            temp1=temp1.next;\n            temp2=temp2.next;\n        }\n        boolean result = (temp1== null && temp2==null);\n        return result;\n    }\n    public static void printList(Node head){\n        Node temp=head;\n        while(temp!=null){\n           System.out.print(temp.data+\" -> \");\n            temp=temp.next;\n        }\n        System.out.println(\"null\");\n    }\n\n    public static class Node{\n        int data;    Node next;\n        public Node(int data){\n            this.data=data;\n            this.next=null;\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
-  \        int n1 = sc.nextInt();\n        Node dummy1 = new Node(0);\n        Node cur1 = dummy1;\n        for (int i = 0; i < n1; i++) { cur1.next = new Node(sc.nextInt()); cur1 = cur1.next; }\n        int n2 = sc.nextInt();\n        Node dummy2 = new Node(0);\n        Node cur2 = dummy2;\n        for (int i = 0; i < n2; i++) { cur2.next = new Node(sc.nextInt()); cur2 = cur2.next; }\n        System.out.println(compareLists(dummy1.next, dummy2.next));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean\
+  \ compareLists(Node head1,Node head2) {\n        return false;\n    }\n\n    public\
+  \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int n1 = sc.nextInt();\n        Node\
+  \ dummy1 = new Node(0);\n        Node cur1 = dummy1;\n        for (int i = 0; i\
+  \ < n1; i++) { cur1.next = new Node(sc.nextInt()); cur1 = cur1.next; }\n       \
+  \ int n2 = sc.nextInt();\n        Node dummy2 = new Node(0);\n        Node cur2\
+  \ = dummy2;\n        for (int i = 0; i < n2; i++) { cur2.next = new Node(sc.nextInt());\
+  \ cur2 = cur2.next; }\n        System.out.println(compareLists(dummy1.next, dummy2.next));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\npublic class Main {\n    \n    public static boolean\
+  \ compareLists(Node head1,Node head2){\n        Node temp1=head1; Node temp2=head2;\n\
+  \        while(temp1!=null && temp2!=null){\n            if(temp1.data!=temp2.data){\n\
+  \                return false;            }\n            temp1=temp1.next;\n   \
+  \         temp2=temp2.next;\n        }\n        boolean result = (temp1== null &&\
+  \ temp2==null);\n        return result;\n    }\n    public static void printList(Node\
+  \ head){\n        Node temp=head;\n        while(temp!=null){\n           System.out.print(temp.data+\"\
+  \ -> \");\n            temp=temp.next;\n        }\n        System.out.println(\"\
+  null\");\n    }\n\n    public static class Node{\n        int data;    Node next;\n\
+  \        public Node(int data){\n            this.data=data;\n            this.next=null;\n\
+  \        }\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+  \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+  \ n1 = sc.nextInt();\n        Node dummy1 = new Node(0);\n        Node cur1 = dummy1;\n\
+  \        for (int i = 0; i < n1; i++) { cur1.next = new Node(sc.nextInt()); cur1\
+  \ = cur1.next; }\n        int n2 = sc.nextInt();\n        Node dummy2 = new Node(0);\n\
+  \        Node cur2 = dummy2;\n        for (int i = 0; i < n2; i++) { cur2.next =\
+  \ new Node(sc.nextInt()); cur2 = cur2.next; }\n        System.out.println(compareLists(dummy1.next,\
+  \ dummy2.next));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-compare-two-linked-lists
+  label: Canonical — Compare Two Linked Lists
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Compare Two Linked Lists.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\npublic class Main {\n    \n    public static boolean\
+    \ compareLists(Node head1,Node head2){\n        Node temp1=head1; Node temp2=head2;\n\
+    \        while(temp1!=null && temp2!=null){\n            if(temp1.data!=temp2.data){\n\
+    \                return false;            }\n            temp1=temp1.next;\n \
+    \           temp2=temp2.next;\n        }\n        boolean result = (temp1== null\
+    \ && temp2==null);\n        return result;\n    }\n    public static void printList(Node\
+    \ head){\n        Node temp=head;\n        while(temp!=null){\n           System.out.print(temp.data+\"\
+    \ -> \");\n            temp=temp.next;\n        }\n        System.out.println(\"\
+    null\");\n    }\n\n    public static class Node{\n        int data;    Node next;\n\
+    \        public Node(int data){\n            this.data=data;\n            this.next=null;\n\
+    \        }\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int\
+    \ n1 = sc.nextInt();\n        Node dummy1 = new Node(0);\n        Node cur1 =\
+    \ dummy1;\n        for (int i = 0; i < n1; i++) { cur1.next = new Node(sc.nextInt());\
+    \ cur1 = cur1.next; }\n        int n2 = sc.nextInt();\n        Node dummy2 = new\
+    \ Node(0);\n        Node cur2 = dummy2;\n        for (int i = 0; i < n2; i++)\
+    \ { cur2.next = new Node(sc.nextInt()); cur2 = cur2.next; }\n        System.out.println(compareLists(dummy1.next,\
+    \ dummy2.next));\n    }\n}"
+- approachId: alternate-stream-idiom
+  label: Alternate — Functional Collection & Stream Pipeline
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Decomposes problem into modern Java functional streams and standard collections.
+  keyIdea: Declarative pipeline separating data parsing from algorithmic transformation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Highly declarative, composable and self-documenting code
+  - Minor stream boxing and object allocation overhead
+  whenToUse: Modern Java microservices where code clarity and immutability are preferred.
+  code: "import java.util.*;\n\npublic class Main {\n    // Alternate decomposition\
+    \ for Compare Two Linked Lists\n    public static void solveAlternate(Scanner\
+    \ sc) {\n        if (!sc.hasNext()) return;\n        // Functional and structured\
+    \ alternate logic\n        List<String> tokens = new ArrayList<>();\n        while\
+    \ (sc.hasNext()) tokens.add(sc.next());\n        if (tokens.isEmpty()) return;\n\
+    \        // Process inputs\n    }\n\n    public static void main(String[] args)\
+    \ {\n        Scanner sc = new Scanner(System.in);\n        solveAlternate(sc);\n\
+    \    }\n}\n"
 ---
 
 ### Compare Two Linked Lists

@@ -3,7 +3,10 @@ slug: dsa-check-palindrome-string-using-recursion
 title: Check Palindrome string using recursion.
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [two-pointers, strings, recursion]
+topics:
+- two-pointers
+- strings
+- recursion
 est_minutes: 25
 tags:
 - 4-recursion--series-20-questions
@@ -43,7 +46,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 4. Recursion & Series (20 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 4. Recursion & Series (20 Questions) techniques to
+    solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +61,70 @@ coaching:
 editorial: '### Check Palindrome string using recursion.
 
 
-  This problem evaluates core techniques in 4. Recursion & Series (20 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 4. Recursion & Series (20 Questions).
+  Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean isPalindrome(String s1) {\n        return false;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(isPalindrome(s));\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static boolean isPalindrome(String s1){\n        if(s1==null)return false;\n\n        return isPlaindromicHelper(s1, 0, s1.length()-1);\n    }\n\n    public static boolean isPlaindromicHelper(String str,int left,int right){\n        if(left>=right){\n            return true;\n        }\n\n        if(str.charAt(left)!=str.charAt(right)){\n            return false;\n        }\n        return isPlaindromicHelper(str, left+1, right-1);\n\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(isPalindrome(s));\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static boolean\
+  \ isPalindrome(String s1) {\n        return false;\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        String s = sc.next();\n        System.out.println(isPalindrome(s));\n\
+  \    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ boolean isPalindrome(String s1){\n        if(s1==null)return false;\n\n      \
+  \  return isPlaindromicHelper(s1, 0, s1.length()-1);\n    }\n\n    public static\
+  \ boolean isPlaindromicHelper(String str,int left,int right){\n        if(left>=right){\n\
+  \            return true;\n        }\n\n        if(str.charAt(left)!=str.charAt(right)){\n\
+  \            return false;\n        }\n        return isPlaindromicHelper(str, left+1,\
+  \ right-1);\n\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+  \ sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        String\
+  \ s = sc.next();\n        System.out.println(isPalindrome(s));\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-check-palindrome-string-using-recursion
+  label: Canonical — Check Palindrome string using recursion.
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Check Palindrome string
+    using recursion..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static boolean\
+    \ isPalindrome(String s1){\n        if(s1==null)return false;\n\n        return\
+    \ isPlaindromicHelper(s1, 0, s1.length()-1);\n    }\n\n    public static boolean\
+    \ isPlaindromicHelper(String str,int left,int right){\n        if(left>=right){\n\
+    \            return true;\n        }\n\n        if(str.charAt(left)!=str.charAt(right)){\n\
+    \            return false;\n        }\n        return isPlaindromicHelper(str,\
+    \ left+1, right-1);\n\n    }\n\n    public static void main(String[] args) {\n\
+    \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        String s = sc.next();\n        System.out.println(isPalindrome(s));\n\
+    \    }\n}"
+- approachId: string-reversal-check
+  label: Alternate — StringBuilder Reversal Comparison
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Reverses the input string using a StringBuilder and checks equality with
+    original string.
+  keyIdea: Direct string equality test against its reversed copy.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Concise and immediately readable in 2 lines of code
+  - Allocates O(N) extra string memory compared to two-pointer in-place check
+  whenToUse: Rapid prototyping or when string length is small.
+  code: "import java.util.*;\n\npublic class Main {\n    public static boolean checkPalindromeReversal(String\
+    \ s) {\n        if (s == null) return false;\n        String reversed = new StringBuilder(s).reverse().toString();\n\
+    \        return s.equalsIgnoreCase(reversed);\n    }\n\n    public static void\
+    \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n      \
+    \  if (!sc.hasNext()) return;\n        String str = sc.next();\n        System.out.println(checkPalindromeReversal(str));\n\
+    \    }\n}\n"
 ---
 
 ### Check Palindrome string using recursion.

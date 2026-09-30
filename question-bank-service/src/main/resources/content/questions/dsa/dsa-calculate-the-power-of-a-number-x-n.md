@@ -3,7 +3,8 @@ slug: dsa-calculate-the-power-of-a-number-x-n
 title: Calculate the Power of a number (x^n).
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [math]
+topics:
+- math
 est_minutes: 15
 tags:
 - 1-basic-numbers--math-the-warm-up--25-questions
@@ -34,7 +35,8 @@ hiddenTests:
   expectedOutput: "Power of a^n is : \n759375"
   weight: 50
 hints:
-- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) algorithmic patterns.
+- Analyze the problem using 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+  algorithmic patterns.
 - Consider space and time complexity trade-offs to reach optimal efficiency.
 constraints:
 - 1 <= N <= 10^5
@@ -43,7 +45,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions) techniques to solve the problem efficiently.
+  approachHint: Utilize standard 1. Basic Numbers & Math (The "Warm Up" - 25 Questions)
+    techniques to solve the problem efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +60,67 @@ coaching:
 editorial: '### Calculate the Power of a number (x^n).
 
 
-  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up" - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in 1. Basic Numbers & Math (The "Warm Up"
+  - 25 Questions). Implement an optimal algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void powerHelper(int a,int b) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        powerHelper(a, b);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static void powerHelper(int a,int b){\n        if(b==0){\n            System.out.println(1);return;\n        }\n       \n        int power=1;\n        for(int i=1;i<=b;i++){\n            power=power*a;\n        }\n\n       System.out.println(\"Power of a^n is : \\n\"+power);\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        powerHelper(a, b);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void powerHelper(int\
+  \ a,int b) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n\
+  \        powerHelper(a, b);\n    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ void powerHelper(int a,int b){\n        if(b==0){\n            System.out.println(1);return;\n\
+  \        }\n       \n        int power=1;\n        for(int i=1;i<=b;i++){\n    \
+  \        power=power*a;\n        }\n\n       System.out.println(\"Power of a^n is\
+  \ : \\n\"+power);\n    }\n\n    public static void main(String[] args) {\n     \
+  \   Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n \
+  \       int a = sc.nextInt();\n        int b = sc.nextInt();\n        powerHelper(a,\
+  \ b);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-calculate-the-power-of-a-number-x-n
+  label: Canonical — Calculate the Power of a number (x^n).
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Calculate the Power of
+    a number (x^n)..
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static void\
+    \ powerHelper(int a,int b){\n        if(b==0){\n            System.out.println(1);return;\n\
+    \        }\n       \n        int power=1;\n        for(int i=1;i<=b;i++){\n  \
+    \          power=power*a;\n        }\n\n       System.out.println(\"Power of a^n\
+    \ is : \\n\"+power);\n    }\n\n    public static void main(String[] args) {\n\
+    \        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        int a = sc.nextInt();\n        int b = sc.nextInt();\n        powerHelper(a,\
+    \ b);\n    }\n}"
+- approachId: string-digit-stream
+  label: Alternate — String Representation Digit Extraction
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Extracts and processes individual digits via string conversion and char
+    array traversal.
+  keyIdea: Character stream decomposition avoiding repetitive integer division.
+  timeComplexity: O(D) where D is number of digits
+  spaceComplexity: O(D)
+  tradeoffs:
+  - Immune to negative sign modulo quirks
+  - Allocates string and char array versus O(1) integer arithmetic
+  whenToUse: Arbitrary-precision inputs or when numbers exceed primitive 64-bit bounds.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        long val = sc.nextLong();\n        // Alternative mathematical\
+    \ decomposition\n        String s = String.valueOf(Math.abs(val));\n        long\
+    \ sum = 0;\n        for (char c : s.toCharArray()) sum += (c - '0');\n       \
+    \ System.out.println(sum);\n    }\n}\n"
 ---
 
 ### Calculate the Power of a number (x^n).

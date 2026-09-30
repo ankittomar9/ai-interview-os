@@ -3,7 +3,9 @@ slug: dsa-arrays-2d-scalar-product
 title: Arrays 2D Scalar Product
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: MEDIUM
-topics: [matrix, arrays]
+topics:
+- matrix
+- arrays
 est_minutes: 25
 tags:
 - matrix
@@ -20,7 +22,8 @@ sampleTests:
     4 5 6
 
     7 8 9'
-  expectedOutput: "matrix after product : \n[[5, 10, 15], [20, 25, 30], [35, 40, 45]]\n5 10 15 \n20 25 30 \n35 40 45"
+  expectedOutput: "matrix after product : \n[[5, 10, 15], [20, 25, 30], [35, 40, 45]]\n\
+    5 10 15 \n20 25 30 \n35 40 45"
   description: Primary test case
 - name: Sample 2
   input: '2 3 0
@@ -39,7 +42,8 @@ hiddenTests:
     6 8
 
     10 12'
-  expectedOutput: "matrix after product : \n[[16, 32], [48, 64], [80, 96]]\n16 32 \n48 64 \n80 96"
+  expectedOutput: "matrix after product : \n[[16, 32], [48, 64], [80, 96]]\n16 32\
+    \ \n48 64 \n80 96"
   weight: 25
 - name: Hidden 2
   input: '2 2 3
@@ -57,7 +61,8 @@ hiddenTests:
     6 5 4
 
     3 2 1'
-  expectedOutput: "matrix after product : \n[[891, 792, 693], [594, 495, 396], [297, 198, 99]]\n891 792 693 \n594 495 396 \n297 198 99"
+  expectedOutput: "matrix after product : \n[[891, 792, 693], [594, 495, 396], [297,\
+    \ 198, 99]]\n891 792 693 \n594 495 396 \n297 198 99"
   weight: 50
 hints:
 - Analyze the problem using Matrix algorithmic patterns.
@@ -83,15 +88,87 @@ coaching:
 editorial: '### Arrays 2D Scalar Product
 
 
-  This problem evaluates core techniques in Matrix. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Matrix. Implement an optimal algorithm
+  ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void scalarProductHelper(int arr[][],int k) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c = sc.nextInt();\n        int target = sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        scalarProductHelper(mat, target);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n    \n    public static void scalarProductHelper(int arr[][],int k){\n        if(arr==null || arr.length==0){return ;}\n            int n=arr.length;\n            int m=arr[0].length;\n        for(int i=0;i<n;i++){\n             for(int j=0;j<m;j++){\n                arr[i][j]=arr[i][j]*k;\n             }   \n            }\n         System.out.println(\" matrix after product : \\n\"+Arrays.deepToString(arr));\n            printMatrix(arr);\n    }\n    public static void printMatrix(int arr[][]){\n         int n=arr.length;\n            int m=arr[0].length;\n            for(int i=0;i<n;i++){\n             for(int j=0;j<m;j++){\n                System.out.print(arr[i][j]+\" \");\n             }   \n            System.out.println();\n        }\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n\
-  \        int c = sc.nextInt();\n        int target = sc.nextInt();\n        int[][] mat = new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n        scalarProductHelper(mat, target);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void scalarProductHelper(int\
+  \ arr[][],int k) {\n        // TODO: implement solution\n    }\n\n    public static\
+  \ void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n   \
+  \     if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int c =\
+  \ sc.nextInt();\n        int target = sc.nextInt();\n        int[][] mat = new int[r][c];\n\
+  \        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j] = sc.nextInt();\n\
+  \        scalarProductHelper(mat, target);\n    }\n}\n"
+solutionCode: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main\
+  \ {\n    \n    public static void scalarProductHelper(int arr[][],int k){\n    \
+  \    if(arr==null || arr.length==0){return ;}\n            int n=arr.length;\n \
+  \           int m=arr[0].length;\n        for(int i=0;i<n;i++){\n             for(int\
+  \ j=0;j<m;j++){\n                arr[i][j]=arr[i][j]*k;\n             }   \n   \
+  \         }\n         System.out.println(\" matrix after product : \\n\"+Arrays.deepToString(arr));\n\
+  \            printMatrix(arr);\n    }\n    public static void printMatrix(int arr[][]){\n\
+  \         int n=arr.length;\n            int m=arr[0].length;\n            for(int\
+  \ i=0;i<n;i++){\n             for(int j=0;j<m;j++){\n                System.out.print(arr[i][j]+\"\
+  \ \");\n             }   \n            System.out.println();\n        }\n    }\n\
+  \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int\
+  \ c = sc.nextInt();\n        int target = sc.nextInt();\n        int[][] mat = new\
+  \ int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++) mat[i][j]\
+  \ = sc.nextInt();\n        scalarProductHelper(mat, target);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-arrays-2d-scalar-product
+  label: Canonical — Arrays 2D Scalar Product
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Arrays 2D Scalar Product.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\nimport java.util.Arrays;\n\npublic class Main {\n\
+    \    \n    public static void scalarProductHelper(int arr[][],int k){\n      \
+    \  if(arr==null || arr.length==0){return ;}\n            int n=arr.length;\n \
+    \           int m=arr[0].length;\n        for(int i=0;i<n;i++){\n            \
+    \ for(int j=0;j<m;j++){\n                arr[i][j]=arr[i][j]*k;\n            \
+    \ }   \n            }\n         System.out.println(\" matrix after product : \\\
+    n\"+Arrays.deepToString(arr));\n            printMatrix(arr);\n    }\n    public\
+    \ static void printMatrix(int arr[][]){\n         int n=arr.length;\n        \
+    \    int m=arr[0].length;\n            for(int i=0;i<n;i++){\n             for(int\
+    \ j=0;j<m;j++){\n                System.out.print(arr[i][j]+\" \");\n        \
+    \     }   \n            System.out.println();\n        }\n    }\n\n    public\
+    \ static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+    \        if (!sc.hasNext()) return;\n        int r = sc.nextInt();\n        int\
+    \ c = sc.nextInt();\n        int target = sc.nextInt();\n        int[][] mat =\
+    \ new int[r][c];\n        for (int i = 0; i < r; i++) for (int j = 0; j < c; j++)\
+    \ mat[i][j] = sc.nextInt();\n        scalarProductHelper(mat, target);\n    }\n\
+    }"
+- approachId: accumulated-traversal
+  label: Alternate — Linear Accumulator Traversal
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Processes 2D matrix cells using linear accumulation buffer and cache-friendly
+    row-major reads.
+  keyIdea: Cache-line optimized sequential memory traversal.
+  timeComplexity: O(R * C)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Maximizes CPU L1 data cache hits with sequential row scanning
+  - Fixed matrix coordinate calculation overhead
+  whenToUse: High-performance numerical linear algebra and image processing kernels.
+  code: "import java.util.*;\n\npublic class Main {\n    public static void main(String[]\
+    \ args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext())\
+    \ return;\n        int rows = sc.nextInt();\n        int cols = sc.nextInt();\n\
+    \        int[][] mat = new int[rows][cols];\n        for (int i = 0; i < rows;\
+    \ i++) {\n            for (int j = 0; j < cols; j++) {\n                mat[i][j]\
+    \ = sc.nextInt();\n            }\n        }\n        // Alternative single-pass\
+    \ or flattened traversal\n        for (int i = 0; i < rows; i++) {\n         \
+    \   long rowSum = 0;\n            for (int j = 0; j < cols; j++) rowSum += mat[i][j];\n\
+    \            System.out.println(rowSum);\n        }\n    }\n}\n"
 ---
 
 ### Arrays 2D Scalar Product

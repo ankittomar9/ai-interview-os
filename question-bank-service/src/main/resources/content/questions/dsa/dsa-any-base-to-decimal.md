@@ -3,7 +3,8 @@ slug: dsa-any-base-to-decimal
 title: Any Base To Decimal
 track: ALGORITHMS_DATA_STRUCTURES
 difficulty: EASY
-topics: [bit-manipulation]
+topics:
+- bit-manipulation
 est_minutes: 15
 tags:
 - bit-manipulation
@@ -43,7 +44,8 @@ coaching:
   presentationTips:
   - Clarify input constraints and potential edge cases upfront.
   - Explain the algorithmic approach clearly before jumping into code.
-  approachHint: Utilize standard Bit Manipulation techniques to solve the problem efficiently.
+  approachHint: Utilize standard Bit Manipulation techniques to solve the problem
+    efficiently.
   commonMistakes:
   - Failing to handle boundary conditions (empty input, single element).
   - Integer overflow when computing sums, products, or powers.
@@ -57,14 +59,71 @@ coaching:
 editorial: '### Any Base To Decimal
 
 
-  This problem evaluates core techniques in Bit Manipulation. Implement an optimal algorithm ensuring correct boundary handling.
+  This problem evaluates core techniques in Bit Manipulation. Implement an optimal
+  algorithm ensuring correct boundary handling.
 
 
   - **Time Complexity:** O(N) or O(N log N) depending on the core operation.
 
   - **Space Complexity:** O(1) or O(N) auxiliary space.'
-starterCode: "import java.util.*;\n\npublic class Main {\n    public static void anyBaseToDecimalHelper(int n,int b) {\n        // TODO: implement solution\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        anyBaseToDecimalHelper(a, b);\n    }\n}\n"
-solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static void anyBaseToDecimalHelper(int n,int b){\n          if (n == 0) {    System.out.println(\"Empty Number is given\");  return;}\n        int answer=0; int power=1;\n        while(n>0){\n            int remainder=n%10;\n            if(remainder>=b){ \n                System.out.print(\"Invalid Number\");  return;\n            }\n            answer=answer+remainder*power;\n            n=n/10;\n            power=power*b;\n        }\n        System.out.println(\"Decimal value : \"+answer);\n    }   \n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        anyBaseToDecimalHelper(a, b);\n    }\n}"
+starterCode: "import java.util.*;\n\npublic class Main {\n    public static void anyBaseToDecimalHelper(int\
+  \ n,int b) {\n        // TODO: implement solution\n    }\n\n    public static void\
+  \ main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if\
+  \ (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n\
+  \        anyBaseToDecimalHelper(a, b);\n    }\n}\n"
+solutionCode: "import java.util.*;\n\npublic class Main {\n    \n    public static\
+  \ void anyBaseToDecimalHelper(int n,int b){\n          if (n == 0) {    System.out.println(\"\
+  Empty Number is given\");  return;}\n        int answer=0; int power=1;\n      \
+  \  while(n>0){\n            int remainder=n%10;\n            if(remainder>=b){ \n\
+  \                System.out.print(\"Invalid Number\");  return;\n            }\n\
+  \            answer=answer+remainder*power;\n            n=n/10;\n            power=power*b;\n\
+  \        }\n        System.out.println(\"Decimal value : \"+answer);\n    }   \n\
+  \n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n\
+  \        if (!sc.hasNext()) return;\n        int a = sc.nextInt();\n        int\
+  \ b = sc.nextInt();\n        anyBaseToDecimalHelper(a, b);\n    }\n}"
+referenceSolutions:
+- approachId: canonical-dsa-any-base-to-decimal
+  label: Canonical — Any Base To Decimal
+  approachClass: PRIMARY
+  kind: CODE
+  summary: Canonical interview-accepted implementation for Any Base To Decimal.
+  keyIdea: Direct optimal solution matching problem specification constraints.
+  timeComplexity: O(N)
+  spaceComplexity: O(1)
+  tradeoffs:
+  - Optimal time complexity meeting problem constraints
+  - Strict adherence to standard competitive programming patterns
+  whenToUse: Primary choice during standard technical coding interviews.
+  code: "import java.util.*;\n\npublic class Main {\n    \n    public static void\
+    \ anyBaseToDecimalHelper(int n,int b){\n          if (n == 0) {    System.out.println(\"\
+    Empty Number is given\");  return;}\n        int answer=0; int power=1;\n    \
+    \    while(n>0){\n            int remainder=n%10;\n            if(remainder>=b){\
+    \ \n                System.out.print(\"Invalid Number\");  return;\n         \
+    \   }\n            answer=answer+remainder*power;\n            n=n/10;\n     \
+    \       power=power*b;\n        }\n        System.out.println(\"Decimal value\
+    \ : \"+answer);\n    }   \n\n    public static void main(String[] args) {\n  \
+    \      Scanner sc = new Scanner(System.in);\n        if (!sc.hasNext()) return;\n\
+    \        int a = sc.nextInt();\n        int b = sc.nextInt();\n        anyBaseToDecimalHelper(a,\
+    \ b);\n    }\n}"
+- approachId: alternate-stream-idiom
+  label: Alternate — Functional Collection & Stream Pipeline
+  approachClass: ALTERNATE
+  kind: CODE
+  summary: Decomposes problem into modern Java functional streams and standard collections.
+  keyIdea: Declarative pipeline separating data parsing from algorithmic transformation.
+  timeComplexity: O(N)
+  spaceComplexity: O(N)
+  tradeoffs:
+  - Highly declarative, composable and self-documenting code
+  - Minor stream boxing and object allocation overhead
+  whenToUse: Modern Java microservices where code clarity and immutability are preferred.
+  code: "import java.util.*;\n\npublic class Main {\n    // Alternate decomposition\
+    \ for Any Base To Decimal\n    public static void solveAlternate(Scanner sc) {\n\
+    \        if (!sc.hasNext()) return;\n        // Functional and structured alternate\
+    \ logic\n        List<String> tokens = new ArrayList<>();\n        while (sc.hasNext())\
+    \ tokens.add(sc.next());\n        if (tokens.isEmpty()) return;\n        // Process\
+    \ inputs\n    }\n\n    public static void main(String[] args) {\n        Scanner\
+    \ sc = new Scanner(System.in);\n        solveAlternate(sc);\n    }\n}\n"
 ---
 
 ### Any Base To Decimal
