@@ -30,6 +30,7 @@ import {
   type QuestionEncountersResponse
 } from '../../services/api';
 import { Chip } from '../ui/Chip';
+import { ReferenceApproaches } from './ReferenceApproaches';
 
 interface QuestionDetailModalProps {
   slug: string | null;
@@ -646,8 +647,10 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                         </div>
                       )}
 
-                      {/* Text Solution */}
-                      {detail.solution ? (
+                      {/* Reference Approaches & Solutions */}
+                      {detail.referenceSolutions && detail.referenceSolutions.length > 0 ? (
+                        <ReferenceApproaches approaches={detail.referenceSolutions} isInterviewMode={false} />
+                      ) : detail.solution ? (
                         <div className="space-y-2">
                           <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-text-3 flex items-center gap-1.5">
                             <FileCode2 className="w-4 h-4 text-primary" />
@@ -660,6 +663,19 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                       ) : (
                         <div className="p-4 rounded-xl bg-elevated/50 text-text-3 text-xs text-center">
                           No text solution provided yet. Check back after next question bank update.
+                        </div>
+                      )}
+
+                      {/* Optional Editorial Analysis */}
+                      {detail.editorialMarkdown && (
+                        <div className="space-y-2 pt-4 border-t border-border">
+                          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-text-3 flex items-center gap-1.5">
+                            <BookOpen className="w-4 h-4 text-primary" />
+                            Architectural Editorial &amp; Discussion
+                          </h3>
+                          <div className="p-4 rounded-xl bg-surface border border-border text-xs text-text-2 whitespace-pre-wrap leading-relaxed">
+                            {detail.editorialMarkdown}
+                          </div>
                         </div>
                       )}
                     </div>

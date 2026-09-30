@@ -771,6 +771,24 @@ export interface HiddenTestCaseMeta {
     description: string;
 }
 
+export interface ReferenceSolution {
+    approachId: string;
+    label: string;
+    approachClass: 'PRIMARY' | 'ALTERNATE';
+    kind: 'CODE' | 'SQL' | 'WRITEUP';
+    summary: string;
+    keyIdea: string;
+    timeComplexity?: string;
+    spaceComplexity?: string;
+    tradeoffs?: string[];
+    whenToUse?: string;
+    code?: string;
+    files?: Record<string, string>;
+    sql?: string;
+    writeUp?: string;
+    diagramNotes?: string;
+}
+
 export interface CatalogQuestionDetail {
     id: string;
     slug: string;
@@ -780,10 +798,15 @@ export interface CatalogQuestionDetail {
     topics: string[];
     estMinutes: number;
     statement: string;
+    problemStatement?: string;
     examples: string[];
     constraints: string[];
     starterCode?: string;
+    starterFiles?: Record<string, string>;
     solution?: string;
+    solutionCode?: string;
+    solutionSql?: string;
+    solutionFiles?: Record<string, string>;
     solutionMasked: boolean;
     solutionVideoUrl?: string;
     testCasesCount: number;
@@ -791,6 +814,8 @@ export interface CatalogQuestionDetail {
     hiddenTestCasesMeta: HiddenTestCaseMeta[];
     hints?: string[];
     resources?: QuestionResourceItem[];
+    referenceSolutions?: ReferenceSolution[];
+    editorialMarkdown?: string;
 }
 
 export const getCatalogTopics = async (track?: string): Promise<CatalogTopicSummary[]> => {
@@ -837,13 +862,23 @@ export const getCatalogQuestionDetail = async (
     slug: string,
     revealSolution = false
 ): Promise<CatalogQuestionDetail> => {
-    return fetchJson<CatalogQuestionDetail>(
+    const raw = await fetchJson<any>(
         `${GATEWAY_BASE}/catalog/questions/${encodeURIComponent(slug)}?revealSolution=${revealSolution}`,
         {
             method: 'GET',
             timeoutMs: 15000
         }
     );
+    if (!raw) return raw;
+    return {
+        ...raw,
+        statement: raw.statement || raw.problemStatement || '',
+        solution: raw.solution || raw.solutionCode || raw.solutionSql || undefined,
+        referenceSolutions: raw.referenceSolutions || [],
+        editorialMarkdown: raw.editorialMarkdown,
+        hints: raw.hints || [],
+        constraints: raw.constraints || []
+    };
 };
 
 // --- Addendum A: Cross-Mode Question Continuity ---

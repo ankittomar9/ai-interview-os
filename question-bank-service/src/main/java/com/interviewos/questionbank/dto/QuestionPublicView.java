@@ -1,12 +1,15 @@
 package com.interviewos.questionbank.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.interviewos.questionbank.document.QuestionDocument;
+import com.interviewos.questionbank.document.ReferenceSolution;
 import lombok.Builder;
 
 import java.util.List;
 import java.util.Map;
 
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record QuestionPublicView(
         String slug,
         String title,
@@ -29,13 +32,15 @@ public record QuestionPublicView(
         QuestionDocument.CoachingContent coaching,
         String editorialMarkdown,
         String solutionCode,
+        Map<String, String> solutionFiles,
         QuestionDocument.ExecutionLimits limits,
         String buildProfile,
         String dbEngine,
         String schemaMarkdown,
         String expectedCsv,
         boolean ordered,
-        String solutionSql
+        String solutionSql,
+        List<ReferenceSolution> referenceSolutions
 ) {
     public static QuestionPublicView fromDocument(QuestionDocument doc) {
         return fromDocument(doc, false);
@@ -50,7 +55,7 @@ public record QuestionPublicView(
                 .difficulty(doc.getDifficulty())
                 .topics(doc.getTopics())
                 .estMinutes(doc.getEstMinutes())
-                .solutionVideoUrl(doc.getSolutionVideoUrl())
+                .solutionVideoUrl(isInterviewMode ? null : doc.getSolutionVideoUrl())
                 .tags(doc.getTags())
                 .problemStatement(doc.getProblemStatement())
                 .starterCode(doc.getStarterCode())
@@ -65,6 +70,7 @@ public record QuestionPublicView(
                 .coaching(doc.getCoaching())
                 .editorialMarkdown(isInterviewMode ? null : doc.getEditorialMarkdown())
                 .solutionCode(isInterviewMode ? null : doc.getSolutionCode())
+                .solutionFiles(isInterviewMode ? null : doc.getSolutionFiles())
                 .limits(doc.getLimits())
                 .buildProfile(doc.getBuildProfile())
                 .dbEngine(doc.getDbEngine())
@@ -72,6 +78,7 @@ public record QuestionPublicView(
                 .expectedCsv(doc.getExpectedCsv())
                 .ordered(doc.isOrdered())
                 .solutionSql(isInterviewMode ? null : doc.getSolutionSql())
+                .referenceSolutions(isInterviewMode ? null : ReferenceSolutionAdapter.resolve(doc))
                 .build();
     }
 }
