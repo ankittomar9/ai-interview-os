@@ -87,6 +87,29 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.METHOD_NOT_ALLOWED.value(), "Method Not Allowed", ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException ex,
+            HttpServletRequest request
+    ) {
+        String detail = "Malformed or unreadable JSON payload";
+        if (ex.getCause() instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException ifx) {
+            if (ifx.getTargetType() != null && ifx.getTargetType().isEnum()) {
+                detail = String.format("Invalid value '%s' for enum %s. Accepted values: %s",
+                        ifx.getValue(),
+                        ifx.getTargetType().getSimpleName(),
+                        java.util.Arrays.toString(ifx.getTargetType().getEnumConstants()));
+            } else {
+                detail = "Invalid format for property: " + ifx.getValue();
+            }
+        } else if (ex.getMessage() != null) {
+            detail = ex.getMostSpecificCause().getMessage();
+        }
+        log.warn("Malformed HTTP request at URI {}: {}", request.getRequestURI(), detail);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), "Bad Request", detail, request.getRequestURI()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception at URI: {} - Error: ", request.getRequestURI(), ex);
