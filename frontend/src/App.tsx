@@ -7,6 +7,7 @@ import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
 import { ArenaRoom } from './components/arena/ArenaRoom';
 import { DiagnosticReportView } from './components/DiagnosticReportView';
+import { mapQuestionDifficultyToSeniority } from './utils/difficulty';
 import { PhoneProctorView } from './components/PhoneProctorView';
 import { QuestionCatalog } from './components/QuestionCatalog';
 import { PracticeSummary } from './components/PracticeSummary';
@@ -141,7 +142,7 @@ export function App() {
         candidateName: candidateName || 'Local Practitioner',
         roleTitle: `Practice: ${q.title}`,
         track: q.track || 'ALGORITHMS_DATA_STRUCTURES',
-        difficulty: (q.difficulty?.toUpperCase() as DifficultyLevel) || 'MID',
+        difficulty: mapQuestionDifficultyToSeniority(q.difficulty),
         mode: 'PLAYGROUND'
       });
 
@@ -310,7 +311,7 @@ export function App() {
 
     const firstQ = selectedQuestions[0];
     const track = firstQ.track || 'ALGORITHMS_DATA_STRUCTURES';
-    const difficulty = (firstQ.difficulty?.toUpperCase() as DifficultyLevel) || 'MID';
+    const difficulty = mapQuestionDifficultyToSeniority(firstQ.difficulty);
 
     try {
       const session = await createSession({
