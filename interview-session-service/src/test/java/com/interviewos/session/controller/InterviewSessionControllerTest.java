@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -74,6 +75,29 @@ class InterviewSessionControllerTest {
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.status").value("INITIALIZED"))
                 .andExpect(jsonPath("$.candidateId").value("candidate-123"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/sessions with invalid difficulty returns 400 Bad Request instead of 500")
+    void testCreateSessionWithInvalidDifficultyReturns400() throws Exception {
+        String invalidPayload = """
+                {
+                    "candidateId": "practitioner-01",
+                    "roleTitle": "Practice: Design a Parking Lot",
+                    "track": "SPRING_LLD",
+                    "difficulty": "EASY",
+                    "mode": "PLAYGROUND"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/sessions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidPayload))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", containsString("Invalid value 'EASY' for enum DifficultyLevel")))
+                .andExpect(jsonPath("$.message", containsString("Accepted values: [JUNIOR, MID, SENIOR, STAFF]")));
     }
 
     @Test
