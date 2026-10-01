@@ -232,7 +232,12 @@ public class VaultArchiveService {
             log.info("✅ Vault report finalization successfully completed (VERIFIED, v{}) for session {} at {}", nextVersion, sessionId, sessionDir);
         } else {
             String err = "Verification failed: " + String.join(", ", verification.getErrors());
-            statusService.markFailed(sessionId, err);
+            try {
+                buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "FAILED", nextVersion, true, verification.getErrors());
+            } catch (Exception writeEx) {
+                log.warn("Failed to rewrite manifest as FAILED for session {}: {}", sessionId, writeEx.getMessage());
+            }
+            statusService.markFailed(sessionId, sessionDir, err);
             log.error("❌ Vault report finalization verification failed for session {}: {}", sessionId, err);
             throw new IllegalStateException(err);
         }
@@ -527,6 +532,20 @@ public class VaultArchiveService {
             int vaultVersion,
             boolean expectReport
     ) throws IOException {
+        buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, status, vaultVersion, expectReport, Collections.emptyList());
+    }
+
+    public void buildAndWriteManifest(
+            Path sessionDir,
+            Long sessionId,
+            String relFolderPath,
+            InterviewSession session,
+            InterviewSessionDocument doc,
+            String status,
+            int vaultVersion,
+            boolean expectReport,
+            List<String> errors
+    ) throws IOException {
         List<ArtifactEntry> artifacts = new ArrayList<>();
         try (Stream<Path> stream = Files.walk(sessionDir)) {
             List<Path> files = stream.filter(Files::isRegularFile).sorted().toList();
@@ -621,7 +640,7 @@ public class VaultArchiveService {
                         .build())
                 .artifacts(artifacts)
                 .missing(missing)
-                .errors(Collections.emptyList())
+                .errors(errors != null ? errors : Collections.emptyList())
                 .build();
 
         atomicWriteJson(sessionDir.resolve("manifest.json"), manifest);

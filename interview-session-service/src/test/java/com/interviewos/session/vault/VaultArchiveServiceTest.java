@@ -520,4 +520,95 @@ class VaultArchiveServiceTest {
         assertTrue(verification.getMissing().contains("recordings/screen.webm"), "missing[] must name recordings/screen.webm");
         assertTrue(verification.getErrors().stream().anyMatch(e -> e.contains("recordings/screen.webm")), "errors must mention recordings/screen.webm");
     }
+
+    @Test
+    @DisplayName("FIX-7 Dual-Persistence: Verification failure at finalize rewrites manifest as FAILED with errors and calls markFailed with sessionDir")
+    void testFinalizeWithReportVerificationFailureRewritesManifestFailed(@TempDir Path tempVaultRoot) throws Exception {
+        vaultProperties.setRoot(tempVaultRoot.toString());
+        Long sessionId = 6001L;
+        Instant now = Instant.parse("2026-10-01T16:00:00Z");
+
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .roleTitle("Senior Engineer")
+                .track(InterviewTrack.ALGORITHMS_DATA_STRUCTURES)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.COMPLETED)
+                .completedAt(now)
+                .build();
+
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.empty());
+
+        EvaluationReportClient mockReportClient = mock(EvaluationReportClient.class);
+        byte[] fakeJson = "{\"score\": 95}".getBytes(StandardCharsets.UTF_8);
+        byte[] fakePdf = "%PDF-1.4 simulated".getBytes(StandardCharsets.UTF_8);
+        when(mockReportClient.fetchReportJson(sessionId)).thenReturn(Optional.of(fakeJson));
+        when(mockReportClient.fetchReportPdf(sessionId)).thenReturn(Optional.of(fakePdf));
+
+        VaultArchiveService archiveService = new VaultArchiveService(
+                vaultProperties,
+                pathPolicy,
+                statusService,
+                sessionRepository,
+                mongoSessionRepository,
+                sessionRecordingService,
+                sessionQuestionService,
+                null,
+                null,
+                mockReportClient
+        );
+
+        // Stage 1 archival succeeds
+        Path sessionDir = archiveService.archiveSessionStage1(sessionId);
+
+        // Deliberately delete an expected artifact so verifyVaultFolder will fail during finalize
+        Path screenWebm = sessionDir.resolve("recordings/screen.webm");
+        Files.delete(screenWebm);
+
+        // Calling finalizeWithReport must fail verification and throw IllegalStateException
+        IllegalStateException thrown = assertThrows(
+                IllegalStateException.class,
+                () -> archiveService.finalizeWithReport(sessionId),
+                "Expected finalizeWithReport to throw on verification failure"
+        );
+        assertTrue(thrown.getMessage().contains("Verification failed"));
+
+        // Verify markFailed was called with sessionDir
+        verify(statusService, times(1)).markFailed(eq(sessionId), eq(sessionDir), anyString());
+
+        // Verify manifest on disk was rewritten with FAILED and populated errors
+        VaultArchiveService.ManifestPayload manifest = new ObjectMapper().readValue(
+                sessionDir.resolve("manifest.json").toFile(),
+                VaultArchiveService.ManifestPayload.class
+        );
+        assertEquals("FAILED", manifest.getStatus(), "On-disk manifest status must be FAILED, not VERIFIED");
+        assertNotNull(manifest.getErrors(), "manifest errors[] must not be null");
+        assertFalse(manifest.getErrors().isEmpty(), "manifest errors[] must contain verification error details");
+        assertTrue(manifest.getErrors().stream().anyMatch(e -> e.contains("recordings/screen.webm")),
+                "manifest errors[] must cite the missing artifact");
+    }
+
+    @Test
+    @DisplayName("FIX-7 Sidecar: VaultStatusService.markFailed writes vault-status.json sidecar with status FAILED")
+    void testVaultStatusServiceMarkFailedWritesSidecar(@TempDir Path tempDir) throws Exception {
+        InterviewSessionMongoRepository mockMongo = mock(InterviewSessionMongoRepository.class);
+        VaultStatusService realStatusService = new VaultStatusService(mockMongo);
+
+        Long sessionId = 6002L;
+        String errorMsg = "Simulated verification failure";
+
+        realStatusService.markFailed(sessionId, tempDir, errorMsg);
+
+        Path sidecarPath = tempDir.resolve("vault-status.json");
+        assertTrue(Files.exists(sidecarPath), "vault-status.json sidecar must be created");
+
+        VaultStatusService.VaultStatusPayload sidecar = new ObjectMapper().readValue(
+                sidecarPath.toFile(),
+                VaultStatusService.VaultStatusPayload.class
+        );
+        assertEquals("FAILED", sidecar.getStatus());
+        assertEquals(errorMsg, sidecar.getLastError());
+        assertEquals(sessionId, sidecar.getSessionId());
+    }
 }
