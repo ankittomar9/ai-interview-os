@@ -8,6 +8,7 @@ import { HldScreen } from "./screens/HldScreen";
 import { BehavioralScreen } from "./screens/BehavioralScreen";
 import { ResumeScreen } from "./screens/ResumeScreen";
 import { EmptyTrackState } from "./EmptyTrackState";
+import { SessionSectionFaultState } from "./SessionSectionFaultState";
 import { ScreenErrorBoundary } from "./ScreenErrorBoundary";
 import type { ExecutionResult } from "../ide/TestcasePanel";
 
@@ -88,7 +89,19 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
 
   const renderScreen = () => {
     if (questionsCount === 0 && (effectiveSection === 'DSA' || effectiveSection === 'SQL' || effectiveSection === 'LLD' || effectiveSection === 'SYSTEM_DESIGN')) {
-      return <EmptyTrackState track={track} onSelectTrack={onSelectTrack} onBrowseCatalog={onBrowseCatalog} />;
+      if (isPlayground) {
+        return <EmptyTrackState track={track} onSelectTrack={onSelectTrack} onBrowseCatalog={onBrowseCatalog} />;
+      }
+      const hasAssignedQuestions = Boolean(
+        _sectionQuestions && _sectionQuestions.some((sq) => sq && sq.length > 0)
+      );
+      return (
+        <SessionSectionFaultState
+          sectionType={effectiveSection}
+          track={track}
+          hasAssignedQuestions={hasAssignedQuestions}
+        />
+      );
     }
 
     switch (effectiveSection) {
@@ -181,7 +194,16 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
         );
 
       default:
-        return <EmptyTrackState track={track} onSelectTrack={onSelectTrack} onBrowseCatalog={onBrowseCatalog} />;
+        if (isPlayground) {
+          return <EmptyTrackState track={track} onSelectTrack={onSelectTrack} onBrowseCatalog={onBrowseCatalog} />;
+        }
+        return (
+          <SessionSectionFaultState
+            sectionType={effectiveSection}
+            track={track}
+            hasAssignedQuestions={false}
+          />
+        );
     }
   };
 
