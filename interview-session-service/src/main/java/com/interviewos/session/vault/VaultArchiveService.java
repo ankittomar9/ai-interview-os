@@ -264,10 +264,11 @@ public class VaultArchiveService {
         writeAttachments(sessionDir, sessionId);
 
         // 8. manifest.json (av1.manifest@1)
-        buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "STAGED", 1);
+        boolean isAborted = session.getStatus() == SessionStatus.ABORTED_SHARE;
+        String manifestStatus = isAborted ? "PARTIAL" : "STAGED";
+        buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, manifestStatus, 1);
 
         // 9. Update MongoDB & status sidecar
-        boolean isAborted = session.getStatus() == SessionStatus.ABORTED_SHARE;
         if (isAborted) {
             statusService.markAborted(sessionId, relFolderPath, sessionDir);
         } else {

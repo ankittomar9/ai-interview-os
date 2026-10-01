@@ -866,6 +866,16 @@ public class InterviewSessionService {
 
         log.info("Session {} transitioned to ABORTED_SHARE [reason: {}]",
                 sessionId, request != null ? request.reason() : "UNSPECIFIED");
+
+        // Vault archive for aborted session (REQ-AV-9)
+        if (vaultArchiveService != null) {
+            try {
+                vaultArchiveService.archiveSessionAsync(saved.getId());
+            } catch (Exception e) {
+                log.error("Failed to trigger vault archive for aborted session {}: {}", sessionId, e.getMessage(), e);
+            }
+        }
+
         return SessionResponse.fromEntity(saved);
     }
 

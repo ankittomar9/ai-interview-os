@@ -11,6 +11,7 @@ import com.interviewos.session.repository.InterviewSessionRepository;
 import com.interviewos.session.service.InterviewSessionService;
 import com.interviewos.session.service.SessionQuestionService;
 import com.interviewos.session.service.SessionRecordingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -307,5 +308,36 @@ class VaultArchiveServiceTest {
         // Verify manifest is valid and updated
         VaultArchiveService.ManifestVerificationResult result = archiveServiceWithReportClient.verifyVaultFolder(sessionDir);
         assertTrue(result.isValid(), "Manifest must remain valid after idempotent finalize");
+    }
+
+    @Test
+    @DisplayName("REQ-AV-9: Aborted session produces PARTIAL manifest and calls markAborted")
+    void testAbortSessionArchiving(@TempDir Path tempVaultRoot) throws Exception {
+        vaultProperties.setRoot(tempVaultRoot.toString());
+        Long sessionId = 4001L;
+        Instant now = Instant.parse("2026-10-01T14:45:00Z");
+
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .roleTitle("Mid Developer")
+                .track(InterviewTrack.ALGORITHMS_DATA_STRUCTURES)
+                .difficulty(DifficultyLevel.MID)
+                .status(SessionStatus.ABORTED_SHARE)
+                .completedAt(now)
+                .build();
+
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.empty());
+
+        Path sessionDir = vaultArchiveService.archiveSessionStage1(sessionId);
+
+        // Verify folder and manifest
+        assertTrue(Files.exists(sessionDir.resolve("manifest.json")));
+        VaultArchiveService.ManifestPayload manifest = new ObjectMapper().readValue(
+                sessionDir.resolve("manifest.json").toFile(),
+                VaultArchiveService.ManifestPayload.class
+        );
+        assertEquals("PARTIAL", manifest.getStatus(), "Aborted session manifest status must be PARTIAL");
+        verify(statusService, times(1)).markAborted(eq(sessionId), anyString(), eq(sessionDir));
     }
 }
