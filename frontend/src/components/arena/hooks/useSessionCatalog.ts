@@ -35,6 +35,20 @@ export const BINDING_ERROR_QUESTION: GenerateQuestionResponse = {
   problemSlug: 'binding-error'
 };
 
+export function resolveSectionQuestions(
+  sectionQuestions: GenerateQuestionResponse[][] | undefined | null,
+  sectionIndex: number,
+  isInterview: boolean = true
+): GenerateQuestionResponse[] | null {
+  if (isInterview && sectionQuestions) {
+    if (sectionIndex < 0 || sectionIndex >= sectionQuestions.length) {
+      return [];
+    }
+    return sectionQuestions[sectionIndex] || [];
+  }
+  return null;
+}
+
 export function useSessionCatalog({
   defaultQuestion,
   sectionQuestions,
@@ -53,10 +67,7 @@ export function useSessionCatalog({
   }, [activeSectionIndex]);
 
   const activeSectionList = useMemo(() => {
-    if (isInterview && sectionQuestions) {
-      return sectionQuestions[activeSectionIndex] || [];
-    }
-    return null;
+    return resolveSectionQuestions(sectionQuestions, activeSectionIndex, isInterview);
   }, [isInterview, sectionQuestions, activeSectionIndex]);
 
   const [questionsList, setQuestionsList] = useState<GenerateQuestionResponse[]>(() => {
@@ -121,11 +132,13 @@ export function useSessionCatalog({
     };
   }, [track, defaultQuestion, isInterview, playlistQuestions, sessionMode, sessionId, activeSectionList]);
 
+  const effectiveQuestionsList = activeSectionList !== null ? activeSectionList : questionsList;
+
   // Derive activeQuestion: never silently fallback to another question or questionsList[0]
   const activeQuestion = useMemo(() => {
-    if (questionsList.length > 0) {
-      if (activeQuestionIndex >= 0 && activeQuestionIndex < questionsList.length) {
-        return questionsList[activeQuestionIndex];
+    if (effectiveQuestionsList.length > 0) {
+      if (activeQuestionIndex >= 0 && activeQuestionIndex < effectiveQuestionsList.length) {
+        return effectiveQuestionsList[activeQuestionIndex];
       }
       return {
         ...BINDING_ERROR_QUESTION,
@@ -139,22 +152,22 @@ export function useSessionCatalog({
       ...EMPTY_QUESTION,
       track: track || 'ALGORITHMS_DATA_STRUCTURES'
     };
-  }, [questionsList, activeQuestionIndex, activeSectionIndex, defaultQuestion, track]);
+  }, [effectiveQuestionsList, activeQuestionIndex, activeSectionIndex, defaultQuestion, track]);
 
   const selectQuestion = useCallback((index: number) => {
-    if (index >= 0 && index < questionsList.length) {
+    if (index >= 0 && index < effectiveQuestionsList.length) {
       setActiveQuestionIndex(index);
     } else {
-      console.warn(`[useSessionCatalog] Out-of-bounds selectQuestion call: index=${index}, listLength=${questionsList.length}`);
+      console.warn(`[useSessionCatalog] Out-of-bounds selectQuestion call: index=${index}, listLength=${effectiveQuestionsList.length}`);
     }
-  }, [questionsList.length]);
+  }, [effectiveQuestionsList.length]);
 
   const markQuestionStatus = useCallback((slug: string, status: QuestionStatus) => {
     setQuestionStatusMap((prev) => ({ ...prev, [slug]: status }));
   }, []);
 
   return {
-    questionsList,
+    questionsList: effectiveQuestionsList,
     activeQuestion,
     activeQuestionIndex,
     isLoadingQuestions,

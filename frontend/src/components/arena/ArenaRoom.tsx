@@ -120,6 +120,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const persona = getPersona(isPlayground);
   const navSections = useMemo(() => buildNavSections(plan?.sections, initialQuestion.track), [plan?.sections, initialQuestion.track]);
   const [isShareLost, setIsShareLost] = useState(false);
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
 
   useEffect(() => () => { clearVerificationStreams(); }, []);
 
@@ -130,7 +131,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     useSessionCatalog({
       defaultQuestion: initialQuestion,
       sectionQuestions,
-      activeSectionIndex: 0,
+      activeSectionIndex,
       playlistQuestions: initialQuestionsList,
       track: initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES',
       sessionMode,
@@ -172,7 +173,9 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     onRegisterFinishRecorder,
     markQuestionStatus,
     handleAiTurnCompleted,
-    onSectionChanged: (idx, stage) => sectionChangeHandlerRef.current(idx, stage)
+    onSectionChanged: (idx, stage) => sectionChangeHandlerRef.current(idx, stage),
+    activeSectionIndex,
+    onSectionIndexChange: setActiveSectionIndex
   });
 
   const nav = useArenaNavigation({
@@ -189,8 +192,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
 
   const isGateLocked = isApproachGateLocked({
     sessionMode,
-    sectionType: plan?.sections?.[engines.dialogue.activeSectionIndex]?.sectionType || navSections[engines.dialogue.activeSectionIndex]?.sectionType || initialQuestion.track,
-    sectionIndex: engines.dialogue.activeSectionIndex,
+    sectionType: plan?.sections?.[activeSectionIndex]?.sectionType || navSections[activeSectionIndex]?.sectionType || initialQuestion.track,
+    sectionIndex: activeSectionIndex,
     sectionGates
   });
 
@@ -198,7 +201,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     sessionId,
     track: nav.activeTrack,
     sections: plan?.sections,
-    activeSectionIndex: engines.dialogue.activeSectionIndex,
+    activeSectionIndex,
     isApproachGateLocked: isGateLocked,
     sectionQuestions,
     onSectionClick: nav.handleSectionClick,
