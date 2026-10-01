@@ -75,6 +75,21 @@ public class InterviewSessionDocument {
 
     private LocalDateTime completedAt;
 
+    private VaultMetadata vault;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class VaultMetadata {
+        private String status;
+        private String folderPath;
+        private LocalDateTime stagedAt;
+        private LocalDateTime verifiedAt;
+        private Integer attempts;
+        private String lastError;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor
