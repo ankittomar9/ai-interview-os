@@ -105,6 +105,17 @@ this time (operator-directed, contained); process rule stands for future packs.
 Image-only rebuilds, four-number table uses the standardized vocabulary and matches my
 re-run exactly, G4 names real, no secrets, no transcripts.
 
+### G11 — Post-fix surface: F-N2 adopted (NEW, from Qwen's fix-pack review, verified by Z)
+**F-N2 (MEDIUM — next cycle, FIX-7):** in `finalizeWithReport`, when `verifyVaultFolder`
+fails after the manifest was already written as `VERIFIED`, `statusService.markFailed`
+updates the Mongo mirror but **the on-disk `manifest.json` still says `VERIFIED`** (and the
+code throws). Disk and mirror disagree — the same honesty-contract family the pack just
+fixed. Verified by Z in source at `VaultArchiveService.java` L232-241. **Required FIX-7
+(small):** on verification failure, rewrite the manifest as `FAILED` (or `PARTIAL`) with
+`errors[]` populated BEFORE/alongside `markFailed`, so disk and Mongo agree; add a negative
+test (tampered artifact at finalize ⇒ manifest on disk says FAILED, Mongo says FAILED,
+errors non-empty); keep the sweeper's FAILED terminal semantics.
+
 ## 3. Spec-expectation correction (owned by the auditor)
 
 The SPEC-ISSUE carried "expect totalElements=110" from QB-18. Proper YAML-parse truth:
@@ -126,8 +137,20 @@ from the current content. File under the next spec cycle.
 
 Both verdict-driving MUST items (FIX-1, FIX-2) are verified at source and proven on Linux;
 all six slices reproduce; the four-number discipline is now correct and matches independent
-re-runs exactly. The P7-AUTOVAULT lifecycle's remaining step is operator-side:
+re-runs exactly. Two non-blocking follow-ups are queued for the next cycle: **F-N1** (seeder
+ghost rows, §4) and **F-N2 / FIX-7** (dual-persistence on verification failure, G11).
+The P7-AUTOVAULT lifecycle's remaining step is operator-side:
 **VP11-m live closure** (one live DSA interview ⇒ folder appears on D: with zero clicks;
 three webm files play; report.pdf opens; VERIFIED chip on the report screen).
+
+## 6. Cross-review note
+
+Qwen's fix-pack review (`82390f3`, CHANGES_REQUESTED 5/6) is substantive this cycle — real
+code-level tracing, and its remaining F1 (dual-persistence) was verified by this audit in
+source and adopted as F-N2/FIX-7 above. The reviews are consistent on all six slices
+(both mark every slice's substance as fixed); the verdict difference is scope: this audit
+governs the six contracted slices (spec gates FIX-1+FIX-2 both PASS ⇒ ACCEPT), while Qwen
+folds its new post-fix finding into the same verdict. Execution path: Gemini lands FIX-7
+(per the requirements in G11) — either verdict authority re-audits that single slice.
 
 — Z.ai
