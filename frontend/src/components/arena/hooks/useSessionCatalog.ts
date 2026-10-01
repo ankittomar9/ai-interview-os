@@ -81,7 +81,7 @@ export function useSessionCatalog({
     }
 
     if (!track) return;
-    if (isInterview && playlistQuestions && playlistQuestions.length > 0) {
+    if (playlistQuestions && playlistQuestions.length > 0) {
       setQuestionsList(playlistQuestions);
       return;
     }
@@ -96,6 +96,13 @@ export function useSessionCatalog({
           const filtered = fetched.filter((q) => !q.track || q.track === track);
           if (filtered.length > 0) {
             setQuestionsList(filtered);
+            const targetSlug = defaultQuestion?.problemSlug || defaultQuestion?.slug;
+            if (targetSlug) {
+              const targetIdx = filtered.findIndex((q) => (q.problemSlug === targetSlug || q.slug === targetSlug));
+              if (targetIdx !== -1) {
+                setActiveQuestionIndex(targetIdx);
+              }
+            }
             return;
           }
         }

@@ -1,6 +1,7 @@
 package com.interviewos.session.vault;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ public class EvaluationReportClient {
 
     private final RestClient restClient;
 
+    @Autowired
     public EvaluationReportClient(
             @Value("${evaluation.report.url:http://evaluation-report-service:8084}") String reportUrl
     ) {

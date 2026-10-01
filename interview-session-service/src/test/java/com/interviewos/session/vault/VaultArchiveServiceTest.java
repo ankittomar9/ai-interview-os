@@ -16,6 +16,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 
 import java.io.OutputStream;
@@ -339,5 +341,183 @@ class VaultArchiveServiceTest {
         );
         assertEquals("PARTIAL", manifest.getStatus(), "Aborted session manifest status must be PARTIAL");
         verify(statusService, times(1)).markAborted(eq(sessionId), anyString(), eq(sessionDir));
+    }
+
+    @ParameterizedTest(name = "FIX-5 content-first extension resolution: {0} on track {1} -> {2}")
+    @CsvSource({
+            "'def two_sum(nums, target): pass', DSA, py",
+            "'const solve = () => { console.log(1); };', LLD, js",
+            "'public class Solution { public int[] solve() { return new int[]{}; } }', DSA, java",
+            "'some random candidate notes without code', unknown, txt"
+    })
+    @DisplayName("FIX-5: resolveExtension prioritizes content-first over track defaults")
+    void testResolveExtensionContentFirst(String codeSnippet, String track, String expectedExt) {
+        String ext = vaultArchiveService.resolveExtension(track, codeSnippet);
+        assertEquals(expectedExt, ext);
+    }
+
+    @Test
+    @DisplayName("FIX-1 Negative: Finalize when report client returns empty maintains STAGED status and missing contains report artifacts")
+    void testFinalizeWithReportEmptyReportClientMaintainsStaged(@TempDir Path tempVaultRoot) throws Exception {
+        vaultProperties.setRoot(tempVaultRoot.toString());
+        Long sessionId = 5001L;
+        Instant now = Instant.parse("2026-10-01T15:10:00Z");
+
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .roleTitle("Backend Engineer")
+                .track(InterviewTrack.ALGORITHMS_DATA_STRUCTURES)
+                .difficulty(DifficultyLevel.MID)
+                .status(SessionStatus.COMPLETED)
+                .completedAt(now)
+                .build();
+
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.empty());
+
+        EvaluationReportClient mockReportClient = mock(EvaluationReportClient.class);
+        // Transient outage: ERS returns empty Optional
+        when(mockReportClient.fetchReportJson(sessionId)).thenReturn(Optional.empty());
+        when(mockReportClient.fetchReportPdf(sessionId)).thenReturn(Optional.empty());
+
+        VaultArchiveService archiveService = new VaultArchiveService(
+                vaultProperties,
+                pathPolicy,
+                statusService,
+                sessionRepository,
+                mongoSessionRepository,
+                sessionRecordingService,
+                sessionQuestionService,
+                null,
+                null,
+                mockReportClient
+        );
+
+        // Run Stage 1
+        Path sessionDir = archiveService.archiveSessionStage1(sessionId);
+        assertTrue(Files.exists(sessionDir.resolve("manifest.json")));
+
+        // Attempt finalize with empty report client
+        Path finalizedDir = archiveService.finalizeWithReport(sessionId);
+
+        // Verification: status remains STAGED, markVerified is NOT called, manifest contains no VERIFIED claim
+        verify(statusService, never()).markVerified(eq(sessionId), any(Path.class));
+
+        VaultArchiveService.ManifestPayload manifest = new ObjectMapper().readValue(
+                finalizedDir.resolve("manifest.json").toFile(),
+                VaultArchiveService.ManifestPayload.class
+        );
+        assertEquals("STAGED", manifest.getStatus(), "Manifest status must remain STAGED when report is unavailable");
+        assertNotEquals("VERIFIED", manifest.getStatus(), "Manifest must not claim VERIFIED without report");
+        assertTrue(manifest.getMissing().contains("report/report.json"), "missing[] must include report/report.json");
+        assertTrue(manifest.getMissing().contains("report/report.pdf"), "missing[] must include report/report.pdf");
+    }
+
+    @Test
+    @DisplayName("FIX-1 Recovery: Later report-ready callback or retry backfills report and transitions to VERIFIED")
+    void testFinalizeWithReportRecoveryTransitionsToVerified(@TempDir Path tempVaultRoot) throws Exception {
+        vaultProperties.setRoot(tempVaultRoot.toString());
+        Long sessionId = 5002L;
+        Instant now = Instant.parse("2026-10-01T15:15:00Z");
+
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .roleTitle("Backend Engineer")
+                .track(InterviewTrack.ALGORITHMS_DATA_STRUCTURES)
+                .difficulty(DifficultyLevel.MID)
+                .status(SessionStatus.COMPLETED)
+                .completedAt(now)
+                .build();
+
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.empty());
+
+        EvaluationReportClient mockReportClient = mock(EvaluationReportClient.class);
+        // Initially empty
+        when(mockReportClient.fetchReportJson(sessionId)).thenReturn(Optional.empty());
+        when(mockReportClient.fetchReportPdf(sessionId)).thenReturn(Optional.empty());
+
+        VaultArchiveService archiveService = new VaultArchiveService(
+                vaultProperties,
+                pathPolicy,
+                statusService,
+                sessionRepository,
+                mongoSessionRepository,
+                sessionRecordingService,
+                sessionQuestionService,
+                null,
+                null,
+                mockReportClient
+        );
+
+        // Pass 1: Stage 1 + finalize fails -> STAGED
+        Path sessionDir = archiveService.archiveSessionStage1(sessionId);
+        archiveService.finalizeWithReport(sessionId);
+
+        VaultArchiveService.ManifestPayload manifestPass1 = new ObjectMapper().readValue(
+                sessionDir.resolve("manifest.json").toFile(),
+                VaultArchiveService.ManifestPayload.class
+        );
+        assertEquals("STAGED", manifestPass1.getStatus());
+
+        // Pass 2: ERS recovers and returns report
+        byte[] fakeJson = "{\"score\": 92, \"verdict\": \"HIRE\"}".getBytes(StandardCharsets.UTF_8);
+        byte[] fakePdf = "%PDF-1.4 simulated report pdf".getBytes(StandardCharsets.UTF_8);
+        when(mockReportClient.fetchReportJson(sessionId)).thenReturn(Optional.of(fakeJson));
+        when(mockReportClient.fetchReportPdf(sessionId)).thenReturn(Optional.of(fakePdf));
+
+        archiveService.finalizeWithReport(sessionId);
+
+        // Assert report files created
+        assertTrue(Files.exists(sessionDir.resolve("report/report.json")));
+        assertTrue(Files.exists(sessionDir.resolve("report/report.pdf")));
+        verify(statusService, times(1)).markVerified(eq(sessionId), eq(sessionDir));
+
+        VaultArchiveService.ManifestPayload manifestPass2 = new ObjectMapper().readValue(
+                sessionDir.resolve("manifest.json").toFile(),
+                VaultArchiveService.ManifestPayload.class
+        );
+        assertEquals("VERIFIED", manifestPass2.getStatus(), "Manifest status must transition to VERIFIED");
+        assertTrue(manifestPass2.getMissing().isEmpty(), "missing[] must be empty after successful recovery");
+
+        // Verify folder integrity
+        VaultArchiveService.ManifestVerificationResult verification = archiveService.verifyVaultFolder(sessionDir);
+        assertTrue(verification.isValid(), "Folder verification must pass");
+        assertTrue(verification.getMissing().isEmpty());
+        assertTrue(verification.getErrors().isEmpty());
+    }
+
+    @Test
+    @DisplayName("FIX-1 Schema: Deleting a recording post-archive causes verification to fail with missing artifact named")
+    void testSchemaExpectedArtifactMissingFailsVerification(@TempDir Path tempVaultRoot) throws Exception {
+        vaultProperties.setRoot(tempVaultRoot.toString());
+        Long sessionId = 5003L;
+        Instant now = Instant.parse("2026-10-01T15:20:00Z");
+
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .roleTitle("Junior Engineer")
+                .track(InterviewTrack.ALGORITHMS_DATA_STRUCTURES)
+                .difficulty(DifficultyLevel.JUNIOR)
+                .status(SessionStatus.COMPLETED)
+                .completedAt(now)
+                .build();
+
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.empty());
+
+        // Archive Stage 1
+        Path sessionDir = vaultArchiveService.archiveSessionStage1(sessionId);
+        assertTrue(vaultArchiveService.verifyVaultFolder(sessionDir).isValid());
+
+        // Delete a recording post-archive
+        Path screenWebm = sessionDir.resolve("recordings/screen.webm");
+        Files.delete(screenWebm);
+
+        // Verification must fail naming recordings/screen.webm as missing
+        VaultArchiveService.ManifestVerificationResult verification = vaultArchiveService.verifyVaultFolder(sessionDir);
+        assertFalse(verification.isValid(), "Verification must fail when an expected recording is deleted");
+        assertTrue(verification.getMissing().contains("recordings/screen.webm"), "missing[] must name recordings/screen.webm");
+        assertTrue(verification.getErrors().stream().anyMatch(e -> e.contains("recordings/screen.webm")), "errors must mention recordings/screen.webm");
     }
 }

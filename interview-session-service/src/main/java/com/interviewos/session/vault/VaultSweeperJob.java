@@ -111,14 +111,17 @@ public class VaultSweeperJob {
         if (Files.exists(manifestPath)) {
             try {
                 VaultArchiveService.ManifestPayload manifest = objectMapper.readValue(manifestPath.toFile(), VaultArchiveService.ManifestPayload.class);
-                manifest.setStatus("PARTIAL");
-                manifest.setMissing(List.of("report"));
-                vaultArchiveService.buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "PARTIAL", manifest.getVaultVersion() != null ? manifest.getVaultVersion() : 1);
+                int nextVersion = manifest.getVaultVersion() != null ? manifest.getVaultVersion() + 1 : 1;
+                vaultArchiveService.buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "PARTIAL", nextVersion, true);
 
-                // Overwrite manifest with missing report entry
+                // Ensure PARTIAL status and "report" token in missing for sweeper contract
                 VaultArchiveService.ManifestPayload updated = objectMapper.readValue(manifestPath.toFile(), VaultArchiveService.ManifestPayload.class);
                 updated.setStatus("PARTIAL");
-                updated.setMissing(List.of("report"));
+                List<String> missing = new java.util.ArrayList<>(updated.getMissing() != null ? updated.getMissing() : List.of());
+                if (!missing.contains("report")) {
+                    missing.add(0, "report");
+                }
+                updated.setMissing(missing);
                 byte[] bytes = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(updated);
                 Files.write(manifestPath, bytes);
             } catch (IOException e) {

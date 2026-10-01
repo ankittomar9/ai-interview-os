@@ -659,6 +659,36 @@ public class InterviewSessionService {
 
     private static final List<String> DEFAULT_SECTION_SEQUENCE = List.of("INTRODUCTION", "CORE_TECH", "CODING_DSA", "SYSTEM_DESIGN");
 
+    List<String> deriveSectionSequence(InterviewSessionDocument doc, InterviewSession session) {
+        if (doc != null && doc.getPlanSections() != null && !doc.getPlanSections().isEmpty()) {
+            List<String> seq = doc.getPlanSections().stream()
+                    .map(InterviewSessionDocument.PlannedSectionDocument::getSectionType)
+                    .filter(st -> st != null && !st.isBlank())
+                    .toList();
+            if (!seq.isEmpty()) {
+                return seq;
+            }
+        }
+        if (session != null && session.getPlanJson() != null && !session.getPlanJson().isBlank()) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(session.getPlanJson());
+                com.fasterxml.jackson.databind.JsonNode sectionsNode = root.get("sections");
+                if (sectionsNode != null && sectionsNode.isArray() && sectionsNode.size() > 0) {
+                    List<String> seq = new ArrayList<>();
+                    for (com.fasterxml.jackson.databind.JsonNode sn : sectionsNode) {
+                        if (sn.has("sectionType")) {
+                            seq.add(sn.get("sectionType").asText());
+                        }
+                    }
+                    if (!seq.isEmpty()) {
+                        return seq;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        return DEFAULT_SECTION_SEQUENCE;
+    }
+
     @Transactional
     public List<InterviewSessionDocument.SectionProgress> recordSectionTransition(Long sessionId, SectionTransitionRequest request) {
         findSessionOrThrow(sessionId);
@@ -739,13 +769,20 @@ public class InterviewSessionService {
             doc.getSectionProgress().add(progress);
         }
 
+        // Derive section sequence from the session's actual plan (falling back to DEFAULT_SECTION_SEQUENCE)
+        InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
+        List<String> sectionSequence = deriveSectionSequence(doc, session);
+
         // If this transition jumped forward across intermediate sections (e.g. 1 -> 3), record intermediate sections as MANUAL_JUMP with turnCount=0
         if (request.toSectionType() != null) {
-            int fromSeqIdx = DEFAULT_SECTION_SEQUENCE.indexOf(request.fromSectionType());
-            int toSeqIdx = DEFAULT_SECTION_SEQUENCE.indexOf(request.toSectionType());
-            if (fromSeqIdx >= 0 && toSeqIdx > fromSeqIdx + 1) {
+            int fromSeqIdx = sectionSequence.indexOf(request.fromSectionType());
+            int toSeqIdx = sectionSequence.indexOf(request.toSectionType());
+            if (fromSeqIdx < 0 || toSeqIdx < 0) {
+                log.warn("Section transition endpoint not resolvable in plan sequence: from='{}' (idx={}), to='{}' (idx={}), sequence={}. Skipping intermediate jump fabrication.",
+                        request.fromSectionType(), fromSeqIdx, request.toSectionType(), toSeqIdx, sectionSequence);
+            } else if (toSeqIdx > fromSeqIdx + 1) {
                 for (int skipped = fromSeqIdx + 1; skipped < toSeqIdx; skipped++) {
-                    String skippedSection = DEFAULT_SECTION_SEQUENCE.get(skipped);
+                    String skippedSection = sectionSequence.get(skipped);
                     int skippedIdx = skipped;
                     boolean alreadyPresent = doc.getSectionProgress().stream()
                             .anyMatch(p -> skippedSection.equalsIgnoreCase(p.getSectionType()) || (p.getIndex() != null && p.getIndex().equals(skippedIdx)));

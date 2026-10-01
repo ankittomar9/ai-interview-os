@@ -57,7 +57,7 @@
 
 | Gate | Requirement | Proof & Execution Evidence | Status |
 |---|---|---|---|
-| **VP11** | Stage-1 Archive & Folder Contract (PASS+FAIL Pair) | `testStage1ArchivingGeneratesManifestAndArtifacts`: Folder matching `YYYY-MM-DD\HHmm_TRACK_DIFFICULTY_id` created; all MUST artifacts exist; all sha256 checksums match.<br>**Honest Judge FAIL Pair**: `testVerifyVaultFolderDetectsTamperedArtifact`: Deliberately corrupted artifact detected; `verifyVaultFolder` returns `valid: false` with tampered path in `errors`. | **PASS** |
+| **VP11** | Stage-1 Archive & Folder Contract (PASS+FAIL Pair) | `testStage1ArchiveSuccess`: Folder matching `YYYY-MM-DD\HHmm_TRACK_DIFFICULTY_id` created; all MUST artifacts exist; all sha256 checksums match.<br>**Honest Judge FAIL Pair**: `testStage1ArchiveCorruptDetection`: Deliberately corrupted artifact detected; `verifyVaultFolder` returns `valid: false` with tampered path in `errors`. | **PASS** |
 | **VP12** | Finalize & Idempotency | `testReportFinalizationIdempotency`: Calling `finalizeWithReport` twice maintains identical hashes for non-report artifacts, replaces report files, increments `vaultVersion` from 2 to 3, and preserves verified manifest integrity. | **PASS** |
 | **VP13** | Failure Isolation | `testCompleteSessionFailureIsolation`: Mocked vault archive executor throwing `RuntimeException("Simulated disk full or permission error")`. `completeSession` completes normally, returns HTTP 200 / `COMPLETED` session response, logs error, and never crashes caller. | **PASS** |
 | **VP14** | Sweeper Transitions | `VaultSweeperJobTest`: Verifies report discovery transitions `STAGED -> VERIFIED`, 24h cutoff without report marks `PARTIAL` with `missing: ["report"]`, and `sweep-dry-run: true` logs without mutating state. | **PASS** |
@@ -75,11 +75,11 @@
 | - `VaultControllerTest` (Health + Read Endpoint) | 1 | 5 | 9 | 0 | PASS |
 | - `VaultSweeperJobTest` (VP14a, VP14b, Dry-run) | 1 | 3 | 5 | 0 | PASS |
 | - `InternalVaultControllerTest` (Callback listener) | 1 | 1 | 2 | 0 | PASS |
-| **ISS — Entire Service Suite** | 25 | 264 | 885 | 0 (1 skipped) | **100% PASS** |
+| **ISS — Entire Service Suite** | 40 | 264 | 885 | 0 (1 skipped) | **100% PASS** |
 | **ERS — Entire Service Suite** | 5 | 29 | 74 | 0 (1 skipped) | **100% PASS** |
 | **Frontend — Entire Test Suite** | 35 | 204 | 420 | 0 | **100% PASS** |
 | - `VaultSurfacing.test.ts` | 1 | 2 | 7 | 0 | PASS |
-| **TOTALS** | **65** | **497** | **1379** | **0** | **100% GREEN** |
+| **TOTALS** | **80** | **497** | **1379** | **0** | **100% GREEN** |
 
 ---
 

@@ -56,14 +56,15 @@ class VaultControllerTest {
 
     @Test
     @DisplayName("GET /api/v1/sessions/vault/health returns mounted=false and writable=false when root cannot be created")
-    void testVaultHealthUnmounted() throws Exception {
-        // Point to an invalid path that cannot be created on Windows
-        String invalidPath = "Z:\\nonexistent_vault_drive_xyz\\forbidden";
-        when(vaultProperties.getRoot()).thenReturn(invalidPath);
+    void testVaultHealthUnmounted(@TempDir Path tempDir) throws Exception {
+        // Platform-neutral uncreatable path: a regular file cannot be a parent directory
+        Path regularFile = Files.writeString(tempDir.resolve("blocking-file.txt"), "not-a-directory");
+        Path uncreatablePath = regularFile.resolve("child-vault-root");
+        when(vaultProperties.getRoot()).thenReturn(uncreatablePath.toString());
 
         mockMvc.perform(get("/api/v1/sessions/vault/health"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.root").value(invalidPath))
+                .andExpect(jsonPath("$.root").value(uncreatablePath.toString()))
                 .andExpect(jsonPath("$.mounted").value(false))
                 .andExpect(jsonPath("$.writable").value(false));
     }
