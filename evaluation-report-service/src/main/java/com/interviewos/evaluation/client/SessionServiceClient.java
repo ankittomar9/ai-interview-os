@@ -26,6 +26,9 @@ public interface SessionServiceClient {
     @GetMapping("/api/v1/sessions/{id}/section-transitions")
     List<SectionProgressDto> getSectionProgress(@PathVariable("id") Long id);
 
+    @org.springframework.web.bind.annotation.PostMapping("/api/v1/internal/sessions/{id}/vault/report-ready")
+    void notifyVaultReportReady(@PathVariable("id") Long id);
+
     record ProblemDetailsDto(
             String id,
             String problemSlug,

@@ -240,4 +240,72 @@ class VaultArchiveServiceTest {
         assertDoesNotThrow(() -> sessionService.completeSession(999L));
         assertEquals(SessionStatus.COMPLETED, session.getStatus());
     }
+
+    @Test
+    @DisplayName("VP12: Report finalize writes report artifacts, sets status VERIFIED, and is idempotent")
+    void testFinalizeWithReportAndIdempotency(@TempDir Path tempVaultRoot) throws Exception {
+        vaultProperties.setRoot(tempVaultRoot.toString());
+        Long sessionId = 2001L;
+        Instant now = Instant.parse("2026-10-01T14:40:00Z");
+
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .roleTitle("Senior Backend Engineer")
+                .track(InterviewTrack.ALGORITHMS_DATA_STRUCTURES)
+                .difficulty(DifficultyLevel.SENIOR)
+                .status(SessionStatus.COMPLETED)
+                .completedAt(now)
+                .build();
+
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.empty());
+
+        EvaluationReportClient mockReportClient = mock(EvaluationReportClient.class);
+        byte[] fakeJson = "{\"score\": 95, \"verdict\": \"STRONG_HIRE\"}".getBytes(StandardCharsets.UTF_8);
+        byte[] fakePdf = "%PDF-1.4 fake pdf data".getBytes(StandardCharsets.UTF_8);
+
+        when(mockReportClient.fetchReportJson(sessionId)).thenReturn(Optional.of(fakeJson));
+        when(mockReportClient.fetchReportPdf(sessionId)).thenReturn(Optional.of(fakePdf));
+
+        VaultArchiveService archiveServiceWithReportClient = new VaultArchiveService(
+                vaultProperties,
+                pathPolicy,
+                statusService,
+                sessionRepository,
+                mongoSessionRepository,
+                sessionRecordingService,
+                sessionQuestionService,
+                null,
+                null,
+                mockReportClient
+        );
+
+        // Run Stage 1
+        Path sessionDir = archiveServiceWithReportClient.archiveSessionStage1(sessionId);
+        assertTrue(Files.exists(sessionDir.resolve("manifest.json")));
+
+        // Finalize pass 1
+        archiveServiceWithReportClient.finalizeWithReport(sessionId);
+
+        // Assert report files created
+        assertTrue(Files.exists(sessionDir.resolve("report/report.json")));
+        assertTrue(Files.exists(sessionDir.resolve("report/report.pdf")));
+        verify(statusService, times(1)).markVerified(eq(sessionId), eq(sessionDir));
+
+        String screenSha1 = archiveServiceWithReportClient.computeSha256(sessionDir.resolve("recordings/screen.webm"));
+
+        // Idempotency: Finalize pass 2 (e.g. NEEDS_REGRADE re-run)
+        byte[] updatedJson = "{\"score\": 98, \"verdict\": \"STRONG_HIRE\"}".getBytes(StandardCharsets.UTF_8);
+        when(mockReportClient.fetchReportJson(sessionId)).thenReturn(Optional.of(updatedJson));
+
+        archiveServiceWithReportClient.finalizeWithReport(sessionId);
+
+        // Non-report file sha must be identical
+        String screenSha2 = archiveServiceWithReportClient.computeSha256(sessionDir.resolve("recordings/screen.webm"));
+        assertEquals(screenSha1, screenSha2, "Non-report files must maintain identical hashes on re-finalize");
+
+        // Verify manifest is valid and updated
+        VaultArchiveService.ManifestVerificationResult result = archiveServiceWithReportClient.verifyVaultFolder(sessionDir);
+        assertTrue(result.isValid(), "Manifest must remain valid after idempotent finalize");
+    }
 }

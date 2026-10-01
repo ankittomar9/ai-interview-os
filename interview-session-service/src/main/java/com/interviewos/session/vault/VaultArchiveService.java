@@ -52,6 +52,7 @@ public class VaultArchiveService {
     private final SessionQuestionService sessionQuestionService;
     private final GridFSBucket gridFSBucket;
     private final SessionVerificationRepository verificationRepository;
+    private final EvaluationReportClient evaluationReportClient;
 
     private final ObjectMapper objectMapper;
     private final ExecutorService executor;
@@ -66,7 +67,8 @@ public class VaultArchiveService {
             SessionRecordingService sessionRecordingService,
             @Autowired(required = false) SessionQuestionService sessionQuestionService,
             @Autowired(required = false) GridFSBucket gridFSBucket,
-            @Autowired(required = false) SessionVerificationRepository verificationRepository
+            @Autowired(required = false) SessionVerificationRepository verificationRepository,
+            @Autowired(required = false) EvaluationReportClient evaluationReportClient
     ) {
         this.vaultProperties = vaultProperties;
         this.pathPolicy = pathPolicy;
@@ -77,6 +79,7 @@ public class VaultArchiveService {
         this.sessionQuestionService = sessionQuestionService;
         this.gridFSBucket = gridFSBucket;
         this.verificationRepository = verificationRepository;
+        this.evaluationReportClient = evaluationReportClient;
         this.objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .enable(SerializationFeature.INDENT_OUTPUT)
@@ -86,6 +89,20 @@ public class VaultArchiveService {
             t.setDaemon(true);
             return t;
         });
+    }
+
+    public VaultArchiveService(
+            VaultProperties vaultProperties,
+            VaultPathPolicy pathPolicy,
+            VaultStatusService statusService,
+            InterviewSessionRepository sessionRepository,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            SessionRecordingService sessionRecordingService,
+            SessionQuestionService sessionQuestionService,
+            GridFSBucket gridFSBucket,
+            SessionVerificationRepository verificationRepository
+    ) {
+        this(vaultProperties, pathPolicy, statusService, sessionRepository, mongoSessionRepository, sessionRecordingService, sessionQuestionService, gridFSBucket, verificationRepository, null);
     }
 
     /**
@@ -102,6 +119,98 @@ public class VaultArchiveService {
                 statusService.markFailed(sessionId, e.getMessage());
             }
         });
+    }
+
+    /**
+     * Dedicated executor submission for Stage-2 report finalization (REQ-AV-4).
+     */
+    public void finalizeWithReportAsync(Long sessionId) {
+        if (sessionId == null) return;
+        executor.execute(() -> {
+            try {
+                finalizeWithReport(sessionId);
+            } catch (Exception e) {
+                log.error("Vault report finalization failed for session {}: {}", sessionId, e.getMessage(), e);
+                statusService.markFailed(sessionId, e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Stage 2 Report Finalizer (REQ-AV-4):
+     * Fetches report JSON and PDF, writes them to report/, re-verifies hashes, bumps vaultVersion, sets status VERIFIED.
+     */
+    public Path finalizeWithReport(Long sessionId) throws Exception {
+        log.info("🗄️ Starting Stage-2 report finalization for session ID: {}", sessionId);
+
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found in PostgreSQL: " + sessionId));
+        InterviewSessionDocument doc = mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)
+                .orElse(null);
+
+        Instant completionTime = session.getCompletedAt() != null ? session.getCompletedAt() : Instant.now();
+        String track = session.getTrack() != null ? session.getTrack().name() : (doc != null ? doc.getInterviewTrack() : "UNKNOWN");
+        String difficulty = session.getDifficulty() != null ? session.getDifficulty().name() : (doc != null ? doc.getSeniorityLevel() : "UNKNOWN");
+
+        Path sessionDir = pathPolicy.resolveSessionPath(vaultProperties.getRoot(), completionTime, track, difficulty, sessionId);
+        String relFolderPath = pathPolicy.buildRelativePath(completionTime, track, difficulty, sessionId);
+
+        if (!Files.exists(sessionDir)) {
+            log.info("Session vault folder does not exist for session {}. Running Stage-1 archival first.", sessionId);
+            archiveSessionStage1(sessionId);
+        }
+
+        Path reportDir = sessionDir.resolve("report");
+        Files.createDirectories(reportDir);
+
+        if (evaluationReportClient != null) {
+            Optional<byte[]> jsonOpt = evaluationReportClient.fetchReportJson(sessionId);
+            if (jsonOpt.isPresent()) {
+                Path reportJson = reportDir.resolve("report.json");
+                Path reportJsonPart = reportDir.resolve("report.json.part");
+                Files.write(reportJsonPart, jsonOpt.get(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                atomicMove(reportJsonPart, reportJson);
+            }
+
+            Optional<byte[]> pdfOpt = evaluationReportClient.fetchReportPdf(sessionId);
+            if (pdfOpt.isPresent()) {
+                Path reportPdf = reportDir.resolve("report.pdf");
+                Path reportPdfPart = reportDir.resolve("report.pdf.part");
+                Files.write(reportPdfPart, pdfOpt.get(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+                atomicMove(reportPdfPart, reportPdf);
+            }
+        }
+
+        // Determine next vaultVersion
+        int nextVersion = 1;
+        Path manifestPath = sessionDir.resolve("manifest.json");
+        if (Files.exists(manifestPath)) {
+            try {
+                ManifestPayload prev = objectMapper.readValue(manifestPath.toFile(), ManifestPayload.class);
+                if (prev.getVaultVersion() != null) {
+                    nextVersion = prev.getVaultVersion() + 1;
+                }
+            } catch (Exception e) {
+                log.warn("Could not read previous manifest vaultVersion for session {}: {}", sessionId, e.getMessage());
+            }
+        }
+
+        // Update manifest with VERIFIED status and new vaultVersion
+        buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "VERIFIED", nextVersion);
+
+        // Run full folder verification
+        ManifestVerificationResult verification = verifyVaultFolder(sessionDir);
+        if (verification.isValid()) {
+            statusService.markVerified(sessionId, sessionDir);
+            log.info("✅ Vault report finalization successfully completed (VERIFIED, v{}) for session {} at {}", nextVersion, sessionId, sessionDir);
+        } else {
+            String err = "Verification failed: " + String.join(", ", verification.getErrors());
+            statusService.markFailed(sessionId, err);
+            log.error("❌ Vault report finalization verification failed for session {}: {}", sessionId, err);
+            throw new IllegalStateException(err);
+        }
+
+        return sessionDir;
     }
 
     /**

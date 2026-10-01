@@ -60,6 +60,10 @@ question:
   bank:
     url: ${QUESTION_BANK_URL:http://question-bank-service:8086}
 
+evaluation:
+  report:
+    url: ${EVALUATION_REPORT_URL:http://evaluation-report-service:8084}
+
 eureka:
   client:
     enabled: ${EUREKA_ENABLED:false}
