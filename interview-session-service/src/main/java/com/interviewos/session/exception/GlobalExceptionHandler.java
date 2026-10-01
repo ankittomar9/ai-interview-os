@@ -27,7 +27,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
     public ResponseEntity<ErrorResponse> handleResponseStatus(org.springframework.web.server.ResponseStatusException ex, HttpServletRequest request) {
-        log.warn("Response status exception: {} for URI: {}", ex.getReason(), request.getRequestURI());
+        if (ex.getStatusCode() == HttpStatus.NOT_FOUND && request.getRequestURI() != null && request.getRequestURI().contains("/notes/")) {
+            log.debug("Note lookup miss (benign): {} for URI: {}", ex.getReason(), request.getRequestURI());
+        } else {
+            log.warn("Response status exception: {} for URI: {}", ex.getReason(), request.getRequestURI());
+        }
         return ResponseEntity.status(ex.getStatusCode())
                 .body(ErrorResponse.of(ex.getStatusCode().value(), ex.getStatusCode().toString(), ex.getReason(), request.getRequestURI()));
     }

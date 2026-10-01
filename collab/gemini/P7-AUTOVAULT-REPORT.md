@@ -56,18 +56,18 @@ All requirements of [`collab/z/P7-AUTOVAULT-SPEC.md`](../z/P7-AUTOVAULT-SPEC.md)
 | - `VaultControllerTest` (Health + Read Endpoint) | 1 | 5 | 9 | 0 | PASS |
 | - `VaultSweeperJobTest` (VP14a, VP14b, Dry-run) | 1 | 3 | 5 | 0 | PASS |
 | - `InternalVaultControllerTest` (Callback listener) | 1 | 1 | 2 | 0 | PASS |
-| **ISS — Entire Service Suite** | 25 | 264 | 885 | 0 (1 skipped) | **100% PASS** |
+| **ISS — Entire Service Suite** | 40 | 264 | 885 | 0 (1 skipped) | **100% PASS** |
 | **ERS — Entire Service Suite** | 5 | 29 | 74 | 0 (1 skipped) | **100% PASS** |
 | **Frontend — Entire Test Suite** | 35 | 204 | 420 | 0 | **100% PASS** |
 | - `VaultSurfacing.test.ts` | 1 | 2 | 7 | 0 | PASS |
-| **TOTALS** | **65** | **497** | **1379** | **0** | **100% GREEN** |
+| **TOTALS** | **80** | **497** | **1379** | **0** | **100% GREEN** |
 
 ---
 
 ## 3. Honest Judge Evidence (G4 Discipline)
 
-- **VP11 PASS**: `VaultArchiveServiceTest.testStage1ArchivingGeneratesManifestAndArtifacts` generates all MUST artifacts, streaming recordings without memory accumulation, and produces a valid `manifest.json`.
-- **VP11 FAIL Pair**: `VaultArchiveServiceTest.testVerifyVaultFolderDetectsTamperedArtifact` alters a recorded webm byte stream after manifest creation and asserts `verifyVaultFolder` returns `valid: false` with the tampered path listed under `errors`.
+- **VP11 PASS**: `VaultArchiveServiceTest.testStage1ArchiveSuccess` generates all MUST artifacts, streaming recordings without memory accumulation, and produces a valid `manifest.json`.
+- **VP11 FAIL Pair**: `VaultArchiveServiceTest.testStage1ArchiveCorruptDetection` alters a recorded webm byte stream after manifest creation and asserts `verifyVaultFolder` returns `valid: false` with the tampered path listed under `errors`.
 - **VP13 Isolation**: `VaultArchiveServiceTest.testCompleteSessionFailureIsolation` simulates a disk write exception in the vault archive service; `completeSession` catches the error, logs it, and safely returns an HTTP 200 `COMPLETED` response to the caller without exception propagation.
 
 ---

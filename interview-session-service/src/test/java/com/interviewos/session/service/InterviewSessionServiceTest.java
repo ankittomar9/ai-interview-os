@@ -246,6 +246,72 @@ class InterviewSessionServiceTest {
         assertThat(progressListAgain).hasSize(2);
     }
 
+    @Test
+    @DisplayName("FIX-6: Custom plan jump 1->3 derives intermediate section from plan sequence with MANUAL_JUMP and 0 turns")
+    void testRecordSectionTransition_CustomPlanSequence() {
+        Long sessionId = 101L;
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .status(SessionStatus.IN_PROGRESS)
+                .build();
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+
+        List<InterviewSessionDocument.PlannedSectionDocument> planSections = List.of(
+                InterviewSessionDocument.PlannedSectionDocument.builder().sectionType("INTRO").build(),
+                InterviewSessionDocument.PlannedSectionDocument.builder().sectionType("CUSTOM_ROUND_1").build(),
+                InterviewSessionDocument.PlannedSectionDocument.builder().sectionType("CUSTOM_ROUND_2").build(),
+                InterviewSessionDocument.PlannedSectionDocument.builder().sectionType("WRAP_UP").build()
+        );
+
+        InterviewSessionDocument doc = InterviewSessionDocument.builder()
+                .sessionId(sessionId)
+                .status("IN_PROGRESS")
+                .planSections(planSections)
+                .sectionProgress(new ArrayList<>())
+                .build();
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.of(doc));
+
+        // Jump from INTRO (idx 0) to CUSTOM_ROUND_2 (idx 2)
+        SectionTransitionRequest request = new SectionTransitionRequest("INTRO", "CUSTOM_ROUND_2", 0, "MANUAL_JUMP");
+        List<InterviewSessionDocument.SectionProgress> progressList = serviceWithFallbackOnly.recordSectionTransition(sessionId, request);
+
+        assertThat(progressList).hasSize(2);
+        assertThat(progressList.get(0).getSectionType()).isEqualTo("INTRO");
+        assertThat(progressList.get(0).getIndex()).isEqualTo(0);
+
+        InterviewSessionDocument.SectionProgress intermediate = progressList.get(1);
+        assertThat(intermediate.getSectionType()).isEqualTo("CUSTOM_ROUND_1");
+        assertThat(intermediate.getIndex()).isEqualTo(1);
+        assertThat(intermediate.getReason()).isEqualTo("MANUAL_JUMP");
+        assertThat(intermediate.getTurnCount()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("FIX-6: Section transition with unknown section types logs WARN and does not fabricate entries")
+    void testRecordSectionTransition_UnknownSectionType_SkipsFabrication() {
+        Long sessionId = 102L;
+        InterviewSession session = InterviewSession.builder()
+                .id(sessionId)
+                .status(SessionStatus.IN_PROGRESS)
+                .build();
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+
+        InterviewSessionDocument doc = InterviewSessionDocument.builder()
+                .sessionId(sessionId)
+                .status("IN_PROGRESS")
+                .sectionProgress(new ArrayList<>())
+                .build();
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.of(doc));
+
+        // Jump from INTRODUCTION to UNKNOWN_ROUND (not in DEFAULT_SECTION_SEQUENCE or plan)
+        SectionTransitionRequest request = new SectionTransitionRequest("INTRODUCTION", "UNKNOWN_ROUND", 0, "MANUAL_JUMP");
+        List<InterviewSessionDocument.SectionProgress> progressList = serviceWithFallbackOnly.recordSectionTransition(sessionId, request);
+
+        // Only the fromSection is recorded, no fabricated intermediate entries
+        assertThat(progressList).hasSize(1);
+        assertThat(progressList.get(0).getSectionType()).isEqualTo("INTRODUCTION");
+    }
+
     @ParameterizedTest(name = "[C1 Plan 28-Combo] {0} x {1}")
     @MethodSource("all28Combinations")
     @DisplayName("C1: Deterministic 28-combo plan resolver: 2 sections (INTRO + domain), valid budgets, zero DSA bleed")

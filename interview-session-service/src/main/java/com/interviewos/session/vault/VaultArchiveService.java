@@ -43,6 +43,24 @@ import java.util.stream.Stream;
 @Service
 public class VaultArchiveService {
 
+    public static final List<String> STAGE1_EXPECTED_ARTIFACTS = List.of(
+            "session/session.json",
+            "recordings/screen.webm",
+            "recordings/camera.webm",
+            "recordings/mic-audio.webm",
+            "recordings/manifest.json",
+            "transcript/transcript.json",
+            "transcript/transcript.md",
+            "problems/session-questions.json",
+            "problems/submissions-ledger.jsonl",
+            "plan/session-plan.json"
+    );
+
+    public static final List<String> REPORT_EXPECTED_ARTIFACTS = List.of(
+            "report/report.json",
+            "report/report.pdf"
+    );
+
     private final VaultProperties vaultProperties;
     private final VaultPathPolicy pathPolicy;
     private final VaultStatusService statusService;
@@ -195,8 +213,17 @@ public class VaultArchiveService {
             }
         }
 
+        boolean hasReportJson = Files.exists(reportDir.resolve("report.json"));
+
+        // If report JSON is missing: maintain STAGED status, write manifest with expectReport=true (so missing[] contains report artifacts), skip markVerified
+        if (!hasReportJson) {
+            log.warn("Report JSON not available for session {}. Maintaining vault status STAGED and skipping markVerified for sweeper retry.", sessionId);
+            buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "STAGED", nextVersion, true);
+            return sessionDir;
+        }
+
         // Update manifest with VERIFIED status and new vaultVersion
-        buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "VERIFIED", nextVersion);
+        buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, "VERIFIED", nextVersion, true);
 
         // Run full folder verification
         ManifestVerificationResult verification = verifyVaultFolder(sessionDir);
@@ -487,6 +514,19 @@ public class VaultArchiveService {
             String status,
             int vaultVersion
     ) throws IOException {
+        buildAndWriteManifest(sessionDir, sessionId, relFolderPath, session, doc, status, vaultVersion, "VERIFIED".equalsIgnoreCase(status));
+    }
+
+    public void buildAndWriteManifest(
+            Path sessionDir,
+            Long sessionId,
+            String relFolderPath,
+            InterviewSession session,
+            InterviewSessionDocument doc,
+            String status,
+            int vaultVersion,
+            boolean expectReport
+    ) throws IOException {
         List<ArtifactEntry> artifacts = new ArrayList<>();
         try (Stream<Path> stream = Files.walk(sessionDir)) {
             List<Path> files = stream.filter(Files::isRegularFile).sorted().toList();
@@ -506,6 +546,32 @@ public class VaultArchiveService {
                         .bytes(bytes)
                         .sha256(sha256)
                         .build());
+            }
+        }
+
+        // Expected artifacts schema validation to compute real missing[]
+        List<String> expectedArtifacts = new ArrayList<>(STAGE1_EXPECTED_ARTIFACTS);
+        if (expectReport || "VERIFIED".equalsIgnoreCase(status)) {
+            expectedArtifacts.addAll(REPORT_EXPECTED_ARTIFACTS);
+        }
+        if (doc != null && doc.getSubmissionsLedger() != null) {
+            int seq = 1;
+            for (InterviewSessionDocument.SubmissionEntry entry : doc.getSubmissionsLedger()) {
+                if (entry.getCodeSnippet() != null && !entry.getCodeSnippet().isBlank()) {
+                    String safeSlug = pathPolicy.sanitizeToken(entry.getProblemSlug(), "PROBLEM");
+                    String safeAction = pathPolicy.sanitizeToken(entry.getAction(), "RUN");
+                    String ext = resolveExtension(session.getTrack() != null ? session.getTrack().name() : null, entry.getCodeSnippet());
+                    String codeFileName = String.format("problems/code/%s__%s__%03d.%s", safeSlug, safeAction, seq, ext);
+                    expectedArtifacts.add(codeFileName);
+                }
+                seq++;
+            }
+        }
+
+        List<String> missing = new ArrayList<>();
+        for (String expectedRelPath : expectedArtifacts) {
+            if (!Files.exists(sessionDir.resolve(expectedRelPath))) {
+                missing.add(expectedRelPath);
             }
         }
 
@@ -554,7 +620,7 @@ public class VaultArchiveService {
                         .attachments(attachmentsCount)
                         .build())
                 .artifacts(artifacts)
-                .missing(Collections.emptyList())
+                .missing(missing)
                 .errors(Collections.emptyList())
                 .build();
 
@@ -574,11 +640,30 @@ public class VaultArchiveService {
             List<String> missing = new ArrayList<>();
             List<String> errors = new ArrayList<>();
 
+            // 1. Validate presence against the expected-artifact schema
+            List<String> expectedSchema = new ArrayList<>(STAGE1_EXPECTED_ARTIFACTS);
+            if ("VERIFIED".equalsIgnoreCase(manifest.getStatus())) {
+                expectedSchema.addAll(REPORT_EXPECTED_ARTIFACTS);
+            }
+            for (String expected : expectedSchema) {
+                Path expFile = sessionDir.resolve(expected);
+                if (!Files.exists(expFile)) {
+                    if (!missing.contains(expected)) {
+                        missing.add(expected);
+                    }
+                    errors.add("Expected artifact missing: " + expected);
+                }
+            }
+
+            // 2. Validate all manifest-declared artifacts exist on disk and hashes match
             if (manifest.getArtifacts() != null) {
                 for (ArtifactEntry entry : manifest.getArtifacts()) {
                     Path file = sessionDir.resolve(entry.getPath());
                     if (!Files.exists(file)) {
-                        missing.add(entry.getPath());
+                        if (!missing.contains(entry.getPath())) {
+                            missing.add(entry.getPath());
+                        }
+                        errors.add("Manifest artifact missing from disk: " + entry.getPath());
                     } else {
                         String actualSha = computeSha256(file);
                         if (!actualSha.equalsIgnoreCase(entry.getSha256())) {
@@ -635,20 +720,44 @@ public class VaultArchiveService {
         return "other";
     }
 
-    private String resolveExtension(String track, String codeSnippet) {
-        if (codeSnippet == null) return "txt";
+    String resolveExtension(String track, String codeSnippet) {
+        if (codeSnippet != null && !codeSnippet.isBlank()) {
+            // Java-specific signals
+            if (codeSnippet.contains("import java") || codeSnippet.contains("public class")
+                    || codeSnippet.contains("System.out") || codeSnippet.contains("public static void")) {
+                return "java";
+            }
+            // Python signals (def, print, elif, self., non-java import, class with colon)
+            if (codeSnippet.contains("def ") || codeSnippet.contains("print(")
+                    || codeSnippet.contains("elif ") || codeSnippet.contains("self.")
+                    || (codeSnippet.contains("import ") && !codeSnippet.contains("import java"))
+                    || (codeSnippet.contains("class ") && codeSnippet.contains(":"))) {
+                return "py";
+            }
+            // JavaScript / TypeScript signals
+            if (codeSnippet.contains("function ") || codeSnippet.contains("const ")
+                    || codeSnippet.contains("let ") || codeSnippet.contains("=>")
+                    || codeSnippet.contains("console.log")) {
+                return "js";
+            }
+            // SQL signals
+            String upper = codeSnippet.toUpperCase();
+            if (upper.contains("SELECT ") || upper.contains("CREATE TABLE") || upper.contains("INSERT INTO ") || upper.contains("UPDATE ")) {
+                return "sql";
+            }
+            // Java class fallback if code has class declaration with java types
+            if (codeSnippet.contains("class ") && (codeSnippet.contains("void ") || codeSnippet.contains("int ") || codeSnippet.contains("String ") || codeSnippet.contains("boolean "))) {
+                return "java";
+            }
+        }
+
+        // Track default when content gives no signal
         String normalizedTrack = pathPolicy.normalizeTrack(track);
-        if (codeSnippet.contains("class ") || codeSnippet.contains("import java") || "DSA".equalsIgnoreCase(normalizedTrack) || "LLD".equalsIgnoreCase(normalizedTrack)) {
-            return "java";
-        }
-        if (codeSnippet.contains("def ") || codeSnippet.contains("import ")) {
-            return "py";
-        }
-        if (codeSnippet.contains("function ") || codeSnippet.contains("const ") || codeSnippet.contains("let ")) {
-            return "js";
-        }
-        if ("SQL".equalsIgnoreCase(normalizedTrack) || codeSnippet.toUpperCase().contains("SELECT ") || codeSnippet.toUpperCase().contains("CREATE TABLE")) {
+        if ("SQL".equalsIgnoreCase(normalizedTrack)) {
             return "sql";
+        }
+        if ("DSA".equalsIgnoreCase(normalizedTrack) || "LLD".equalsIgnoreCase(normalizedTrack)) {
+            return "java";
         }
         return "txt";
     }
