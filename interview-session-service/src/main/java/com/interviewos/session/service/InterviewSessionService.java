@@ -19,6 +19,7 @@ import com.interviewos.session.entity.SessionVerification;
 import com.interviewos.session.exception.VerificationRequiredException;
 import com.interviewos.session.repository.SessionVerificationRepository;
 import com.interviewos.session.document.ResumeDocument;
+import com.interviewos.session.vault.VaultArchiveService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,7 @@ public class InterviewSessionService {
     private final SessionVerificationRepository verificationRepository;
     private final SessionQuestionService sessionQuestionService;
     private final CandidateProfileService candidateProfileService;
+    private final VaultArchiveService vaultArchiveService;
 
     @org.springframework.beans.factory.annotation.Autowired
     public InterviewSessionService(
@@ -59,7 +61,8 @@ public class InterviewSessionService {
             @org.springframework.beans.factory.annotation.Autowired(required = false) com.fasterxml.jackson.databind.ObjectMapper objectMapper,
             @org.springframework.beans.factory.annotation.Autowired(required = false) SessionVerificationRepository verificationRepository,
             @org.springframework.beans.factory.annotation.Autowired(required = false) SessionQuestionService sessionQuestionService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) CandidateProfileService candidateProfileService
+            @org.springframework.beans.factory.annotation.Autowired(required = false) CandidateProfileService candidateProfileService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) VaultArchiveService vaultArchiveService
     ) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
@@ -70,6 +73,7 @@ public class InterviewSessionService {
         this.verificationRepository = verificationRepository;
         this.sessionQuestionService = sessionQuestionService;
         this.candidateProfileService = candidateProfileService;
+        this.vaultArchiveService = vaultArchiveService;
     }
 
     public InterviewSessionService(
@@ -82,7 +86,7 @@ public class InterviewSessionService {
             SessionVerificationRepository verificationRepository,
             SessionQuestionService sessionQuestionService
     ) {
-        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, verificationRepository, sessionQuestionService, null);
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, verificationRepository, sessionQuestionService, null, null);
     }
 
     public InterviewSessionService(
@@ -92,7 +96,7 @@ public class InterviewSessionService {
             ResumeParsingService resumeParsingService,
             com.interviewos.session.sandbox.client.QuestionBankClient questionBankClient
     ) {
-        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, new SessionPlanService(questionBankClient), new com.fasterxml.jackson.databind.ObjectMapper(), null, null);
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, new SessionPlanService(questionBankClient), new com.fasterxml.jackson.databind.ObjectMapper(), null, null, null, null);
     }
 
     public InterviewSessionService(
@@ -103,7 +107,7 @@ public class InterviewSessionService {
             SessionPlanService sessionPlanService,
             com.fasterxml.jackson.databind.ObjectMapper objectMapper
     ) {
-        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, null, null);
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, null, null, null, null);
     }
 
     public InterviewSessionService(
@@ -115,7 +119,7 @@ public class InterviewSessionService {
             com.fasterxml.jackson.databind.ObjectMapper objectMapper,
             SessionVerificationRepository verificationRepository
     ) {
-        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, verificationRepository, null);
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, verificationRepository, null, null, null);
     }
 
     @Transactional
@@ -575,6 +579,15 @@ public class InterviewSessionService {
             }
         }
 
+        // Vault archive (P7-AUTOVAULT REQ-AV-3)
+        if (vaultArchiveService != null) {
+            try {
+                vaultArchiveService.archiveSessionAsync(saved.getId());
+            } catch (Exception e) {
+                log.error("Failed to trigger vault archive for session {}: {}", sessionId, e.getMessage(), e);
+            }
+        }
+
         return SessionResponse.fromEntity(saved);
     }
 
@@ -853,6 +866,16 @@ public class InterviewSessionService {
 
         log.info("Session {} transitioned to ABORTED_SHARE [reason: {}]",
                 sessionId, request != null ? request.reason() : "UNSPECIFIED");
+
+        // Vault archive for aborted session (REQ-AV-9)
+        if (vaultArchiveService != null) {
+            try {
+                vaultArchiveService.archiveSessionAsync(saved.getId());
+            } catch (Exception e) {
+                log.error("Failed to trigger vault archive for aborted session {}: {}", sessionId, e.getMessage(), e);
+            }
+        }
+
         return SessionResponse.fromEntity(saved);
     }
 

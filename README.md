@@ -196,6 +196,26 @@ The platform ships with a curated catalog of **364 questions (316 DSA + 27 HLD +
 
 ---
 
+## 🗄️ Local Session Auto-Vault (P7-AUTOVAULT)
+
+Completed interviews are automatically archived to the operator's local filesystem with zero clicks, no browser downloads, and a cryptographic manifest (`manifest.json` with SHA-256 for all artifacts).
+
+### Operator Setup
+1. **Choose the drive:** Default is `D:/AI OS Interview Media`. If D: does not exist on your machine, set `VAULT_ROOT=E:/AI OS Interview Media` (or `C:/AI OS Interview Media`) in `.env` (forward slashes are recommended for Docker Desktop on Windows).
+2. **Docker File Sharing:** Ensure the chosen drive is shared in Docker Desktop (`Settings` → `Resources` → `File Sharing`). On WSL2 backends, fixed drives are typically available by default.
+3. **Rebuild & Start:**
+   ```bash
+   docker compose build interview-session-service evaluation-report-service && docker compose up -d
+   ```
+4. **Sanity Check:**
+   ```bash
+   curl http://localhost:8080/api/v1/sessions/vault/health
+   # Returns: {"root":"/vault","mounted":true,"writable":true}
+   ```
+5. **Run any interview:** When the interview finishes, the session folder appears automatically under `<VAULT_ROOT>/<YYYY-MM-DD>/<HHmm>_<TRACK>_<DIFFICULTY>_<sessionId>/` with recordings, transcripts, reports, code submissions, and manifest.
+
+---
+
 ## 🧪 Honest Evaluation Pipeline
 
 1. **Preflight** — `GET /api/v1/system/capabilities` probes engines, services, and storage; the checklist UI shows per-track readiness and the exact `docker compose --profile engines up -d` hint when a sandbox is offline.

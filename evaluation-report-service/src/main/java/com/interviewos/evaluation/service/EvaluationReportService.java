@@ -548,6 +548,14 @@ public class EvaluationReportService {
 
         EvaluationReport saved = reportRepository.save(report);
         progressLedgerService.recordSession(saved);
+
+        // Notify session service that report is ready for vault finalization (P7-AUTOVAULT REQ-AV-4)
+        try {
+            sessionClient.notifyVaultReportReady(saved.getSessionId());
+        } catch (Exception e) {
+            log.warn("Failed to notify session service that report is ready for vault for session {}: {}", saved.getSessionId(), e.getMessage());
+        }
+
         return DiagnosticReportResponse.fromEntity(saved);
     }
 
