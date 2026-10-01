@@ -43,6 +43,11 @@ storage:
   retention-days: ${STORAGE_RETENTION_DAYS:14}
   cleanup-cron: ${STORAGE_CLEANUP_CRON:0 0 3 * * ?}
 
+vault:
+  root: ${VAULT_ROOT:D:/AI OS Interview Media}
+  sweep-cron: ${VAULT_SWEEP_CRON:0 30 3 * * ?}
+  sweep-dry-run: ${VAULT_SWEEP_DRY_RUN:false}
+
 ai:
   orchestrator:
     url: ${AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}

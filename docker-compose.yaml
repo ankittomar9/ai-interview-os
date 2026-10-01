@@ -227,6 +227,9 @@ services:
       - WORKSPACE_NETWORK=ai-interview-net
       - WORKSPACE_HOST=localhost
       - RUNNER_MAVEN_IMAGE=ai-interview-os/lld-runner:latest
+      - VAULT_ROOT=/vault
+    volumes:
+      - ${VAULT_ROOT:-D:/AI OS Interview Media}:/vault:rw
     depends_on:
       postgres:
         condition: service_healthy
