@@ -118,6 +118,10 @@ public class VaultStatusService {
     }
 
     public void markFailed(Long sessionId, String errorMessage) {
+        markFailed(sessionId, null, errorMessage);
+    }
+
+    public void markFailed(Long sessionId, Path sessionDir, String errorMessage) {
         updateMongoStatus(sessionId, doc -> {
             InterviewSessionDocument.VaultMetadata meta = doc.getVault();
             if (meta == null) {
@@ -130,6 +134,15 @@ public class VaultStatusService {
             meta.setLastError(errorMessage);
             doc.setVault(meta);
         });
+
+        if (sessionDir != null && Files.exists(sessionDir)) {
+            writeStatusSidecar(sessionDir, VaultStatusPayload.builder()
+                    .schema("av1.status@1")
+                    .sessionId(sessionId)
+                    .status("FAILED")
+                    .lastError(errorMessage)
+                    .build());
+        }
     }
 
     public Optional<InterviewSessionDocument.VaultMetadata> getVaultMetadata(Long sessionId) {

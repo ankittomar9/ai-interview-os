@@ -101,22 +101,34 @@ All implementations operate under strict discipline gates:
   - `InterviewSessionServiceTest.testRecordSectionTransition_CustomPlanSequence`
   - `InterviewSessionServiceTest.testRecordSectionTransition_UnknownSectionType_SkipsFabrication`
 
+### FIX-7 (MUST-Followup / F-N2): Dual-Persistence Integrity on Verification Failure
+- **Problem (Z F-N2 / Qwen F1)**: In `finalizeWithReport`, when `verifyVaultFolder` failed after the manifest had been written as `VERIFIED`, `statusService.markFailed` updated MongoDB to `FAILED`, but `manifest.json` on disk still claimed `VERIFIED`, and no sidecar was written. Disk and MongoDB disagreed, violating the Honesty Doctrine.
+- **Files & Lines**:
+  - `interview-session-service/src/main/java/com/interviewos/session/vault/VaultStatusService.java:120-142`:
+    - Overloaded `markFailed(Long sessionId, Path sessionDir, String errorMessage)` to write `vault-status.json` sidecar with `status: "FAILED"` and `lastError`.
+  - `interview-session-service/src/main/java/com/interviewos/session/vault/VaultArchiveService.java:232-243, 535-645`:
+    - Overloaded `buildAndWriteManifest` with `List<String> errors`.
+    - In `finalizeWithReport`: on verification failure, rewrites `manifest.json` on disk with `status: "FAILED"`, `errors: verification.getErrors()`, and passes `sessionDir` to `statusService.markFailed`.
+- **Tests Added (G4)**:
+  - `VaultArchiveServiceTest.testFinalizeWithReportVerificationFailureRewritesManifestFailed`: verifies `manifest.json` on disk has status `FAILED` and populated `errors[]`, and `statusService.markFailed` is called with `sessionDir`.
+  - `VaultArchiveServiceTest.testVaultStatusServiceMarkFailedWritesSidecar`: verifies `vault-status.json` sidecar is created on disk with status `FAILED` and `lastError`.
+
 ---
 
 ## 3. Four-Number Test Accounting (G3 Discipline)
 
 | Module / Test Suite | Files Run (Surefire Classes) | Test Cases Executed | Assertions Checked | Failures / Errors | Status |
 |---|---|---|---|---|---|
-| **ISS — Vault Specific Suite** | **5** | **27** | **67** | **0 / 0** | **PASS** |
+| **ISS — Vault Specific Suite** | **5** | **29** | **75** | **0 / 0** | **PASS** |
 | - `VaultPathPolicyTest` | 1 | 6 | 14 | 0 / 0 | PASS |
-| - `VaultArchiveServiceTest` | 1 | 12 | 37 | 0 / 0 | PASS |
+| - `VaultArchiveServiceTest` | 1 | 14 | 45 | 0 / 0 | PASS |
 | - `VaultControllerTest` | 1 | 5 | 9 | 0 / 0 | PASS |
 | - `VaultSweeperJobTest` | 1 | 3 | 5 | 0 / 0 | PASS |
 | - `InternalVaultControllerTest` | 1 | 1 | 2 | 0 / 0 | PASS |
-| **ISS — Entire Service Suite** | **40** | **273** | **907** | **0 / 0 (1 skipped)** | **PASS** |
+| **ISS — Entire Service Suite** | **40** | **275** | **915** | **0 / 0 (1 skipped)** | **PASS** |
 | **ERS — Entire Service Suite** | **5** | **29** | **74** | **0 / 0 (1 skipped)** | **PASS** |
 | **Frontend — Entire Test Suite** | **35** | **204** | **420** | **0 / 0** | **PASS** |
-| **CUMULATIVE TOTAL** | **80** | **506** | **1401** | **0 / 0** | **100% GREEN** |
+| **CUMULATIVE TOTAL** | **80** | **508** | **1409** | **0 / 0** | **100% GREEN** |
 
 ---
 
@@ -159,12 +171,22 @@ All implementations operate under strict discipline gates:
   - `verifyVaultFolder` returns `valid: false`.
   - `result.errors` contains `"Missing expected artifact: recordings/camera.webm"`.
 
-### VP11 FAIL Pair: Corrupted Artifact Detection
-- **Method**: `com.interviewos.session.vault.VaultArchiveServiceTest.testStage1ArchiveCorruptDetection`
+### FIX-7 Dual-Persistence Honest-Judge Pair: Verification Failure at Finalize
+- **Method**: `com.interviewos.session.vault.VaultArchiveServiceTest.testFinalizeWithReportVerificationFailureRewritesManifestFailed`
+- **Execution Log Excerpt**:
+  ```text
+  [INFO] Running com.interviewos.session.vault.VaultArchiveServiceTest
+  2026-10-01T18:50:25.268 [main] INFO com.interviewos.session.vault.VaultArchiveService : 🗄️ Starting Stage-1 vault archival for session ID: 1043
+  ...
+  2026-10-01T18:50:25.335 [main] ERROR com.interviewos.session.vault.VaultArchiveService : ❌ Vault report finalization verification failed for session 6001: Verification failed: Missing expected artifact: recordings/screen.webm
+  ```
 - **Assertions Verified**:
-  - Mutated bytes in `recordings/screen.webm`.
-  - `verifyVaultFolder` returns `valid: false`.
-  - `result.errors` contains sha256 mismatch for `recordings/screen.webm`.
+  - `statusService.markFailed(eq(sessionId), eq(sessionDir), anyString())` invoked with `sessionDir`.
+  - On-disk `manifest.json` rewritten with `status: "FAILED"`.
+  - On-disk `manifest.json` has non-empty `errors[]` containing `"recordings/screen.webm"`.
+- **Sidecar Method**: `com.interviewos.session.vault.VaultArchiveServiceTest.testVaultStatusServiceMarkFailedWritesSidecar`
+- **Assertions Verified**:
+  - `vault-status.json` sidecar written with `status: "FAILED"`, `sessionId: 6002`, and `lastError`.
 
 ---
 
@@ -173,7 +195,7 @@ All implementations operate under strict discipline gates:
 ### Container Image IDs (Rebuilt Stack)
 ```text
 REPOSITORY                                  TAG       IMAGE ID
-ai-interview-os-interview-session-service   latest    sha256:d8baa35503e70742456a12c676045d68070861f841fea5949012f29b4ea581f8
+ai-interview-os-interview-session-service   latest    sha256:98a088b584dced5faa7ea3d83f8b40ee935df212b8a49df404b1823a9a8c3551
 ai-interview-os-question-bank-service       latest    sha256:14f29b4f88d6f190f1c5652d8cad5f9cd131ccc74d9559bff2d25e44929d9b1e
 ai-interview-os-evaluation-report-service   latest    sha256:3dd7f3c790507f503af2e5b802a8415e03b3f76badbea5adb9cf6abaf95fab73
 ```
