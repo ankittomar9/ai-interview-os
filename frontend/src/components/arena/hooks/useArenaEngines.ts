@@ -34,6 +34,8 @@ interface UseArenaEnginesProps {
   markQuestionStatus: (slug: string, status: 'PASSED' | 'ATTEMPTED') => void;
   handleAiTurnCompleted: () => Promise<void>;
   onSectionChanged: (idx: number, stage: any) => void;
+  activeSectionIndex?: number;
+  onSectionIndexChange?: (index: number) => void;
 }
 
 export function useArenaEngines({
@@ -60,7 +62,9 @@ export function useArenaEngines({
   onRegisterFinishRecorder,
   markQuestionStatus,
   handleAiTurnCompleted,
-  onSectionChanged
+  onSectionChanged,
+  activeSectionIndex,
+  onSectionIndexChange
 }: UseArenaEnginesProps) {
   const isPlayground = sessionMode === 'PLAYGROUND';
 
@@ -93,14 +97,16 @@ export function useArenaEngines({
     getStarterCode: () => activeQuestion?.starterCode || fallbackStarter,
     getQuestionIndex: () => activeQuestionIndex,
     getTotalQuestionsInSection: () => questionsList.length,
+    activeSectionIndex,
+    onSectionIndexChange,
     getIsApproachGateLocked: () =>
       isApproachGateLocked({
         sessionMode,
         sectionType:
-          plan?.sections?.[dialogue?.activeSectionIndex ?? 0]?.sectionType ||
-          navSections[dialogue?.activeSectionIndex ?? 0]?.sectionType ||
+          plan?.sections?.[activeSectionIndex ?? dialogue?.activeSectionIndex ?? 0]?.sectionType ||
+          navSections[activeSectionIndex ?? dialogue?.activeSectionIndex ?? 0]?.sectionType ||
           initialQuestion.track,
-        sectionIndex: dialogue?.activeSectionIndex ?? 0,
+        sectionIndex: activeSectionIndex ?? dialogue?.activeSectionIndex ?? 0,
         sectionGates
       }),
     candidateName,

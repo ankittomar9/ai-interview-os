@@ -78,6 +78,8 @@ interface UseDialogueProps {
   totalQuestionsInSection?: number;
   getQuestionIndex?: () => number | undefined;
   getTotalQuestionsInSection?: () => number | undefined;
+  activeSectionIndex?: number;
+  onSectionIndexChange?: (index: number) => void;
 }
 
 export function useDialogue({
@@ -107,7 +109,9 @@ export function useDialogue({
   questionIndex,
   totalQuestionsInSection,
   getQuestionIndex,
-  getTotalQuestionsInSection
+  getTotalQuestionsInSection,
+  activeSectionIndex: controlledActiveSectionIndex,
+  onSectionIndexChange
 }: UseDialogueProps) {
   const lastHandoffIndexRef = useRef<number | null>(null);
   const [messages, setMessages] = useState<DialogueMessage[]>(() => [
@@ -121,9 +125,26 @@ export function useDialogue({
   const [isAiResponding, setIsAiResponding] = useState(false);
 
   const navSections = buildNavSections(sections);
-  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const [internalActiveSectionIndex, setInternalActiveSectionIndex] = useState(0);
+  const isControlled = controlledActiveSectionIndex !== undefined;
+  const activeSectionIndex = isControlled ? controlledActiveSectionIndex : internalActiveSectionIndex;
+  const setActiveSectionIndex = useCallback((updater: number | ((prev: number) => number)) => {
+    if (isControlled) {
+      const next = typeof updater === 'function' ? updater(activeSectionIndex) : updater;
+      onSectionIndexChange?.(next);
+    } else {
+      setInternalActiveSectionIndex(updater);
+    }
+  }, [isControlled, activeSectionIndex, onSectionIndexChange]);
+
   const currentNavSection = navSections[activeSectionIndex] || navSections[0];
   const [currentStage, setCurrentStage] = useState<InterviewStage>(() => currentNavSection.stage);
+
+  useEffect(() => {
+    if (navSections[activeSectionIndex]) {
+      setCurrentStage(navSections[activeSectionIndex].stage);
+    }
+  }, [activeSectionIndex, navSections]);
 
   const [stageTurnCounts, setStageTurnCounts] = useState<Record<string, number>>({
     INTRODUCTION: 0,
