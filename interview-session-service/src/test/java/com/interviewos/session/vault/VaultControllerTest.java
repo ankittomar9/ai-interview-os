@@ -1,5 +1,9 @@
 package com.interviewos.session.vault;
 
+import com.interviewos.session.document.InterviewSessionDocument;
+import com.interviewos.session.entity.InterviewSession;
+import com.interviewos.session.repository.InterviewSessionMongoRepository;
+import com.interviewos.session.repository.InterviewSessionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -11,6 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.when;
@@ -26,6 +32,12 @@ class VaultControllerTest {
 
     @MockBean
     private VaultProperties vaultProperties;
+
+    @MockBean
+    private InterviewSessionMongoRepository mongoSessionRepository;
+
+    @MockBean
+    private InterviewSessionRepository sessionRepository;
 
     @Test
     @DisplayName("GET /api/v1/sessions/vault/health returns mounted=true and writable=true for valid writable dir")
@@ -64,8 +76,6 @@ class VaultControllerTest {
         try {
             when(vaultProperties.getRoot()).thenReturn(tempDir.toString());
 
-            // If OS supports setReadOnly on dirs (on Windows setReadOnly on directories might still allow file creation),
-            // we verify the endpoint behaves predictably without error.
             mockMvc.perform(get("/api/v1/sessions/vault/health"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.root").value(tempDir.toString()))
@@ -73,5 +83,64 @@ class VaultControllerTest {
         } finally {
             dirFile.setWritable(true);
         }
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/sessions/{id}/vault returns 404 when session does not exist")
+    void testGetSessionVaultNotFound() throws Exception {
+        when(sessionRepository.findById(9999L)).thenReturn(Optional.empty());
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(9999L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/v1/sessions/9999/vault"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/sessions/{id}/vault returns status and manifest summary when archived")
+    void testGetSessionVaultVerified(@TempDir Path tempVaultFolder) throws Exception {
+        Long sessionId = 1042L;
+        LocalDateTime now = LocalDateTime.parse("2026-10-01T15:00:00");
+
+        // Write a test manifest.json in tempVaultFolder
+        String manifestContent = """
+                {
+                  "schema": "av1.manifest@1",
+                  "sessionId": 1042,
+                  "sessionFolder": "2026-10-01/1432_DSA_MEDIUM_1042",
+                  "status": "VERIFIED",
+                  "vaultVersion": 1,
+                  "generatedAt": "2026-10-01T15:00:00Z",
+                  "artifacts": [
+                    { "path": "session.json", "kind": "session", "bytes": 100, "sha256": "abc" },
+                    { "path": "report/report.pdf", "kind": "report", "bytes": 200, "sha256": "def" }
+                  ],
+                  "missing": [],
+                  "errors": []
+                }
+                """;
+        Files.writeString(tempVaultFolder.resolve("manifest.json"), manifestContent);
+
+        InterviewSession session = InterviewSession.builder().id(sessionId).build();
+        InterviewSessionDocument mongoDoc = InterviewSessionDocument.builder()
+                .sessionId(sessionId)
+                .vault(InterviewSessionDocument.VaultMetadata.builder()
+                        .status("VERIFIED")
+                        .folderPath(tempVaultFolder.toString())
+                        .stagedAt(now)
+                        .verifiedAt(now)
+                        .attempts(1)
+                        .build())
+                .build();
+
+        when(sessionRepository.findById(sessionId)).thenReturn(Optional.of(session));
+        when(mongoSessionRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.of(mongoDoc));
+
+        mockMvc.perform(get("/api/v1/sessions/1042/vault"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionId").value(1042))
+                .andExpect(jsonPath("$.status").value("VERIFIED"))
+                .andExpect(jsonPath("$.folderPath").value(tempVaultFolder.toString()))
+                .andExpect(jsonPath("$.vaultVersion").value(1))
+                .andExpect(jsonPath("$.artifactCount").value(2));
     }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { DiagnosticReportResponse, DimensionScore, SessionMessage } from '../types';
-import { fetchSessionTranscript, getVerification, type VerificationReceipt, getSessionQuestions, type SessionQuestionItem, getCatalogQuestionDetail, type CatalogQuestionDetail } from '../services/api';
+import { fetchSessionTranscript, getVerification, type VerificationReceipt, getSessionQuestions, type SessionQuestionItem, getCatalogQuestionDetail, type CatalogQuestionDetail, getSessionVault, type SessionVaultStatus } from '../services/api';
 import { ProgressChart } from './ProgressChart';
 import {
   CheckCircle2,
@@ -76,6 +76,7 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
 
   const [verificationReceipt, setVerificationReceipt] = useState<VerificationReceipt | null>(null);
   const [sessionStatus, setSessionStatus] = useState<string | null>(null);
+  const [vaultInfo, setVaultInfo] = useState<SessionVaultStatus | null>(null);
   const [reviewQuestionSlug, setReviewQuestionSlug] = useState<string | null>(null);
   const [reviewDetailsCache, setReviewDetailsCache] = useState<Record<string, CatalogQuestionDetail>>({});
   const [loadingReviewDetail, setLoadingReviewDetail] = useState(false);
@@ -123,6 +124,10 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
         .then((data) => {
           if (!cancelled && data?.status) setSessionStatus(data.status);
         })
+        .catch(() => {});
+
+      getSessionVault(report.sessionId)
+        .then((v) => { if (!cancelled && v) setVaultInfo(v); })
         .catch(() => {});
 
       fetch(`/api/v1/sessions/${report.sessionId}/recordings/manifest`, { cache: 'no-store' })
@@ -365,6 +370,28 @@ export const DiagnosticReportView: React.FC<Props> = ({ report, onRestart, onNav
           <Chip variant="neutral" size="sm">
             Session #{report.sessionId}
           </Chip>
+          {vaultInfo?.status && vaultInfo.status !== 'UNARCHIVED' && (
+            <Chip
+              variant={
+                vaultInfo.status === 'VERIFIED'
+                  ? 'success'
+                  : vaultInfo.status === 'FAILED'
+                  ? 'danger'
+                  : 'warning'
+              }
+              size="sm"
+            >
+              Vault: {vaultInfo.status}
+            </Chip>
+          )}
+          {vaultInfo?.folderPath && (
+            <span
+              className="text-xs text-text-3 font-mono truncate max-w-[200px] hidden md:inline"
+              title={vaultInfo.folderPath}
+            >
+              📁 {vaultInfo.folderPath}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 print:hidden">

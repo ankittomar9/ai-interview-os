@@ -61,6 +61,29 @@ export const getSession = async (sessionId: number): Promise<SessionResponse> =>
     return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}`);
 };
 
+export interface SessionVaultStatus {
+    sessionId: number;
+    status: 'STAGED' | 'VERIFIED' | 'PARTIAL' | 'FAILED' | 'ABORTED' | 'UNARCHIVED' | string;
+    folderPath?: string | null;
+    stagedAt?: string | null;
+    verifiedAt?: string | null;
+    attempts?: number;
+    lastError?: string | null;
+    vaultVersion?: number | null;
+    artifactCount?: number | null;
+    missing?: string[];
+    errors?: string[];
+}
+
+export const getSessionVault = async (sessionId: number): Promise<SessionVaultStatus | null> => {
+    try {
+        return await fetchJson<SessionVaultStatus>(`${SESSION_API}/${sessionId}/vault`);
+    } catch (err) {
+        console.warn('Failed to fetch session vault info:', err);
+        return null;
+    }
+};
+
 export const startSession = async (sessionId: number): Promise<SessionResponse> => {
     return fetchJson<SessionResponse>(`${SESSION_API}/${sessionId}/start`, {
         method: 'POST'
