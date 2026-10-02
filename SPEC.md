@@ -14,6 +14,7 @@
 | **SPEC-003** | Local-First | Local-First Purity (Ollama Default, Local STT, Offline Badge) | P1 | **COMPLETED** (`feature/spec-003`) | Ollama default, Whisper.cpp sidecar, EgressTracker, purity badge |
 | **SPEC-004** | Tracks | Track-Neutral Engine (Per-Track Rubric, Local PDF Resume Parsing) | P1 | **COMPLETED** (`feature/spec-004`) | Behavioral STAR rubric, PDF resume parser, role calibration |
 | **SPEC-005** | Growth | Candidate Progress Ledger & Trajectory Tracking | P2 | **COMPLETED** (`feature/spec-005`) | Historical analytics, skill delta radar, progress charts |
+| **SPEC-006** | UX/UI | Playground Redesign — Hub / Module Dual View with Toggle | P1 | **APPROVED — AWAITING EXECUTION** (`feat/spec-006-playground-redesign`) | `LearnView` shell, `HubView`, `ModulesView`, `ViewToggle`, two-track table, learn-tree counters — [full spec](docs/SPEC_006_PLAYGROUND_REDESIGN.md) |
 
 ---
 
