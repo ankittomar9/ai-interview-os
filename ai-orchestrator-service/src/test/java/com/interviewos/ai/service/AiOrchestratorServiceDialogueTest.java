@@ -365,6 +365,70 @@ class AiOrchestratorServiceDialogueTest {
     }
 
     @Test
+    @DisplayName("VP-3 / B-1: PLAYGROUND with currentStage=INTRODUCTION never receives interview INTRO directives; INTERVIEW receives them")
+    void testPlaygroundIntroductionStageSpecBypassed() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        org.mockito.ArgumentCaptor<String> sysPromptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        when(aiClient.generateCompletion(any(), sysPromptCaptor.capture(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Here is a hint on reversing strings.",
+                          "followUpQuestion": "Have you considered StringBuilder?",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": "Draft in progress.",
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "CODING",
+                          "turnSummary": "Candidate working on string reversal.",
+                          "recommendedAction": "OFFER_HINT"
+                        }
+                        """);
+
+        // 1. PLAYGROUND request with currentStage=INTRODUCTION
+        AiDialogueRequest playgroundReq = AiDialogueRequest.builder()
+                .candidateName("Ankit")
+                .sessionMode("PLAYGROUND")
+                .currentStage("INTRODUCTION")
+                .sectionType("INTRODUCTION")
+                .candidateExplanation("what is the issue in this code?")
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .build();
+
+        AiDialogueResponse playgroundRes = orchestratorService.processDialogue(playgroundReq);
+        assertNotNull(playgroundRes);
+
+        String playgroundSysPrompt = sysPromptCaptor.getValue();
+        assertNotNull(playgroundSysPrompt);
+        assertFalse(playgroundSysPrompt.contains("STAGE SPECIFICATION - INTRODUCTION:"),
+                "Playground instruction must NOT contain interview INTRODUCTION stage spec");
+        assertFalse(playgroundSysPrompt.contains("Do NOT present, evaluate, or interrogate coding problems yet."),
+                "Playground instruction must NOT contain anti-code directive");
+
+        // 2. INTERVIEW request with currentStage=INTRODUCTION (Regression check)
+        AiDialogueRequest interviewReq = AiDialogueRequest.builder()
+                .candidateName("Ankit")
+                .sessionMode("INTERVIEW")
+                .currentStage("INTRODUCTION")
+                .sectionType("INTRODUCTION")
+                .candidateExplanation("Hello, I am ready.")
+                .modelProvider(ModelProvider.GEMINI)
+                .apiKey("fake-key")
+                .build();
+
+        AiDialogueResponse interviewRes = orchestratorService.processDialogue(interviewReq);
+        assertNotNull(interviewRes);
+
+        String interviewSysPrompt = sysPromptCaptor.getValue();
+        assertNotNull(interviewSysPrompt);
+        assertTrue(interviewSysPrompt.contains("STAGE SPECIFICATION - INTRODUCTION:"),
+                "Interview instruction must contain interview INTRODUCTION stage spec");
+        assertTrue(interviewSysPrompt.contains("Do NOT present, evaluate, or interrogate coding problems yet."),
+                "Interview instruction must contain anti-code directive");
+    }
+
+    @Test
     @DisplayName("F2.3: Prompt treats unsubmitted code as draft without critique when no execution turn exists")
     void testUnsubmittedDraftPromptDirectiveWhenNoExecutionTurn() {
         when(clientFactory.getClient(any())).thenReturn(aiClient);
