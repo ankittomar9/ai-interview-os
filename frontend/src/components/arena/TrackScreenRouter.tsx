@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SectionType } from "../../types";
 import { IntroScreen } from "./screens/IntroScreen";
 import { DsaScreen } from "./screens/DsaScreen";
@@ -11,6 +11,7 @@ import { EmptyTrackState } from "./EmptyTrackState";
 import { SessionSectionFaultState } from "./SessionSectionFaultState";
 import { ScreenErrorBoundary } from "./ScreenErrorBoundary";
 import type { ExecutionResult } from "../ide/TestcasePanel";
+import { clientLog } from "../../lib/clientLogger";
 
 interface TrackScreenRouterProps {
   sectionType?: SectionType;
@@ -86,6 +87,12 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   };
 
   const effectiveSection = resolveSectionType();
+
+  useEffect(() => {
+    if (isPlayground && questionsCount === 0 && (effectiveSection === 'DSA' || effectiveSection === 'SQL' || effectiveSection === 'LLD' || effectiveSection === 'SYSTEM_DESIGN')) {
+      clientLog.info('EMPTY_TRACK_STATE', `EmptyTrackState mounted for track=${track}`);
+    }
+  }, [isPlayground, questionsCount, effectiveSection, track]);
 
   const renderScreen = () => {
     if (questionsCount === 0 && (effectiveSection === 'DSA' || effectiveSection === 'SQL' || effectiveSection === 'LLD' || effectiveSection === 'SYSTEM_DESIGN')) {

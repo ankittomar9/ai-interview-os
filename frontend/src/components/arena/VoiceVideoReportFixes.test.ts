@@ -152,7 +152,7 @@ test('V5-05: SelfTimer hides +15m and Reset in INTERVIEW mode and logs TIMER_EXT
     'utf-8'
   );
   assert.equal(
-    timerSrc.includes("console.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW')") &&
+    timerSrc.includes("clientLog.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW')") &&
       timerSrc.includes("effectiveMode === 'PLAYGROUND'"),
     true,
     'SelfTimer must block timer extension in INTERVIEW mode with TIMER_EXTEND_BLOCKED mode=INTERVIEW and gate +15m/Reset to PLAYGROUND'
