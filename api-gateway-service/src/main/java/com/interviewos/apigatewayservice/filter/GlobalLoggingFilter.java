@@ -27,9 +27,12 @@ public class GlobalLoggingFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        exchange.getAttributes().put(START_TIME_ATTR, System.currentTimeMillis());
-
         String path = request.getURI().getRawPath();
+        if (path != null && path.startsWith("/api/v1/telemetry/")) {
+            return chain.filter(exchange);
+        }
+
+        exchange.getAttributes().put(START_TIME_ATTR, System.currentTimeMillis());
         String method = request.getMethod().name();
         String clientIp = request.getRemoteAddress() != null 
                 ? request.getRemoteAddress().getAddress().getHostAddress() 

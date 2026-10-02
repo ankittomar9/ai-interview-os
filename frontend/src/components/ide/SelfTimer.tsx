@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Timer, Plus, Pause, Play, RotateCcw } from 'lucide-react';
 import { toast } from '../../hooks/useToast';
+import { clientLog } from '../../lib/clientLogger';
 
 interface Props {
   initialMinutes?: number;
@@ -36,7 +37,7 @@ export const SelfTimer: React.FC<Props> = ({
 
   useEffect(() => {
     if (prevSectionRef.current !== undefined && sectionIndex !== undefined && prevSectionRef.current !== sectionIndex) {
-      console.info(`TIMER_TRANSITION fromSection=${prevSectionRef.current} toSection=${sectionIndex} displayed=${formatTime(secondsLeft)}`);
+      clientLog.info(`TIMER_TRANSITION fromSection=${prevSectionRef.current} toSection=${sectionIndex} displayed=${formatTime(secondsLeft)}`);
       setSecondsLeft(startingMinutes * 60);
       prevSectionRef.current = sectionIndex;
       prevStartingMinutesRef.current = startingMinutes;
@@ -104,7 +105,7 @@ export const SelfTimer: React.FC<Props> = ({
 
   const handleAddMinutes = (mins: number) => {
     if (effectiveMode === 'INTERVIEW') {
-      console.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW');
+      clientLog.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW');
       return;
     }
     if (deadlineRef.current) {
@@ -115,7 +116,7 @@ export const SelfTimer: React.FC<Props> = ({
 
   const handleReset = (mins: number) => {
     if (effectiveMode === 'INTERVIEW') {
-      console.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW');
+      clientLog.warn('TIMER_EXTEND_BLOCKED mode=INTERVIEW');
       return;
     }
     deadlineRef.current = null;

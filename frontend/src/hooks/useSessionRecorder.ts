@@ -6,6 +6,7 @@ import {
   computeScreenBitrate,
   QUALITY_PRESETS
 } from '../lib/recording-quality';
+import { clientLog } from '../lib/clientLogger';
 
 export type StreamKind = 'camera' | 'screen' | 'mic-audio';
 
@@ -300,6 +301,7 @@ export function useSessionRecorder({
         };
 
         cameraRec.onerror = (event: any) => {
+          clientLog.error('RECORDER_ERROR', 'Camera MediaRecorder error', { error: String(event) });
           console.error('Camera MediaRecorder error:', event);
           setRecordingInterrupted(true);
           onInterruptedRef.current?.('Camera recording error');
