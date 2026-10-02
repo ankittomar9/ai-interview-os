@@ -1,6 +1,6 @@
-import React from 'react';
 import { RotateCcw, AlertCircle, Sparkles } from 'lucide-react';
 import type { RetryQueueItem } from '../../services/api';
+import { VerdictChip } from './verdictChips';
 
 interface RetryQueueCardProps {
   items: RetryQueueItem[];
@@ -67,12 +67,12 @@ export const RetryQueueCard: React.FC<RetryQueueCardProps> = ({
           className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin"
         >
           {safeItems.map((item) => {
-            const isFailed = item.lastVerdict === 'FAILED';
             return (
               <button
                 key={item.slug}
                 type="button"
                 data-testid={`retry-chip-${item.slug}`}
+                aria-label={`Review ${item.title || item.slug}, last verdict ${item.lastVerdict || 'unattempted'}, ${item.failCount} failed attempts`}
                 onClick={() => onSelectQuestion(item.slug)}
                 className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border hover:border-rose-500/50 hover:bg-surface/80 transition-all cursor-pointer whitespace-nowrap shadow-xs shrink-0"
               >
@@ -84,15 +84,7 @@ export const RetryQueueCard: React.FC<RetryQueueCardProps> = ({
                   {item.topic}
                 </span>
 
-                <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${
-                    isFailed
-                      ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                      : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                  }`}
-                >
-                  {item.lastVerdict}
-                </span>
+                <VerdictChip verdict={item.lastVerdict} />
 
                 <span
                   title={`${item.failCount} failed attempt${item.failCount === 1 ? '' : 's'}`}
