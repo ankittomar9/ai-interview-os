@@ -15,7 +15,7 @@ import type {
     IntegritySignals,
     SessionMessage
 } from '../types';
-import { fetchJson } from './http';
+import { fetchJson, ApiError } from './http';
 
 const GATEWAY_BASE = '/api/v1';
 const SESSION_API = `${GATEWAY_BASE}/sessions`;
@@ -329,12 +329,31 @@ export const processDialogueTurn = async (payload: {
     if (payload.apiKey) {
         headers['X-InterviewOS-Key'] = payload.apiKey;
     }
-    const res = await fetch(`${AI_API}/dialogue`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(bodyPayload),
-        signal
-    });
+    const timeoutSignal = AbortSignal.timeout(70000);
+    const composedSignal = signal
+        ? (typeof (AbortSignal as any).any === 'function'
+            ? (AbortSignal as any).any([signal, timeoutSignal])
+            : signal)
+        : timeoutSignal;
+
+    let res: Response;
+    try {
+        res = await fetch(`${AI_API}/dialogue`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(bodyPayload),
+            signal: composedSignal
+        });
+    } catch (err: any) {
+        if (err?.name === 'AbortError' && signal?.aborted) {
+            throw err;
+        }
+        if (err?.name === 'TimeoutError' || (err?.name === 'AbortError' && !signal?.aborted)) {
+            throw new ApiError(`Request to ${AI_API}/dialogue timed out after 70000ms`, 408);
+        }
+        throw err;
+    }
+
     if (!res.ok) {
         let errorData: any;
         try {
@@ -348,7 +367,7 @@ export const processDialogueTurn = async (payload: {
                 : typeof errorData === 'string' && errorData.length > 0
                 ? errorData
                 : `HTTP ${res.status} error from ${AI_API}/dialogue`;
-        throw new Error(errorMsg);
+        throw new ApiError(errorMsg, res.status, errorData);
     }
     return res.json();
 };

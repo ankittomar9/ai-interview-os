@@ -46,6 +46,7 @@ export interface AiAssistantPanelProps {
   onMicToggle?: () => void;
   onStartListening?: () => void;
   onStopListening?: () => void;
+  onAbortVoice?: () => void;
   onAbortTurn?: () => void;
   onRecallLastDraft?: () => void;
   isListening?: boolean;
@@ -78,6 +79,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
   onMicToggle,
   onStartListening,
   onStopListening,
+  onAbortVoice,
   onAbortTurn,
   onRecallLastDraft,
   isListening = false,
@@ -347,7 +349,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             onToggleListening={onMicToggle || (() => {})}
             onStartListening={onStartListening}
             onStopListening={onStopListening}
-            onAbort={onAbortTurn}
+            onAbort={onAbortVoice ?? onAbortTurn}
             onAbortTurn={onAbortTurn}
             onRecallLastDraft={onRecallLastDraft}
             recallLastDraft={onRecallLastDraft}

@@ -26,6 +26,10 @@ describe('SPEC-009 VP-4: Turn Abort, Draft Restore & Recall Semantics', () => {
       fnBody.includes('signal') && fnBody.includes('fetch('),
       'processDialogueTurn must forward signal to fetch call'
     );
+    assert.ok(
+      fnBody.includes('70000') && fnBody.includes('ApiError'),
+      'processDialogueTurn must enforce 70000ms timeout and throw ApiError'
+    );
   });
 
   it('useDialogue manages AbortController and passes signal to processDialogueTurn', () => {
@@ -47,6 +51,10 @@ describe('SPEC-009 VP-4: Turn Abort, Draft Restore & Recall Semantics', () => {
     assert.ok(
       dialogueSrc.includes('const abortTurn = useCallback('),
       'useDialogue must define abortTurn callback'
+    );
+    assert.ok(
+      dialogueSrc.includes('if (!abortControllerRef.current) return'),
+      'abortTurn must guard against in-flight null controller'
     );
     assert.ok(
       dialogueSrc.includes('abortControllerRef.current.abort()') ||
@@ -136,6 +144,26 @@ describe('SPEC-009 VP-4: Turn Abort, Draft Restore & Recall Semantics', () => {
       textareaBlock.includes('disabled={isAiResponding}'),
       false,
       'Textarea must NOT be disabled when isAiResponding'
+    );
+  });
+
+  it('R-2: recording-cancel wires to onAbortVoice and preserves voice/turn separation', () => {
+    const panelPath = path.resolve(process.cwd(), 'src/components/ai/AiAssistantPanel.tsx');
+    const shellPath = path.resolve(process.cwd(), 'src/components/arena/ArenaShell.tsx');
+    const panelSrc = fs.readFileSync(panelPath, 'utf-8');
+    const shellSrc = fs.readFileSync(shellPath, 'utf-8');
+
+    assert.ok(
+      shellSrc.includes('onAbortVoice={onAbortVoice}'),
+      'ArenaShell must forward onAbortVoice to AiAssistantPanel'
+    );
+    assert.ok(
+      panelSrc.includes('onAbortVoice?: () => void'),
+      'AiAssistantPanelProps must accept onAbortVoice'
+    );
+    assert.ok(
+      panelSrc.includes('onAbort={onAbortVoice ?? onAbortTurn}'),
+      'AiAssistantPanel must wire onAbortVoice ?? onAbortTurn to input onAbort'
     );
   });
 });

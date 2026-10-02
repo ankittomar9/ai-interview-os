@@ -600,10 +600,9 @@ export function useDialogue({
   }, [chatInput, messages, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals, currentStage, currentNavSection, activeSectionIndex, navSections, transitionSection]);
 
   const abortTurn = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
+    if (!abortControllerRef.current) return;
+    abortControllerRef.current.abort();
+    abortControllerRef.current = null;
     setIsAiResponding(false);
     const textToRestore = lastTurnRef.current?.textToSend || lastSentCandidateTextRef.current;
     if (textToRestore) {

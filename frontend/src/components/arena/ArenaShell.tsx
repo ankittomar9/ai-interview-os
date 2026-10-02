@@ -212,6 +212,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         onMicToggle={onMicToggle}
         onStartListening={onStartListening}
         onStopListening={onStopListening}
+        onAbortVoice={onAbortVoice}
         onAbortTurn={onAbortTurn || onAbortVoice}
         onRecallLastDraft={onRecallLastDraft}
         interimTranscript={interimTranscript}
