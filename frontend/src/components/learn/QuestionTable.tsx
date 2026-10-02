@@ -487,18 +487,7 @@ export const QuestionTable: React.FC<QuestionTableProps> = ({
                             </span>
                           );
                         }
-                        if (v === 'FAILED') {
-                          return (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                              FAILED
-                            </span>
-                          );
-                        }
-                        return (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-elevated/40 text-text-3 border border-border">
-                            UNATTEMPTED
-                          </span>
-                        );
+                        return <VerdictChip verdict={v} />;
                       })()
                     ) : isSolved ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-success/15 text-success border border-success/30">

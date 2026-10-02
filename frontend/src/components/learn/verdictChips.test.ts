@@ -59,3 +59,16 @@ test('F4/Gate VP-7: getVerdictChipDescriptor maps canonical verdict taxonomy', (
   assert.match(unknown.className, /text-text-3/);
   assert.match(unknown.className, /font-mono/);
 });
+
+test('F4/Gate VP-7: getVerdictChipDescriptor handles whitespace, lowercase and variations', () => {
+  const passedLower = getVerdictChipDescriptor('  passed  ');
+  assert.equal(passedLower.label, 'PASSED');
+  assert.match(passedLower.className, /text-success/);
+
+  const tleLower = getVerdictChipDescriptor('time_limit_exceeded');
+  assert.equal(tleLower.label, 'TLE');
+  assert.match(tleLower.className, /text-amber-400/);
+
+  const emptyWhitespace = getVerdictChipDescriptor('   ');
+  assert.equal(emptyWhitespace.label, '—');
+});
