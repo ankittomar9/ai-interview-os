@@ -1,9 +1,16 @@
-import React, { useEffect, useRef } from "react";
-import { Volume2, VolumeX, X, Sparkles, MessageSquare, ShieldCheck } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Volume2, VolumeX, X, Sparkles, MessageSquare, ShieldCheck, Maximize2, Minimize2 } from "lucide-react";
 import { AiOrbAvatar, WaveformBars } from "./AiOrbAvatar";
 import { Chip } from "../ui/Chip";
 import { AutoGrowingChatInput } from "../ui/AutoGrowingChatInput";
 import { RoundDivider } from "../arena/RoundDivider";
+import {
+  type CoachPanelSize,
+  panelSizeClass,
+  getNextPanelSize,
+  getStoredPanelSize,
+  setStoredPanelSize
+} from "./panelSizing";
 
 export interface ChatMessage {
   role: "candidate" | "interviewer" | "system";
@@ -40,6 +47,7 @@ export interface AiAssistantPanelProps {
   onStartListening?: () => void;
   onStopListening?: () => void;
   onAbortTurn?: () => void;
+  onRecallLastDraft?: () => void;
   isListening?: boolean;
   interimTranscript?: string;
   salvageHint?: string | null;
@@ -71,6 +79,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
   onStartListening,
   onStopListening,
   onAbortTurn,
+  onRecallLastDraft,
   isListening = false,
   interimTranscript = "",
   salvageHint = null,
@@ -84,6 +93,13 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
 }) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [panelSize, setPanelSize] = useState<CoachPanelSize>(() => getStoredPanelSize());
+
+  const handleCyclePanelSize = () => {
+    const next = getNextPanelSize(panelSize);
+    setPanelSize(next);
+    setStoredPanelSize(next);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -110,16 +126,18 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
       m.metadata?.offlineFallback === "true"
   );
 
-  const positionClass = stackAbove === "webcam"
-    ? "fixed bottom-52 right-5"
-    : "fixed bottom-20 right-5";
+  const sizeClasses = panelSizeClass(panelSize);
+  const positionClass = panelSize === "fullscreen"
+    ? ""
+    : (stackAbove === "webcam" ? "fixed bottom-52 right-5" : "fixed bottom-20 right-5");
+  const containerClasses = `${positionClass} ${sizeClasses} flex flex-col rounded-xl border border-border bg-surface shadow-2xl z-40 overflow-hidden animate-fade-in ${className}`.trim();
 
   return (
     <div
       ref={panelRef}
       role="dialog"
       aria-label="AI Assistant"
-      className={positionClass + " w-[360px] sm:w-[380px] max-h-[70vh] flex flex-col rounded-xl border border-border bg-surface shadow-2xl z-40 overflow-hidden animate-fade-in " + className}
+      className={containerClasses}
     >
       <div className="h-12 px-3 bg-elevated/90 border-b border-border flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -148,6 +166,15 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
               {voiceEnabled ? <Volume2 className="w-4 h-4 text-primary" /> : <VolumeX className="w-4 h-4 text-text-3" />}
             </button>
           )}
+          <button
+            type="button"
+            onClick={handleCyclePanelSize}
+            title={panelSize === "normal" ? "Expand Coach (Wide)" : panelSize === "wide" ? "Fullscreen Coach" : "Restore Coach (Normal)"}
+            className="p-1.5 text-text-3 hover:text-text rounded-md hover:bg-surface transition-colors cursor-pointer"
+            aria-label="Toggle panel size"
+          >
+            {panelSize === "fullscreen" ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -321,6 +348,10 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
             onStartListening={onStartListening}
             onStopListening={onStopListening}
             onAbort={onAbortTurn}
+            onAbortTurn={onAbortTurn}
+            onRecallLastDraft={onRecallLastDraft}
+            recallLastDraft={onRecallLastDraft}
+            abortTurn={onAbortTurn}
             isAiResponding={isAiResponding}
             interimTranscript={interimTranscript}
             salvageHint={salvageHint}

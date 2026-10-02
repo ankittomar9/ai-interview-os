@@ -34,6 +34,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     pendingStageSwitch, onConfirmStageSwitch, onCancelStageSwitch, onNextQuestion, onNextStage,
     isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
     voiceOutputEnabled, onToggleVoice, onMicToggle, onStartListening, onStopListening, onAbortVoice,
+    onAbortTurn, onRecallLastDraft,
     interimTranscript = '', micError = null,
     onClearMicError, canRetryStt = false, onRetryStt, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
     isRecording, recordingSeconds, recordingInterrupted, failedChunkCount = 0, cameraActive, screenActive, verificationBroken = false,
@@ -211,7 +212,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         onMicToggle={onMicToggle}
         onStartListening={onStartListening}
         onStopListening={onStopListening}
-        onAbortTurn={onAbortVoice}
+        onAbortTurn={onAbortTurn || onAbortVoice}
+        onRecallLastDraft={onRecallLastDraft}
         interimTranscript={interimTranscript}
         salvageHint={props.salvageHint}
         micError={micError}

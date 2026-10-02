@@ -123,6 +123,8 @@ export function useDialogue({
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isAiResponding, setIsAiResponding] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastSentCandidateTextRef = useRef<string>("");
 
   const navSections = buildNavSections(sections);
   const [internalActiveSectionIndex, setInternalActiveSectionIndex] = useState(0);
@@ -340,6 +342,7 @@ export function useDialogue({
 
     if (forcedText === undefined) setChatInput("");
     lastTurnRef.current = { textToSend, codeSnapshot };
+    lastSentCandidateTextRef.current = textToSend;
     const isReviewingClosed = !isPlayground && activeSectionIndex < highestSectionIndexRef.current;
     if (!isReviewingClosed) {
       const curKey = currentNavSection.key;
@@ -357,6 +360,10 @@ export function useDialogue({
 
     setMessages((prev) => [...prev, candidateMsg]);
     setIsAiResponding(true);
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       const baseIntegrity = getIntegritySignals ? getIntegritySignals() : undefined;
@@ -426,7 +433,8 @@ export function useDialogue({
           memoryUsedMb: latestExecution.memoryUsedMb || 0
         } : undefined,
         isStt,
-        integritySignals: integrity
+        integritySignals: integrity,
+        signal: controller.signal
       });
 
       setProviderError(null);
@@ -504,6 +512,10 @@ export function useDialogue({
         onAiSpeechRequested(fullText);
       }
     } catch (err: any) {
+      if (err?.name === 'AbortError' || (typeof err === 'object' && err?.message && (err.message.includes('aborted') || err.message.includes('The user aborted a request')))) {
+        // Honest state: Aborted by user — no fake messages, no error toast, no console warning
+        return;
+      }
       console.warn("[useDialogue] Provider turn processing error:", err);
 
       const errStr = (err?.message || "").toLowerCase();
@@ -580,9 +592,32 @@ export function useDialogue({
         console.warn("[useDialogue] Failed to persist fallback AI message:", saveErr);
       }
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsAiResponding(false);
     }
   }, [chatInput, messages, sessionId, provider, apiKey, isPlayground, questionContext, problemSlug, onAiSpeechRequested, getIntegritySignals, currentStage, currentNavSection, activeSectionIndex, navSections, transitionSection]);
+
+  const abortTurn = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsAiResponding(false);
+    const textToRestore = lastTurnRef.current?.textToSend || lastSentCandidateTextRef.current;
+    if (textToRestore) {
+      setChatInput(textToRestore);
+    }
+  }, []);
+
+  const recallLastDraft = useCallback(() => {
+    const text = lastSentCandidateTextRef.current;
+    if (text) {
+      setChatInput(text);
+    }
+    return text;
+  }, []);
 
   const retryLastTurn = useCallback(async () => {
     if (lastTurnRef.current) {
@@ -615,6 +650,8 @@ export function useDialogue({
     retryLastTurn,
     clearProviderError,
     triggerCandidateTurn,
+    abortTurn,
+    recallLastDraft,
     echoFilteredCount: echoFilteredCountRef.current
   };
 }

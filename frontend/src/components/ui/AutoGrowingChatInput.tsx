@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { Mic, MicOff, Send, Trash2, CornerDownLeft, Sparkles, XCircle } from 'lucide-react';
+import { Mic, MicOff, Send, Trash2, CornerDownLeft, XCircle, Square } from 'lucide-react';
 import { getSttChip, subscribeSttChip } from '../../services/api';
 
 interface AutoGrowingChatInputProps {
@@ -21,6 +21,10 @@ interface AutoGrowingChatInputProps {
   onStartListening?: () => void;
   onStopListening?: () => void;
   onAbort?: () => void;
+  onAbortTurn?: () => void;
+  abortTurn?: () => void;
+  onRecallLastDraft?: () => void;
+  recallLastDraft?: () => void;
   sttChip?: string | null;
 }
 
@@ -43,6 +47,10 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   onStartListening,
   onStopListening,
   onAbort,
+  onAbortTurn,
+  abortTurn,
+  onRecallLastDraft,
+  recallLastDraft,
   sttChip: propSttChip
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -111,9 +119,23 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
+      if (isAiResponding) {
+        e.preventDefault();
+        onAbortTurn?.();
+        abortTurn?.();
+        return;
+      }
       if (isListening || interimTranscript) {
         e.preventDefault();
         onAbort?.();
+        return;
+      }
+    }
+    if (e.key === 'ArrowUp') {
+      if (!value.trim() && !isAiResponding && !isListening) {
+        e.preventDefault();
+        onRecallLastDraft?.();
+        recallLastDraft?.();
         return;
       }
     }
@@ -232,7 +254,6 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
             adjustHeight();
           }}
           onKeyDown={handleKeyDown}
-          disabled={isAiResponding}
           className="w-full bg-transparent text-xs text-text placeholder:text-text-3 resize-none focus:outline-none leading-relaxed transition-all min-h-[44px] max-h-[180px] scrollbar-thin scrollbar-thumb-border"
         />
         {/* Streaming Interim Transcript Live Preview */}
@@ -337,23 +358,31 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
             <CornerDownLeft className="w-2.5 h-2.5" />
           </div>
 
-          <button
-            type="button"
-            onClick={onSend}
-            disabled={!value.trim() || isAiResponding}
-            title="Send response (Enter)"
-            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer ${
-              value.trim() && !isAiResponding
-                ? 'bg-primary text-on-accent hover:bg-primary-2 shadow-sm shadow-primary/20 hover:scale-105'
-                : 'bg-surface text-text-3/40 border border-border/40 cursor-not-allowed opacity-50'
-            }`}
-          >
-            {isAiResponding ? (
-              <Sparkles className="w-3.5 h-3.5 animate-spin" />
-            ) : (
+          {isAiResponding ? (
+            <button
+              type="button"
+              onClick={onAbortTurn || abortTurn}
+              title="Stop response"
+              aria-label="Stop response"
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer bg-danger/20 text-danger hover:bg-danger hover:text-on-accent border border-danger/40 shadow-sm shadow-danger/20 hover:scale-105"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSend}
+              disabled={!value.trim()}
+              title="Send response (Enter)"
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 cursor-pointer ${
+                value.trim()
+                  ? 'bg-primary text-on-accent hover:bg-primary-2 shadow-sm shadow-primary/20 hover:scale-105'
+                  : 'bg-surface text-text-3/40 border border-border/40 cursor-not-allowed opacity-50'
+              }`}
+            >
               <Send className="w-3.5 h-3.5" />
-            )}
-          </button>
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -322,13 +322,35 @@ export const processDialogueTurn = async (payload: {
     };
     integritySignals?: IntegritySignals;
     isStt?: boolean;
+    signal?: AbortSignal;
 }): Promise<AiDialogueResponse> => {
-    return fetchJson<AiDialogueResponse>(`${AI_API}/dialogue`, {
+    const { signal, ...bodyPayload } = payload;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (payload.apiKey) {
+        headers['X-InterviewOS-Key'] = payload.apiKey;
+    }
+    const res = await fetch(`${AI_API}/dialogue`, {
         method: 'POST',
-        body: JSON.stringify(payload),
-        apiKey: payload.apiKey,
-        timeoutMs: 70000
+        headers,
+        body: JSON.stringify(bodyPayload),
+        signal
     });
+    if (!res.ok) {
+        let errorData: any;
+        try {
+            errorData = await res.json();
+        } catch {
+            errorData = await res.text();
+        }
+        const errorMsg =
+            typeof errorData === 'object' && errorData?.message
+                ? errorData.message
+                : typeof errorData === 'string' && errorData.length > 0
+                ? errorData
+                : `HTTP ${res.status} error from ${AI_API}/dialogue`;
+        throw new Error(errorMsg);
+    }
+    return res.json();
 };
 
 export const evaluateArchitectureDesign = async (
