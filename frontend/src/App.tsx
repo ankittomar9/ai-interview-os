@@ -16,6 +16,8 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { Toaster } from './components/ui/Toaster';
 import { ScreenErrorBoundary } from './components/arena/ScreenErrorBoundary';
 
+import { syntheticPlaygroundSection, syntheticPlaygroundPlan } from './lib/playgroundPlan';
+
 type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN' | 'DASHBOARD';
 
 export function App() {
@@ -146,8 +148,11 @@ export function App() {
         mode: 'PLAYGROUND'
       });
 
+      const mappedDifficulty = mapQuestionDifficultyToSeniority(q.difficulty);
+      const plan = syntheticPlaygroundPlan(q, mappedDifficulty, [q.slug]);
+
       setSessionId(session.id);
-      setSessionPlan(undefined);
+      setSessionPlan(plan);
       await startSession(session.id);
 
       setQuestion(q);
@@ -286,6 +291,10 @@ export function App() {
       setSectionQuestions(mappedSectionQuestions);
 
       if (chosenMode === 'PLAYGROUND') {
+        if (!session.plan?.sections || session.plan.sections.length === 0 || session.plan.sections[0].sectionType === 'INTRODUCTION') {
+          const plan = syntheticPlaygroundPlan(initialQ, config.difficulty, plannedList.map((p) => p.slug || '').filter(Boolean));
+          setSessionPlan(plan);
+        }
         // Spec: Skip PreInterviewChecklist in Playground mode
         setView('ROOM');
       } else {
@@ -322,7 +331,8 @@ export function App() {
         mode: 'PLAYGROUND'
       });
       setSessionId(session.id);
-      setSessionPlan(undefined);
+      const plan = syntheticPlaygroundPlan(firstQ, difficulty, selectedQuestions.map((sq) => sq.slug || '').filter(Boolean));
+      setSessionPlan(plan);
       await startSession(session.id);
 
       setQuestion(firstQ);
