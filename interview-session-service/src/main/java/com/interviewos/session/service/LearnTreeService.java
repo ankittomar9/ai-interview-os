@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -259,15 +260,66 @@ public class LearnTreeService {
 
                 // Interview counts per question
                 List<SessionQuestion> sqList = getSessionQuestionsForSlug(slug, sessionQuestionsBySlug);
+                int qInterviewPassCount = 0;
+                int qInterviewAttemptCount = 0;
                 for (SessionQuestion sq : sqList) {
                     if ("PASSED".equalsIgnoreCase(sq.getVerdict())) {
                         passed++;
+                        qInterviewPassCount++;
+                        qInterviewAttemptCount++;
                     } else if ("FAILED".equalsIgnoreCase(sq.getVerdict())) {
                         failed++;
+                        qInterviewAttemptCount++;
+                    } else if (sq.getVerdict() != null && !"UNATTEMPTED".equalsIgnoreCase(sq.getVerdict())) {
+                        qInterviewAttemptCount++;
                     }
                 }
 
-                questionNodes.add(new QuestionNode(slug, q.title(), q.track(), q.difficulty(), verdict));
+                // Practice counters per question
+                QuestionProgress qp = getProgressForSlug(slug, progressMap);
+                List<PracticeAttempt> paList = getAttemptsForSlug(slug, attemptsBySlug);
+
+                int practiceAttemptCount = 0;
+                int practiceSolveCount = 0;
+                String lastPracticeVerdict = null;
+                Instant lastPracticedAt = null;
+
+                if (qp != null) {
+                    practiceAttemptCount = qp.getAttemptCount() != null ? qp.getAttemptCount() : 0;
+                    practiceSolveCount = qp.getSolveCount() != null ? qp.getSolveCount() : 0;
+                    lastPracticedAt = qp.getLastAttemptedAt();
+                }
+
+                if (!paList.isEmpty()) {
+                    if (practiceAttemptCount < paList.size()) {
+                        practiceAttemptCount = paList.size();
+                    }
+                    PracticeAttempt latestAttempt = paList.get(0);
+                    lastPracticeVerdict = latestAttempt.getVerdict();
+                    if (lastPracticedAt == null) {
+                        lastPracticedAt = latestAttempt.getCreatedAt();
+                    }
+                    if (practiceSolveCount == 0) {
+                        long passedCount = paList.stream().filter(a -> "PASSED".equalsIgnoreCase(a.getVerdict())).count();
+                        if (passedCount > 0) {
+                            practiceSolveCount = (int) passedCount;
+                        }
+                    }
+                }
+
+                questionNodes.add(new QuestionNode(
+                        slug,
+                        q.title(),
+                        q.track(),
+                        q.difficulty(),
+                        verdict,
+                        practiceAttemptCount,
+                        practiceSolveCount,
+                        lastPracticeVerdict,
+                        lastPracticedAt,
+                        qInterviewAttemptCount,
+                        qInterviewPassCount
+                ));
             }
 
             int interviewAttempted = passed + failed;
@@ -283,7 +335,9 @@ public class LearnTreeService {
                     passed,
                     failed,
                     pressureGap,
-                    questionNodes
+                    questionNodes,
+                    interviewAttempted,
+                    passed
             ));
         }
 
@@ -313,7 +367,9 @@ public class LearnTreeService {
                     0,
                     0,
                     pressureGap,
-                    List.of()
+                    List.of(),
+                    0,
+                    0
             ));
         }
 

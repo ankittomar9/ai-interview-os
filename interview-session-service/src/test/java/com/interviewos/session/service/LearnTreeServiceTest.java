@@ -164,7 +164,28 @@ class LearnTreeServiceTest {
         assertThat(arraysNode.attempted()).isEqualTo(2);
         assertThat(arraysNode.passed()).isEqualTo(1);
         assertThat(arraysNode.failed()).isEqualTo(0);
+        assertThat(arraysNode.interviewAttempted()).isEqualTo(1);
+        assertThat(arraysNode.interviewPassed()).isEqualTo(1);
         assertThat(arraysNode.pressureGap()).isEqualTo("Practice ×2 · Interview 1/1");
+
+        // Verify question-level counters in arrays
+        LearnTreeResponse.QuestionNode twoSumQ = arraysNode.questions().stream()
+                .filter(q -> "dsa-two-sum-target".equals(q.slug()))
+                .findFirst().orElseThrow();
+        assertThat(twoSumQ.practiceAttemptCount()).isEqualTo(1);
+        assertThat(twoSumQ.practiceSolveCount()).isEqualTo(1);
+        assertThat(twoSumQ.lastPracticeVerdict()).isEqualTo("PASSED");
+        assertThat(twoSumQ.interviewAttemptCount()).isEqualTo(1);
+        assertThat(twoSumQ.interviewPassCount()).isEqualTo(1);
+
+        LearnTreeResponse.QuestionNode mergeQ = arraysNode.questions().stream()
+                .filter(q -> "dsa-lc56-merge-intervals".equals(q.slug()))
+                .findFirst().orElseThrow();
+        assertThat(mergeQ.practiceAttemptCount()).isEqualTo(1);
+        assertThat(mergeQ.practiceSolveCount()).isEqualTo(1);
+        assertThat(mergeQ.lastPracticeVerdict()).isEqualTo("PASSED");
+        assertThat(mergeQ.interviewAttemptCount()).isEqualTo(0);
+        assertThat(mergeQ.interviewPassCount()).isEqualTo(0);
 
         // Verify two-pointers node: 1 total, 0 solved, 1 attempted, 0 interview pass, 1 interview fail -> Practice ×0 · Interview 0/1
         TopicNode twoPointersNode = tree.topics().stream().filter(t -> "two-pointers".equals(t.topicId())).findFirst().orElseThrow();
@@ -173,12 +194,25 @@ class LearnTreeServiceTest {
         assertThat(twoPointersNode.attempted()).isEqualTo(1);
         assertThat(twoPointersNode.passed()).isEqualTo(0);
         assertThat(twoPointersNode.failed()).isEqualTo(1);
+        assertThat(twoPointersNode.interviewAttempted()).isEqualTo(1);
+        assertThat(twoPointersNode.interviewPassed()).isEqualTo(0);
         assertThat(twoPointersNode.pressureGap()).isEqualTo("Practice ×0 · Interview 0/1");
+
+        LearnTreeResponse.QuestionNode rainWaterQ = twoPointersNode.questions().stream()
+                .filter(q -> "dsa-trapping-rain-water".equals(q.slug()))
+                .findFirst().orElseThrow();
+        assertThat(rainWaterQ.practiceAttemptCount()).isEqualTo(1);
+        assertThat(rainWaterQ.practiceSolveCount()).isEqualTo(0);
+        assertThat(rainWaterQ.lastPracticeVerdict()).isEqualTo("FAILED");
+        assertThat(rainWaterQ.interviewAttemptCount()).isEqualTo(1);
+        assertThat(rainWaterQ.interviewPassCount()).isEqualTo(0);
 
         // Verify stacks-queues node: 1 total, 1 solved, 1 attempted, 0 interview pass, 0 interview fail -> Practice ×1 · Interview 0/0
         TopicNode sqNode = tree.topics().stream().filter(t -> "stacks-queues".equals(t.topicId())).findFirst().orElseThrow();
         assertThat(sqNode.total()).isEqualTo(1);
         assertThat(sqNode.solved()).isEqualTo(1);
+        assertThat(sqNode.interviewAttempted()).isEqualTo(0);
+        assertThat(sqNode.interviewPassed()).isEqualTo(0);
         assertThat(sqNode.pressureGap()).isEqualTo("Practice ×1 · Interview 0/0");
     }
 
@@ -199,6 +233,8 @@ class LearnTreeServiceTest {
         for (TopicNode node : tree.topics()) {
             assertThat(node.total()).isNull();
             assertThat(node.questions()).isEmpty();
+            assertThat(node.interviewAttempted()).isEqualTo(0);
+            assertThat(node.interviewPassed()).isEqualTo(0);
         }
     }
 }
