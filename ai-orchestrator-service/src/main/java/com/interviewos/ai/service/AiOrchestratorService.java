@@ -277,6 +277,11 @@ public class AiOrchestratorService {
                       "recommendedAction": "OFFER_HINT | PROBE_DEEPER | ANSWER_CLARIFICATION | ADVANCE_STAGE",
                       "usedFollowUpSeedIds": []
                     }
+
+                    FOLLOW-UP RELEVANCE RULE: "followUpQuestion" must probe the current problem's algorithm,
+                    correctness, complexity, or realistic boundary cases (empty input, duplicates, extremes,
+                    overflow). Do NOT ask about language-lawyer trivia (Unicode encoding or surrogate mechanics,
+                    JVM internals, language history) unless the problem itself is explicitly about text encoding.
                     """.formatted(
                     memory.runningSummary(),
                     memory.recentVerbatim(),

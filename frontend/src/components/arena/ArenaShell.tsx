@@ -34,6 +34,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     pendingStageSwitch, onConfirmStageSwitch, onCancelStageSwitch, onNextQuestion, onNextStage,
     isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
     voiceOutputEnabled, onToggleVoice, onMicToggle, onStartListening, onStopListening, onAbortVoice,
+    onAbortTurn, onRecallLastDraft,
     interimTranscript = '', micError = null,
     onClearMicError, canRetryStt = false, onRetryStt, hasUnreadAi, isWindowBlurred = false, tabSwitches = 0, pasteDumps = 0,
     isRecording, recordingSeconds, recordingInterrupted, failedChunkCount = 0, cameraActive, screenActive, verificationBroken = false,
@@ -78,13 +79,14 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   }
 
   const activeSlug = question.slug || ('q' + (activeQuestionIndex + 1));
-  const activeSection = props.sections?.[props.activeSectionIndex ?? 0];
+  const sections = props.sections || [];
+  const activeSection = sections[props.activeSectionIndex ?? 0];
   const currentSectionBudget = activeSection?.softTimeBudgetMinutes || 20;
   const recorderRestarts = typeof window !== 'undefined' && window.sessionStorage && props.sessionId
     ? parseInt(window.sessionStorage.getItem(`rec_restarts_${props.sessionId}`) || '0', 10)
     : 0;
 
-  const isIntroRound = !isPlayground && (props.sections?.[props.activeSectionIndex ?? 0]?.sectionType === 'INTRODUCTION' || currentStage === 'INTRODUCTION');
+  const isIntroRound = !isPlayground && (sections[props.activeSectionIndex ?? 0]?.sectionType === 'INTRODUCTION' || currentStage === 'INTRODUCTION');
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-bg text-text select-none relative">
@@ -132,9 +134,9 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
           </button>
         </div>
       </div>
-      {!isFocusMode && <StageStepper currentStage={currentStage} currentSectionIndex={props.activeSectionIndex} sections={props.sections} isPlayground={isPlayground} onStageClick={onStageClick} onSectionClick={props.onSectionClick} stageTurnCounts={stageTurnCounts} stageTransitionReasons={stageTransitionReasons} />}
+      {!isFocusMode && !(isPlayground && sections.length <= 1) && <StageStepper currentStage={currentStage} currentSectionIndex={props.activeSectionIndex} sections={sections} isPlayground={isPlayground} onStageClick={onStageClick} onSectionClick={props.onSectionClick} stageTurnCounts={stageTurnCounts} stageTransitionReasons={stageTransitionReasons} />}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
-        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode || isIntroRound ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
+        <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode || isIntroRound || (isPlayground && railItems.length <= 1) ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           <Group orientation="horizontal" id="arena-shell-group" className="h-full w-full flex-1 min-w-0">
             <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
@@ -210,7 +212,8 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         onMicToggle={onMicToggle}
         onStartListening={onStartListening}
         onStopListening={onStopListening}
-        onAbortTurn={onAbortVoice}
+        onAbortTurn={onAbortTurn || onAbortVoice}
+        onRecallLastDraft={onRecallLastDraft}
         interimTranscript={interimTranscript}
         salvageHint={props.salvageHint}
         micError={micError}

@@ -98,6 +98,8 @@ export function buildArenaShellProps(args: UseArenaShellPropsArgs): ArenaShellPr
     onStartListening: engines.voice.startListening,
     onStopListening: engines.voice.stopListening,
     onAbortVoice: engines.voice.abortTurn,
+    onAbortTurn: engines.dialogue.abortTurn,
+    onRecallLastDraft: engines.dialogue.recallLastDraft,
     hasUnreadAi: engines.dialogue.hasUnread,
     isWindowBlurred: engines.proctoring.isWindowBlurred,
     tabSwitches: engines.proctoring.tabSwitches,

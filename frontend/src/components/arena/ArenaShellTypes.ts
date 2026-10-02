@@ -55,6 +55,8 @@ export interface ArenaShellProps {
   onStartListening?: () => void;
   onStopListening?: () => void;
   onAbortVoice?: () => void;
+  onAbortTurn?: () => void;
+  onRecallLastDraft?: () => void;
   interimTranscript?: string;
   micError?: string | null;
   onClearMicError?: () => void;
