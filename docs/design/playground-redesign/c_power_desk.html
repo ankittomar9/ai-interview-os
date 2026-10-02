@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Direction C — Refined Power Desk (dark, keeps current IA)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e14;--panel:#11151e;--panel2:#161b27;--panel3:#1b2231;
+  --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.11);
+  --tx:#e9edf5;--tx2:#c0c7d8;--mut:#89919f;--faint:#5f6675;
+  --acc:#5b8cff;--acc-soft:rgba(91,140,255,.13);
+  --grn:#3ecf8e;--amb:#f0b24a;--red:#f4716f;--org:#f0924f;
+  --pur:#a78bfa;--cyn:#3ccfe0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg)}
+body{font:14px/1.5 'Inter',-apple-system,'Segoe UI',Roboto,'Liberation Sans',sans-serif;color:var(--tx);-webkit-font-smoothing:antialiased}
+svg.ic{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- topbar ---------- */
+.top{height:54px;display:flex;align-items:center;gap:14px;padding:0 22px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:9px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4d8dff,#7c5cff);display:grid;place-items:center;color:#fff;font-weight:800;font-size:11.5px}
+.brand b{font-size:13.5px;font-weight:700}
+.brand span{font-size:11px;color:var(--faint);margin-left:2px}
+.prog{display:flex;align-items:center;gap:9px;margin-left:6px}
+.ring{position:relative;width:26px;height:26px}
+.ring .v{position:absolute;inset:0;display:grid;place-items:center;font-size:8.5px;font-weight:800}
+.prog .t{font-size:12px;color:var(--mut);font-weight:600}
+.prog .t b{color:var(--tx)}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:9px}
+.theme{display:flex;align-items:center;gap:7px;border:1px solid var(--line2);border-radius:9px;padding:7px 11px;font-size:12px;font-weight:600;color:var(--tx2)}
+.theme .sw{width:13px;height:13px;border-radius:4px;background:linear-gradient(135deg,#2d3b28,#43503a)}
+.btn{display:flex;align-items:center;gap:7px;border-radius:9px;padding:7.5px 13px;font-size:12.5px;font-weight:600;text-decoration:none}
+.btn.ghost{border:1px solid var(--line2);color:var(--tx2)}
+.btn.pri{background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(91,140,255,.25)}
+.av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#f0924f,#ef7cc0);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+
+/* ---------- track tabs ---------- */
+.tabs{display:flex;gap:8px;padding:14px 22px 0}
+.tab{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;border:1px solid var(--line);color:var(--mut);font-size:13px;font-weight:600;text-decoration:none;background:var(--panel)}
+.tab .n{font-size:10.5px;font-weight:700;border-radius:6px;padding:1.5px 7px;background:rgba(255,255,255,.06);color:var(--faint)}
+.tab.on{background:var(--acc-soft);border-color:rgba(91,140,255,.4);color:#cfe0ff}
+.tab.on .n{background:rgba(91,140,255,.25);color:#aecbff}
+.tab .ic{width:14px;height:14px}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:262px minmax(0,1fr);gap:18px;padding:16px 22px 26px}
+
+/* ---------- topic sidebar ---------- */
+.sb{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 10px;height:fit-content}
+.sb .hd{display:flex;align-items:center;justify-content:space-between;padding:2px 8px 10px}
+.sb .hd b{font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--faint);text-transform:uppercase}
+.sb .hd span{font-size:10.5px;color:var(--faint)}
+.tsearch{display:flex;align-items:center;gap:8px;margin:0 4px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7.5px 10px;color:var(--faint);font-size:12px}
+.topic{display:flex;align-items:center;gap:10px;padding:8.5px 9px;border-radius:9px}
+.topic.on{background:var(--panel3)}
+.topic .d{width:9px;height:9px;border-radius:3px;flex:none}
+.topic .nm{flex:1;font-size:13px;font-weight:600;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topic.on .nm{color:var(--tx)}
+.topic .n{font-size:11px;color:var(--faint);font-weight:600}
+.topic .bar{height:3px;width:44px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.topic .bar i{display:block;height:100%;background:var(--grn)}
+
+/* ---------- main ---------- */
+.main{min-width:0}
+
+/* retry queue as cards */
+.rq{display:flex;align-items:baseline;gap:10px;margin:2px 2px 10px}
+.rq h2{font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+.rq .n{font-size:11.5px;font-weight:700;color:#f2a86e;background:rgba(240,146,79,.12);border-radius:999px;padding:2px 9px}
+.rq span{font-size:12px;color:var(--faint)}
+.rq a{margin-left:auto;font-size:12px;color:var(--mut);font-weight:600;text-decoration:none}
+.qcards{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+.qc{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px 10px;overflow:hidden}
+.qc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red)}
+.qc.o::before{background:var(--org)} .qc.a::before{background:var(--amb)}
+.qc .t{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.005em}
+.qc .m{font-size:10.5px;color:var(--mut);margin-top:2px}
+.qc .s{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.04em;border-radius:5px;padding:2.5px 6px;margin-top:8px}
+.sr{background:rgba(244,113,111,.13);color:#f98b89}
+.so{background:rgba(240,146,79,.13);color:#f5a870}
+.sa{background:rgba(240,178,74,.13);color:#f4c56d}
+
+/* table card */
+.tblcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.toolbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.tsearch2{flex:1;max-width:380px;display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 12px;color:var(--faint);font-size:12.5px}
+.fgrp{display:flex;gap:5px}
+.f{font-size:11.5px;font-weight:600;color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:6.5px 11px;text-decoration:none}
+.f.on{color:#cfe0ff;background:var(--acc-soft);border-color:rgba(91,140,255,.4)}
+.toolbar .cnt{margin-left:auto;font-size:12px;color:var(--faint)}
+
+table{width:100%;border-collapse:collapse}
+th{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--faint);text-transform:uppercase;text-align:left;padding:11px 14px;background:var(--panel2);border-bottom:1px solid var(--line)}
+th.c,td.c{text-align:center}
+th.r,td.r{text-align:right}
+td{padding:0 14px;height:54px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:rgba(255,255,255,.022)}
+.idx{color:var(--faint);font-size:12px}
+.pt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pt b{font-weight:600;font-size:13.5px;letter-spacing:-.005em}
+.pt .tags{display:flex;gap:5px}
+.tag{font-size:10px;font-weight:600;color:var(--mut);background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:5px;padding:1.5px 7px}
+.diff{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%}
+.st{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+.st .ic{width:14px;height:14px}
+.st.dim{color:var(--faint);font-weight:500}
+.num{font-size:12.5px;color:var(--mut)}
+.act{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--acc);background:var(--acc-soft);border-radius:8px;padding:6.5px 13px;text-decoration:none}
+.act .ic{width:11px;height:11px;fill:currentColor;stroke:none}
+.kebab{color:var(--faint);margin-left:8px}
+tfoot td{height:52px;background:var(--panel2);font-size:12px;color:var(--mut)}
+.pgr{display:flex;gap:5px;align-items:center;justify-self:end}
+.pgr a{min-width:27px;height:27px;border-radius:7px;border:1px solid var(--line2);display:grid;place-items:center;color:var(--tx2);font-size:11.5px;font-weight:600;text-decoration:none}
+.pgr a.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.cellflex{display:flex;align-items:center}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H4l2.4-2.9A8 8 0 1 1 21 12z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-check-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/></symbol>
+<symbol id="i-half-c" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5z"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-dash" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7"/></symbol>
+</defs></svg>
+
+<!-- ============ TOPBAR ============ -->
+<header class="top">
+  <div class="brand"><div class="logo">OS</div><b>Interview OS</b><span>/ Playground</span></div>
+  <div class="prog">
+    <span class="ring">
+      <svg width="26" height="26" viewBox="0 0 26 26" style="transform:rotate(-90deg)">
+        <circle cx="13" cy="13" r="10" stroke="rgba(255,255,255,.1)" stroke-width="3.4" fill="none"/>
+        <circle cx="13" cy="13" r="10" stroke="#5b8cff" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-dasharray="0.4 62"/>
+      </svg>
+      <span class="v">0%</span>
+    </span>
+    <span class="t"><b>1 / 322</b> solved</span>
+  </div>
+  <div class="right">
+    <span class="theme"><span class="sw"></span>Sequoia Graphite <svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></span>
+    <a class="btn ghost" href="#"><svg class="ic"><use href="#i-dash"/></svg>Dashboard</a>
+    <a class="btn pri" href="#">Start session</a>
+    <span class="av">AM</span>
+  </div>
+</header>
+
+<!-- ============ TRACK TABS ============ -->
+<div class="tabs">
+  <a class="tab on" href="#"><svg class="ic"><use href="#i-code"/></svg>Algorithms &amp; DSA<span class="n">322</span></a>
+  <a class="tab" href="#"><svg class="ic"><use href="#i-layers"/></svg>System Design<span class="n">22</span></a>
+  <a class="tab" href="#"><svg class="ic"><use href="#i-box"/></svg>Low-Level Design<span class="n">22</span></a>
+  <a class="tab" href="#"><svg class="ic"><use href="#i-db"/></svg>SQL &amp; DB<span class="n">0</span></a>
+  <a class="tab" href="#"><svg class="ic"><use href="#i-chat"/></svg>Behavioral STAR<span class="n">0</span></a>
+</div>
+
+<div class="shell">
+  <!-- ============ TOPIC SIDEBAR ============ -->
+  <aside class="sb">
+    <div class="hd"><b>Topic modules</b><span>17</span></div>
+    <div class="tsearch"><svg class="ic" style="width:13px;height:13px"><use href="#i-search"/></svg>Search topics…</div>
+    <div class="topic on"><span class="d" style="background:#5b8cff"></span><span class="nm">All Topics</span><span class="bar"><i style="width:1%"></i></span><span class="n">322</span></div>
+    <div class="topic"><span class="d" style="background:#3ccfe0"></span><span class="nm">Arrays</span><span class="bar"><i style="width:2%"></i></span><span class="n">56</span></div>
+    <div class="topic"><span class="d" style="background:#a78bfa"></span><span class="nm">Dynamic Programming</span><span class="bar"><i style="width:2%"></i></span><span class="n">21</span></div>
+    <div class="topic"><span class="d" style="background:#eed05a"></span><span class="nm">Linked List</span><span class="bar"><i style="width:2%"></i></span><span class="n">18</span></div>
+    <div class="topic"><span class="d" style="background:#5b8cff"></span><span class="nm">Binary Search</span><span class="bar"><i style="width:2%"></i></span><span class="n">15</span></div>
+    <div class="topic"><span class="d" style="background:#ef7cc0"></span><span class="nm">Heap</span><span class="bar"><i style="width:2%"></i></span><span class="n">5</span></div>
+    <div class="topic"><span class="d" style="background:#3ecf8e"></span><span class="nm">Sliding Window</span><span class="bar"><i style="width:2%"></i></span><span class="n">4</span></div>
+    <div class="topic"><span class="d" style="background:#f0924f"></span><span class="nm">Trees</span><span class="bar"><i style="width:2%"></i></span><span class="n">3</span></div>
+    <div class="topic"><span class="d" style="background:#f4716f"></span><span class="nm">Graphs</span><span class="bar"><i style="width:2%"></i></span><span class="n">3</span></div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <!-- retry queue -->
+    <div class="rq"><h2>Retry queue</h2><span class="n">7 due</span><span>recent failures come back automatically</span><a href="#">View all →</a></div>
+    <div class="qcards">
+      <div class="qc"><div class="t">Design an ATM</div><div class="m">LLD · 1 attempt · 2h</div><span class="s sr">COMPILE ERROR</span></div>
+      <div class="qc o"><div class="t">Order Service</div><div class="m">LLD · 2 attempts · 1d</div><span class="s so">FAILED</span></div>
+      <div class="qc a"><div class="t">Reverse a String</div><div class="m">Arrays · 8 attempts · 4d</div><span class="s sa">PARTIAL ×4</span></div>
+      <div class="qc a"><div class="t">Merge K Sorted Lists</div><div class="m">Arrays · 8 attempts · 19 Sep</div><span class="s sa">PARTIAL ×5</span></div>
+      <div class="qc"><div class="t">Two Sum</div><div class="m">Arrays · 3 attempts · 20 Sep</div><span class="s sr">RUNTIME ERROR</span></div>
+    </div>
+
+    <!-- table -->
+    <div class="tblcard">
+      <div class="toolbar">
+        <div class="tsearch2"><svg class="ic" style="width:14px;height:14px"><use href="#i-search"/></svg>Search problems by title, slug, or tags…</div>
+        <div class="fgrp"><a class="f on" href="#">All</a><a class="f" href="#">Junior</a><a class="f" href="#">Mid</a><a class="f" href="#">Senior</a></div>
+        <div class="fgrp"><a class="f on" href="#">Any status</a><a class="f" href="#">Unsolved</a><a class="f" href="#">Attempted</a><a class="f" href="#">Solved</a></div>
+        <span class="cnt">322 problems</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th style="width:44px">#</th><th>Problem</th><th style="width:120px">Difficulty</th><th style="width:160px">Status</th><th class="c" style="width:90px">Attempts</th><th class="r" style="width:100px">Last run</th><th class="r" style="width:150px">Action</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="idx">1</td>
+            <td><div class="pt"><b>LRU Cache Implementation</b><span class="tags"><span class="tag">hash-map</span><span class="tag">design</span></span></div></td>
+            <td><span class="diff" style="color:#f4716f"><span class="dot" style="background:#f4716f"></span>Senior</span></td>
+            <td><span class="st dim">— not started</span></td>
+            <td class="c num">0</td><td class="r num">—</td>
+            <td><div class="cellflex" style="justify-content:flex-end"><a class="act" href="#"><svg class="ic"><use href="#i-play"/></svg>Solve</a></div></td>
+          </tr>
+          <tr>
+            <td class="idx">2</td>
+            <td><div class="pt"><b>Reverse a String</b><span class="tags"><span class="tag">arrays</span><span class="tag">warmup</span></span></div></td>
+            <td><span class="diff" style="color:#3ecf8e"><span class="dot" style="background:#3ecf8e"></span>Junior</span></td>
+            <td><span class="st" style="color:#3ecf8e"><svg class="ic"><use href="#i-check-c"/></svg>Solved ×4</span></td>
+            <td class="c num">8</td><td class="r num">4d ago</td>
+            <td><div class="cellflex" style="justify-content:flex-end"><a class="act" href="#"><svg class="ic"><use href="#i-play"/></svg>Solve</a></div></td>
+          </tr>
+          <tr>
+            <td class="idx">3</td>
+            <td><div class="pt"><b>Two Sum Target Pair</b><span class="tags"><span class="tag">arrays</span><span class="tag">hashing</span></span></div></td>
+            <td><span class="diff" style="color:#3ecf8e"><span class="dot" style="background:#3ecf8e"></span>Junior</span></td>
+            <td><span class="st" style="color:#f0b24a"><svg class="ic"><use href="#i-half-c"/></svg>Attempted</span></td>
+            <td class="c num">2</td><td class="r num">8 Sep</td>
+            <td><div class="cellflex" style="justify-content:flex-end"><a class="act" href="#"><svg class="ic"><use href="#i-play"/></svg>Solve</a></div></td>
+          </tr>
+          <tr>
+            <td class="idx">4</td>
+            <td><div class="pt"><b>Merge K Sorted Lists</b><span class="tags"><span class="tag">arrays</span><span class="tag">heap</span></span></div></td>
+            <td><span class="diff" style="color:#f4716f"><span class="dot" style="background:#f4716f"></span>Senior</span></td>
+            <td><span class="st" style="color:#f0b24a"><svg class="ic"><use href="#i-half-c"/></svg>Attempted</span></td>
+            <td class="c num">8</td><td class="r num">19 Sep</td>
+            <td><div class="cellflex" style="justify-content:flex-end"><a class="act" href="#"><svg class="ic"><use href="#i-play"/></svg>Solve</a></div></td>
+          </tr>
+          <tr>
+            <td class="idx">5</td>
+            <td><div class="pt"><b>Valid Parentheses</b><span class="tags"><span class="tag">stack</span><span class="tag">warmup</span></span></div></td>
+            <td><span class="diff" style="color:#3ecf8e"><span class="dot" style="background:#3ecf8e"></span>Junior</span></td>
+            <td><span class="st dim">— not started</span></td>
+            <td class="c num">0</td><td class="r num">—</td>
+            <td><div class="cellflex" style="justify-content:flex-end"><a class="act" href="#"><svg class="ic"><use href="#i-play"/></svg>Solve</a></div></td>
+          </tr>
+          <tr>
+            <td class="idx">6</td>
+            <td><div class="pt"><b>Longest Substring Without Repeating Characters</b><span class="tags"><span class="tag">sliding-window</span><span class="tag">map</span></span></div></td>
+            <td><span class="diff" style="color:#f0b24a"><span class="dot" style="background:#f0b24a"></span>Mid</span></td>
+            <td><span class="st dim">— not started</span></td>
+            <td class="c num">0</td><td class="r num">—</td>
+            <td><div class="cellflex" style="justify-content:flex-end"><a class="act" href="#"><svg class="ic"><use href="#i-play"/></svg>Solve</a></div></td>
+          </tr>
+          <tr>
+            <td class="idx">7</td>
+            <td><div class="pt"><b>Binary Tree Maximum Path Sum</b><span class="tags"><span class="tag">trees</span><span class="tag">dp</span></span></div></td>
+            <td><span class="diff" style="color:#f4716f"><span class="dot" style="background:#f4716f"></span>Senior</span></td>
+            <td><span class="st dim">— not started</span></td>
+            <td class="c num">0</td><td class="r num">—</td>
+            <td><div class="cellflex" style="justify-content:flex-end"><a class="act" href="#"><svg class="ic"><use href="#i-play"/></svg>Solve</a></div></td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="7"><div class="cellflex">Showing 1–7 of 322
+              <div class="pgr" style="margin-left:auto"><a href="#">‹</a><a class="on" href="#">1</a><a href="#">2</a><a href="#">3</a><a href="#">…</a><a href="#">47</a><a href="#">›</a><span style="margin-left:8px;color:var(--faint)">50 / page</span></div>
+            </div></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

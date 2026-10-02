@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Direction A — Mission Control (dark, card-first)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0d13;--panel:#10141d;--panel2:#151b26;--panel3:#1a2130;
+  --line:rgba(255,255,255,.065);--line2:rgba(255,255,255,.11);
+  --tx:#e9edf5;--tx2:#bcc4d6;--mut:#8791a6;--faint:#5c6579;
+  --acc:#4d8dff;--acc-soft:rgba(77,141,255,.14);
+  --grn:#3ecf8e;--amb:#f5b544;--red:#f4716f;--org:#f0924f;
+  --pur:#a78bfa;--cyn:#3ccfe0;--pnk:#ef7cc0;--yel:#eed05a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg)}
+body{font:14px/1.5 'Inter',-apple-system,'Segoe UI',Roboto,'Liberation Sans',sans-serif;color:var(--tx);-webkit-font-smoothing:antialiased}
+svg.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app{display:grid;grid-template-columns:238px minmax(0,1fr) 300px}
+
+/* ---------- sidebar ---------- */
+.sb{background:var(--panel);border-right:1px solid var(--line);padding:16px 14px 14px;display:flex;flex-direction:column;min-height:1000px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 6px 16px}
+.logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#4d8dff,#7c5cff);display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;flex:none}
+.brand b{font-size:14.5px;font-weight:700;letter-spacing:-.01em;display:block}
+.brand span{display:block;font-size:10.5px;color:var(--mut);font-weight:500;margin-top:1px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--tx2);text-decoration:none;font-weight:500;font-size:13.5px}
+.nav a.on{background:var(--acc-soft);color:#d3e2ff;font-weight:600}
+.nav a.on .ic{color:var(--acc)}
+.lab{font-size:10.5px;font-weight:700;letter-spacing:.09em;color:var(--faint);padding:18px 10px 8px;text-transform:uppercase}
+.trk{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:11px;color:var(--tx2)}
+.trk.on{background:var(--panel3)}
+.tile{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;flex:none}
+.tile svg.ic{width:15px;height:15px}
+.trk .nm{flex:1;min-width:0}
+.trk .nm b{display:block;font-size:12.5px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trk .nm span{font-size:10.5px;color:var(--mut)}
+.trk .ct{font-size:11px;color:var(--mut);font-weight:600}
+.user{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#f0924f,#ef7cc0);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.user b{font-size:12.5px;display:block}
+.user span{font-size:10.5px;color:var(--mut)}
+
+/* ---------- topbar ---------- */
+.top{height:58px;display:flex;align-items:center;gap:14px;padding:0 24px;border-bottom:1px solid var(--line);background:rgba(10,13,19,.7)}
+.search{flex:1;max-width:460px;display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--mut);font-size:13px}
+.search kbd{margin-left:auto;font:600 10.5px 'Inter';color:var(--faint);border:1px solid var(--line2);border-radius:5px;padding:2px 6px}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pill{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:7px 11px;font-size:12.5px;font-weight:600;color:var(--tx2)}
+.pill .flame{color:var(--org)}
+.iconbtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;color:var(--mut)}
+
+/* ---------- hero ---------- */
+.main{padding:20px 24px 28px;min-width:0}
+.hero{display:flex;align-items:center;gap:24px;background:linear-gradient(120deg,#111826 0%,#101520 55%,#141a2b 100%);border:1px solid var(--line);border-radius:18px;padding:22px 24px}
+.hero h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.hero p{color:var(--mut);font-size:13.5px;margin-top:4px;max-width:480px}
+.hero p b{color:var(--tx2);font-weight:600}
+.cta{margin-top:14px;display:inline-flex;align-items:center;gap:8px;background:var(--acc);color:#fff;font-weight:600;font-size:13px;border-radius:10px;padding:10px 16px;text-decoration:none;box-shadow:0 6px 18px rgba(77,141,255,.25)}
+.cta .ic{width:14px;height:14px}
+.ring{margin-left:auto;display:flex;align-items:center;gap:18px}
+.donut{position:relative;width:104px;height:104px}
+.donut svg{transform:rotate(-90deg)}
+.donut .val{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.donut .val b{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.donut .val span{font-size:10px;color:var(--mut);font-weight:600}
+.chips{display:grid;grid-template-columns:auto auto;gap:8px}
+.chip{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--mut);white-space:nowrap}
+.chip b{color:var(--tx);font-size:14px;font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+
+/* ---------- sections ---------- */
+.sect{display:flex;align-items:baseline;gap:10px;margin:24px 2px 12px}
+.sect h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.sect .n{font-size:12px;color:var(--acc);font-weight:700;background:var(--acc-soft);border-radius:999px;padding:2px 9px}
+.sect a{margin-left:auto;font-size:12.5px;color:var(--mut);text-decoration:none;font-weight:500}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.rcard{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;overflow:hidden}
+.rcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red)}
+.rcard.o::before{background:var(--org)} .rcard.a::before{background:var(--amb)} .rcard.more::before{background:var(--faint)}
+.rcard .t{font-size:13.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard .m{font-size:11.5px;color:var(--mut);margin-top:3px}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.03em;border-radius:6px;padding:3px 7px;margin-top:10px}
+.s-red{background:rgba(244,113,111,.13);color:#f98b89}
+.s-org{background:rgba(240,146,79,.13);color:#f5a870}
+.s-amb{background:rgba(245,181,68,.13);color:#f7c76e}
+.rcard .go{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:5px;color:var(--acc);font-size:12px;font-weight:600;text-decoration:none}
+.rcard.more{display:grid;place-items:center;background:transparent;border-style:dashed;color:var(--mut);font-size:12.5px;font-weight:600}
+.topics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.tcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:flex-start}
+.tcard .tile{width:36px;height:36px;border-radius:10px}
+.tcard .nm{font-size:13.5px;font-weight:600}
+.tcard .ct{font-size:11.5px;color:var(--mut);margin-top:2px}
+.bar{height:4px;border-radius:99px;background:rgba(255,255,255,.08);margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px}
+.tcard .chev{margin-left:auto;color:var(--faint);align-self:center}
+.plabel{display:flex;justify-content:space-between;font-size:10px;color:var(--faint);margin-top:5px;font-weight:600}
+
+/* ---------- mini table ---------- */
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tbl .row{display:grid;grid-template-columns:34px minmax(0,1fr) 110px 150px 90px 80px;align-items:center;gap:10px;padding:0 16px;height:52px;border-bottom:1px solid var(--line)}
+.tbl .row:last-child{border-bottom:0}
+.tbl .row.hd{height:40px;font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--faint);text-transform:uppercase;background:var(--panel2)}
+.tbl .idx{color:var(--faint);font-size:12px}
+.tbl .ttl{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tbl .tags{font-size:10.5px;color:var(--mut);font-weight:500;margin-left:8px}
+.diff{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+.st{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mut)}
+.st b{font-weight:600;color:var(--tx2)}
+.num{font-size:12.5px;color:var(--mut)}
+.solve{justify-self:end;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--acc);background:var(--acc-soft);border-radius:8px;padding:6px 12px;text-decoration:none}
+
+/* ---------- rail ---------- */
+.rail{border-left:1px solid var(--line);background:var(--panel);padding:18px 16px;display:flex;flex-direction:column;gap:14px}
+.rc{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:16px}
+.rc h3{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--mut);text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.goal{display:flex;align-items:center;gap:16px;margin-top:12px}
+.goal .donut2{position:relative;width:72px;height:72px}
+.goal .donut2 .val{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:800}
+.goal .tx b{display:block;font-size:13.5px;font-weight:600}
+.goal .tx span{font-size:12px;color:var(--mut)}
+.ghost{margin-top:12px;display:flex;justify-content:center;align-items:center;gap:7px;width:100%;border:1px solid var(--line2);border-radius:9px;padding:8px;font-size:12.5px;font-weight:600;color:var(--tx2);text-decoration:none}
+.act{display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:12.5px}
+.act:last-child{border-bottom:0;padding-bottom:2px}
+.act .dot{margin-top:5px}
+.act .tx b{display:block;font-weight:600;font-size:12.5px}
+.act .tx span{font-size:11px;color:var(--mut)}
+.act time{margin-left:auto;color:var(--faint);font-size:10.5px;white-space:nowrap}
+.link{color:var(--acc);font-size:12.5px;font-weight:600;text-decoration:none;display:inline-flex;gap:5px;align-items:center;margin-top:10px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3"/></symbol>
+<symbol id="i-vault" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M12 8v-2M12 18v-2"/></symbol>
+<symbol id="i-rep" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H4l2.4-2.9A8 8 0 1 1 21 12z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 2c1.5 4.5-4 6-4 11a4 4 0 0 0 8 0c0-1.5-.7-2.6-.7-2.6s3.2 1.2 3.2 4.6a6.5 6.5 0 1 1-13 0C5.5 8.5 10.5 7 12 2z"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5 19 12 7 19.5z"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+</defs></svg>
+
+<div class="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sb">
+    <div class="brand"><div class="logo">OS</div><div><b>Interview OS</b><span>Playground · Prep Hub</span></div></div>
+    <nav class="nav">
+      <a class="on" href="#"><svg class="ic"><use href="#i-home"/></svg>Prep Hub</a>
+      <a href="#"><svg class="ic"><use href="#i-cam"/></svg>Interview Mode</a>
+      <a href="#"><svg class="ic"><use href="#i-vault"/></svg>Vault</a>
+      <a href="#"><svg class="ic"><use href="#i-rep"/></svg>Reports</a>
+    </nav>
+    <div class="lab">Tracks</div>
+    <div class="trk on"><div class="tile" style="background:rgba(77,141,255,.15);color:#6f9dff"><svg class="ic"><use href="#i-code"/></svg></div><div class="nm"><b>Algorithms &amp; DSA</b><span>17 topic modules</span></div><span class="ct">322</span></div>
+    <div class="trk"><div class="tile" style="background:rgba(167,139,250,.15);color:#b59bfb"><svg class="ic"><use href="#i-layers"/></svg></div><div class="nm"><b>System Design</b><span>Scale &amp; architecture</span></div><span class="ct">22</span></div>
+    <div class="trk"><div class="tile" style="background:rgba(240,146,79,.15);color:#f2a86e"><svg class="ic"><use href="#i-box"/></svg></div><div class="nm"><b>Low-Level Design</b><span>OOD &amp; patterns</span></div><span class="ct">22</span></div>
+    <div class="trk"><div class="tile" style="background:rgba(60,207,224,.15);color:#67dbe8"><svg class="ic"><use href="#i-db"/></svg></div><div class="nm"><b>SQL &amp; DB</b><span>Queries &amp; modeling</span></div><span class="ct">0</span></div>
+    <div class="trk"><div class="tile" style="background:rgba(62,207,142,.15);color:#5fdba1"><svg class="ic"><use href="#i-chat"/></svg></div><div class="nm"><b>Behavioral STAR</b><span>Stories &amp; drills</span></div><span class="ct">0</span></div>
+    <div class="user"><div class="av">AM</div><div><b>Aman</b><span>Free plan · local</span></div></div>
+  </aside>
+
+  <!-- ============ MAIN COLUMN ============ -->
+  <div>
+    <header class="top">
+      <div class="search"><svg class="ic" style="width:15px;height:15px"><use href="#i-search"/></svg>Search problems, topics, tags…<kbd>⌘K</kbd></div>
+      <div class="right">
+        <span class="pill"><svg class="ic flame" style="width:14px;height:14px"><use href="#i-flame"/></svg>0-day streak</span>
+        <span class="pill"><svg class="ic" style="width:14px;height:14px;color:var(--cyn)"><use href="#i-clock"/></svg>24m today</span>
+        <span class="iconbtn"><svg class="ic"><use href="#i-search"/></svg></span>
+        <span class="av" style="width:34px;height:34px">AM</span>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- HERO -->
+      <section class="hero">
+        <div style="min-width:0">
+          <h1>Pick up where you left off, Aman</h1>
+          <p><b>7 problems are due in your retry queue</b> — Design an ATM failed its last run with a compile error. Clearing two today rebuilds your streak.</p>
+          <a class="cta" href="#"><svg class="ic" style="fill:#fff;stroke:none"><use href="#i-play"/></svg>Resume: Design an ATM</a>
+        </div>
+        <div class="ring">
+          <div class="chips">
+            <span class="chip"><span class="dot" style="background:var(--grn)"></span>Solved <b>1</b></span>
+            <span class="chip"><span class="dot" style="background:var(--amb)"></span>Attempted <b>6</b></span>
+            <span class="chip"><span class="dot" style="background:var(--red)"></span>Retry due <b>7</b></span>
+            <span class="chip"><span class="dot" style="background:var(--faint)"></span>Untouched <b>315</b></span>
+          </div>
+          <div class="donut">
+            <svg width="104" height="104" viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="45" stroke="rgba(255,255,255,.08)" stroke-width="9" fill="none"/>
+              <circle cx="52" cy="52" r="45" stroke="#4d8dff" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="1 282"/>
+            </svg>
+            <div class="val"><div><b>1<small style="font-size:11px;color:var(--mut)">/322</small></b><br><span>SOLVED · 0%</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RETRY QUEUE -->
+      <div class="sect"><h2>Retry queue</h2><span class="n">7 due</span><a href="#">View all →</a></div>
+      <div class="cards">
+        <div class="rcard"><div class="t">Design an Automated Teller Machine</div><div class="m">Low-Level Design · 1 attempt · 2h ago</div><span class="status s-red">COMPILE ERROR</span><a class="go" href="#">Resume <svg class="ic" style="width:13px;height:13px"><use href="#i-chev"/></svg></a></div>
+        <div class="rcard o"><div class="t">Order Service</div><div class="m">Low-Level Design · 2 attempts · 1d ago</div><span class="status s-org">FAILED</span><a class="go" href="#">Resume <svg class="ic" style="width:13px;height:13px"><use href="#i-chev"/></svg></a></div>
+        <div class="rcard a"><div class="t">Reverse a String</div><div class="m">Arrays · 8 attempts · 4d ago</div><span class="status s-amb">PARTIAL ×4</span><a class="go" href="#">Resume <svg class="ic" style="width:13px;height:13px"><use href="#i-chev"/></svg></a></div>
+      </div>
+
+      <!-- TOPICS -->
+      <div class="sect"><h2>Explore topics</h2><span class="n">17 modules</span><a href="#">Browse catalog →</a></div>
+      <div class="topics">
+        <div class="tcard"><div class="tile" style="background:rgba(60,207,224,.14);color:#4fd6e4"><svg class="ic"><use href="#i-code"/></svg></div><div><div class="nm">Arrays</div><div class="ct">56 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--cyn)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+        <div class="tcard"><div class="tile" style="background:rgba(167,139,250,.14);color:#ab8ffb"><svg class="ic"><use href="#i-layers"/></svg></div><div><div class="nm">Dynamic Programming</div><div class="ct">21 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--pur)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+        <div class="tcard"><div class="tile" style="background:rgba(238,208,90,.14);color:#e5cf6d"><svg class="ic"><use href="#i-box"/></svg></div><div><div class="nm">Linked List</div><div class="ct">18 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--yel)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+        <div class="tcard"><div class="tile" style="background:rgba(77,141,255,.14);color:#6f9dff"><svg class="ic"><use href="#i-target"/></svg></div><div><div class="nm">Binary Search</div><div class="ct">15 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--acc)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+        <div class="tcard"><div class="tile" style="background:rgba(239,124,192,.14);color:#f292cd"><svg class="ic"><use href="#i-layers"/></svg></div><div><div class="nm">Heap</div><div class="ct">5 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--pnk)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+        <div class="tcard"><div class="tile" style="background:rgba(62,207,142,.14);color:#57d69d"><svg class="ic"><use href="#i-code"/></svg></div><div><div class="nm">Sliding Window</div><div class="ct">4 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--grn)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+        <div class="tcard"><div class="tile" style="background:rgba(240,146,79,.14);color:#f2a86e"><svg class="ic"><use href="#i-box"/></svg></div><div><div class="nm">Trees</div><div class="ct">3 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--org)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+        <div class="tcard"><div class="tile" style="background:rgba(244,113,111,.14);color:#f68d8b"><svg class="ic"><use href="#i-target"/></svg></div><div><div class="nm">Graphs</div><div class="ct">3 problems · 0 solved</div><div class="bar"><i style="width:2%;background:var(--red)"></i></div><div class="plabel"><span>progress</span><span>0%</span></div></div><svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg></div>
+      </div>
+
+      <!-- RECENT PROBLEMS -->
+      <div class="sect"><h2>All problems</h2><span class="n">Algorithms &amp; DSA · 322</span><a href="#">Open full table →</a></div>
+      <div class="tbl">
+        <div class="row hd"><span>#</span><span>Problem</span><span>Difficulty</span><span>Status</span><span>Attempts</span><span style="justify-self:end">Action</span></div>
+        <div class="row"><span class="idx">1</span><span class="ttl">LRU Cache Implementation<span class="tags">hash-map · design</span></span><span class="diff" style="color:var(--red)"><span class="dot" style="background:var(--red)"></span>Senior</span><span class="st">—</span><span class="num">0</span><a class="solve" href="#"><svg class="ic" style="width:12px;height:12px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Solve</a></div>
+        <div class="row"><span class="idx">2</span><span class="ttl">Reverse a String<span class="tags">arrays · warmup</span></span><span class="diff" style="color:var(--grn)"><span class="dot" style="background:var(--grn)"></span>Junior</span><span class="st" style="color:var(--grn)"><svg class="ic" style="width:14px;height:14px"><use href="#i-check"/></svg><b>Solved ×4</b></span><span class="num">8</span><a class="solve" href="#"><svg class="ic" style="width:12px;height:12px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Solve</a></div>
+        <div class="row"><span class="idx">3</span><span class="ttl">Two Sum Target Pair<span class="tags">arrays · hashing</span></span><span class="diff" style="color:var(--grn)"><span class="dot" style="background:var(--grn)"></span>Junior</span><span class="st" style="color:var(--amb)"><span class="dot" style="background:var(--amb)"></span><b>Attempted</b></span><span class="num">2</span><a class="solve" href="#"><svg class="ic" style="width:12px;height:12px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Solve</a></div>
+        <div class="row"><span class="idx">4</span><span class="ttl">Valid Parentheses<span class="tags">stack · warmup</span></span><span class="diff" style="color:var(--grn)"><span class="dot" style="background:var(--grn)"></span>Junior</span><span class="st">—</span><span class="num">0</span><a class="solve" href="#"><svg class="ic" style="width:12px;height:12px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Solve</a></div>
+        <div class="row"><span class="idx">5</span><span class="ttl">Binary Tree Maximum Path Sum<span class="tags">trees · dp</span></span><span class="diff" style="color:var(--red)"><span class="dot" style="background:var(--red)"></span>Senior</span><span class="st">—</span><span class="num">0</span><a class="solve" href="#"><svg class="ic" style="width:12px;height:12px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Solve</a></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ RIGHT RAIL ============ -->
+  <aside class="rail">
+    <div class="rc">
+      <h3><svg class="ic" style="width:13px;height:13px"><use href="#i-target"/></svg>Daily goal</h3>
+      <div class="goal">
+        <div class="donut2">
+          <svg width="72" height="72" viewBox="0 0 72 72" style="transform:rotate(-90deg)">
+            <circle cx="36" cy="36" r="30" stroke="rgba(255,255,255,.08)" stroke-width="7" fill="none"/>
+            <circle cx="36" cy="36" r="30" stroke="#3ecf8e" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="0 188"/>
+          </svg>
+          <div class="val">0/3</div>
+        </div>
+        <div class="tx"><b>Solve 3 problems</b><span>None completed yet today</span></div>
+      </div>
+      <a class="ghost" href="#"><svg class="ic" style="width:13px;height:13px;fill:currentColor;stroke:none"><use href="#i-play"/></svg>Start a session</a>
+    </div>
+
+    <div class="rc">
+      <h3><svg class="ic" style="width:13px;height:13px"><use href="#i-clock"/></svg>Last session</h3>
+      <div style="margin-top:12px">
+        <div style="font-size:13.5px;font-weight:600">Design an Automated Teller Machine</div>
+        <div style="font-size:12px;color:var(--mut);margin-top:4px">Compile error · ran 5m 13s of 28m</div>
+        <span class="status s-red" style="margin-top:8px">NO_HIRE · 22/100</span>
+        <div><a class="link" href="#">View session report <svg class="ic" style="width:13px;height:13px"><use href="#i-chev"/></svg></a></div>
+      </div>
+    </div>
+
+    <div class="rc">
+      <h3><svg class="ic" style="width:13px;height:13px"><use href="#i-rep"/></svg>Recent activity</h3>
+      <div style="margin-top:8px">
+        <div class="act"><span class="dot" style="background:var(--red)"></span><div class="tx"><b>Design an ATM</b><span>Compile error</span></div><time>2h</time></div>
+        <div class="act"><span class="dot" style="background:var(--org)"></span><div class="tx"><b>Order Service</b><span>Failed · 2 attempts</span></div><time>1d</time></div>
+        <div class="act"><span class="dot" style="background:var(--grn)"></span><div class="tx"><b>Reverse a String</b><span>Solved · run #4</span></div><time>4d</time></div>
+        <div class="act"><span class="dot" style="background:var(--amb)"></span><div class="tx"><b>Two Sum Target Pair</b><span>Attempted</span></div><time>8 Sep</time></div>
+      </div>
+    </div>
+  </aside>
+</div>
+</body>
+</html>

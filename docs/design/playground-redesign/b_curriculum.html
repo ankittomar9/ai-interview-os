@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Direction B — Structured Curriculum (light, Scaler-inspired)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6fa;--card:#ffffff;--line:#e6eaf1;--line2:#eef1f6;
+  --tx:#182133;--tx2:#3d4bold;--tx2:#414d63;--mut:#6b7688;--faint:#98a1b2;
+  --acc:#2563eb;--acc-soft:#eaf1fe;
+  --grn:#16a34a;--grn-soft:#e8f7ee;--amb:#b45309;--amb-soft:#fdf3e0;--red:#dc2626;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg)}
+body{font:14px/1.5 'Inter',-apple-system,'Segoe UI',Roboto,'Liberation Sans',sans-serif;color:var(--tx);-webkit-font-smoothing:antialiased}
+svg.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- top nav ---------- */
+.nav{height:60px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 28px;gap:28px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#4f8cff);display:grid;place-items:center;color:#fff;font-weight:800;font-size:12px}
+.brand b{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.links{display:flex;gap:4px;height:60px}
+.links a{display:flex;align-items:center;padding:0 14px;color:var(--mut);text-decoration:none;font-size:13.5px;font-weight:500;border-bottom:2.5px solid transparent}
+.links a.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+.nav .right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.nav .searchb{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:7px 14px;color:var(--faint);font-size:12.5px;width:230px}
+.bell{position:relative;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--mut);border:1px solid var(--line)}
+.bell i{position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid #fff}
+.av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#f0924f,#ef7cc0);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+
+/* ---------- layout ---------- */
+.wrap{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;padding:24px 28px;max-width:1560px}
+
+/* ---------- module rail ---------- */
+.mods .lab{font-size:11px;font-weight:700;letter-spacing:.09em;color:var(--faint);text-transform:uppercase;padding:2px 4px 10px}
+.mod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;position:relative}
+.mod.on{border:1.5px solid var(--acc);box-shadow:0 4px 14px rgba(37,99,235,.08)}
+.mod .k{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--faint)}
+.mod.on .k{color:var(--acc)}
+.mod h4{font-size:13.5px;font-weight:600;margin:3px 0 8px}
+.mod .st{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:6px;padding:3px 8px}
+.mod .prog{height:5px;border-radius:99px;background:var(--line2);margin-top:10px;overflow:hidden}
+.mod .prog i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.mod .pct{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin-top:5px;font-weight:600}
+.st-ok{background:var(--grn-soft);color:var(--grn)}
+.st-go{background:var(--acc-soft);color:var(--acc)}
+.st-no{background:#f1f3f7;color:var(--faint)}
+.mod.locked{opacity:.62}
+
+/* ---------- main curriculum card ---------- */
+.curr{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.curr .hd{padding:22px 26px 0}
+.curr .hd .k{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--acc);text-transform:uppercase}
+.curr h1{font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:4px;display:flex;align-items:center;gap:12px}
+.curr h1 .badge{font-size:11px;font-weight:700;color:var(--acc);background:var(--acc-soft);border-radius:999px;padding:4px 11px;letter-spacing:.02em}
+.curr .sub{color:var(--mut);font-size:13px;margin-top:6px}
+.chips{display:flex;gap:8px;overflow:hidden;padding:18px 26px 16px;border-bottom:1px solid var(--line2)}
+.chips a{flex:none;display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--tx2);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:7px 13px;background:var(--card)}
+.chips a .n{color:var(--faint);font-weight:600;font-size:11px}
+.chips a.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.chips a.on .n{color:#cdddff}
+
+/* day-row table (Scaler style) */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 110px 110px 100px 60px;gap:12px;padding:12px 26px;background:#fafbfd;border-bottom:1px solid var(--line2);font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--faint);text-transform:uppercase}
+.cols span:not(:first-child){text-align:right}
+.unit{display:flex;align-items:center;gap:10px;padding:13px 26px 11px;background:#fbfcfe;border-bottom:1px solid var(--line2);font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--mut);text-transform:uppercase}
+.unit .ln{flex:1;height:1px;background:var(--line2)}
+.drow{display:grid;grid-template-columns:minmax(0,1fr) 110px 110px 100px 60px;gap:12px;align-items:center;padding:0 26px;min-height:64px;border-bottom:1px solid var(--line2)}
+.drow:last-of-type{border-bottom:0}
+.drow .lft{display:flex;align-items:center;gap:14px;min-width:0;padding:12px 0}
+.sic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;border:1.6px solid}
+.sic.done{background:var(--grn-soft);border-color:#bfe6cf;color:var(--grn)}
+.sic.half{background:var(--amb-soft);border-color:#f0d9ae;color:#c77c1a}
+.sic.todo{border-color:var(--line);color:var(--faint);background:#fafbfd}
+.drow .ttl{font-size:14px;font-weight:600;letter-spacing:-.005em}
+.drow .tg{font-size:11px;color:var(--faint);margin-top:2px;font-weight:500}
+.drow .num{font-size:12.5px;color:var(--tx2);text-align:right;font-weight:600}
+.drow .num small{display:block;font-size:10px;color:var(--faint);font-weight:500;letter-spacing:.03em}
+.drow .when{font-size:12px;color:var(--mut);text-align:right}
+.drow .chev{color:var(--faint);justify-self:end}
+.curr .ft{display:flex;align-items:center;gap:14px;padding:14px 26px;font-size:12px;color:var(--mut);background:#fafbfd}
+.pg{margin-left:auto;display:flex;gap:6px;align-items:center}
+.pg a{min-width:28px;height:28px;border-radius:7px;border:1px solid var(--line);display:grid;place-items:center;color:var(--tx2);font-size:12px;font-weight:600;text-decoration:none}
+.pg a.on{background:var(--acc);border-color:var(--acc);color:#fff}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16" fill="currentColor" stroke="none" opacity=".85"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+</defs></svg>
+
+<!-- ============ TOP NAV ============ -->
+<nav class="nav">
+  <div class="brand"><div class="logo">OS</div><b>Interview OS</b></div>
+  <div class="links">
+    <a class="on" href="#">Curriculum</a>
+    <a href="#">Playground</a>
+    <a href="#">Interview Mode</a>
+    <a href="#">Vault</a>
+    <a href="#">Reports</a>
+  </div>
+  <div class="right">
+    <div class="searchb"><svg class="ic" style="width:14px;height:14px"><use href="#i-search"/></svg>Search curriculum…</div>
+    <span class="bell"><svg class="ic" style="width:15px;height:15px"><use href="#i-bell"/></svg><i></i></span>
+    <span class="av">AM</span>
+  </div>
+</nav>
+
+<div class="wrap">
+  <!-- ============ MODULE RAIL ============ -->
+  <aside class="mods">
+    <div class="lab">My curriculum</div>
+    <div class="mod on">
+      <div class="k">MODULE 01 · IN PROGRESS</div>
+      <h4>Algorithms &amp; DSA</h4>
+      <span class="st st-go">17 topics · 322 problems</span>
+      <div class="prog"><i style="width:0.5%"></i></div>
+      <div class="pct"><span>1 solved</span><span>0%</span></div>
+    </div>
+    <div class="mod">
+      <div class="k">MODULE 02</div>
+      <h4>System Design</h4>
+      <span class="st st-no">22 problems · not started</span>
+    </div>
+    <div class="mod">
+      <div class="k">MODULE 03</div>
+      <h4>Low-Level Design</h4>
+      <span class="st st-no">22 problems · not started</span>
+    </div>
+    <div class="mod locked">
+      <div class="k">MODULE 04</div>
+      <h4>SQL &amp; DB</h4>
+      <span class="st st-no">Catalog coming soon</span>
+    </div>
+    <div class="mod locked">
+      <div class="k">MODULE 05</div>
+      <h4>Behavioral STAR</h4>
+      <span class="st st-no">Catalog coming soon</span>
+    </div>
+  </aside>
+
+  <!-- ============ CURRICULUM ============ -->
+  <main class="curr">
+    <div class="hd">
+      <div class="k">Module 01 — Deliberate practice</div>
+      <h1>Algorithms &amp; DSA <span class="badge">1 / 322 solved</span></h1>
+      <div class="sub">Work through topic units in order — each problem has a practice lane and an interview-mode lane. Retry due items are pulled back automatically.</div>
+    </div>
+
+    <div class="chips">
+      <a class="on" href="#">All topics <span class="n">322</span></a>
+      <a href="#">Arrays <span class="n">56</span></a>
+      <a href="#">Dynamic Programming <span class="n">21</span></a>
+      <a href="#">Linked List <span class="n">18</span></a>
+      <a href="#">Binary Search <span class="n">15</span></a>
+      <a href="#">Heap <span class="n">5</span></a>
+      <a href="#">Sliding Window <span class="n">4</span></a>
+      <a href="#">Trees <span class="n">3</span></a>
+      <a href="#">Graphs <span class="n">3</span></a>
+      <a href="#">+8 more</a>
+    </div>
+
+    <div class="cols"><span>Problem</span><span>Practice</span><span>Interview</span><span>Last run</span><span></span></div>
+
+    <div class="unit">Unit 01 · Strings &amp; arrays — foundation <span class="ln"></span> 0 / 2</div>
+
+    <div class="drow">
+      <div class="lft">
+        <span class="sic done"><svg class="ic" style="width:14px;height:14px;stroke-width:2.4"><use href="#i-check"/></svg></span>
+        <div><div class="ttl">Reverse a String</div><div class="tg">Arrays · Warmup · Junior</div></div>
+      </div>
+      <div class="num">4 / 5<small>runs passed</small></div>
+      <div class="num">0 / 1<small>mock runs</small></div>
+      <div class="when">4d ago</div>
+      <svg class="ic chev" style="width:16px;height:16px"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft">
+        <span class="sic half"><svg class="ic" style="width:13px;height:13px"><use href="#i-half"/></svg></span>
+        <div><div class="ttl">Two Sum Target Pair</div><div class="tg">Arrays · Hashing · Junior</div></div>
+      </div>
+      <div class="num">1 / 5<small>runs passed</small></div>
+      <div class="num">0 / 1<small>mock runs</small></div>
+      <div class="when">8 Sep</div>
+      <svg class="ic chev" style="width:16px;height:16px"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="unit">Unit 02 · Heaps &amp; merging <span class="ln"></span> 0 / 1</div>
+
+    <div class="drow">
+      <div class="lft">
+        <span class="sic half"><svg class="ic" style="width:13px;height:13px"><use href="#i-half"/></svg></span>
+        <div><div class="ttl">Merge K Sorted Lists</div><div class="tg">Arrays · Heap · Senior</div></div>
+      </div>
+      <div class="num">2 / 5<small>runs passed</small></div>
+      <div class="num">0 / 1<small>mock runs</small></div>
+      <div class="when">19 Sep</div>
+      <svg class="ic chev" style="width:16px;height:16px"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="unit">Unit 03 · Maps &amp; caches <span class="ln"></span> 0 / 3</div>
+
+    <div class="drow">
+      <div class="lft">
+        <span class="sic todo"><span style="width:8px;height:8px;border-radius:50%;border:1.6px solid currentColor"></span></span>
+        <div><div class="ttl">LRU Cache Implementation</div><div class="tg">Hash Map · Design · Senior</div></div>
+      </div>
+      <div class="num">0 / 5<small>runs passed</small></div>
+      <div class="num">0 / 1<small>mock runs</small></div>
+      <div class="when">—</div>
+      <svg class="ic chev" style="width:16px;height:16px"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft">
+        <span class="sic todo"><span style="width:8px;height:8px;border-radius:50%;border:1.6px solid currentColor"></span></span>
+        <div><div class="ttl">Valid Parentheses</div><div class="tg">Stack · Warmup · Junior</div></div>
+      </div>
+      <div class="num">0 / 5<small>runs passed</small></div>
+      <div class="num">0 / 1<small>mock runs</small></div>
+      <div class="when">—</div>
+      <svg class="ic chev" style="width:16px;height:16px"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft">
+        <span class="sic todo"><span style="width:8px;height:8px;border-radius:50%;border:1.6px solid currentColor"></span></span>
+        <div><div class="ttl">Longest Substring Without Repeating Characters</div><div class="tg">Sliding Window · Mid</div></div>
+      </div>
+      <div class="num">0 / 5<small>runs passed</small></div>
+      <div class="num">0 / 1<small>mock runs</small></div>
+      <div class="when">—</div>
+      <svg class="ic chev" style="width:16px;height:16px"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="ft">
+      Showing 1–6 of 322 problems
+      <div class="pg"><a href="#">‹</a><a class="on" href="#">1</a><a href="#">2</a><a href="#">3</a><a href="#">…</a><a href="#">54</a><a href="#">›</a></div>
+    </div>
+  </main>
+</div>
+</body>
+</html>
