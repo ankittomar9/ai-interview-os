@@ -18,6 +18,7 @@ import { QuestionDetailModal } from './QuestionDetailModal';
 import { RetryQueueCard } from './RetryQueueCard';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ViewToggle } from './ViewToggle';
+import { HubView } from './HubView';
 import {
   useLearnData,
   resolveInitialViewMode,
@@ -269,35 +270,60 @@ export const LearnView: React.FC<LearnViewProps> = ({
         </div>
       </div>
 
-      {/* Retry Queue (Weak-Spot Resurfacing) */}
-      <RetryQueueCard
-        items={retryState.items}
-        isStale={retryState.isStale}
-        isChecking={retryState.isChecking}
-        onSelectQuestion={handleOpenDetail}
-      />
-
-      {/* Main Content: Topic Rail + Question Table */}
-      <main className="flex-1 flex min-h-0 overflow-hidden">
-        <TopicRail
-          topics={enrichedTopics}
-          selectedTopic={selectedTopic}
-          onSelectTopic={setSelectedTopic}
-          totalQuestions={totalQuestions}
-          totalSolved={totalSolved}
-        />
-
-        <QuestionTable
+      {/* View Content: HubView or Modules / Classic View */}
+      {viewMode === 'hub' ? (
+        <HubView
+          track={track}
+          enrichedTopics={enrichedTopics}
           questions={questions}
           progressMap={progressMap}
           verdictMap={verdictMap}
+          treeState={treeState}
+          retryState={retryState}
           loading={loading}
-          selectedTopic={selectedTopic}
-          onSolve={onSolveQuestion}
+          totalQuestions={totalQuestions}
+          totalSolved={totalSolved}
+          percentage={percentage}
+          onSolveQuestion={onSolveQuestion}
           onOpenDetail={handleOpenDetail}
           onOpenSubmissions={(slug, title) => setSubmissionsTarget({ slug, title })}
+          onSelectTopicModule={(topicId) => {
+            setSelectedTopic(topicId);
+            handleViewModeChange('modules');
+          }}
         />
-      </main>
+      ) : (
+        <>
+          {/* Retry Queue (Weak-Spot Resurfacing) */}
+          <RetryQueueCard
+            items={retryState.items}
+            isStale={retryState.isStale}
+            isChecking={retryState.isChecking}
+            onSelectQuestion={handleOpenDetail}
+          />
+
+          <main className="flex-1 flex min-h-0 overflow-hidden">
+            <TopicRail
+              topics={enrichedTopics}
+              selectedTopic={selectedTopic}
+              onSelectTopic={setSelectedTopic}
+              totalQuestions={totalQuestions}
+              totalSolved={totalSolved}
+            />
+
+            <QuestionTable
+              questions={questions}
+              progressMap={progressMap}
+              verdictMap={verdictMap}
+              loading={loading}
+              selectedTopic={selectedTopic}
+              onSolve={onSolveQuestion}
+              onOpenDetail={handleOpenDetail}
+              onOpenSubmissions={(slug, title) => setSubmissionsTarget({ slug, title })}
+            />
+          </main>
+        </>
+      )}
 
       {/* Submissions History Drawer */}
       {submissionsTarget && (
