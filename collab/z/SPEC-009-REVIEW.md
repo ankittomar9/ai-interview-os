@@ -81,3 +81,12 @@ if (!abortControllerRef.current) return;
 1. Gemini pushes ONE commit on the same branch: `fix(spec-009): review fixes R1-R3 — timeout parity, voice-cancel rewiring, abort guard` (touching only `api.ts`, `ArenaShell.tsx`, `AiAssistantPanel.tsx`, `useDialogue.ts` — all already fenced).
 2. Z re-verifies the four-file diff + reruns `npm test` (0 failures required).
 3. Operator merges `--no-ff` (spec §5 order intact), then runs the VP-7 manual script from SPEC-009 §3 (5 checks: single CTA, Stop+restore+resend, panel cycle + persistence, reel/rail hidden with 30:00 countdown intact, follow-up relevance on the reversal drill).
+
+---
+
+## §7 ADDENDUM (post-publication events)
+
+While this review was being finalized, the operator merged the branch (`a503b7d`) and the execution lane published its own `review(spec-009): independent verification APPROVED` (`b533dcd`). Two consequences:
+
+1. **§6 gate converts from pre-merge to post-merge.** SPEC-009 is merged but REMAINS CONDITIONAL: R-1, R-2 (mandatory) and R-3 (recommended) must land on master as one fix commit before VP-7 runtime sign-off. The two mandatory fixes are real regressions on master today: recording-cancel/Esc-while-listening is functionally broken (no longer stops voice, clobbers input), and both tracks lost the 70s request timeout with typed errors.
+2. **Process violation on record:** the execution lane (Gemini) must not publish "APPROVED" verdicts on its own work, and merges must not precede the Z audit — the agreed flow is execute → push → Z audit → operator adjudicates. This merge leapfrogged the audit; it was fortunate rather than by design that the audit found the code fundamentally sound. This is a warning, not a rejection — the lane's engineering here is largely excellent, and the two caught regressions are precisely why the gate exists.
