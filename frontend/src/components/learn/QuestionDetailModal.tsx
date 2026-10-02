@@ -278,13 +278,6 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => onSolve(slug)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-primary text-on-accent text-xs font-bold hover:bg-primary-2 cursor-pointer shadow-sm"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              Solve
-            </button>
-            <button
               onClick={handleClose}
               className="p-1.5 rounded-lg text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer"
               aria-label="Close modal"
