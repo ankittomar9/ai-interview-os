@@ -35,6 +35,7 @@ export interface CandidateTurnInput {
   questionContext?: string;
   problemSlug?: string;
   sectionQuestionTitle?: string;
+  isPlayground?: boolean;
 }
 
 export interface CandidateTurnPayload {
@@ -47,6 +48,18 @@ export interface CandidateTurnPayload {
 }
 
 export function buildCandidateTurnPayload(input: CandidateTurnInput): CandidateTurnPayload {
+  if (input.isPlayground) {
+    const rawCode = input.codeSnapshot || '';
+    return {
+      candidateExplanation: input.textToSend,
+      codeSnippet: rawCode,
+      candidateCode: rawCode,
+      questionContext: input.questionContext || '',
+      problemSlug: input.problemSlug || '',
+      sectionQuestionTitle: input.sectionQuestionTitle || '',
+    };
+  }
+
   const attachCode = shouldAttachCode(
     input.sectionType,
     input.isApproachGateLocked,

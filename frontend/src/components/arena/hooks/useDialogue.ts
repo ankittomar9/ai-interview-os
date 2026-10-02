@@ -378,7 +378,8 @@ export function useDialogue({
         isApproachGateLocked: currentGateLocked,
         questionContext: resolvedQuestionContext,
         problemSlug,
-        sectionQuestionTitle: resolvedSectionTitle
+        sectionQuestionTitle: resolvedSectionTitle,
+        isPlayground
       });
 
       await addMessageToSession(sessionId, {

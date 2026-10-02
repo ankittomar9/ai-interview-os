@@ -127,3 +127,47 @@ test('Gate VP26 [Positive]: buildCandidateTurnPayload serializes candidateCode w
   assert.equal(payload.candidateCode, modified, 'candidateCode must be serialized when gate is open and code modified');
   assert.equal(payload.codeSnippet, modified, 'codeSnippet must be serialized when gate is open and code modified');
 });
+
+test('VP-2 / F-2: isPlayground=true attaches code and preserves context regardless of section, gate lock, or starter equality', () => {
+  const code = 'class Solution { public static String reverseString(String s) { ... } }';
+  const starter = code;
+  const payload = buildCandidateTurnPayload({
+    isPlayground: true,
+    sectionType: 'INTRODUCTION',
+    textToSend: 'what is the issue in this code?',
+    codeSnapshot: code,
+    starterCode: starter,
+    isApproachGateLocked: true,
+    questionContext: 'Reverse a string challenge',
+    problemSlug: 'reverse-a-string',
+    sectionQuestionTitle: 'Reverse a String'
+  });
+
+  assert.equal(payload.candidateExplanation, 'what is the issue in this code?');
+  assert.equal(payload.candidateCode, code, 'Playground must attach candidateCode');
+  assert.equal(payload.codeSnippet, code, 'Playground must attach codeSnippet');
+  assert.equal(payload.questionContext, 'Reverse a string challenge', 'Playground must preserve questionContext');
+  assert.equal(payload.problemSlug, 'reverse-a-string', 'Playground must preserve problemSlug');
+  assert.equal(payload.sectionQuestionTitle, 'Reverse a String', 'Playground must preserve sectionQuestionTitle');
+});
+
+test('VP-2 (Regression): isPlayground=false or undefined retains strict code and context stripping during INTRODUCTION', () => {
+  const payload = buildCandidateTurnPayload({
+    isPlayground: false,
+    sectionType: 'INTRODUCTION',
+    textToSend: 'Tell me about the interview.',
+    codeSnapshot: 'const secret = 123;',
+    starterCode: '',
+    isApproachGateLocked: false,
+    questionContext: 'Some problem',
+    problemSlug: 'some-problem',
+    sectionQuestionTitle: 'Some Problem'
+  });
+
+  assert.equal(payload.candidateCode, '', 'Interview INTRODUCTION must null candidateCode');
+  assert.equal(payload.codeSnippet, '', 'Interview INTRODUCTION must null codeSnippet');
+  assert.equal(payload.questionContext, '', 'Interview INTRODUCTION must null questionContext');
+  assert.equal(payload.problemSlug, '', 'Interview INTRODUCTION must null problemSlug');
+  assert.equal(payload.sectionQuestionTitle, '', 'Interview INTRODUCTION must null sectionQuestionTitle');
+});
+
