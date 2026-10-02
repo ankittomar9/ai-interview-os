@@ -768,6 +768,8 @@ export interface CatalogTopicSummary {
     displayName: string;
     pressureGap?: string;
     resources?: QuestionResourceItem[];
+    interviewAttempted?: number;
+    interviewPassed?: number;
 }
 
 export interface CatalogQuestionSummary {
@@ -1069,6 +1071,12 @@ export interface LearnQuestionNode {
     track: string;
     difficulty: string;
     verdict: 'PASSED' | 'FAILED' | 'UNATTEMPTED';
+    practiceAttemptCount?: number;
+    practiceSolveCount?: number;
+    lastPracticeVerdict?: string | null;
+    lastPracticedAt?: string | null;
+    interviewAttemptCount?: number;
+    interviewPassCount?: number;
 }
 
 export interface LearnTopicNode {
@@ -1082,6 +1090,8 @@ export interface LearnTopicNode {
     failed: number;
     pressureGap: string;
     questions: LearnQuestionNode[];
+    interviewAttempted?: number;
+    interviewPassed?: number;
 }
 
 export interface LearnTreeResponse {

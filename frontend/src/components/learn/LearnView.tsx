@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useReducer, useRef, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   Award,
@@ -11,30 +11,21 @@ import {
   BarChart3,
   AlertCircle
 } from 'lucide-react';
-import {
-  getCatalogTopics,
-  getCatalogQuestions,
-  getPracticeProgress,
-  getLearnTree,
-  getRetryQueue,
-  type CatalogTopicSummary,
-  type CatalogQuestionSummary,
-  type QuestionProgress
-} from '../../services/api';
-import {
-  learnTreePollReducer,
-  createInitialLearnTreeState
-} from '../../lib/learnTree';
-import {
-  retryQueuePollReducer,
-  createInitialRetryQueueState
-} from '../../lib/retryQueue';
 import { TopicRail } from './TopicRail';
 import { QuestionTable } from './QuestionTable';
 import { SubmissionsDrawer } from './SubmissionsDrawer';
 import { QuestionDetailModal } from './QuestionDetailModal';
 import { RetryQueueCard } from './RetryQueueCard';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { ViewToggle } from './ViewToggle';
+import {
+  useLearnData,
+  resolveInitialViewMode,
+  buildLearnUrl,
+  parseLearnUrl,
+  STORAGE_KEY_VIEW_MODE,
+  type LearnViewMode
+} from './useLearnData';
 
 interface LearnViewProps {
   onBackToSetup: () => void;
@@ -47,20 +38,32 @@ export const LearnView: React.FC<LearnViewProps> = ({
   onSolveQuestion,
   onNavigateToDashboard
 }) => {
-  const [track, setTrack] = useState<string>('ALGORITHMS_DATA_STRUCTURES');
-  const [topics, setTopics] = useState<CatalogTopicSummary[]>([]);
-  const [questions, setQuestions] = useState<CatalogQuestionSummary[]>([]);
-  const [progressMap, setProgressMap] = useState<Record<string, QuestionProgress>>({});
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<LearnViewMode>(() => {
+    if (typeof window === 'undefined') return 'hub';
+    return resolveInitialViewMode(
+      window.location.search,
+      window.localStorage.getItem(STORAGE_KEY_VIEW_MODE)
+    );
+  });
 
-  // Anti-freeze learn tree state
-  const [treeState, dispatchTree] = useReducer(learnTreePollReducer, undefined, createInitialLearnTreeState);
-  const pollSeqRef = useRef<number>(0);
-
-  // Anti-freeze retry queue state
-  const [retryState, dispatchRetry] = useReducer(retryQueuePollReducer, undefined, createInitialRetryQueueState);
-  const retryPollSeqRef = useRef<number>(0);
+  const {
+    track,
+    setTrack,
+    questions,
+    progressMap,
+    selectedTopic,
+    setSelectedTopic,
+    loading,
+    treeState,
+    retryState,
+    verdictMap,
+    enrichedTopics,
+    totalQuestions,
+    totalSolved,
+    percentage,
+    isStale,
+    loadData
+  } = useLearnData();
 
   // Modals state
   const [detailSlug, setDetailSlug] = useState<string | null>(null);
@@ -69,183 +72,55 @@ export const LearnView: React.FC<LearnViewProps> = ({
     title: string;
   } | null>(null);
 
-  // Sync /learn/question/{slug} URL with detailSlug
+  // Sync /learn/question/{slug} and view parameters via popstate
   useEffect(() => {
-    const parseUrlSlug = () => {
-      const match = window.location.pathname.match(/\/learn\/question\/([^/]+)/);
-      if (match && match[1]) {
-        setDetailSlug(decodeURIComponent(match[1]));
+    const handlePopState = () => {
+      const parsed = parseLearnUrl(window.location.pathname, window.location.search);
+      setViewMode(parsed.viewMode);
+      setDetailSlug(parsed.detailSlug);
+      if (parsed.topicId !== null) {
+        setSelectedTopic(parsed.topicId);
       }
     };
-    parseUrlSlug();
-    window.addEventListener('popstate', parseUrlSlug);
-    return () => window.removeEventListener('popstate', parseUrlSlug);
-  }, []);
+    handlePopState();
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [setSelectedTopic]);
+
+  const handleViewModeChange = (mode: LearnViewMode) => {
+    setViewMode(mode);
+    try {
+      window.localStorage.setItem(STORAGE_KEY_VIEW_MODE, mode);
+    } catch {
+      // Ignore storage write errors in restricted contexts
+    }
+    const nextUrl = buildLearnUrl({
+      viewMode: mode,
+      topicId: mode === 'modules' ? selectedTopic : null,
+      detailSlug
+    });
+    window.history.pushState({}, '', nextUrl);
+  };
 
   const handleOpenDetail = (slug: string) => {
     setDetailSlug(slug);
-    if (!window.location.pathname.includes(`/learn/question/${encodeURIComponent(slug)}`)) {
-      window.history.pushState({}, '', `/learn/question/${encodeURIComponent(slug)}`);
-    }
+    const nextUrl = buildLearnUrl({
+      viewMode,
+      topicId: selectedTopic,
+      detailSlug: slug
+    });
+    window.history.pushState({}, '', nextUrl);
   };
 
   const handleCloseDetail = () => {
     setDetailSlug(null);
-    if (window.location.pathname.includes('/learn/question/')) {
-      window.history.pushState({}, '', '/learn');
-    }
-  };
-
-  // Poll learn tree with anti-freeze protection
-  const pollTree = useCallback(async () => {
-    const seq = ++pollSeqRef.current;
-    dispatchTree({ type: 'POLL_START', sequenceId: seq });
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-
-    try {
-      const treeData = await getLearnTree('local', controller.signal);
-      clearTimeout(timer);
-      dispatchTree({
-        type: 'POLL_SUCCESS',
-        sequenceId: seq,
-        data: treeData,
-        timestamp: new Date().toISOString()
-      });
-    } catch (err: any) {
-      clearTimeout(timer);
-      if (err.name !== 'AbortError') {
-        dispatchTree({
-          type: 'POLL_FAILURE',
-          sequenceId: seq,
-          error: err.message || 'Tree poll failed',
-          timestamp: new Date().toISOString()
-        });
-      }
-    }
-  }, []);
-
-  // Poll retry queue with anti-freeze protection
-  const pollRetry = useCallback(async () => {
-    const seq = ++retryPollSeqRef.current;
-    dispatchRetry({ type: 'POLL_START', sequenceId: seq });
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-
-    try {
-      const retryItems = await getRetryQueue('local', controller.signal);
-      clearTimeout(timer);
-      dispatchRetry({
-        type: 'POLL_SUCCESS',
-        sequenceId: seq,
-        items: retryItems,
-        timestamp: new Date().toISOString()
-      });
-    } catch (err: any) {
-      clearTimeout(timer);
-      if (err.name !== 'AbortError') {
-        dispatchRetry({
-          type: 'POLL_FAILURE',
-          sequenceId: seq,
-          error: err.message || 'Retry queue poll failed',
-          timestamp: new Date().toISOString()
-        });
-      }
-    }
-  }, []);
-
-  // Periodic polling for live pressure & progress updates (15s interval)
-  useEffect(() => {
-    pollTree();
-    pollRetry();
-    const interval = setInterval(() => {
-      pollTree();
-      pollRetry();
-    }, 15000);
-    return () => clearInterval(interval);
-  }, [pollTree, pollRetry]);
-
-  // Load catalog data & progress
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [fetchedTopics, fetchedQuestions, fetchedProgress] = await Promise.all([
-        getCatalogTopics(track).catch(() => []),
-        getCatalogQuestions({ track, size: 500 }).catch(() => ({ content: [] } as any)),
-        getPracticeProgress('local').catch(() => ({}))
-      ]);
-
-      setTopics(fetchedTopics);
-      setQuestions(fetchedQuestions.content || []);
-      setProgressMap(fetchedProgress || {});
-      pollTree();
-      pollRetry();
-    } catch (err) {
-      console.error('Failed to load learn view data:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [track, pollTree, pollRetry]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Build verdict map from tree response
-  const verdictMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    if (treeState.data?.topics) {
-      for (const t of treeState.data.topics) {
-        if (t.questions) {
-          for (const q of t.questions) {
-            map[q.slug] = q.verdict;
-          }
-        }
-      }
-    }
-    return map;
-  }, [treeState.data]);
-
-  // Overall counts
-  const totalQuestions = questions.length;
-  const totalSolved = Object.values(progressMap).filter(
-    (p) => p && p.solveCount > 0 && questions.some((q) => q.slug === p.questionId)
-  ).length;
-  const percentage = totalQuestions > 0 ? Math.round((totalSolved / totalQuestions) * 100) : 0;
-
-  // Enriched topics with tree pressureGap and solved counts
-  const enrichedTopics: CatalogTopicSummary[] = useMemo(() => {
-    if (treeState.data?.topics && treeState.data.topics.length > 0) {
-      const trackTopics = treeState.data.topics.filter(
-        (t) => t.track.toUpperCase() === track.toUpperCase()
-      );
-      if (trackTopics.length > 0) {
-        return trackTopics.map((t) => ({
-          topic: t.topicId,
-          total: t.total ?? 0,
-          solved: t.solved,
-          displayName: t.topicName,
-          pressureGap: t.pressureGap
-        }));
-      }
-    }
-
-    return topics.map((t) => {
-      const topicId = t.topic || (t as any).id || '';
-      const topicQuestions = questions.filter((q) => q.topics && q.topics.includes(topicId));
-      const solvedInTopic = topicQuestions.filter(
-        (q) => progressMap[q.slug] && progressMap[q.slug].solveCount > 0
-      ).length;
-      return {
-        ...t,
-        topic: topicId,
-        displayName: t.displayName || (t as any).name || (topicId ? topicId.replace(/-/g, ' ') : 'Topic'),
-        solved: solvedInTopic
-      };
+    const nextUrl = buildLearnUrl({
+      viewMode,
+      topicId: selectedTopic,
+      detailSlug: null
     });
-  }, [treeState.data, track, topics, questions, progressMap]);
+    window.history.pushState({}, '', nextUrl);
+  };
 
   const trackTabs = [
     { id: 'ALGORITHMS_DATA_STRUCTURES', label: 'Algorithms & DSA', icon: Code2, countKey: 'ALGORITHMS_DATA_STRUCTURES' },
@@ -254,8 +129,6 @@ export const LearnView: React.FC<LearnViewProps> = ({
     { id: 'SQL', label: 'SQL & DB', icon: Database, countKey: 'SQL' },
     { id: 'BEHAVIORAL_STAR', label: 'Behavioral STAR', icon: Award, countKey: 'BEHAVIORAL_STAR' }
   ];
-
-  const isStale = treeState.isStale || treeState.data?.stale;
 
   return (
     <div className="h-screen flex flex-col bg-bg text-text overflow-hidden font-sans select-none">
@@ -324,6 +197,10 @@ export const LearnView: React.FC<LearnViewProps> = ({
 
         {/* Right: Actions + Theme Toggle */}
         <div className="flex items-center gap-2 shrink-0">
+          <ViewToggle
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+          />
           {onNavigateToDashboard && (
             <button
               type="button"
