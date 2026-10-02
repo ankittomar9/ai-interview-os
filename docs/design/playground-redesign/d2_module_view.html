@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Direction D-2 — Module View v2 (curriculum + two-lane practice model)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e16;--panel:#101623;--panel2:#151c2c;--panel3:#1a2338;
+  --line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.12);
+  --tx:#eaeef7;--tx2:#c0c8da;--mut:#8791a6;--faint:#5d6779;
+  --acc:#4d8dff;--acc-soft:rgba(77,141,255,.14);
+  --grn:#3ecf8e;--amb:#f0b24a;--red:#f4716f;--org:#f0924f;--pur:#a78bfa;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg)}
+body{font:14px/1.5 'Inter',-apple-system,'Segoe UI',Roboto,'Liberation Sans',sans-serif;color:var(--tx);-webkit-font-smoothing:antialiased}
+svg.ic{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* header */
+.top{height:58px;display:flex;align-items:center;gap:22px;padding:0 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:9px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#4d8dff,#7c5cff);display:grid;place-items:center;color:#fff;font-weight:800;font-size:11.5px}
+.brand b{font-size:14px;font-weight:700}
+.tnav{display:flex;gap:4px;height:58px;align-items:stretch}
+.tnav a{display:flex;align-items:center;padding:0 13px;color:var(--mut);text-decoration:none;font-size:13px;font-weight:600;border-bottom:2.5px solid transparent}
+.tnav a.on{color:#cfe0ff;border-bottom-color:var(--acc)}
+.tnav a .n{font-size:10px;font-weight:700;color:var(--faint);background:rgba(255,255,255,.06);border-radius:5px;padding:1px 6px;margin-left:7px}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.search{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--faint);font-size:12.5px;width:250px}
+.retrychip{display:flex;align-items:center;gap:7px;border:1px solid rgba(240,146,79,.4);background:rgba(240,146,79,.1);color:#f5a870;border-radius:10px;padding:8px 13px;font-size:12.5px;font-weight:700;text-decoration:none}
+.retrychip .ic{width:13px;height:13px;fill:currentColor;stroke:none}
+.av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#f0924f,#ef7cc0);display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:296px minmax(0,1fr);gap:20px;padding:20px 24px 28px}
+
+/* module rail */
+.mods .lab{font-size:10.5px;font-weight:700;letter-spacing:.09em;color:var(--faint);text-transform:uppercase;padding:2px 4px 10px}
+.mod{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:9px;position:relative}
+.mod.on{border:1.5px solid rgba(77,141,255,.55);background:linear-gradient(120deg,rgba(77,141,255,.1),rgba(77,141,255,.03))}
+.mod .r1{display:flex;align-items:baseline;gap:8px}
+.mod .k{font-size:9.5px;font-weight:800;letter-spacing:.09em;color:var(--faint);text-transform:uppercase}
+.mod .ct{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--mut)}
+.mod.on .ct{color:#8fb3ff}
+.mod h4{font-size:13.5px;font-weight:600;margin:3px 0 8px;letter-spacing:-.01em}
+.mod .st{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:var(--faint)}
+.mod .st .ring{width:9px;height:9px;border-radius:50%;border:1.8px solid var(--faint)}
+.mod.on .st{color:#8fb3ff}
+.mod.on .st .ring{border-color:var(--acc);background:radial-gradient(circle at center,var(--acc) 0 2.5px,transparent 3px)}
+.mod .bar{height:4px;border-radius:99px;background:rgba(255,255,255,.07);margin-top:9px;overflow:hidden}
+.mod .bar i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.mod.locked{opacity:.55}
+.mod .chev{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--faint)}
+.moremods{font-size:11.5px;color:var(--faint);text-align:center;padding:8px;border:1px dashed var(--line2);border-radius:10px;margin-top:2px}
+
+/* main card */
+.curr{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.curr .hd{padding:20px 24px 0}
+.curr .kick{font-size:10.5px;font-weight:800;letter-spacing:.09em;color:var(--acc);text-transform:uppercase}
+.curr h1{font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:5px;display:flex;align-items:center;gap:11px}
+.curr h1 .badge{font-size:10.5px;font-weight:700;color:#8fb3ff;background:var(--acc-soft);border-radius:999px;padding:4px 10px}
+.curr .sub{color:var(--mut);font-size:12.5px;margin-top:6px;max-width:640px}
+.mprog{display:flex;align-items:center;gap:12px;margin-top:14px}
+.mprog .bar{flex:1;height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+.mprog .bar i{display:block;height:100%;background:linear-gradient(90deg,#4d8dff,#7c5cff);border-radius:99px}
+.mprog span{font-size:11.5px;color:var(--mut);font-weight:600;white-space:nowrap}
+.tabs{display:flex;gap:2px;margin-top:16px;border-bottom:1px solid var(--line);padding:0 8px}
+.tabs a{display:flex;align-items:center;gap:7px;padding:11px 14px;color:var(--mut);text-decoration:none;font-size:13px;font-weight:600;border-bottom:2.5px solid transparent;margin-bottom:-1px}
+.tabs a.on{color:#cfe0ff;border-bottom-color:var(--acc)}
+.tabs a .soon{font-size:9px;font-weight:800;letter-spacing:.06em;color:var(--faint);background:rgba(255,255,255,.05);border-radius:4px;padding:2px 5px}
+
+/* retry banner */
+.rbanner{display:flex;align-items:center;gap:13px;margin:16px 24px 0;background:rgba(240,146,79,.07);border:1px solid rgba(240,146,79,.3);border-left:3px solid var(--org);border-radius:12px;padding:12px 15px}
+.rbanner .ic{width:17px;height:17px;color:var(--org);fill:currentColor;stroke:none}
+.rbanner .t b{font-size:13px;font-weight:600}
+.rbanner .t span{font-size:11.5px;color:var(--mut);margin-left:8px}
+.rbanner a{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:rgba(240,146,79,.15);color:#f5a870;font-size:12px;font-weight:700;border-radius:8px;padding:7px 13px;text-decoration:none;white-space:nowrap}
+
+/* table */
+.cols{display:grid;grid-template-columns:46px minmax(0,1fr) 110px 150px 96px 88px 44px;gap:12px;padding:12px 24px;border-bottom:1px solid var(--line);font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--faint);text-transform:uppercase;background:var(--panel2)}
+.cols span:not(:first-child):not(:last-child){text-align:left}
+.drow{display:grid;grid-template-columns:46px minmax(0,1fr) 110px 150px 96px 88px 44px;gap:12px;align-items:center;padding:0 24px;min-height:60px;border-bottom:1px solid var(--line)}
+.drow:hover{background:rgba(255,255,255,.02)}
+.drow:last-of-type{border-bottom:0}
+.drow .lft{display:flex;align-items:center;gap:13px;min-width:0;padding:11px 0}
+.sic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;border:1.6px solid}
+.sic.done{background:rgba(62,207,142,.1);border-color:rgba(62,207,142,.4);color:var(--grn)}
+.sic.half{background:rgba(240,178,74,.1);border-color:rgba(240,178,74,.4);color:var(--amb)}
+.sic.todo{border-color:var(--line2);color:var(--faint);background:var(--panel2)}
+.sic .ic{width:13px;height:13px}
+.drow .ttl{font-size:13.5px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drow .tg{font-size:10.5px;color:var(--faint);margin-top:2px}
+.drow .num{font-size:12px;color:var(--mut)}
+.diff{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%}
+.lane{display:flex;align-items:center;gap:8px}
+.lane .v{font-size:12px;font-weight:700;color:var(--tx2)}
+.lane .v small{color:var(--faint);font-weight:600}
+.pips{display:flex;gap:3px}
+.pip{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.1)}
+.pip.on{background:var(--grn)}
+.pip.mid{background:var(--amb)}
+.drow .when{font-size:12px;color:var(--mut)}
+.drow .chev{color:var(--faint);justify-self:end}
+.curr .ft{display:flex;align-items:center;gap:12px;padding:13px 24px;font-size:12px;color:var(--mut);background:var(--panel2)}
+.pg{margin-left:auto;display:flex;gap:5px;align-items:center}
+.pg a{min-width:27px;height:27px;border-radius:7px;border:1px solid var(--line2);display:grid;place-items:center;color:var(--tx2);font-size:11.5px;font-weight:600;text-decoration:none}
+.pg a.on{background:var(--acc);border-color:var(--acc);color:#fff}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 11-13h-7l0-7z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 0 2 2h13"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></symbol>
+<symbol id="i-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18" fill="currentColor" stroke="none"/></symbol>
+</defs></svg>
+
+<!-- HEADER -->
+<header class="top">
+  <div class="brand"><div class="logo">OS</div><b>Interview OS</b></div>
+  <nav class="tnav">
+    <a class="on" href="#">DSA<span class="n">322</span></a>
+    <a href="#">System Design<span class="n">22</span></a>
+    <a href="#">LLD<span class="n">22</span></a>
+    <a href="#">SQL<span class="n">0</span></a>
+    <a href="#">Behavioral<span class="n">0</span></a>
+  </nav>
+  <div class="right">
+    <div class="search"><svg class="ic" style="width:14px;height:14px"><use href="#i-search"/></svg>Search problems, topics…</div>
+    <a class="retrychip" href="#"><svg class="ic"><use href="#i-zap"/></svg>Retry · 7</a>
+    <span class="av">AM</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- MODULE RAIL -->
+  <aside class="mods">
+    <div class="lab">Curriculum · Algorithms &amp; DSA</div>
+    <div class="mod on">
+      <div class="r1"><span class="k">Module 01</span><span class="ct">1 / 56</span></div>
+      <h4>Arrays &amp; Hashing</h4>
+      <span class="st"><span class="ring"></span>In progress</span>
+      <div class="bar"><i style="width:2%"></i></div>
+      <svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg>
+    </div>
+    <div class="mod">
+      <div class="r1"><span class="k">Module 02</span><span class="ct">0 / 4</span></div>
+      <h4>Two Pointers &amp; Sliding Window</h4>
+      <span class="st"><span class="ring"></span>Not started</span>
+      <svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg>
+    </div>
+    <div class="mod">
+      <div class="r1"><span class="k">Module 03</span><span class="ct">0 / 5</span></div>
+      <h4>Stack &amp; Queue</h4>
+      <span class="st"><span class="ring"></span>Not started</span>
+      <svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg>
+    </div>
+    <div class="mod">
+      <div class="r1"><span class="k">Module 04</span><span class="ct">0 / 15</span></div>
+      <h4>Binary Search</h4>
+      <span class="st"><span class="ring"></span>Not started</span>
+      <svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg>
+    </div>
+    <div class="mod">
+      <div class="r1"><span class="k">Module 05</span><span class="ct">0 / 18</span></div>
+      <h4>Linked List</h4>
+      <span class="st"><span class="ring"></span>Not started</span>
+      <svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg>
+    </div>
+    <div class="mod">
+      <div class="r1"><span class="k">Module 06</span><span class="ct">0 / 3</span></div>
+      <h4>Trees</h4>
+      <span class="st"><span class="ring"></span>Not started</span>
+      <svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg>
+    </div>
+    <div class="mod">
+      <div class="r1"><span class="k">Module 07</span><span class="ct">0 / 5</span></div>
+      <h4>Heaps</h4>
+      <span class="st"><span class="ring"></span>Not started</span>
+      <svg class="ic chev" style="width:14px;height:14px"><use href="#i-chev"/></svg>
+    </div>
+    <div class="moremods">+ 9 more modules · 17 topic groups total</div>
+  </aside>
+
+  <!-- MODULE DETAIL -->
+  <main class="curr">
+    <div class="hd">
+      <div class="kick">Module 01 · Algorithms &amp; DSA</div>
+      <h1>Arrays &amp; Hashing <span class="badge">1 / 56 solved</span></h1>
+      <div class="sub">Hashing, prefix sums and two-pass techniques. Each problem carries two lanes — practice runs against the visible test suite, and mock runs under interview constraints.</div>
+      <div class="mprog"><div class="bar"><i style="width:2%"></i></div><span>2% · 1 of 56</span></div>
+    </div>
+
+    <div class="tabs">
+      <a class="on" href="#">Problems</a>
+      <a href="#">Notes<span class="soon">SOON</span></a>
+      <a href="#">Resources<span class="soon">SOON</span></a>
+    </div>
+
+    <div class="rbanner">
+      <svg class="ic"><use href="#i-zap"/></svg>
+      <div class="t"><b>Merge K Sorted Lists is due for retry</b><span>last run: partial ×5 · 19 Sep</span></div>
+      <a href="#">Retry now<svg class="ic" style="width:12px;height:12px"><use href="#i-chev"/></svg></a>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="cols"><span>#</span><span>Problem</span><span>Difficulty</span><span>Practice lane</span><span>Interview lane</span><span>Last run</span><span></span></div>
+
+    <div class="drow">
+      <div class="lft" style="padding-left:0"><span class="sic half"><svg class="ic"><use href="#i-half"/></svg></span></div>
+      <div style="min-width:0"><div class="ttl">Reverse a String</div><div class="tg">strings · warmup</div></div>
+      <span class="diff" style="color:var(--grn)"><span class="dot" style="background:var(--grn)"></span>Junior</span>
+      <div class="lane"><span class="v">4<small>/5</small></span><div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip on"></span><span class="pip"></span></div></div>
+      <div class="lane"><span class="v">0<small>/1</small></span></div>
+      <span class="when">4d ago</span>
+      <svg class="ic chev"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft" style="padding-left:0"><span class="sic half"><svg class="ic"><use href="#i-half"/></svg></span></div>
+      <div style="min-width:0"><div class="ttl">Two Sum Target Pair</div><div class="tg">arrays · hashing</div></div>
+      <span class="diff" style="color:var(--grn)"><span class="dot" style="background:var(--grn)"></span>Junior</span>
+      <div class="lane"><span class="v">1<small>/5</small></span><div class="pips"><span class="pip mid"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+      <div class="lane"><span class="v">0<small>/1</small></span></div>
+      <span class="when">8 Sep</span>
+      <svg class="ic chev"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft" style="padding-left:0"><span class="sic half"><svg class="ic"><use href="#i-half"/></svg></span></div>
+      <div style="min-width:0"><div class="ttl">Merge K Sorted Lists</div><div class="tg">heap · linked-list</div></div>
+      <span class="diff" style="color:var(--red)"><span class="dot" style="background:var(--red)"></span>Senior</span>
+      <div class="lane"><span class="v">2<small>/5</small></span><div class="pips"><span class="pip mid"></span><span class="pip mid"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+      <div class="lane"><span class="v">0<small>/1</small></span></div>
+      <span class="when">19 Sep</span>
+      <svg class="ic chev"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft" style="padding-left:0"><span class="sic todo"><span style="width:7px;height:7px;border-radius:50%;border:1.6px solid currentColor"></span></span></div>
+      <div style="min-width:0"><div class="ttl">LRU Cache Implementation</div><div class="tg">hash-map · design</div></div>
+      <span class="diff" style="color:var(--red)"><span class="dot" style="background:var(--red)"></span>Senior</span>
+      <div class="lane"><span class="v">0<small>/5</small></span><div class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+      <div class="lane"><span class="v">0<small>/1</small></span></div>
+      <span class="when">—</span>
+      <svg class="ic chev"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft" style="padding-left:0"><span class="sic todo"><span style="width:7px;height:7px;border-radius:50%;border:1.6px solid currentColor"></span></span></div>
+      <div style="min-width:0"><div class="ttl">Valid Parentheses</div><div class="tg">stack · warmup</div></div>
+      <span class="diff" style="color:var(--grn)"><span class="dot" style="background:var(--grn)"></span>Junior</span>
+      <div class="lane"><span class="v">0<small>/5</small></span><div class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+      <div class="lane"><span class="v">0<small>/1</small></span></div>
+      <span class="when">—</span>
+      <svg class="ic chev"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="drow">
+      <div class="lft" style="padding-left:0"><span class="sic todo"><span style="width:7px;height:7px;border-radius:50%;border:1.6px solid currentColor"></span></span></div>
+      <div style="min-width:0"><div class="ttl">Longest Substring Without Repeating Characters</div><div class="tg">sliding-window · map</div></div>
+      <span class="diff" style="color:var(--amb)"><span class="dot" style="background:var(--amb)"></span>Mid</span>
+      <div class="lane"><span class="v">0<small>/5</small></span><div class="pips"><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div></div>
+      <div class="lane"><span class="v">0<small>/1</small></span></div>
+      <span class="when">—</span>
+      <svg class="ic chev"><use href="#i-chev"/></svg>
+    </div>
+
+    <div class="ft">
+      Showing 1–6 of 56 problems
+      <div class="pg"><a href="#">‹</a><a class="on" href="#">1</a><a href="#">2</a><a href="#">3</a><a href="#">…</a><a href="#">10</a><a href="#">›</a></div>
+    </div>
+  </main>
+</div>
+</body>
+</html>
