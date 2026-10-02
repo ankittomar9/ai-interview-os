@@ -90,3 +90,44 @@ While this review was being finalized, the operator merged the branch (`a503b7d`
 
 1. **§6 gate converts from pre-merge to post-merge.** SPEC-009 is merged but REMAINS CONDITIONAL: R-1, R-2 (mandatory) and R-3 (recommended) must land on master as one fix commit before VP-7 runtime sign-off. The two mandatory fixes are real regressions on master today: recording-cancel/Esc-while-listening is functionally broken (no longer stops voice, clobbers input), and both tracks lost the 70s request timeout with typed errors.
 2. **Process violation on record:** the execution lane (Gemini) must not publish "APPROVED" verdicts on its own work, and merges must not precede the Z audit — the agreed flow is execute → push → Z audit → operator adjudicates. This merge leapfrogged the audit; it was fortunate rather than by design that the audit found the code fundamentally sound. This is a warning, not a rejection — the lane's engineering here is largely excellent, and the two caught regressions are precisely why the gate exists.
+
+---
+
+## §8 RE-VERIFICATION of R1-R3 (commit `bb03b19`) — VERDICT: ACCEPT
+
+The execution lane pushed exactly one commit (`bb03b19`, prescribed message verbatim) directly on top of this review's tip (`e46e02c`). Topology is clean this time: execute → audit → fix, no self-published verdict, no merge leapfrog. Process complaint from §7 stands as history, not as an open issue.
+
+### Fence
+
+4 declared files (`api.ts`, `ArenaShell.tsx`, `AiAssistantPanel.tsx`, `useDialogue.ts`) + **1 tolerated deviation**: `DialogueAbortAndRecall.test.ts` +28/−0 — extends the F-2 VP-4 test with assertions locking R-1 (70000 + ApiError), R-3 (null-controller guard), and a dedicated R-2 wiring test. Justified: in-fence file, coverage locks the fixes themselves, zero deletions. It should have been declared in a fix note alongside the commit; scope was self-evident, so it stands. No other files touched; no test deletions anywhere.
+
+### R-1 (timeout parity) — PASS
+
+- `AbortSignal.timeout(70000)` composed with the turn's `signal` via runtime-gated `AbortSignal.any`; fetch uses the composed signal. Timeout restored.
+- Abort-source disambiguation is correct: user abort (`AbortError` **and** `signal.aborted`) is rethrown and reaches `useDialogue`'s silent path; timeout (`TimeoutError`, plus a defensive `AbortError`-without-user-abort branch) is converted to `ApiError(..., 408)` — typed errors restored.
+- The 408 message (`... timed out after 70000ms`) contains no `aborted` substring, so it correctly misses `useDialogue`'s silent heuristic (L515) and lands on the visible error path — the old `fetchJson` toast-and-recover parity is restored.
+- Non-ok responses now throw `ApiError(errorMsg, res.status, errorData)` instead of plain `Error` — status/data parity restored.
+- **N-1 (note, non-blocking):** where `AbortSignal.any` is unavailable the composition degrades to the user signal only — timeout protection silently absent on legacy engines. Modern baseline (Chrome 116+/FF 124+/Safari 17.4+) is unaffected; acceptable for a dev-stage product. Recorded so the degradation is a decision, not an accident.
+
+### R-2 (voice/turn separation) — PASS (full chain re-traced on the fixed tree)
+
+- `useArenaShellProps` L100-101: `onAbortVoice: engines.voice.abortTurn`, `onAbortTurn: engines.dialogue.abortTurn` — sources genuine and not swapped.
+- `ArenaShell` L215: `onAbortVoice={onAbortVoice}` forwarded; panel L352: `onAbort={onAbortVoice ?? onAbortTurn}` — recording-cancel (XCircle / Esc-while-listening) reaches the **voice** abort again; the Stop button keeps `onAbortTurn` → dialogue turn abort. Conflation resolved exactly per §3.
+- Remaining panel callers (`DiagnosticReportView`, `PreInterviewChecklist`, `SetupScreen`) pass no abort props — no fallback exposure anywhere.
+
+### R-3 (no-flight guard) — PASS
+
+Early return on null controller; no state churn and no draft clobber when nothing is in flight. Invariant (`isAiResponding=true` ⇒ controller exists) holds per the per-turn construction verified in §1.
+
+### Four numbers (fix delta)
+
+| Side | Files | Tests | Asserts | Failures |
+|---|---|---|---|---|
+| Frontend | 46 (+0) | 249 (+1) | 984→989 with an identical regex at both refs (+5 = exactly the 5 assert calls in the diff) | **0 — dynamically reproduced: `npm test` 249/249 pass (6.0s), `npm run build` exit 0** |
+| Backend | untouched by the fix | 101 (stands) | 412 checks (stands) | 1 pre-existing `@Disabled` skip (stands) |
+
+Absolute-assert variance vs the branch audit's 986 is regex-variant counting, not a tree change; the delta (+5) is what this gate verifies and it reconciles exactly.
+
+### Result
+
+**SPEC-009 verdict converts: CONDITIONAL ACCEPT → ACCEPT.** The R1-R3 gate is closed by Z. What remains for closure is operational only: the operator runs the VP-7 manual script (SPEC-009 §3, 5 checks — single CTA, Stop+restore+resend, panel cycle + persistence, reel/rail hidden with 30:00 countdown intact, follow-up relevance on the reversal drill). No further code changes are expected; any new finding reopens the review.
