@@ -1205,4 +1205,19 @@ export const getRetryQueue = async (
     );
 };
 
+// --- Client Telemetry Echo (SPEC-008) ---
+export const postClientLogs = async (events: unknown[]): Promise<void> => {
+    try {
+        await fetch(`${GATEWAY_BASE}/telemetry/client-logs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ events }),
+            keepalive: true
+        });
+    } catch (_) {
+        // Drop on failure, silent per SPEC-008
+    }
+};
+
+
 
