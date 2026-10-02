@@ -16,6 +16,9 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { Toaster } from './components/ui/Toaster';
 import { ScreenErrorBoundary } from './components/arena/ScreenErrorBoundary';
 
+import { syntheticPlaygroundPlan } from './lib/playgroundPlan';
+import { buildRoomUrl, resolvePopStateView } from './lib/sessionUrl';
+
 type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN' | 'DASHBOARD';
 
 export function App() {
@@ -42,8 +45,16 @@ export function App() {
     if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
       return 'LEARN';
     }
+    if (window.location.pathname.startsWith('/session/')) {
+      return 'SETUP';
+    }
     return 'SETUP';
   });
+
+  const sessionIdRef = useRef<number | null>(sessionId);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   const [sessionMode, setSessionMode] = useState<'INTERVIEW' | 'PLAYGROUND'>('INTERVIEW');
   const [sessionPlan, setSessionPlan] = useState<SessionPlan | undefined>(undefined);
@@ -69,13 +80,8 @@ export function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      if (window.location.pathname === '/dashboard' || window.location.pathname.startsWith('/dashboard')) {
-        setView('DASHBOARD');
-      } else if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
-        setView('LEARN');
-      } else if (window.location.pathname === '/' || window.location.pathname === '') {
-        setView('SETUP');
-      }
+      const nextView = resolvePopStateView(window.location.pathname, sessionIdRef.current);
+      setView(nextView);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -146,13 +152,17 @@ export function App() {
         mode: 'PLAYGROUND'
       });
 
+      const mappedDifficulty = mapQuestionDifficultyToSeniority(q.difficulty);
+      const plan = syntheticPlaygroundPlan(q, mappedDifficulty, q.slug ? [q.slug] : []);
+
       setSessionId(session.id);
-      setSessionPlan(undefined);
+      setSessionPlan(plan);
       await startSession(session.id);
 
       setQuestion(q);
       setPlaylistQuestions([q]);
       setSectionQuestions([[q]]);
+      window.history.pushState({}, '', buildRoomUrl(session.id));
       setView('ROOM');
     } catch (err: any) {
       alert(`Error launching playground practice: ${err.message || 'Service unreachable'}`);
@@ -286,7 +296,12 @@ export function App() {
       setSectionQuestions(mappedSectionQuestions);
 
       if (chosenMode === 'PLAYGROUND') {
+        if (!session.plan?.sections || session.plan.sections.length === 0 || session.plan.sections[0].sectionType === 'INTRODUCTION') {
+          const plan = syntheticPlaygroundPlan(initialQ, config.difficulty, plannedList.map((p) => p.slug || '').filter(Boolean));
+          setSessionPlan(plan);
+        }
         // Spec: Skip PreInterviewChecklist in Playground mode
+        window.history.pushState({}, '', buildRoomUrl(session.id));
         setView('ROOM');
       } else {
         setView('CHECKLIST');
@@ -322,11 +337,13 @@ export function App() {
         mode: 'PLAYGROUND'
       });
       setSessionId(session.id);
-      setSessionPlan(undefined);
+      const plan = syntheticPlaygroundPlan(firstQ, difficulty, selectedQuestions.map((sq) => sq.slug || '').filter(Boolean));
+      setSessionPlan(plan);
       await startSession(session.id);
 
       setQuestion(firstQ);
       setPlaylistQuestions(selectedQuestions);
+      window.history.pushState({}, '', buildRoomUrl(session.id));
       setView('ROOM');
     } catch (err: any) {
       alert(`Error launching practice playlist: ${err.message || 'Backend service unreachable.'}`);
@@ -448,7 +465,10 @@ export function App() {
           candidateId={candidateId}
           roleTitle={roleTitle}
           sessionMode={sessionMode}
-          onProceed={() => setView('ROOM')}
+          onProceed={() => {
+            window.history.pushState({}, '', buildRoomUrl(sessionId));
+            setView('ROOM');
+          }}
         />
       )}
 

@@ -339,7 +339,7 @@ public class AiOrchestratorService {
                 (request.candidateName() != null && !request.candidateName().isBlank()) ? request.candidateName().trim() : "the candidate"
         ));
 
-        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType())) {
+        if (!isPlayground && ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType()))) {
             systemInstructionBuilder.append("""
                     
                     STAGE SPECIFICATION - INTRODUCTION:
@@ -520,7 +520,7 @@ public class AiOrchestratorService {
         String systemInstruction = systemInstructionBuilder.toString();
 
         String userPrompt;
-        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType())) {
+        if (!isPlayground && ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType()))) {
             userPrompt = String.format("""
                     Current Stage: INTRODUCTION
                     Candidate Message:
@@ -891,7 +891,8 @@ public class AiOrchestratorService {
                 topicSnippet = "\"" + String.join(" ", java.util.Arrays.copyOfRange(words, 0, len)) + "...\"";
             }
         }
-        if ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType())) {
+        boolean isPlayground = "PLAYGROUND".equalsIgnoreCase(request.getEffectiveMode());
+        if (!isPlayground && ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType()))) {
             String[] introPool = new String[]{
                     "Which recent backend or distributed system project are you most proud of, and what was your specific role?",
                     "What key technical trade-offs did you navigate in that system, and are you ready to begin Round 1?",
