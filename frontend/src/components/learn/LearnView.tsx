@@ -11,14 +11,12 @@ import {
   BarChart3,
   AlertCircle
 } from 'lucide-react';
-import { TopicRail } from './TopicRail';
-import { QuestionTable } from './QuestionTable';
 import { SubmissionsDrawer } from './SubmissionsDrawer';
 import { QuestionDetailModal } from './QuestionDetailModal';
-import { RetryQueueCard } from './RetryQueueCard';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { ViewToggle } from './ViewToggle';
 import { HubView } from './HubView';
+import { ModulesView } from './ModulesView';
 import {
   useLearnData,
   resolveInitialViewMode,
@@ -293,36 +291,29 @@ export const LearnView: React.FC<LearnViewProps> = ({
           }}
         />
       ) : (
-        <>
-          {/* Retry Queue (Weak-Spot Resurfacing) */}
-          <RetryQueueCard
-            items={retryState.items}
-            isStale={retryState.isStale}
-            isChecking={retryState.isChecking}
-            onSelectQuestion={handleOpenDetail}
-          />
-
-          <main className="flex-1 flex min-h-0 overflow-hidden">
-            <TopicRail
-              topics={enrichedTopics}
-              selectedTopic={selectedTopic}
-              onSelectTopic={setSelectedTopic}
-              totalQuestions={totalQuestions}
-              totalSolved={totalSolved}
-            />
-
-            <QuestionTable
-              questions={questions}
-              progressMap={progressMap}
-              verdictMap={verdictMap}
-              loading={loading}
-              selectedTopic={selectedTopic}
-              onSolve={onSolveQuestion}
-              onOpenDetail={handleOpenDetail}
-              onOpenSubmissions={(slug, title) => setSubmissionsTarget({ slug, title })}
-            />
-          </main>
-        </>
+        <ModulesView
+          track={track}
+          enrichedTopics={enrichedTopics}
+          questions={questions}
+          progressMap={progressMap}
+          verdictMap={verdictMap}
+          selectedTopic={selectedTopic}
+          onSelectTopic={(topicId) => {
+            setSelectedTopic(topicId);
+            const nextUrl = buildLearnUrl({
+              viewMode: 'modules',
+              topicId,
+              detailSlug
+            });
+            window.history.pushState({}, '', nextUrl);
+          }}
+          treeState={treeState}
+          retryState={retryState}
+          loading={loading}
+          onSolveQuestion={onSolveQuestion}
+          onOpenDetail={handleOpenDetail}
+          onOpenSubmissions={(slug, title) => setSubmissionsTarget({ slug, title })}
+        />
       )}
 
       {/* Submissions History Drawer */}

@@ -8,8 +8,9 @@ import {
   Video,
   ArrowUpDown
 } from 'lucide-react';
-import type { CatalogQuestionSummary, QuestionProgress } from '../../services/api';
+import type { CatalogQuestionSummary, QuestionProgress, LearnQuestionNode } from '../../services/api';
 import { Chip } from '../ui/Chip';
+import { VerdictChip } from './verdictChips';
 
 interface QuestionTableProps {
   questions: CatalogQuestionSummary[];
@@ -20,6 +21,8 @@ interface QuestionTableProps {
   onSolve: (slug: string) => void;
   onOpenDetail: (slug: string) => void;
   onOpenSubmissions: (slug: string, title: string) => void;
+  twoTrack?: boolean;
+  treeQuestionsMap?: Record<string, LearnQuestionNode>;
 }
 
 export const QuestionTable: React.FC<QuestionTableProps> = ({
@@ -30,7 +33,9 @@ export const QuestionTable: React.FC<QuestionTableProps> = ({
   selectedTopic,
   onSolve,
   onOpenDetail,
-  onOpenSubmissions
+  onOpenSubmissions,
+  twoTrack = false,
+  treeQuestionsMap
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState<'ALL' | 'EASY' | 'MEDIUM' | 'HARD'>('ALL');
@@ -228,38 +233,61 @@ export const QuestionTable: React.FC<QuestionTableProps> = ({
         <table className="w-full text-left border-collapse">
           {/* Table Header */}
           <thead className="bg-surface border-b border-border sticky top-0 z-10 select-none text-[11px] font-mono text-text-3 uppercase tracking-wider">
-            <tr>
-              <th className="py-3 px-4 w-12 text-center">#</th>
-              <th className="py-3 px-4">Title</th>
-              <th className="py-3 px-4 hidden md:table-cell">Topics</th>
-              <th
-                className="py-3 px-4 cursor-pointer hover:text-text"
-                onClick={() => {
-                  setSortField('difficulty');
-                  setSortAsc(!sortAsc);
-                }}
-              >
-                <span className="flex items-center gap-1">
-                  Difficulty
-                  <ArrowUpDown className="w-3 h-3" />
-                </span>
-              </th>
-              <th
-                className="py-3 px-4 cursor-pointer hover:text-text"
-                onClick={() => {
-                  setSortField('solved');
-                  setSortAsc(!sortAsc);
-                }}
-              >
-                <span className="flex items-center gap-1">
-                  Status
-                  <ArrowUpDown className="w-3 h-3" />
-                </span>
-              </th>
-              <th className="py-3 px-4 text-center">Attempts</th>
-              <th className="py-3 px-4 hidden lg:table-cell">Last Run</th>
-              <th className="py-3 px-4 text-right pr-6">Action</th>
-            </tr>
+            {twoTrack ? (
+              <tr>
+                <th className="py-3 px-4 w-12 text-center">#</th>
+                <th className="py-3 px-4">Title</th>
+                <th
+                  className="py-3 px-4 cursor-pointer hover:text-text"
+                  onClick={() => {
+                    setSortField('difficulty');
+                    setSortAsc(!sortAsc);
+                  }}
+                >
+                  <span className="flex items-center gap-1">
+                    Difficulty
+                    <ArrowUpDown className="w-3 h-3" />
+                  </span>
+                </th>
+                <th className="py-3 px-4">Practice Lane</th>
+                <th className="py-3 px-4">Interview Lane</th>
+                <th className="py-3 px-4 hidden lg:table-cell">Last Run</th>
+                <th className="py-3 px-4 text-right pr-6">Action</th>
+              </tr>
+            ) : (
+              <tr>
+                <th className="py-3 px-4 w-12 text-center">#</th>
+                <th className="py-3 px-4">Title</th>
+                <th className="py-3 px-4 hidden md:table-cell">Topics</th>
+                <th
+                  className="py-3 px-4 cursor-pointer hover:text-text"
+                  onClick={() => {
+                    setSortField('difficulty');
+                    setSortAsc(!sortAsc);
+                  }}
+                >
+                  <span className="flex items-center gap-1">
+                    Difficulty
+                    <ArrowUpDown className="w-3 h-3" />
+                  </span>
+                </th>
+                <th
+                  className="py-3 px-4 cursor-pointer hover:text-text"
+                  onClick={() => {
+                    setSortField('solved');
+                    setSortAsc(!sortAsc);
+                  }}
+                >
+                  <span className="flex items-center gap-1">
+                    Status
+                    <ArrowUpDown className="w-3 h-3" />
+                  </span>
+                </th>
+                <th className="py-3 px-4 text-center">Attempts</th>
+                <th className="py-3 px-4 hidden lg:table-cell">Last Run</th>
+                <th className="py-3 px-4 text-right pr-6">Action</th>
+              </tr>
+            )}
           </thead>
 
           {/* Table Body */}
@@ -269,6 +297,133 @@ export const QuestionTable: React.FC<QuestionTableProps> = ({
               const progress = progressMap[q.slug];
               const isSolved = progress && progress.solveCount > 0;
               const attemptCount = progress?.attemptCount || 0;
+
+              const node = treeQuestionsMap?.[q.slug];
+              const practiceSolves =
+                node?.practiceSolveCount !== undefined
+                  ? node.practiceSolveCount
+                  : progress?.solveCount ?? 0;
+              const practiceAttempts =
+                node?.practiceAttemptCount !== undefined
+                  ? node.practiceAttemptCount
+                  : progress?.attemptCount ?? 0;
+              const lastPracticeVerdict = node?.lastPracticeVerdict;
+              const lastPracticedAt = node?.lastPracticedAt || progress?.lastAttemptedAt;
+
+              const interviewAttempts = node?.interviewAttemptCount;
+              const interviewPasses = node?.interviewPassCount;
+
+              if (twoTrack) {
+                return (
+                  <tr
+                    key={q.slug}
+                    className="hover:bg-elevated/40 transition-colors group cursor-default"
+                  >
+                    {/* # */}
+                    <td className="py-3.5 px-4 text-center font-mono text-text-3 text-[11px]">
+                      {globalIndex}
+                    </td>
+
+                    {/* Title */}
+                    <td className="py-3.5 px-4 font-medium text-text">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onOpenDetail(q.slug)}
+                            className="text-left font-semibold hover:text-primary transition-colors cursor-pointer group-hover:text-primary truncate max-w-xs sm:max-w-sm md:max-w-md"
+                          >
+                            {q.title}
+                          </button>
+                          {q.solutionVideoUrl && (
+                            <span title="Includes video walkthrough">
+                              <Video className="w-3.5 h-3.5 text-primary shrink-0 opacity-70 group-hover:opacity-100" />
+                            </span>
+                          )}
+                        </div>
+                        {q.topics && q.topics.length > 0 && (
+                          <div className="flex items-center gap-1 text-[10px] text-text-3 font-mono">
+                            {q.topics.slice(0, 2).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Difficulty */}
+                    <td className="py-3.5 px-4 font-mono">
+                      {getDifficultyBadge(q.difficulty)}
+                    </td>
+
+                    {/* Practice Lane */}
+                    <td className="py-3.5 px-4 font-mono">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-text-2">
+                          {practiceSolves}
+                          <small className="text-text-3 font-normal">/5</small>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {[0, 1, 2, 3, 4].map((i) => {
+                            const isFilled = i < Math.min(practiceSolves, 5);
+                            return (
+                              <span
+                                key={i}
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  isFilled
+                                    ? 'bg-success'
+                                    : 'bg-elevated border border-border'
+                                }`}
+                              />
+                            );
+                          })}
+                        </div>
+                        {practiceAttempts > practiceSolves && lastPracticeVerdict && (
+                          <VerdictChip verdict={lastPracticeVerdict} />
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Interview Lane */}
+                    <td className="py-3.5 px-4 font-mono">
+                      {interviewAttempts === undefined ? (
+                        <span className="text-text-3 text-xs">—</span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-text-2">
+                            {interviewPasses ?? 0}
+                            <small className="text-text-3 font-normal">/1</small>
+                          </span>
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              (interviewPasses ?? 0) >= 1
+                                ? 'bg-success'
+                                : (interviewAttempts ?? 0) > (interviewPasses ?? 0)
+                                ? 'bg-danger'
+                                : 'bg-elevated border border-border'
+                            }`}
+                          />
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Last Run */}
+                    <td className="py-3.5 px-4 hidden lg:table-cell text-text-3 font-mono text-[11px]">
+                      {formatLastPracticed(lastPracticedAt || undefined)}
+                    </td>
+
+                    {/* Action */}
+                    <td className="py-3.5 px-4 text-right pr-6">
+                      <button
+                        type="button"
+                        onClick={() => onSolve(q.slug)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-on-accent text-xs font-bold hover:bg-primary-2 cursor-pointer shadow-xs transition-all"
+                      >
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>Solve</span>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              }
 
               return (
                 <tr
