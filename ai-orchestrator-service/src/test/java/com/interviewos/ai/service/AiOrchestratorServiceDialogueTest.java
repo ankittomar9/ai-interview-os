@@ -1574,6 +1574,81 @@ class AiOrchestratorServiceDialogueTest {
         assertFalse(sysPrompt.contains("null of null"),
                 "Prompt must never contain 'null of null'");
     }
+
+    @Test
+    @DisplayName("VP-1: Playground instruction contains FOLLOW-UP RELEVANCE RULE; interview instruction does not")
+    void testPlaygroundFollowUpRelevanceRuleContainedAndInterviewOmitted() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Here is targeted feedback.",
+                          "followUpQuestion": "What is the time complexity?",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": "Code looks good.",
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "CODING",
+                          "turnSummary": "Practice step.",
+                          "recommendedAction": "OFFER_HINT"
+                        }
+                        """);
+
+        // 1. PLAYGROUND request
+        AiDialogueRequest playgroundReq = AiDialogueRequest.builder()
+                .sessionMode("PLAYGROUND")
+                .questionContext("Given a string, return the reversed string.")
+                .candidateExplanation("Reversing string with StringBuilder")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("DSA")
+                .build();
+
+        orchestratorService.processDialogue(playgroundReq);
+
+        org.mockito.ArgumentCaptor<String> playgroundCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(aiClient, org.mockito.Mockito.atLeastOnce()).generateCompletion(any(), playgroundCaptor.capture(), any(), any(), any());
+        String playgroundPrompt = playgroundCaptor.getValue();
+
+        assertTrue(playgroundPrompt.contains("FOLLOW-UP RELEVANCE RULE"),
+                "Playground system instruction must contain FOLLOW-UP RELEVANCE RULE");
+        assertTrue(playgroundPrompt.contains("Do NOT ask about language-lawyer trivia (Unicode encoding or surrogate mechanics"),
+                "Playground system instruction must prohibit language-lawyer / Unicode trivia");
+
+        // 2. INTERVIEW request (mode is INTERVIEW)
+        org.mockito.Mockito.reset(aiClient);
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Good. Proceed.",
+                          "followUpQuestion": "How does this scale?",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": "Good.",
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "CODING",
+                          "turnSummary": "Interview step.",
+                          "recommendedAction": "PROBE_DEEPER"
+                        }
+                        """);
+
+        AiDialogueRequest interviewReq = AiDialogueRequest.builder()
+                .sessionMode("INTERVIEW")
+                .questionContext("Given a string, return the reversed string.")
+                .candidateExplanation("Two pointer approach")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("DSA")
+                .build();
+
+        orchestratorService.processDialogue(interviewReq);
+
+        org.mockito.ArgumentCaptor<String> interviewCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(aiClient, org.mockito.Mockito.atLeastOnce()).generateCompletion(any(), interviewCaptor.capture(), any(), any(), any());
+        String interviewPrompt = interviewCaptor.getValue();
+
+        assertFalse(interviewPrompt.contains("FOLLOW-UP RELEVANCE RULE"),
+                "Interview system instruction must NOT contain FOLLOW-UP RELEVANCE RULE (interview block frozen)");
+    }
 }
 
 
