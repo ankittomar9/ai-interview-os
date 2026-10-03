@@ -12,6 +12,7 @@ import {
   getStoredPanelSize,
   setStoredPanelSize
 } from "./panelSizing";
+import { parseInlineFormat } from "./inlineFormat";
 
 export interface ChatMessage {
   role: "candidate" | "interviewer" | "system";
@@ -61,6 +62,51 @@ export const CandidateMessageContent: React.FC<{ content: string }> = ({ content
       >
         {expanded ? 'Show less' : `Show more (${hiddenCount} lines)`}
       </button>
+    </div>
+  );
+};
+
+export const AssistantMessageContent: React.FC<{ content: string }> = ({ content }) => {
+  const segments = parseInlineFormat(content);
+  return (
+    <div className="leading-relaxed">
+      {segments.map((segment, idx) => {
+        if (segment.type === "fence") {
+          return (
+            <pre
+              key={idx}
+              className="p-2 my-1.5 bg-surface rounded border border-border font-mono text-[11px] overflow-x-auto text-primary-2 whitespace-pre"
+            >
+              <code>{segment.value}</code>
+            </pre>
+          );
+        }
+        if (segment.type === "math") {
+          return (
+            <code
+              key={idx}
+              className="font-mono text-[11px] px-1 py-0.5 rounded bg-surface border border-border text-primary font-semibold"
+            >
+              {segment.value}
+            </code>
+          );
+        }
+        if (segment.type === "code") {
+          return (
+            <code
+              key={idx}
+              className="font-mono text-[11px] px-1 py-0.5 rounded bg-surface border border-border text-text font-semibold"
+            >
+              {segment.value}
+            </code>
+          );
+        }
+        return (
+          <span key={idx} className="whitespace-pre-wrap">
+            {segment.value}
+          </span>
+        );
+      })}
     </div>
   );
 };
@@ -306,7 +352,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                 {m.role === "candidate" ? (
                   <CandidateMessageContent content={m.content} />
                 ) : (
-                  <div className="whitespace-pre-wrap">{m.content}</div>
+                  <AssistantMessageContent content={m.content} />
                 )}
                 {m.metadata?.recommendedAction === "PROPOSE_STAGE_ADVANCE" && idx === messages.length - 1 && onSend && (
                   <div className="mt-2.5 pt-2 border-t border-border flex items-center gap-2">
@@ -372,7 +418,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                 {turn.senderRole === "CANDIDATE" ? (
                   <CandidateMessageContent content={turn.content} />
                 ) : (
-                  <div className="whitespace-pre-wrap text-text">{turn.content}</div>
+                  <AssistantMessageContent content={turn.content} />
                 )}
                 {turn.codeSnippet && turn.codeSnippet.trim() && (
                   <pre className="mt-1.5 p-1.5 bg-bg rounded border border-border font-mono text-[10px] overflow-x-auto text-primary-2">

@@ -1649,6 +1649,105 @@ class AiOrchestratorServiceDialogueTest {
         assertFalse(interviewPrompt.contains("FOLLOW-UP RELEVANCE RULE"),
                 "Interview system instruction must NOT contain FOLLOW-UP RELEVANCE RULE (interview block frozen)");
     }
+
+    @Test
+    @DisplayName("SPEC-010 VP-5: Formatting rules are injected into Playground and Interview system instructions")
+    void testFormattingRulesInjectedIntoPlaygroundAndInterviewPrompts() {
+        when(clientFactory.getClient(any())).thenReturn(aiClient);
+
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Here is targeted feedback.",
+                          "followUpQuestion": "What is the time complexity?",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": "Code looks good.",
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "CODING",
+                          "turnSummary": "Practice step.",
+                          "recommendedAction": "OFFER_HINT"
+                        }
+                        """);
+
+        // 1. PLAYGROUND request
+        AiDialogueRequest playgroundReq = AiDialogueRequest.builder()
+                .sessionMode("PLAYGROUND")
+                .questionContext("Given an array, find the maximum sum.")
+                .candidateExplanation("Kadane's algorithm")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("DSA")
+                .build();
+
+        orchestratorService.processDialogue(playgroundReq);
+
+        org.mockito.ArgumentCaptor<String> playgroundCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(aiClient, org.mockito.Mockito.atLeastOnce()).generateCompletion(any(), playgroundCaptor.capture(), any(), any(), any());
+        String playgroundPrompt = playgroundCaptor.getValue();
+
+        int followUpIndex = playgroundPrompt.indexOf("FOLLOW-UP RELEVANCE RULE");
+        int formatRuleIndex = playgroundPrompt.indexOf("FORMATTING RULE: Do NOT use LaTeX or dollar-sign math delimiters");
+        assertTrue(followUpIndex != -1, "Playground system instruction must contain FOLLOW-UP RELEVANCE RULE");
+        assertTrue(formatRuleIndex != -1, "Playground system instruction must contain FORMATTING RULE");
+        assertTrue(formatRuleIndex > followUpIndex, "Playground FORMATTING RULE must come after FOLLOW-UP RELEVANCE RULE");
+        assertTrue(playgroundPrompt.contains("Write math\nand complexity in plain text (O(N), O(n log n), n-1, 2^n)") ||
+                playgroundPrompt.contains("Write math and complexity in plain text (O(N), O(n log n), n-1, 2^n)"));
+        assertTrue(playgroundPrompt.contains("Use backticks ONLY around identifiers"));
+
+        // 2. INTERVIEW request
+        org.mockito.Mockito.reset(aiClient);
+        when(aiClient.generateCompletion(any(), any(), any(), any(), any()))
+                .thenReturn("""
+                        {
+                          "interviewerReply": "Good. Proceed.",
+                          "followUpQuestion": "How does this scale?",
+                          "isSolutionComplete": false,
+                          "codeAnalysis": "Good.",
+                          "keyStrengths": [],
+                          "areasToImprove": [],
+                          "detectedIntent": "CODING",
+                          "turnSummary": "Interview step.",
+                          "recommendedAction": "PROBE_DEEPER"
+                        }
+                        """);
+
+        AiDialogueRequest interviewReq = AiDialogueRequest.builder()
+                .sessionMode("INTERVIEW")
+                .questionContext("Given an array, find the maximum sum.")
+                .candidateExplanation("Kadane's algorithm")
+                .modelProvider(ModelProvider.GEMINI)
+                .sectionType("DSA")
+                .build();
+
+        orchestratorService.processDialogue(interviewReq);
+
+        org.mockito.ArgumentCaptor<String> interviewCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(aiClient, org.mockito.Mockito.atLeastOnce()).generateCompletion(any(), interviewCaptor.capture(), any(), any(), any());
+        String interviewPrompt = interviewCaptor.getValue();
+
+        assertTrue(interviewPrompt.contains("FORMATTING RULE: Plain text only — no LaTeX or $...$ math delimiters; write math as O(N), n-1, 2^n; backticks only around code and identifiers."),
+                "Interview prompt must contain the exact single-line FORMATTING RULE");
+    }
+
+    @Test
+    @DisplayName("SPEC-010 VP-5: Source integrity assertions for playground and interview formatting rules")
+    void testFormattingRulesSourceIntegrity() throws Exception {
+        java.nio.file.Path servicePath = java.nio.file.Path.of("src/main/java/com/interviewos/ai/service/AiOrchestratorService.java");
+        if (!java.nio.file.Files.exists(servicePath)) {
+            servicePath = java.nio.file.Path.of("ai-orchestrator-service/src/main/java/com/interviewos/ai/service/AiOrchestratorService.java");
+        }
+        assertTrue(java.nio.file.Files.exists(servicePath), "AiOrchestratorService.java must exist on disk");
+        String content = java.nio.file.Files.readString(servicePath);
+
+        int followUpIndex = content.indexOf("FOLLOW-UP RELEVANCE RULE");
+        int playgroundRuleIndex = content.indexOf("FORMATTING RULE: Do NOT use LaTeX or dollar-sign math delimiters");
+        assertTrue(followUpIndex != -1, "Source must contain FOLLOW-UP RELEVANCE RULE");
+        assertTrue(playgroundRuleIndex != -1, "Source must contain Playground FORMATTING RULE");
+        assertTrue(playgroundRuleIndex > followUpIndex, "Playground FORMATTING RULE must come after FOLLOW-UP RELEVANCE RULE");
+
+        String interviewRule = "FORMATTING RULE: Plain text only — no LaTeX or $...$ math delimiters; write math as O(N), n-1, 2^n; backticks only around code and identifiers.";
+        assertTrue(content.contains(interviewRule), "Source must contain exact single-line Interview FORMATTING RULE");
+    }
 }
 
 

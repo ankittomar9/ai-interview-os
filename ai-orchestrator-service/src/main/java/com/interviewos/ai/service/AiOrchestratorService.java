@@ -282,6 +282,10 @@ public class AiOrchestratorService {
                     correctness, complexity, or realistic boundary cases (empty input, duplicates, extremes,
                     overflow). Do NOT ask about language-lawyer trivia (Unicode encoding or surrogate mechanics,
                     JVM internals, language history) unless the problem itself is explicitly about text encoding.
+
+                    FORMATTING RULE: Do NOT use LaTeX or dollar-sign math delimiters ($...$ or $$...$$). Write math
+                    and complexity in plain text (O(N), O(n log n), n-1, 2^n). Use backticks ONLY around identifiers,
+                    code, and file names — never around plain prose.
                     """.formatted(
                     memory.runningSummary(),
                     memory.recentVerbatim(),
@@ -318,6 +322,7 @@ public class AiOrchestratorService {
                     }
                     
                     In gated sections (DSA, LLD, SQL): when the candidate has articulated a workable data structure, algorithmic strategy, and time/space complexity, set approachAssessment: 'AGREE' to unlock the code editor. If their approach is fundamentally flawed or missing key algorithmic structure, set approachAssessment: 'PROBE_MORE' and name the single biggest gap.
+                    FORMATTING RULE: Plain text only — no LaTeX or $...$ math delimiters; write math as O(N), n-1, 2^n; backticks only around code and identifiers.
                     """.formatted(
                     memory.runningSummary(),
                     memory.recentVerbatim(),
