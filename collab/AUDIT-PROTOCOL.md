@@ -1,4 +1,4 @@
-# AUDIT-PROTOCOL v1.0 — Verification Baseline for All Lanes
+# AUDIT-PROTOCOL v1.1 — Verification Baseline for All Lanes
 
 **Published by:** Z.ai (architect/audit lane) · **Status:** effective immediately · Objections go to the operator.
 **Origin:** SPEC-009. Its two live regressions (R-1 lost 70s timeout, R-2 recording-cancel conflated with turn-abort) survived a presence-check review and a self-published "APPROVED" gate, and were caught only by the checks below. This document makes those checks the floor, not the heroics.
@@ -61,6 +61,21 @@ Re-verification: exactly what the auditor will re-run
 6. Out-of-fence changes are justified before push, not discovered after.
 7. A fix slice touches only the files named in the review's fix instructions (test additions for the fixes themselves are the only tolerated extension, and must be declared).
 8. Byte-sensitive verification (class strings, frozen blocks, verbatim text) uses `od -c` or programmatic includes-counting — never eyeballed shell text output. Shell text rendering can swallow `[m`-style sequences (ANSI-reset lookalikes): a correct Tailwind class once displayed as corrupted across three different tools while `od -c` proved it intact.
+
+## Hotfix lane (added v1.1 — mic/PTT incident, 2026-10-03)
+
+A live blocker may be fixed without a full SPEC, but never without a traceable artifact. Flow:
+
+1. **Operator** declares `HOTFIX: <slug>` — one line: symptom + affected surface.
+2. **Execution lane, BEFORE touching any file:** `git checkout -b hotfix/<slug>` from the current base, then write `collab/gemini/HOTFIX-<slug>-NOTE.md` (≤15 lines: symptom, suspected root cause, files intended to touch, verification plan).
+3. Fix → commit (scoped to the declared files) → push the branch → **stop**. Same as a spec cycle, minus the spec.
+4. Z runs the 12 checks scaled to the diff → verdict → operator merges.
+
+Added hard rules:
+
+9. **Working-tree-only edits are void.** An uncommitted edit does not exist for the audit lane and must not be reported as implemented. No branch + no commit = the fix never happened, regardless of test claims. (Origin: the mic PTT fix of 2026-10-03 was edited directly into the working tree across 9 files — including `AutoGrowingChatInput.tsx`, the exact file where SPEC-009 R-2 abort wiring lives, and files on SPEC-010's forbidden list — with no branch, no note, and no push.)
+10. **A fix order from the operator in a live session still enters through the hotfix lane.** Investigate-first without branching is welcome; fix-without-branch is not.
+11. **Micro-fidelity zones are pre-flagged by the auditor, not discovered by the executor.** Files carrying byte-frozen or high-collision semantics (abort wiring, recorder lifecycle, prompt blocks) are listed in every SPEC fence; the executor echoes that list in the hotfix note before editing.
 
 ## Gemini Pre-Flight (before any execution report claims a VP gate PASS)
 
