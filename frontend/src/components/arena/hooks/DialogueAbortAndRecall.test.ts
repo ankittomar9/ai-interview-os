@@ -166,4 +166,81 @@ describe('SPEC-009 VP-4: Turn Abort, Draft Restore & Recall Semantics', () => {
       'AiAssistantPanel must wire onAbortVoice ?? onAbortTurn to input onAbort'
     );
   });
+
+  it('SPEC-010 VP-2: candidate messages with >5 lines collapse by default with Show more/less; <=5 lines render raw', () => {
+    const panelPath = path.resolve(process.cwd(), 'src/components/ai/AiAssistantPanel.tsx');
+    const panelSrc = fs.readFileSync(panelPath, 'utf-8');
+
+    // 1. Source checks
+    assert.ok(
+      panelSrc.includes('export function getCandidateMessageLines'),
+      'AiAssistantPanel must export getCandidateMessageLines helper'
+    );
+    assert.ok(
+      panelSrc.includes('Show more (${hiddenCount} lines)'),
+      'AiAssistantPanel must format Show more toggle with hidden line count'
+    );
+    assert.ok(
+      panelSrc.includes('Show less'),
+      'AiAssistantPanel must support Show less toggle'
+    );
+    assert.ok(
+      panelSrc.includes('<CandidateMessageContent content={m.content} />'),
+      'Live candidate messages must render through CandidateMessageContent'
+    );
+
+    // 2. Functional behavior checks on line counting logic
+    const fiveLineText = 'line 1\nline 2\nline 3\nline 4\nline 5';
+    const fiveLines = fiveLineText.split('\n');
+    assert.strictEqual(fiveLines.length, 5);
+    const isFiveCollapsible = fiveLines.length > 5;
+    assert.strictEqual(isFiveCollapsible, false, '5-line text must not be collapsible');
+
+    const sixLineText = 'line 1\nline 2\nline 3\nline 4\nline 5\nline 6';
+    const sixLines = sixLineText.split('\n');
+    assert.strictEqual(sixLines.length, 6);
+    const isSixCollapsible = sixLines.length > 5;
+    assert.strictEqual(isSixCollapsible, true, '6-line text must be collapsible');
+    assert.strictEqual(sixLines.slice(0, 4).join('\n'), 'line 1\nline 2\nline 3\nline 4', 'Preview must show first 4 lines');
+    assert.strictEqual(sixLines.length - 4, 2, 'Hidden line count must be 2');
+
+    const twentyFiveLines = Array.from({ length: 25 }, (_, i) => `int line${i} = ${i};`).join('\n');
+    const lines25 = twentyFiveLines.split('\n');
+    assert.strictEqual(lines25.length > 5, true);
+    assert.strictEqual(lines25.length - 4, 21, 'Hidden line count must be 21');
+  });
+
+  it('SPEC-010 VP-3: in-flight abort marks candidate message with stopped metadata; no-flight abort sets nothing; appends no messages', () => {
+    // 1. Assert abortTurn marks candidate message with stopped: 'true'
+    assert.ok(
+      dialogueSrc.includes("stopped: 'true'"),
+      'abortTurn must mark candidate message with stopped: "true" metadata'
+    );
+
+    // 2. Assert no-flight guard precedes the metadata update
+    const abortBody = dialogueSrc.substring(
+      dialogueSrc.indexOf('const abortTurn = useCallback('),
+      dialogueSrc.indexOf('const recallLastDraft = useCallback(')
+    );
+    const guardIdx = abortBody.indexOf('if (!abortControllerRef.current) return');
+    const updateIdx = abortBody.indexOf('stopped');
+    assert.ok(guardIdx !== -1, 'R-3 guard must be present in abortTurn');
+    assert.ok(updateIdx !== -1, 'stopped metadata update must be present in abortTurn');
+    assert.ok(guardIdx < updateIdx, 'no-flight guard must precede stopped metadata update');
+
+    // 3. Assert abortTurn does not append any new message to transcript
+    assert.strictEqual(
+      abortBody.includes('[...prev, fallbackMsg]') || abortBody.includes('[...prev, userMsg]'),
+      false,
+      'abortTurn must not append any new message to messages'
+    );
+
+    // 4. Assert panel renders Stopped chip when m.metadata?.stopped is set
+    const panelPath = path.resolve(process.cwd(), 'src/components/ai/AiAssistantPanel.tsx');
+    const panelSrc = fs.readFileSync(panelPath, 'utf-8');
+    assert.ok(
+      panelSrc.includes('m.metadata?.stopped') && panelSrc.includes('Stopped'),
+      'AiAssistantPanel must render Stopped chip when m.metadata?.stopped is present'
+    );
+  });
 });

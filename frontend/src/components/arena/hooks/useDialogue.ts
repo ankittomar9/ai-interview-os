@@ -604,6 +604,28 @@ export function useDialogue({
     abortControllerRef.current.abort();
     abortControllerRef.current = null;
     setIsAiResponding(false);
+
+    // R-g: Mark the most recent candidate message with metadata.stopped = true
+    setMessages((prev) => {
+      let lastCandidateIdx = -1;
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].role === 'candidate') {
+          lastCandidateIdx = i;
+          break;
+        }
+      }
+      if (lastCandidateIdx === -1) return prev;
+      const updated = [...prev];
+      updated[lastCandidateIdx] = {
+        ...updated[lastCandidateIdx],
+        metadata: {
+          ...(updated[lastCandidateIdx].metadata || {}),
+          stopped: 'true'
+        }
+      };
+      return updated;
+    });
+
     const textToRestore = lastTurnRef.current?.textToSend || lastSentCandidateTextRef.current;
     if (textToRestore) {
       setChatInput(textToRestore);

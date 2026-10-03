@@ -29,6 +29,42 @@ export interface TranscriptTurn {
   metadata?: Record<string, string>;
 }
 
+export function getCandidateMessageLines(content: string) {
+  const trimmed = content.replace(/\s+$/, '');
+  const lines = trimmed.split('\n');
+  const isCollapsible = lines.length > 5;
+  const preview = isCollapsible ? lines.slice(0, 4).join('\n') : content;
+  const hiddenCount = isCollapsible ? lines.length - 4 : 0;
+  return { lines, isCollapsible, preview, hiddenCount };
+}
+
+export const CandidateMessageContent: React.FC<{ content: string }> = ({ content }) => {
+  const [expanded, setExpanded] = useState(false);
+  const { isCollapsible, preview, hiddenCount } = getCandidateMessageLines(content);
+
+  if (!isCollapsible) {
+    return <div className="whitespace-pre-wrap">{content}</div>;
+  }
+
+  return (
+    <div>
+      <div className={`whitespace-pre-wrap ${!expanded ? 'relative' : ''}`}>
+        {expanded ? content : preview}
+        {!expanded && (
+          <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-primary/10 to-transparent pointer-events-none" />
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="mt-1 text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+      >
+        {expanded ? 'Show less' : `Show more (${hiddenCount} lines)`}
+      </button>
+    </div>
+  );
+};
+
 export interface AiAssistantPanelProps {
   open: boolean;
   onClose: () => void;
@@ -259,10 +295,19 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                         💡 Hint
                       </span>
                     )}
+                    {m.metadata?.stopped && (
+                      <span className="px-1 py-0.2 rounded text-[9px] bg-danger/15 text-danger border border-danger/30 font-semibold inline-flex items-center gap-0.5">
+                        Stopped
+                      </span>
+                    )}
                   </div>
                   {m.timestamp && <span className="text-text-3 font-normal text-[9px]">{m.timestamp}</span>}
                 </div>
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                {m.role === "candidate" ? (
+                  <CandidateMessageContent content={m.content} />
+                ) : (
+                  <div className="whitespace-pre-wrap">{m.content}</div>
+                )}
                 {m.metadata?.recommendedAction === "PROPOSE_STAGE_ADVANCE" && idx === messages.length - 1 && onSend && (
                   <div className="mt-2.5 pt-2 border-t border-border flex items-center gap-2">
                     <span className="text-[11px] font-semibold text-text-2">Move on to coding?</span>
@@ -324,7 +369,11 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                     <span className="text-text-3 text-[9px] font-mono">{isFallbackTurn ? "DETERMINISTIC_FALLBACK" : turn.messageType}</span>
                   )}
                 </div>
-                <div className="whitespace-pre-wrap text-text">{turn.content}</div>
+                {turn.senderRole === "CANDIDATE" ? (
+                  <CandidateMessageContent content={turn.content} />
+                ) : (
+                  <div className="whitespace-pre-wrap text-text">{turn.content}</div>
+                )}
                 {turn.codeSnippet && turn.codeSnippet.trim() && (
                   <pre className="mt-1.5 p-1.5 bg-bg rounded border border-border font-mono text-[10px] overflow-x-auto text-primary-2">
                     {turn.codeSnippet}
