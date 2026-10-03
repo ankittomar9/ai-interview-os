@@ -60,6 +60,7 @@ Re-verification: exactly what the auditor will re-run
 5. Skipped tests are named, or the skip count is not reported.
 6. Out-of-fence changes are justified before push, not discovered after.
 7. A fix slice touches only the files named in the review's fix instructions (test additions for the fixes themselves are the only tolerated extension, and must be declared).
+8. Byte-sensitive verification (class strings, frozen blocks, verbatim text) uses `od -c` or programmatic includes-counting — never eyeballed shell text output. Shell text rendering can swallow `[m`-style sequences (ANSI-reset lookalikes): a correct Tailwind class once displayed as corrupted across three different tools while `od -c` proved it intact.
 
 ## Gemini Pre-Flight (before any execution report claims a VP gate PASS)
 
