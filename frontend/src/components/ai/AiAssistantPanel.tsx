@@ -7,6 +7,7 @@ import { RoundDivider } from "../arena/RoundDivider";
 import {
   type CoachPanelSize,
   panelSizeClass,
+  panelPositionClass,
   getNextPanelSize,
   getStoredPanelSize,
   setStoredPanelSize
@@ -128,10 +129,8 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
       m.metadata?.offlineFallback === "true"
   );
 
-  const sizeClasses = panelSizeClass(panelSize);
-  const positionClass = panelSize === "fullscreen"
-    ? ""
-    : (stackAbove === "webcam" ? "fixed bottom-52 right-5" : "fixed bottom-20 right-5");
+  const sizeClasses = panelSizeClass(panelSize, stackAbove);
+  const positionClass = panelPositionClass(panelSize, stackAbove);
   const containerClasses = `${positionClass} ${sizeClasses} flex flex-col rounded-xl border border-border bg-surface shadow-2xl z-40 overflow-hidden animate-fade-in ${className}`.trim();
 
   return (

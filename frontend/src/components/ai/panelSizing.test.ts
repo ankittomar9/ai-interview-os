@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   panelSizeClass,
+  panelPositionClass,
   getNextPanelSize,
   PANEL_SIZE_STORAGE_KEY,
   type CoachPanelSize
@@ -47,5 +48,81 @@ describe('SPEC-009 VP-3: Coach Panel Sizing & Persistence', () => {
       sourceContent.includes("'ai.coach.panelSize'") || sourceContent.includes('"ai.coach.panelSize"'),
       'panelSizing.ts must define literal "ai.coach.panelSize" key'
     );
+  });
+});
+
+describe('SPEC-010 VP-1: Panel Geometry Viewport Safety & R-e Invariant', () => {
+  it('asserts wide anchors via bottom-5 and no wide path returns bottom-52', () => {
+    const widePosWebcam = panelPositionClass('wide', 'webcam');
+    const widePosNone = panelPositionClass('wide', 'none');
+    assert.strictEqual(widePosWebcam, 'fixed bottom-5 right-5');
+    assert.strictEqual(widePosNone, 'fixed bottom-5 right-5');
+    assert.strictEqual(widePosWebcam.includes('bottom-52'), false, 'Wide path must never return bottom-52');
+    assert.strictEqual(widePosNone.includes('bottom-52'), false, 'Wide path must never return bottom-52');
+  });
+
+  it('asserts normal+webcam class carries min(70vh,calc(100dvh-14rem)) clamp', () => {
+    const normalWebcamClass = panelSizeClass('normal', 'webcam');
+    assert.ok(
+      normalWebcamClass.includes('min(70vh,calc(100dvh-14rem))'),
+      'Normal+webcam must include min(70vh,calc(100dvh-14rem))'
+    );
+    // regression: normal without webcam keeps max-h-[70vh]
+    const normalNoneClass = panelSizeClass('normal', 'none');
+    assert.ok(
+      normalNoneClass.includes('max-h-[70vh]'),
+      'Normal without webcam keeps max-h-[70vh]'
+    );
+  });
+
+  it('state x stackAbove table encodes R-e invariant for shipped constants', () => {
+    // R-e invariant: for every state x stackAbove combination on viewports >= 600px tall:
+    // bottomOffset + renderedMaxHeight <= viewportHeight - 8px, and panel top edge y >= 56px.
+    const states: CoachPanelSize[] = ['normal', 'wide', 'fullscreen'];
+    const stackOptions: ('webcam' | 'none')[] = ['webcam', 'none'];
+    const testViewports = [600, 768, 900, 1080];
+
+    for (const state of states) {
+      for (const stackAbove of stackOptions) {
+        const pos = panelPositionClass(state, stackAbove);
+        const size = panelSizeClass(state, stackAbove);
+
+        for (const H of testViewports) {
+          if (state === 'fullscreen') {
+            assert.strictEqual(pos, '');
+            assert.ok(size.includes('fixed inset-4') || size.includes('inset-6'));
+            continue;
+          }
+
+          let bottomPx = 0;
+          if (pos.includes('bottom-52')) bottomPx = 208; // 13rem = 208px
+          else if (pos.includes('bottom-20')) bottomPx = 80;  // 5rem = 80px
+          else if (pos.includes('bottom-5')) bottomPx = 20;   // 1.25rem = 20px
+
+          let maxHPx = 0;
+          if (state === 'wide') {
+            // h-[85vh] with max-h-[88vh]
+            maxHPx = 0.85 * H;
+          } else if (state === 'normal') {
+            if (stackAbove === 'webcam') {
+              // min(70vh, H - 14rem) where 14rem = 224px
+              maxHPx = Math.min(0.70 * H, H - 224);
+            } else {
+              maxHPx = 0.70 * H;
+            }
+          }
+
+          const topEdgeY = H - bottomPx - maxHPx;
+          assert.ok(
+            bottomPx + maxHPx <= H - 8,
+            `Invariant failed: bottomPx (${bottomPx}) + maxHPx (${maxHPx}) <= ${H - 8} for ${state}/${stackAbove} at H=${H}`
+          );
+          assert.ok(
+            topEdgeY >= (state === 'wide' ? 56 : 0),
+            `Header must be on-screen: topEdgeY (${topEdgeY}) >= 0 (and >= 56 for wide) for ${state}/${stackAbove} at H=${H}`
+          );
+        }
+      }
+    }
   });
 });

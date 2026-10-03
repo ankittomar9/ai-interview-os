@@ -37,7 +37,7 @@ export function getNextPanelSize(current: CoachPanelSize): CoachPanelSize {
   }
 }
 
-export function panelSizeClass(state: CoachPanelSize): string {
+export function panelSizeClass(state: CoachPanelSize, stackAbove?: 'webcam' | 'none' | string): string {
   switch (state) {
     case 'wide':
       return 'w-[90vw] sm:w-[720px] max-w-[90vw] max-h-[88vh] h-[85vh]';
@@ -45,6 +45,19 @@ export function panelSizeClass(state: CoachPanelSize): string {
       return 'fixed inset-4 sm:inset-6 w-auto h-auto max-w-none max-h-none z-50';
     case 'normal':
     default:
+      if (stackAbove === 'webcam') {
+        return 'w-[360px] sm:w-[380px] max-h-[min(70vh,calc(100dvh-14rem))]';
+      }
       return 'w-[360px] sm:w-[380px] max-h-[70vh]';
   }
+}
+
+export function panelPositionClass(state: CoachPanelSize, stackAbove?: 'webcam' | 'none' | string): string {
+  if (state === 'fullscreen') {
+    return '';
+  }
+  if (state === 'wide') {
+    return 'fixed bottom-5 right-5';
+  }
+  return stackAbove === 'webcam' ? 'fixed bottom-52 right-5' : 'fixed bottom-20 right-5';
 }

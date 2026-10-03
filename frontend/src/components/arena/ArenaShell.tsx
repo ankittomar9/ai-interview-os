@@ -221,7 +221,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         onClearMicError={onClearMicError}
         canRetryStt={canRetryStt}
         onRetryStt={onRetryStt}
-        stackAbove="webcam"
+        stackAbove={!isPlayground && cameraActive ? "webcam" : "none"}
       />
     </div>
   );
