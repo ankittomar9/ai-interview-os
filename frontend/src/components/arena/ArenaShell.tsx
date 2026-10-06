@@ -32,7 +32,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     chatInput, setChatInput, onSendTurn, isAiResponding, currentStage, onStageClick, stageTurnCounts,
     stageTransitionReasons, providerError, onRetryProvider, onClearProviderError, onOpenProviderSettings,
     pendingStageSwitch, onConfirmStageSwitch, onCancelStageSwitch, onNextQuestion, onNextStage,
-    isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isSpeakingNow, isAiSpeaking,
+    isAiPanelOpen, onToggleAiPanel, onCloseAiPanel, isListening, isRequestingMic, isSpeakingNow, isAiSpeaking,
     voiceOutputEnabled, onToggleVoice, onMicToggle, onStartListening, onStopListening, onAbortVoice,
     onAbortTurn, onRecallLastDraft,
     interimTranscript = '', micError = null,
@@ -207,6 +207,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         setChatInput={setChatInput}
         onSend={(text) => void onSendTurn(text)}
         isListening={isListening}
+        isRequestingMic={isRequestingMic}
         voiceEnabled={voiceOutputEnabled}
         onToggleVoice={onToggleVoice}
         onMicToggle={onMicToggle}

@@ -30,6 +30,7 @@ export function useCoachVoice({
   const [voiceOutputEnabled, setVoiceOutputEnabled] = useState(true);
   const [pttState, setPttState] = useState<PttState>('IDLE');
   const [isListening, setIsListening] = useState(false);
+  const [isRequestingMic, setIsRequestingMic] = useState(false);
   const [isSpeakingNow, setIsSpeakingNow] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -56,6 +57,7 @@ export function useCoachVoice({
   // Abort mid-turn cleanly: stops active recording or cancels in-flight STT / TTS
   const abortTurn = useCallback(() => {
     isAbortedRef.current = true;
+    setIsRequestingMic(false);
     transcription.cancelInFlight();
     capture.abortCapture();
 
@@ -115,25 +117,33 @@ export function useCoachVoice({
 
     isAbortedRef.current = false;
     setMicError(null);
+    setIsRequestingMic(true);
 
-    await capture.startCapture({
-      onBlobReady: sendBlobForTranscription,
-      onMicroTap: () => {
-        setInterimTranscript('');
-        setPttState('IDLE');
-        setIsListening(false);
-      },
-      onError: (msg) => {
-        setMicError(msg);
-        setPttState('IDLE');
-        setIsListening(false);
-      },
-      onStateRecording: () => {
-        setPttState('RECORDING');
-        setIsListening(true);
-        setInterimTranscript('Recording speech… (Release or click to send)');
-      }
-    });
+    try {
+      await capture.startCapture({
+        onBlobReady: sendBlobForTranscription,
+        onMicroTap: () => {
+          setIsRequestingMic(false);
+          setInterimTranscript('');
+          setPttState('IDLE');
+          setIsListening(false);
+        },
+        onError: (msg) => {
+          setIsRequestingMic(false);
+          setMicError(msg);
+          setPttState('IDLE');
+          setIsListening(false);
+        },
+        onStateRecording: () => {
+          setIsRequestingMic(false);
+          setPttState('RECORDING');
+          setIsListening(true);
+          setInterimTranscript('Recording speech… (Release or click to send)');
+        }
+      });
+    } finally {
+      setIsRequestingMic(false);
+    }
   }, [capture, isSpeakingNow, sendBlobForTranscription]);
 
   const retryLastTranscription = useCallback(async () => {
@@ -197,6 +207,7 @@ export function useCoachVoice({
     setVoiceOutputEnabled,
     pttState,
     isListening,
+    isRequestingMic,
     isSpeakingNow,
     isAiSpeaking,
     interimTranscript,

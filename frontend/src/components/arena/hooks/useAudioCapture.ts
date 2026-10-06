@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { convertBlobTo16kHzWav } from '../../../lib/audio-encoder';
+import { clientLog } from '../../../lib/clientLogger';
 
 interface StartCaptureOptions {
   onBlobReady: (blob: Blob, durationMs: number) => Promise<void>;
@@ -8,11 +9,26 @@ interface StartCaptureOptions {
   onStateRecording?: () => void;
 }
 
+function pickAudioMime(): string {
+  if (typeof MediaRecorder === 'undefined') return 'audio/webm';
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4'
+  ];
+  for (const c of candidates) {
+    if (MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return '';
+}
+
 export function useAudioCapture() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number>(0);
+  const isStartingRef = useRef<boolean>(false);
 
   const cleanupStream = useCallback(() => {
     if (mediaStreamRef.current) {
@@ -22,6 +38,7 @@ export function useAudioCapture() {
   }, []);
 
   const abortCapture = useCallback(() => {
+    isStartingRef.current = false;
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
         mediaRecorderRef.current.stop();
@@ -35,6 +52,8 @@ export function useAudioCapture() {
   const startCapture = useCallback(
     async (options: StartCaptureOptions) => {
       if (typeof window === 'undefined') return;
+      if (isStartingRef.current) return;
+      isStartingRef.current = true;
 
       audioChunksRef.current = [];
 
@@ -49,7 +68,10 @@ export function useAudioCapture() {
         });
 
         mediaStreamRef.current = stream;
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        const mimeType = pickAudioMime();
+        const mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
         mediaRecorderRef.current = mediaRecorder;
         recordingStartTimeRef.current = Date.now();
 
@@ -70,7 +92,7 @@ export function useAudioCapture() {
           }
 
           if (audioChunksRef.current.length > 0) {
-            const rawBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const rawBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
             if (rawBlob.size > 50 * 1024 * 1024) {
               options.onError?.('Recording too long (>50MB)');
               return;
@@ -91,8 +113,19 @@ export function useAudioCapture() {
 
         mediaRecorder.start();
         options.onStateRecording?.();
-      } catch {
-        options.onError?.('Mic blocked — allow permission');
+      } catch (err: any) {
+        console.error('[useAudioCapture] Failed to start audio capture:', err);
+        const errMsg =
+          err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError'
+            ? 'Mic blocked — allow permission in browser'
+            : err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError'
+            ? 'No microphone found'
+            : 'Mic blocked — allow permission';
+        options.onError?.(errMsg);
+        clientLog.warn('RECORDER_ERROR', errMsg);
+        void clientLog.flush();
+      } finally {
+        isStartingRef.current = false;
       }
     },
     [cleanupStream]

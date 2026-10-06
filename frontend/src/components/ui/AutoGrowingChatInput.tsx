@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { Mic, MicOff, Send, Trash2, CornerDownLeft, XCircle, Square } from 'lucide-react';
+import { Mic, MicOff, Send, Trash2, CornerDownLeft, XCircle, Square, Loader2 } from 'lucide-react';
 import { getSttChip, subscribeSttChip } from '../../services/api';
 
 interface AutoGrowingChatInputProps {
@@ -7,6 +7,7 @@ interface AutoGrowingChatInputProps {
   onChange: (value: string) => void;
   onSend: () => void;
   isListening: boolean;
+  isRequestingMic?: boolean;
   onToggleListening: () => void;
   isAiResponding: boolean;
   interimTranscript?: string;
@@ -33,6 +34,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   onChange,
   onSend,
   isListening,
+  isRequestingMic = false,
   onToggleListening,
   isAiResponding,
   interimTranscript = '',
@@ -148,7 +150,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || isRequestingMic) return;
     pointerDownTimeRef.current = Date.now();
     if (!isListening && !isAiResponding) {
       startedThisPressRef.current = true;
@@ -160,6 +162,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   };
 
   const handlePointerUp = () => {
+    if (isRequestingMic) return;
     const holdDuration = Date.now() - pointerDownTimeRef.current;
     if (isListening && holdDuration > 500) {
       // Intentionally held down and released -> stop recording
@@ -170,6 +173,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   };
 
   const handleButtonClick = () => {
+    if (isRequestingMic) return;
     if (startedThisPressRef.current) {
       // Quick click from idle initiated listening; leave recording active (1-click toggle ON)
       startedThisPressRef.current = false;
@@ -179,6 +183,10 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
     if (isListening && holdDuration <= 500) {
       // Subsequent quick click: 1-click toggle OFF
       if (onStopListening) onStopListening();
+      else onToggleListening();
+    } else if (!isListening && !isAiResponding) {
+      // Direct click (e.g. keyboard activation via Enter/Space or click without pointerdown)
+      if (onStartListening) onStartListening();
       else onToggleListening();
     }
   };
@@ -289,21 +297,31 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            disabled={isRequestingMic}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
             onClick={handleButtonClick}
             title={
-              isListening
+              isRequestingMic
+                ? 'Requesting microphone access… Please allow microphone permission in your browser if prompted.'
+                : isListening
                 ? `Recording (${formatTimer(recordingSeconds)})… Click to finish or hold to talk (Ctrl+M)`
                 : 'Click to record or hold to speak (Ctrl+M)'
             }
             className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all duration-150 ${
-              isListening
+              isRequestingMic
+                ? 'bg-primary/10 text-primary border border-primary/40 animate-pulse'
+                : isListening
                 ? 'bg-danger text-on-accent ring-2 ring-danger/80 ring-offset-1 ring-offset-bg shadow-sm shadow-danger/30 animate-pulse'
                 : 'bg-surface hover:bg-border/60 text-text-2 hover:text-text border border-border/60'
             }`}
           >
-            {isListening ? (
+            {isRequestingMic ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                <span className="text-[11px] text-primary">Requesting mic…</span>
+              </>
+            ) : isListening ? (
               <>
                 <MicOff className="w-3.5 h-3.5" />
                 <span>Stop & Send ({formatTimer(recordingSeconds)})</span>

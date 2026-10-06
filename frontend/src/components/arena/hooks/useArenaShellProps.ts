@@ -85,6 +85,7 @@ export function buildArenaShellProps(args: UseArenaShellPropsArgs): ArenaShellPr
     onToggleAiPanel: engines.voice.toggleAiPanel,
     onCloseAiPanel: () => engines.voice.setIsAiPanelOpen(false),
     isListening: engines.voice.isListening,
+    isRequestingMic: engines.voice.isRequestingMic,
     isSpeakingNow: engines.voice.isSpeakingNow,
     isAiSpeaking: engines.voice.isAiSpeaking,
     interimTranscript: engines.voice.interimTranscript,

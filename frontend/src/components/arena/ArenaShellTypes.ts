@@ -47,6 +47,7 @@ export interface ArenaShellProps {
   onToggleAiPanel: () => void;
   onCloseAiPanel: () => void;
   isListening: boolean;
+  isRequestingMic?: boolean;
   isSpeakingNow: boolean;
   isAiSpeaking: boolean;
   voiceOutputEnabled: boolean;

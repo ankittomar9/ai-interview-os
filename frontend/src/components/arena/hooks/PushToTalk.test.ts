@@ -182,3 +182,35 @@ test('Gate VP9: Latency budget adheres to stated constraints', () => {
   assert.ok(measuredTtsInitMs <= LATENCY_BUDGET.maxTtsInitMs, 'TTS initiation within budget');
   assert.ok(totalPipelineMs <= LATENCY_BUDGET.maxTotalPipelineMs, 'Total pipeline within budget');
 });
+
+test('Gate VP9: FloatingAiOrb renders ChevronDown when panel is open to prevent duplicate mic confusion', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const orbPath = path.resolve(import.meta.dirname, '../../ai/FloatingAiOrb.tsx');
+  const content = fs.readFileSync(orbPath, 'utf-8');
+
+  assert.ok(
+    content.includes('ChevronDown'),
+    'FloatingAiOrb must import and render ChevronDown when panel is open'
+  );
+  assert.ok(
+    content.includes('isOpen ? ('),
+    'FloatingAiOrb must check isOpen before rendering mic icon'
+  );
+});
+
+test('Gate VP9: useAudioCapture implements safe mime type selection with fallback', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const capturePath = path.resolve(import.meta.dirname, 'useAudioCapture.ts');
+  const content = fs.readFileSync(capturePath, 'utf-8');
+
+  assert.ok(
+    content.includes('pickAudioMime'),
+    'useAudioCapture must implement pickAudioMime'
+  );
+  assert.ok(
+    !content.includes("new MediaRecorder(stream, { mimeType: 'audio/webm' })"),
+    'Hardcoded audio/webm without fallback must be eliminated'
+  );
+});

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Mic } from 'lucide-react';
+import { Mic, ChevronDown } from 'lucide-react';
 import { WaveformBars } from './AiOrbAvatar';
 import { getPersona } from '../../lib/personas';
 
@@ -129,11 +129,13 @@ export const FloatingAiOrb: React.FC<FloatingAiOrbProps> = ({
               : 'bg-surface border border-border text-text hover:border-primary/60 hover:scale-105'
           }`}
         >
-          {/* Animated Waveform when speaking, Mic otherwise */}
+          {/* Animated Waveform when speaking, Mic when listening, ChevronDown when open, Mic when closed */}
           {isAiSpeaking ? (
             <WaveformBars isSpeaking={true} className="text-on-accent" />
           ) : isListening ? (
             <Mic className="w-5 h-5 text-success animate-bounce" />
+          ) : isOpen ? (
+            <ChevronDown className="w-5 h-5 text-primary transition-transform duration-200" />
           ) : (
             <Mic className="w-5 h-5" />
           )}
