@@ -107,13 +107,13 @@ class DsaCatalogGuardTest {
     }
 
     @Test
-    @DisplayName("Assert all 364 questions across all tracks parse without error and are PUBLISHED")
+    @DisplayName("Assert all 372 questions across all tracks parse without error and are PUBLISHED")
     void testAllCatalogQuestionsParseAndPublish() throws IOException {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         var allResources = resolver.getResources("classpath*:content/questions/**/*.md");
 
-        assertEquals(364, allResources.length,
-                "Expected exactly 364 total questions in catalog, but found: " + allResources.length);
+        assertEquals(372, allResources.length,
+                "Expected exactly 372 total questions in catalog, but found: " + allResources.length);
 
         Set<String> allSlugs = new HashSet<>();
         int publishedCount = 0;
@@ -136,6 +136,6 @@ class DsaCatalogGuardTest {
             publishedCount++;
         }
 
-        assertEquals(364, publishedCount, "All 364 questions must be PUBLISHED");
+        assertEquals(372, publishedCount, "All 372 questions must be PUBLISHED");
     }
 }

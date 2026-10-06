@@ -409,7 +409,7 @@ class QuestionMarkdownParserTest {
         var lldResources = resolver.getResources("classpath*:content/questions/lld/*.md");
 
         assertEquals(27, hldResources.length, "Expected exactly 27 HLD questions in catalog");
-        assertEquals(11, lldResources.length, "Expected exactly 11 LLD questions in catalog");
+        assertEquals(19, lldResources.length, "Expected exactly 19 LLD questions in catalog");
 
         java.util.Set<String> seenSlugs = new java.util.HashSet<>();
 
@@ -445,6 +445,6 @@ class QuestionMarkdownParserTest {
             assertNotNull(doc.getSolutionCode(), "LLD requires solutionCode for " + doc.getSlug());
         }
 
-        assertEquals(38, seenSlugs.size(), "Expected exactly 38 unique HLD + LLD slugs");
+        assertEquals(46, seenSlugs.size(), "Expected exactly 46 unique HLD + LLD slugs");
     }
 }
