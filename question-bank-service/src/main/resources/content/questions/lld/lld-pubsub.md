@@ -12,7 +12,6 @@ tags:
 - java
 - design-patterns
 - observer-pattern
-- concurrency
 - pubsub
 - message-broker
 buildProfile: maven-workspace

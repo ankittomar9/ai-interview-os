@@ -13,7 +13,6 @@ tags:
 - design-patterns
 - state-pattern
 - strategy-pattern
-- observer-pattern
 - music-streaming
 buildProfile: maven-workspace
 source: inspired-by:takeuforward-prep-hub/lld/music-streaming

@@ -14,7 +14,6 @@ tags:
 - command-pattern
 - strategy-pattern
 - digital-wallet
-- payments
 buildProfile: maven-workspace
 source: inspired-by:takeuforward-prep-hub/lld/digital-wallet
 status: PUBLISHED

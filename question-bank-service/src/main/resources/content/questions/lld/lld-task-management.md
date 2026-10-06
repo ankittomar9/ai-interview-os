@@ -11,7 +11,6 @@ tags:
 - lld
 - java
 - design-patterns
-- command-pattern
 - state-pattern
 - observer-pattern
 - task-management

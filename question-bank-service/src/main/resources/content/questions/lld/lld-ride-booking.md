@@ -14,7 +14,6 @@ tags:
 - strategy-pattern
 - observer-pattern
 - ride-booking
-- dispatch
 buildProfile: maven-workspace
 source: inspired-by:takeuforward-prep-hub/lld/ride-booking
 status: PUBLISHED
