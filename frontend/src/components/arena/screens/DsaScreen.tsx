@@ -1,13 +1,21 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Group, Panel, Separator } from 'react-resizable-panels';
+import { Group, Panel, Separator, type PanelImperativeHandle } from 'react-resizable-panels';
 import type { GenerateQuestionResponse } from '../../../types';
 import { TestcasePanel, type TestCaseItem, type ExecutionResult } from '../../ide/TestcasePanel';
 import { StatusBar } from '../../ide/StatusBar';
 import { defineMonacoThemes } from '../../../lib/syntax-themes';
 import { useTheme } from '../../theme-provider';
-import { Code2, Play, CheckCircle2, Lock } from 'lucide-react';
+import { Code2, Play, CheckCircle2, Lock, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '../../ui/Button';
+import {
+  type EditorSize,
+  getNextEditorSize,
+  getStoredEditorSize,
+  setStoredEditorSize,
+  getEditorSizeTooltip,
+  getEditorSizeLabel
+} from '../editorSizing';
 
 interface DsaScreenProps {
   sessionId: number;
@@ -43,6 +51,56 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
 }) => {
   const { resolvedTheme } = useTheme();
   const [cursor, setCursor] = useState({ ln: 1, col: 1 });
+  const [editorSize, setEditorSize] = useState<EditorSize>(() => getStoredEditorSize('dsa'));
+  const [isTestcaseCollapsed, setIsTestcaseCollapsed] = useState(false);
+  const testcasePanelRef = useRef<PanelImperativeHandle | null>(null);
+
+  const isTestcasesActuallyCollapsed = editorSize === 'expanded' || isTestcaseCollapsed;
+
+  const handleCycleEditorSize = useCallback(() => {
+    setEditorSize((prev) => {
+      const next = getNextEditorSize(prev);
+      setStoredEditorSize('dsa', next);
+      return next;
+    });
+  }, []);
+
+  const handleToggleTestcaseCollapse = useCallback(() => {
+    if (editorSize === 'expanded') {
+      setEditorSize('split');
+      setStoredEditorSize('dsa', 'split');
+      setIsTestcaseCollapsed(false);
+    } else {
+      setIsTestcaseCollapsed((prev) => !prev);
+    }
+  }, [editorSize]);
+
+  useEffect(() => {
+    const panel = testcasePanelRef.current;
+    if (!panel) return;
+    if (isTestcasesActuallyCollapsed) {
+      if (!panel.isCollapsed()) {
+        panel.collapse();
+      }
+    } else {
+      if (panel.isCollapsed()) {
+        panel.expand();
+      }
+    }
+  }, [isTestcasesActuallyCollapsed]);
+
+  useEffect(() => {
+    if (editorSize !== 'fullscreen') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setEditorSize('split');
+        setStoredEditorSize('dsa', 'split');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editorSize]);
+
   const [customCases, setCustomCases] = useState<TestCaseItem[]>([]);
   const [runtimeLabels, setRuntimeLabels] = useState<Record<string, string>>({
     java: 'Java',
@@ -102,7 +160,7 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
     <Group orientation="vertical" id="dsa-arena-v" className="h-full w-full flex-1 min-w-0">
       {/* Code Editor Surface */}
       <Panel defaultSize="62%" minSize="25%" id="dsa-editor-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
-        <div className="flex flex-col h-full bg-bg overflow-hidden relative">
+        <div className={editorSize === 'fullscreen' ? "fixed inset-0 z-30 bg-bg flex flex-col" : "flex flex-col h-full bg-bg overflow-hidden relative"}>
           {/* Editor Header Bar */}
           <div className="h-9 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
             <div className="flex items-center gap-2">
@@ -121,9 +179,30 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
                 <option value="cpp">{runtimeLabels.cpp || 'C++'}</option>
                 <option value="javascript">{runtimeLabels.javascript || 'JavaScript'}</option>
               </select>
+
+              {editorSize === 'fullscreen' && (
+                <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
+                  <span>Zen Fullscreen (Esc to exit)</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCycleEditorSize}
+                title={getEditorSizeTooltip(editorSize)}
+                aria-label={getEditorSizeTooltip(editorSize)}
+                className="h-7 px-2.5 flex items-center gap-1.5 text-xs font-medium rounded border border-border bg-surface text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer"
+              >
+                {editorSize === 'fullscreen' ? (
+                  <Minimize2 className="w-3.5 h-3.5 text-primary" />
+                ) : (
+                  <Maximize2 className="w-3.5 h-3.5 text-text-3" />
+                )}
+                <span className="hidden sm:inline capitalize">{getEditorSizeLabel(editorSize)}</span>
+              </button>
+
               <Button
                 variant="secondary"
                 size="sm"
@@ -200,8 +279,17 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
       </Separator>
 
       {/* Testcase Results & Submissions Panel */}
-      <Panel defaultSize="38%" minSize="15%" maxSize="75%" id="dsa-testcase-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
-        {executionResult?.status === 'passed' && (
+      <Panel
+        defaultSize="38%"
+        minSize="15%"
+        maxSize="75%"
+        collapsible={true}
+        collapsedSize={5}
+        panelRef={testcasePanelRef}
+        id="dsa-testcase-panel"
+        className="min-w-0 flex flex-col h-full overflow-hidden"
+      >
+        {!isTestcasesActuallyCollapsed && executionResult?.status === 'passed' && (
           <div className="bg-success/15 border-b border-success/30 px-3 py-1.5 flex items-center justify-between gap-2 text-xs shrink-0 select-none animate-in fade-in">
             <div className="flex items-center gap-1.5 font-bold text-success">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
@@ -224,6 +312,8 @@ export const DsaScreen: React.FC<DsaScreenProps> = ({
         <TestcasePanel
           testCases={allTestCases}
           executionResult={executionResult}
+          isCollapsed={isTestcasesActuallyCollapsed}
+          onToggleCollapse={handleToggleTestcaseCollapse}
           onAddCustomCase={(input, expected) => {
             setCustomCases((prev) => [
               ...prev,

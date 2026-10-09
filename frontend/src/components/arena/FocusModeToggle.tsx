@@ -16,7 +16,7 @@ export const FocusModeToggle: React.FC<FocusModeToggleProps> = ({
     <button
       type="button"
       onClick={onToggle}
-      title={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode (Distraction-Free)'}
+      title={isFocusMode ? 'Exit Focus Mode' : 'Focus Mode: Collapse side panels for distraction-free full-width coding'}
       aria-label={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
       className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md transition-colors border ${
         isFocusMode

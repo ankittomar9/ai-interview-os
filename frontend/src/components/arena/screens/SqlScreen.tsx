@@ -1,13 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Group, Panel, Separator } from 'react-resizable-panels';
+import { Group, Panel, Separator, type PanelImperativeHandle } from 'react-resizable-panels';
 import type { GenerateQuestionResponse } from '../../../types';
 import { TestcasePanel, type TestCaseItem, type ExecutionResult } from '../../ide/TestcasePanel';
 import { StatusBar } from '../../ide/StatusBar';
 import { defineMonacoThemes } from '../../../lib/syntax-themes';
 import { useTheme } from '../../theme-provider';
-import { Database, Play, CheckCircle2, Table2, Lock } from 'lucide-react';
+import { Database, Play, CheckCircle2, Table2, Lock, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '../../ui/Button';
+import {
+  type EditorSize,
+  getNextEditorSize,
+  getStoredEditorSize,
+  setStoredEditorSize,
+  getEditorSizeTooltip,
+  getEditorSizeLabel
+} from '../editorSizing';
 
 interface SqlScreenProps {
   sessionId: number;
@@ -39,6 +47,56 @@ export const SqlScreen: React.FC<SqlScreenProps> = ({
 }) => {
   const { resolvedTheme } = useTheme();
   const [cursor, setCursor] = useState({ ln: 1, col: 1 });
+  const [editorSize, setEditorSize] = useState<EditorSize>(() => getStoredEditorSize('sql'));
+  const [isTestcaseCollapsed, setIsTestcaseCollapsed] = useState(false);
+  const testcasePanelRef = useRef<PanelImperativeHandle | null>(null);
+
+  const isTestcasesActuallyCollapsed = editorSize === 'expanded' || isTestcaseCollapsed;
+
+  const handleCycleEditorSize = useCallback(() => {
+    setEditorSize((prev) => {
+      const next = getNextEditorSize(prev);
+      setStoredEditorSize('sql', next);
+      return next;
+    });
+  }, []);
+
+  const handleToggleTestcaseCollapse = useCallback(() => {
+    if (editorSize === 'expanded') {
+      setEditorSize('split');
+      setStoredEditorSize('sql', 'split');
+      setIsTestcaseCollapsed(false);
+    } else {
+      setIsTestcaseCollapsed((prev) => !prev);
+    }
+  }, [editorSize]);
+
+  useEffect(() => {
+    const panel = testcasePanelRef.current;
+    if (!panel) return;
+    if (isTestcasesActuallyCollapsed) {
+      if (!panel.isCollapsed()) {
+        panel.collapse();
+      }
+    } else {
+      if (panel.isCollapsed()) {
+        panel.expand();
+      }
+    }
+  }, [isTestcasesActuallyCollapsed]);
+
+  useEffect(() => {
+    if (editorSize !== 'fullscreen') return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setEditorSize('split');
+        setStoredEditorSize('sql', 'split');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editorSize]);
+
   const [activeTab, setActiveTab] = useState<'editor' | 'schema'>('editor');
   const [customCases, setCustomCases] = useState<TestCaseItem[]>([]);
 
@@ -67,7 +125,7 @@ export const SqlScreen: React.FC<SqlScreenProps> = ({
     <Group orientation="vertical" id="sql-arena-v" className="h-full w-full flex-1 min-w-0">
       {/* SQL Editor Surface */}
       <Panel defaultSize="60%" minSize="25%" id="sql-editor-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
-        <div className="flex flex-col h-full bg-bg overflow-hidden relative">
+        <div className={editorSize === 'fullscreen' ? "fixed inset-0 z-30 bg-bg flex flex-col" : "flex flex-col h-full bg-bg overflow-hidden relative"}>
           {/* SQL Header Bar */}
           <div className="h-9 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
             <div className="flex items-center gap-2">
@@ -103,9 +161,30 @@ export const SqlScreen: React.FC<SqlScreenProps> = ({
                   </button>
                 )}
               </div>
+
+              {editorSize === 'fullscreen' && (
+                <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-primary/10 border border-primary/30 text-primary text-xs font-semibold">
+                  <span>Zen Fullscreen (Esc to exit)</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCycleEditorSize}
+                title={getEditorSizeTooltip(editorSize)}
+                aria-label={getEditorSizeTooltip(editorSize)}
+                className="h-7 px-2.5 flex items-center gap-1.5 text-xs font-medium rounded border border-border bg-surface text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer"
+              >
+                {editorSize === 'fullscreen' ? (
+                  <Minimize2 className="w-3.5 h-3.5 text-primary" />
+                ) : (
+                  <Maximize2 className="w-3.5 h-3.5 text-text-3" />
+                )}
+                <span className="hidden sm:inline capitalize">{getEditorSizeLabel(editorSize)}</span>
+              </button>
+
               <Button
                 variant="secondary"
                 size="sm"
@@ -194,8 +273,17 @@ export const SqlScreen: React.FC<SqlScreenProps> = ({
       </Separator>
 
       {/* SQL Query Result Tables & Execution Result Panel */}
-      <Panel defaultSize="40%" minSize="15%" maxSize="75%" id="sql-testcase-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
-        {executionResult?.status === 'passed' && (
+      <Panel
+        defaultSize="40%"
+        minSize="15%"
+        maxSize="75%"
+        collapsible={true}
+        collapsedSize={5}
+        panelRef={testcasePanelRef}
+        id="sql-testcase-panel"
+        className="min-w-0 flex flex-col h-full overflow-hidden"
+      >
+        {!isTestcasesActuallyCollapsed && executionResult?.status === 'passed' && (
           <div className="bg-success/15 border-b border-success/30 px-3 py-1.5 flex items-center justify-between gap-2 text-xs shrink-0 select-none animate-in fade-in">
             <div className="flex items-center gap-1.5 font-bold text-success">
               <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
@@ -218,6 +306,8 @@ export const SqlScreen: React.FC<SqlScreenProps> = ({
         <TestcasePanel
           testCases={allTestCases}
           executionResult={executionResult}
+          isCollapsed={isTestcasesActuallyCollapsed}
+          onToggleCollapse={handleToggleTestcaseCollapse}
           onAddCustomCase={(input, expected) => {
             setCustomCases((prev) => [
               ...prev,
