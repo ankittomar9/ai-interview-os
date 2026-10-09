@@ -90,11 +90,11 @@ SPEC-014 resolves all 4 reported root causes and both architect-mandated additio
 
 ## 4. G3 Four-Number Report (§E Methodology)
 
-Per AUDIT-PROTOCOL Section E methodology, assertion counts are measured statically as occurrences of `assert.` across `frontend/src/**/*.test.*`:
+Per AUDIT-PROTOCOL Section E methodology, assertion counts are measured statically as occurrences of `assert.` across `frontend/src/**/*.test.*`. Per QB-29, test suites metric reflects the runner's canonical `suites:` count from `npm test` (`describe()` blocks, nested included; test-file count reported parenthetically):
 
 | Metric | Baseline (`5dc0c26` / `0ee7f57`) | SPEC-014 Delivered | Delta | Verdict |
 |---|---|---|---|---|
-| **Test Suites / Files** | 31 suites | **32 suites** | +1 suite (`TrackSwitching.test.ts`) | ✅ Pass |
+| **Test Suites (`describe()` blocks)** | 31 suites (48 files) | **39 suites (49 files)** | +8 suites (+1 file `TrackSwitching.test.ts`) | ✅ Pass |
 | **Test Cases** | 272 cases | **300 cases** | +28 cases | ✅ Pass |
 | **Static Assertions (`assert.`)** | 1,083 | **1,144** | +61 assertions | ✅ Pass |
 | **Failures** | 0 failures | **0 failures** | 0 | ✅ Pass |
@@ -123,4 +123,4 @@ Per AUDIT-PROTOCOL Section E methodology, assertion counts are measured statical
 - [x] **Zero backend changes**: Backend `question-bank-service` untouched.
 - [x] **Deterministic index reset**: Satisfies AC-4 and C-1 across all branches.
 - [x] **Build green**: `tsc -b && vite build` clean exit 0.
-- [x] **Tests green**: `npm test` runs 32 files / 300 tests / 1,144 static assertions with 0 failures.
+- [x] **Tests green**: `npm test` runs 49 files / 39 runner suites (`describe()` blocks) / 300 tests / 1,144 static assertions with 0 failures.
