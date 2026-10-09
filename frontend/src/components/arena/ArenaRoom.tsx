@@ -3,6 +3,7 @@ import type { GenerateQuestionResponse, ModelProvider, SessionPlan } from '../..
 import { isApproachGateLocked } from '../../lib/approachGate';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
 import { ArenaShell } from './ArenaShell';
+import type { TrackKey } from './ArenaShellTypes';
 import { ShareLostOverlay } from '../ShareLostOverlay';
 import { clearVerificationStreams } from '../../services/verificationStreams';
 import { getPersona } from '../../lib/personas';
@@ -121,6 +122,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const navSections = useMemo(() => buildNavSections(plan?.sections, initialQuestion.track), [plan?.sections, initialQuestion.track]);
   const [isShareLost, setIsShareLost] = useState(false);
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const [currentTrack, setCurrentTrack] = useState<TrackKey>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
 
   useEffect(() => () => { clearVerificationStreams(); }, []);
 
@@ -132,8 +134,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       defaultQuestion: initialQuestion,
       sectionQuestions,
       activeSectionIndex,
-      playlistQuestions: initialQuestionsList,
-      track: initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES',
+      playlistQuestions: (!isPlayground || currentTrack === initialQuestion.track) ? initialQuestionsList : undefined,
+      track: currentTrack,
       sessionMode,
       sessionId
     });
@@ -142,6 +144,14 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const fallbackStarter = ensureDsaMethodSignatureBoilerplate(activeQuestion.starterCode, activeSlug, activeQuestion.track);
   const { code, setCode } = useArenaCodeSession({ sessionId, activeSlug, fallbackStarter });
   const [language, setLanguage] = useState(initialQuestion.track === 'SQL' ? 'sql' : 'java');
+
+  useEffect(() => {
+    if (activeQuestion.track === 'SQL') {
+      setLanguage('sql');
+    } else if (activeQuestion.track === 'SPRING_LLD' || activeQuestion.track === 'ALGORITHMS_DATA_STRUCTURES') {
+      setLanguage((prev) => prev === 'sql' ? 'java' : prev);
+    }
+  }, [activeQuestion.track, activeQuestion.slug]);
 
   const sectionChangeHandlerRef = useRef<(idx: number, stage: any) => void>(() => {});
 
@@ -197,15 +207,26 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     sectionGates
   });
 
+  const handleSwitchTrack = useCallback((trackKey: TrackKey) => {
+    if (!isPlayground) return;
+    nav.setActiveTrack(trackKey);
+    setCurrentTrack(trackKey);
+    if (trackKey === 'SQL') {
+      setLanguage('sql');
+    } else {
+      setLanguage((prev) => prev === 'sql' ? 'java' : prev);
+    }
+  }, [isPlayground, nav]);
+
   const shellProps = buildArenaShellProps({
     sessionId,
-    track: nav.activeTrack,
+    track: currentTrack,
     sections: plan?.sections,
     activeSectionIndex,
     isApproachGateLocked: isGateLocked,
     sectionQuestions,
     onSectionClick: nav.handleSectionClick,
-    onSwitchTrack: nav.setActiveTrack,
+    onSwitchTrack: handleSwitchTrack,
     question: activeQuestion,
     onNextQuestion: nav.handleNextQuestion,
     onNextStage: nav.handleNextStage,

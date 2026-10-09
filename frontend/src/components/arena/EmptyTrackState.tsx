@@ -1,12 +1,12 @@
 import React from 'react';
 import { Layers, Compass, ArrowRight } from 'lucide-react';
-import type { InterviewTrack } from '../../types';
+import type { TrackKey } from './ArenaShellTypes';
 import { Button } from '../ui/Button';
 
 interface EmptyTrackStateProps {
-  track?: InterviewTrack;
+  track?: TrackKey;
   onBrowseCatalog?: () => void;
-  onSelectTrack?: (track: InterviewTrack) => void;
+  onSelectTrack?: (track: TrackKey) => void;
 }
 
 export const EmptyTrackState: React.FC<EmptyTrackStateProps> = ({
