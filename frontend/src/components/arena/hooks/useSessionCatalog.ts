@@ -86,8 +86,9 @@ export function useSessionCatalog({
     [defaultQuestion?.slug || 'current']: 'UNTOUCHED'
   }));
 
-  // Reset index when playlistQuestions changes or is restored (C-1)
+  // Reset index when playlistQuestions changes or is restored in playground mode (C-1 / QB-29 advisory)
   useEffect(() => {
+    if (sessionMode !== 'PLAYGROUND') return;
     if (playlistQuestions && playlistQuestions.length > 0) {
       const targetSlug = defaultQuestion?.problemSlug || defaultQuestion?.slug;
       if (targetSlug) {
@@ -99,7 +100,7 @@ export function useSessionCatalog({
       }
       setActiveQuestionIndex(0);
     }
-  }, [playlistQuestions, defaultQuestion]);
+  }, [sessionMode, playlistQuestions, defaultQuestion]);
 
   useEffect(() => {
     if (activeSectionList !== null) {

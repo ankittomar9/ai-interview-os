@@ -197,7 +197,16 @@ export function useCoachVoice({
     [voiceOutputEnabled]
   );
 
-  useEffect(() => () => { abortTurn(); }, [abortTurn]);
+  const abortTurnRef = useRef(abortTurn);
+  useEffect(() => {
+    abortTurnRef.current = abortTurn;
+  });
+
+  useEffect(() => {
+    return () => {
+      abortTurnRef.current();
+    };
+  }, []);
 
   return {
     isAiPanelOpen,
