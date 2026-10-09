@@ -1,13 +1,53 @@
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, PlannedSection } from '../../types';
+import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, PlannedSection, SectionType } from '../../types';
 import type { InterviewStage } from '../StageStepper';
 import type { QuestionStatus } from '../ide/QuestionRail';
 import type { ExecutionResult } from '../ide/TestcasePanel';
 import type { ProviderErrorState } from './hooks/useDialogue';
 
+export type TrackKey = InterviewTrack | 'ALL';
+
+export interface ResolveSectionTypeArgs {
+  sectionType?: SectionType;
+  track?: TrackKey;
+  questionTrack?: string;
+  isPlayground?: boolean;
+}
+
+export function resolveSectionType({
+  sectionType,
+  track,
+  questionTrack,
+  isPlayground
+}: ResolveSectionTypeArgs): SectionType {
+  if (!isPlayground && sectionType) return sectionType;
+  const targetTrack = questionTrack || track;
+  switch (targetTrack) {
+    case 'SQL':
+      return 'SQL';
+    case 'SPRING_LLD':
+    case 'JAVA_SPRING_BOOT':
+    case 'LLD_HLD':
+      return 'LLD';
+    case 'SYSTEM_DESIGN':
+      return 'SYSTEM_DESIGN';
+    case 'BEHAVIORAL_STAR':
+      return 'BEHAVIORAL';
+    case 'RESUME_BASED':
+      return 'RESUME';
+    case 'ALGORITHMS_DATA_STRUCTURES':
+    case 'DSA_LLD':
+    case 'DSA_LLD_HLD':
+    case 'FULL_LOOP':
+      return 'DSA';
+    default:
+      return sectionType || 'DSA';
+  }
+}
+
 export interface ArenaShellProps {
   sessionId: number;
-  track: InterviewTrack;
-  onSwitchTrack?: (targetTrack: InterviewTrack) => void;
+  track: TrackKey;
+  onSwitchTrack?: (targetTrack: TrackKey) => void;
   question: GenerateQuestionResponse;
   questionsList: GenerateQuestionResponse[];
   activeQuestionIndex: number;

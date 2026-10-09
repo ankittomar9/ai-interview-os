@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Group, Panel, Separator, type PanelImperativeHandle } from 'react-resizable-panels';
-import type { InterviewTrack } from '../../types';
 import { TrackNavMenu } from '../ui/TrackNavMenu';
 import { StageStepper } from '../StageStepper';
 import { QuestionRail, type QuestionRailItem } from '../ide/QuestionRail';
@@ -20,9 +19,9 @@ import { LocalPurityBadge } from '../LocalPurityBadge';
 import { VoiceCoachIndicator } from './VoiceCoachIndicator';
 import { ArenaRecordingBadges } from './ArenaRecordingBadges';
 import { ArenaIntroductionPanel } from './ArenaIntroductionPanel';
-import type { ArenaShellProps } from './ArenaShellTypes';
+import type { ArenaShellProps, TrackKey } from './ArenaShellTypes';
 
-export type { ArenaShellProps };
+export type { ArenaShellProps, TrackKey };
 
 export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   const {
@@ -79,7 +78,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   }, [currentStage, isPlayground]);
 
   const handleTrackSelect = useCallback((trackKey: string) => {
-    if (onSwitchTrack && trackKey !== 'ALL') onSwitchTrack(trackKey as InterviewTrack);
+    if (onSwitchTrack) onSwitchTrack(trackKey as TrackKey);
   }, [onSwitchTrack]);
 
   const railItems: QuestionRailItem[] = questionsList.map((q, idx) => ({

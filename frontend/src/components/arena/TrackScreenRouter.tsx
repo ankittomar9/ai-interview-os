@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SectionType } from "../../types";
+import type { GenerateQuestionResponse, ModelProvider, SectionType } from "../../types";
+import { resolveSectionType, type ResolveSectionTypeArgs, type TrackKey } from "./ArenaShellTypes";
 import { IntroScreen } from "./screens/IntroScreen";
 import { DsaScreen } from "./screens/DsaScreen";
 import { SqlScreen } from "./screens/SqlScreen";
@@ -13,10 +14,12 @@ import { ScreenErrorBoundary } from "./ScreenErrorBoundary";
 import type { ExecutionResult } from "../ide/TestcasePanel";
 import { clientLog } from "../../lib/clientLogger";
 
+export { resolveSectionType, type ResolveSectionTypeArgs };
+
 interface TrackScreenRouterProps {
   sectionType?: SectionType;
   sectionQuestions?: GenerateQuestionResponse[][];
-  track: InterviewTrack;
+  track: TrackKey;
   sessionId: number;
   question: GenerateQuestionResponse;
   questionsCount: number;
@@ -35,7 +38,7 @@ interface TrackScreenRouterProps {
   onNextStage?: () => void;
   onFinish?: () => void;
   candidateName?: string;
-  onSelectTrack?: (track: InterviewTrack) => void;
+  onSelectTrack?: (track: TrackKey) => void;
   onBrowseCatalog?: () => void;
   isApproachGateLocked?: boolean;
   onRunAttempt?: () => void;
@@ -68,25 +71,12 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   isApproachGateLocked,
   onRunAttempt
 }) => {
-  const resolveSectionType = (): SectionType => {
-    if (sectionType) return sectionType;
-    switch (track) {
-      case 'SQL': return 'SQL';
-      case 'SPRING_LLD':
-      case 'JAVA_SPRING_BOOT':
-      case 'LLD_HLD': return 'LLD';
-      case 'SYSTEM_DESIGN': return 'SYSTEM_DESIGN';
-      case 'BEHAVIORAL_STAR': return 'BEHAVIORAL';
-      case 'RESUME_BASED': return 'RESUME';
-      case 'ALGORITHMS_DATA_STRUCTURES':
-      case 'DSA_LLD':
-      case 'DSA_LLD_HLD':
-      case 'FULL_LOOP': return 'DSA';
-      default: return 'DSA';
-    }
-  };
-
-  const effectiveSection = resolveSectionType();
+  const effectiveSection = resolveSectionType({
+    sectionType,
+    track,
+    questionTrack: question?.track,
+    isPlayground
+  });
 
   useEffect(() => {
     if (isPlayground && questionsCount === 0 && (effectiveSection === 'DSA' || effectiveSection === 'SQL' || effectiveSection === 'LLD' || effectiveSection === 'SYSTEM_DESIGN')) {

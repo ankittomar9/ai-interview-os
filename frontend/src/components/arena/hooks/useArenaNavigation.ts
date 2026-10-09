@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { InterviewTrack } from '../../../types';
+import type { TrackKey } from '../ArenaShellTypes';
 import type { InterviewStage } from '../../StageStepper';
 import { evaluateNavigationGate } from '../../../lib/gating';
 import { addMessageToSession } from '../../../services/api';
@@ -7,7 +8,7 @@ import { addMessageToSession } from '../../../services/api';
 interface UseArenaNavigationProps {
   sessionId: number;
   isPlayground: boolean;
-  initialTrack: InterviewTrack;
+  initialTrack: TrackKey;
   navSections: Array<{ stage: InterviewStage; sectionType: string; track?: InterviewTrack; label: string }>;
   dialogue: {
     activeSectionIndex: number;
@@ -30,7 +31,7 @@ export function useArenaNavigation({
   questionsCount,
   selectQuestion
 }: UseArenaNavigationProps) {
-  const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialTrack);
+  const [activeTrack, setActiveTrack] = useState<TrackKey>(initialTrack);
   const [pendingStageSwitch, setPendingStageSwitch] = useState<{
     stage: InterviewStage;
     targetTrack: InterviewTrack;

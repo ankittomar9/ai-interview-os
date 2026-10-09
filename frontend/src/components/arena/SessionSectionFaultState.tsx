@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import type { InterviewTrack, SectionType } from '../../types';
+import type { SectionType } from '../../types';
+import type { TrackKey } from './ArenaShellTypes';
 import { Button } from '../ui/Button';
 
 export interface SessionSectionFaultStateProps {
   sectionType: SectionType;
-  track?: InterviewTrack;
+  track?: TrackKey;
   hasAssignedQuestions?: boolean;
   onRetry?: () => void;
 }

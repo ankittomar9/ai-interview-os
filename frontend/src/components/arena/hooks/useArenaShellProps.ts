@@ -1,16 +1,16 @@
-import type { ArenaShellProps } from '../ArenaShellTypes';
-import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, PlannedSection } from '../../../types';
+import type { ArenaShellProps, TrackKey } from '../ArenaShellTypes';
+import type { GenerateQuestionResponse, ModelProvider, PlannedSection } from '../../../types';
 import type { QuestionStatus } from '../../ide/QuestionRail';
 
 interface UseArenaShellPropsArgs {
   sessionId: number;
-  track: InterviewTrack;
+  track: TrackKey;
   sections?: PlannedSection[];
   activeSectionIndex: number;
   isApproachGateLocked: boolean;
   sectionQuestions?: GenerateQuestionResponse[][];
   onSectionClick: (idx: number, stage: any) => void;
-  onSwitchTrack: (track: InterviewTrack) => void;
+  onSwitchTrack: (track: TrackKey) => void;
   question: GenerateQuestionResponse;
   onNextQuestion: () => void;
   onNextStage: (options?: { introSkipped?: boolean }) => void;

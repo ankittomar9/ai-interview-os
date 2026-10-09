@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { GenerateQuestionResponse, InterviewTrack } from '../../../types';
+import type { TrackKey } from '../ArenaShellTypes';
 import { listQuestions } from '../../../services/api';
 import type { QuestionStatus } from '../../ide/QuestionRail';
 
@@ -8,7 +9,7 @@ export interface UseSessionCatalogProps {
   sectionQuestions?: GenerateQuestionResponse[][];
   activeSectionIndex?: number;
   playlistQuestions?: GenerateQuestionResponse[];
-  track?: InterviewTrack;
+  track?: TrackKey;
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   sessionId?: number;
 }
@@ -85,6 +86,21 @@ export function useSessionCatalog({
     [defaultQuestion?.slug || 'current']: 'UNTOUCHED'
   }));
 
+  // Reset index when playlistQuestions changes or is restored (C-1)
+  useEffect(() => {
+    if (playlistQuestions && playlistQuestions.length > 0) {
+      const targetSlug = defaultQuestion?.problemSlug || defaultQuestion?.slug;
+      if (targetSlug) {
+        const targetIdx = playlistQuestions.findIndex((q) => (q.problemSlug === targetSlug || q.slug === targetSlug));
+        if (targetIdx !== -1) {
+          setActiveQuestionIndex(targetIdx);
+          return;
+        }
+      }
+      setActiveQuestionIndex(0);
+    }
+  }, [playlistQuestions, defaultQuestion]);
+
   useEffect(() => {
     if (activeSectionList !== null) {
       setQuestionsList(activeSectionList);
@@ -101,10 +117,11 @@ export function useSessionCatalog({
     const fetchTrackCatalog = async () => {
       setIsLoadingQuestions(true);
       try {
-        const fetched = await listQuestions({ track, sessionMode, sessionId });
+        const queryTrack = track === 'ALL' ? undefined : (track as InterviewTrack);
+        const fetched = await listQuestions({ track: queryTrack, sessionMode, sessionId });
         if (isCancelled) return;
         if (Array.isArray(fetched) && fetched.length > 0) {
-          const filtered = fetched.filter((q) => !q.track || q.track === track);
+          const filtered = track === 'ALL' ? fetched : fetched.filter((q) => !q.track || q.track === track);
           if (filtered.length > 0) {
             setQuestionsList(filtered);
             const targetSlug = defaultQuestion?.problemSlug || defaultQuestion?.slug;
@@ -112,15 +129,21 @@ export function useSessionCatalog({
               const targetIdx = filtered.findIndex((q) => (q.problemSlug === targetSlug || q.slug === targetSlug));
               if (targetIdx !== -1) {
                 setActiveQuestionIndex(targetIdx);
+                return;
               }
             }
+            setActiveQuestionIndex(0);
             return;
           }
         }
-        setQuestionsList(defaultQuestion && defaultQuestion.track === track ? [defaultQuestion] : []);
+        const fallbackList = defaultQuestion && (track === 'ALL' || defaultQuestion.track === track) ? [defaultQuestion] : [];
+        setQuestionsList(fallbackList);
+        setActiveQuestionIndex(0);
       } catch (err) {
         console.warn(`[useSessionCatalog] Could not load catalog for track ${track}:`, err);
-        setQuestionsList(defaultQuestion && defaultQuestion.track === track ? [defaultQuestion] : []);
+        const fallbackList = defaultQuestion && (track === 'ALL' || defaultQuestion.track === track) ? [defaultQuestion] : [];
+        setQuestionsList(fallbackList);
+        setActiveQuestionIndex(0);
       } finally {
         if (!isCancelled) setIsLoadingQuestions(false);
       }
@@ -140,17 +163,19 @@ export function useSessionCatalog({
       if (activeQuestionIndex >= 0 && activeQuestionIndex < effectiveQuestionsList.length) {
         return effectiveQuestionsList[activeQuestionIndex];
       }
+      const fallbackTrack: InterviewTrack = (!track || track === 'ALL') ? 'ALGORITHMS_DATA_STRUCTURES' : track;
       return {
         ...BINDING_ERROR_QUESTION,
-        track: track || 'ALGORITHMS_DATA_STRUCTURES'
+        track: fallbackTrack
       };
     }
     if (activeSectionIndex === 0 && defaultQuestion) {
       return defaultQuestion;
     }
+    const fallbackTrack: InterviewTrack = (!track || track === 'ALL') ? 'ALGORITHMS_DATA_STRUCTURES' : track;
     return {
       ...EMPTY_QUESTION,
-      track: track || 'ALGORITHMS_DATA_STRUCTURES'
+      track: fallbackTrack
     };
   }, [effectiveQuestionsList, activeQuestionIndex, activeSectionIndex, defaultQuestion, track]);
 
