@@ -77,6 +77,26 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     if (currentStage === 'INTRODUCTION' && !isPlayground) document.getElementById('chat-input')?.focus();
   }, [currentStage, isPlayground]);
 
+  // Global Ctrl+M keyboard shortcut for Push-to-Talk toggle throughout the Arena
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        if (isAiResponding) return;
+        if (isListening) {
+          if (onStopListening) onStopListening();
+          else if (onMicToggle) onMicToggle();
+        } else {
+          if (onStartListening) onStartListening();
+          else if (onMicToggle) onMicToggle();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isListening, isAiResponding, onStartListening, onStopListening, onMicToggle]);
+
   const handleTrackSelect = useCallback((trackKey: string) => {
     if (onSwitchTrack) onSwitchTrack(trackKey as TrackKey);
   }, [onSwitchTrack]);

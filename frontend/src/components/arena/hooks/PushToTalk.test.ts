@@ -214,3 +214,79 @@ test('Gate VP9: useAudioCapture implements safe mime type selection with fallbac
     'Hardcoded audio/webm without fallback must be eliminated'
   );
 });
+
+test('Gate VP9: useCoachVoice uses abortTurnRef unmount-only cleanup to prevent re-render abort loops during recording', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const voiceHookPath = path.resolve(import.meta.dirname, 'useCoachVoice.ts');
+  const content = fs.readFileSync(voiceHookPath, 'utf-8');
+
+  assert.ok(
+    content.includes('const abortTurnRef = useRef(abortTurn);'),
+    'useCoachVoice must maintain an abortTurnRef'
+  );
+  assert.ok(
+    content.includes('abortTurnRef.current = abortTurn;'),
+    'useCoachVoice must update abortTurnRef on each render'
+  );
+  assert.ok(
+    content.includes('abortTurnRef.current();') && content.includes('}, []);'),
+    'useCoachVoice unmount effect must invoke abortTurnRef on unmount only with empty dependency array'
+  );
+  assert.ok(
+    !content.includes('useEffect(() => () => { abortTurn(); }, [abortTurn]);'),
+    'Reactive abortTurn effect on [abortTurn] must be eliminated to prevent render abort loops'
+  );
+});
+
+test('Gate VP9: AutoGrowingChatInput uses aria-busy instead of disabled to avoid stuck mic states', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const inputPath = path.resolve(import.meta.dirname, '../../ui/AutoGrowingChatInput.tsx');
+  const content = fs.readFileSync(inputPath, 'utf-8');
+
+  assert.ok(
+    content.includes('aria-busy={isRequestingMic}'),
+    'AutoGrowingChatInput must use aria-busy={isRequestingMic} for mic button accessibility'
+  );
+  assert.ok(
+    !content.includes('disabled={isRequestingMic}'),
+    'AutoGrowingChatInput must not disable button with isRequestingMic'
+  );
+  assert.ok(
+    content.includes('if (e.defaultPrevented) return;'),
+    'AutoGrowingChatInput Ctrl+M listener must respect e.defaultPrevented to avoid double toggle'
+  );
+});
+
+test('Gate VP9: ArenaShell registers global Ctrl+M shortcut for arena-wide PTT toggle', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const shellPath = path.resolve(import.meta.dirname, '../ArenaShell.tsx');
+  const content = fs.readFileSync(shellPath, 'utf-8');
+
+  assert.ok(
+    content.includes("(e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm'"),
+    'ArenaShell must handle global Ctrl+M / Meta+M shortcut'
+  );
+  assert.ok(
+    content.includes('e.preventDefault();'),
+    'ArenaShell Ctrl+M handler must prevent default browser behavior'
+  );
+  assert.ok(
+    content.includes('if (isAiResponding) return;'),
+    'ArenaShell Ctrl+M handler must ignore shortcut while AI is responding'
+  );
+});
+
+test('Gate VP9: useSessionCatalog gates playlist-restore index reset to playground mode', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const catalogPath = path.resolve(import.meta.dirname, 'useSessionCatalog.ts');
+  const content = fs.readFileSync(catalogPath, 'utf-8');
+
+  assert.ok(
+    content.includes("if (sessionMode !== 'PLAYGROUND') return;"),
+    'useSessionCatalog playlist restore effect must be gated to playground mode for defense-in-depth'
+  );
+});
