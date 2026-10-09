@@ -162,7 +162,6 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   };
 
   const handlePointerUp = () => {
-    if (isRequestingMic) return;
     const holdDuration = Date.now() - pointerDownTimeRef.current;
     if (isListening && holdDuration > 500) {
       // Intentionally held down and released -> stop recording
@@ -173,7 +172,6 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   };
 
   const handleButtonClick = () => {
-    if (isRequestingMic) return;
     if (startedThisPressRef.current) {
       // Quick click from idle initiated listening; leave recording active (1-click toggle ON)
       startedThisPressRef.current = false;
@@ -184,7 +182,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
       // Subsequent quick click: 1-click toggle OFF
       if (onStopListening) onStopListening();
       else onToggleListening();
-    } else if (!isListening && !isAiResponding) {
+    } else if (!isListening && !isAiResponding && !isRequestingMic) {
       // Direct click (e.g. keyboard activation via Enter/Space or click without pointerdown)
       if (onStartListening) onStartListening();
       else onToggleListening();
@@ -297,7 +295,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            disabled={isRequestingMic}
+            aria-busy={isRequestingMic}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
             onClick={handleButtonClick}

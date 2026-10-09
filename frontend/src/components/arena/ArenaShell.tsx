@@ -63,7 +63,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   }, [currentStage, isPlayground]);
 
   const handleTrackSelect = useCallback((trackKey: string) => {
-    if (onSwitchTrack && trackKey !== 'ALL') onSwitchTrack(trackKey as InterviewTrack);
+    if (onSwitchTrack) onSwitchTrack(trackKey as InterviewTrack);
   }, [onSwitchTrack]);
 
   const railItems: QuestionRailItem[] = questionsList.map((q, idx) => ({
@@ -101,7 +101,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
       )}
       <div className="h-12 bg-surface border-b border-border flex items-center justify-between px-4 shrink-0 z-20">
         <div className="flex items-center gap-3">
-          <TrackNavMenu activeTrack={track} onSelectTrack={handleTrackSelect} isPlayground={isPlayground} />
+          <TrackNavMenu activeTrack={track} onSelectTrack={handleTrackSelect} isPlayground={isPlayground} catalogQuestions={props.catalogQuestions} />
           <Chip variant={isPlayground ? 'success' : 'primary'} size="sm">
             {isPlayground ? 'PLAYGROUND' : 'PROCTORED INTERVIEW'}
           </Chip>

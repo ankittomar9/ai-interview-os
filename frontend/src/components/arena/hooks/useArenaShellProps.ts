@@ -4,13 +4,14 @@ import type { QuestionStatus } from '../../ide/QuestionRail';
 
 interface UseArenaShellPropsArgs {
   sessionId: number;
-  track: InterviewTrack;
+  track: InterviewTrack | string;
   sections?: PlannedSection[];
   activeSectionIndex: number;
   isApproachGateLocked: boolean;
   sectionQuestions?: GenerateQuestionResponse[][];
   onSectionClick: (idx: number, stage: any) => void;
-  onSwitchTrack: (track: InterviewTrack) => void;
+  onSwitchTrack: (track: InterviewTrack | string) => void;
+  catalogQuestions?: GenerateQuestionResponse[];
   question: GenerateQuestionResponse;
   onNextQuestion: () => void;
   onNextStage: (options?: { introSkipped?: boolean }) => void;
@@ -46,6 +47,7 @@ export function buildArenaShellProps(args: UseArenaShellPropsArgs): ArenaShellPr
     sectionQuestions: args.sectionQuestions,
     onSectionClick: args.onSectionClick,
     onSwitchTrack: args.onSwitchTrack,
+    catalogQuestions: args.catalogQuestions,
     question: args.question,
     onNextQuestion: args.onNextQuestion,
     onNextStage: args.onNextStage,

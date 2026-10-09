@@ -30,7 +30,7 @@ export function useArenaNavigation({
   questionsCount,
   selectQuestion
 }: UseArenaNavigationProps) {
-  const [activeTrack, setActiveTrack] = useState<InterviewTrack>(initialTrack);
+  const [activeTrack, setActiveTrack] = useState<InterviewTrack | string>(initialTrack);
   const [pendingStageSwitch, setPendingStageSwitch] = useState<{
     stage: InterviewStage;
     targetTrack: InterviewTrack;

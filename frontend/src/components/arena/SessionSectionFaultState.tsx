@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 
 export interface SessionSectionFaultStateProps {
   sectionType: SectionType;
-  track?: InterviewTrack;
+  track?: InterviewTrack | string;
   hasAssignedQuestions?: boolean;
   onRetry?: () => void;
 }

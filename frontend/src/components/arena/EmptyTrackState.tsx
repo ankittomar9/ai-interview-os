@@ -4,9 +4,9 @@ import type { InterviewTrack } from '../../types';
 import { Button } from '../ui/Button';
 
 interface EmptyTrackStateProps {
-  track?: InterviewTrack;
+  track?: InterviewTrack | string;
   onBrowseCatalog?: () => void;
-  onSelectTrack?: (track: InterviewTrack) => void;
+  onSelectTrack?: (track: InterviewTrack | string) => void;
 }
 
 export const EmptyTrackState: React.FC<EmptyTrackStateProps> = ({

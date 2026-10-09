@@ -8,7 +8,7 @@ export interface UseSessionCatalogProps {
   sectionQuestions?: GenerateQuestionResponse[][];
   activeSectionIndex?: number;
   playlistQuestions?: GenerateQuestionResponse[];
-  track?: InterviewTrack;
+  track?: InterviewTrack | string;
   sessionMode?: 'INTERVIEW' | 'PLAYGROUND';
   sessionId?: number;
 }
@@ -101,10 +101,14 @@ export function useSessionCatalog({
     const fetchTrackCatalog = async () => {
       setIsLoadingQuestions(true);
       try {
-        const fetched = await listQuestions({ track, sessionMode, sessionId });
+        const fetched = await listQuestions({
+          track: track === 'ALL' ? undefined : track,
+          sessionMode,
+          sessionId
+        });
         if (isCancelled) return;
         if (Array.isArray(fetched) && fetched.length > 0) {
-          const filtered = fetched.filter((q) => !q.track || q.track === track);
+          const filtered = track === 'ALL' ? fetched : fetched.filter((q) => !q.track || q.track === track);
           if (filtered.length > 0) {
             setQuestionsList(filtered);
             const targetSlug = defaultQuestion?.problemSlug || defaultQuestion?.slug;
@@ -112,15 +116,19 @@ export function useSessionCatalog({
               const targetIdx = filtered.findIndex((q) => (q.problemSlug === targetSlug || q.slug === targetSlug));
               if (targetIdx !== -1) {
                 setActiveQuestionIndex(targetIdx);
+                return;
               }
             }
+            setActiveQuestionIndex(0);
             return;
           }
         }
-        setQuestionsList(defaultQuestion && defaultQuestion.track === track ? [defaultQuestion] : []);
+        setQuestionsList(defaultQuestion && (track === 'ALL' || defaultQuestion.track === track) ? [defaultQuestion] : []);
+        setActiveQuestionIndex(0);
       } catch (err) {
         console.warn(`[useSessionCatalog] Could not load catalog for track ${track}:`, err);
-        setQuestionsList(defaultQuestion && defaultQuestion.track === track ? [defaultQuestion] : []);
+        setQuestionsList(defaultQuestion && (track === 'ALL' || defaultQuestion.track === track) ? [defaultQuestion] : []);
+        setActiveQuestionIndex(0);
       } finally {
         if (!isCancelled) setIsLoadingQuestions(false);
       }
@@ -142,15 +150,15 @@ export function useSessionCatalog({
       }
       return {
         ...BINDING_ERROR_QUESTION,
-        track: track || 'ALGORITHMS_DATA_STRUCTURES'
+        track: (track as InterviewTrack) || 'ALGORITHMS_DATA_STRUCTURES'
       };
     }
-    if (activeSectionIndex === 0 && defaultQuestion) {
+    if (activeSectionIndex === 0 && defaultQuestion && (track === 'ALL' || defaultQuestion.track === track)) {
       return defaultQuestion;
     }
     return {
       ...EMPTY_QUESTION,
-      track: track || 'ALGORITHMS_DATA_STRUCTURES'
+      track: (track as InterviewTrack) || 'ALGORITHMS_DATA_STRUCTURES'
     };
   }, [effectiveQuestionsList, activeQuestionIndex, activeSectionIndex, defaultQuestion, track]);
 

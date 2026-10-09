@@ -16,7 +16,7 @@ import { clientLog } from "../../lib/clientLogger";
 interface TrackScreenRouterProps {
   sectionType?: SectionType;
   sectionQuestions?: GenerateQuestionResponse[][];
-  track: InterviewTrack;
+  track: InterviewTrack | string;
   sessionId: number;
   question: GenerateQuestionResponse;
   questionsCount: number;
@@ -35,7 +35,7 @@ interface TrackScreenRouterProps {
   onNextStage?: () => void;
   onFinish?: () => void;
   candidateName?: string;
-  onSelectTrack?: (track: InterviewTrack) => void;
+  onSelectTrack?: (track: InterviewTrack | string) => void;
   onBrowseCatalog?: () => void;
   isApproachGateLocked?: boolean;
   onRunAttempt?: () => void;
@@ -69,8 +69,9 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
   onRunAttempt
 }) => {
   const resolveSectionType = (): SectionType => {
-    if (sectionType) return sectionType;
-    switch (track) {
+    if (!isPlayground && sectionType) return sectionType;
+    const targetTrack = question?.track || track;
+    switch (targetTrack) {
       case 'SQL': return 'SQL';
       case 'SPRING_LLD':
       case 'JAVA_SPRING_BOOT':
@@ -82,7 +83,7 @@ export const TrackScreenRouter: React.FC<TrackScreenRouterProps> = ({
       case 'DSA_LLD':
       case 'DSA_LLD_HLD':
       case 'FULL_LOOP': return 'DSA';
-      default: return 'DSA';
+      default: return sectionType || 'DSA';
     }
   };
 

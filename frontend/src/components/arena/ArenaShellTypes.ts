@@ -6,8 +6,9 @@ import type { ProviderErrorState } from './hooks/useDialogue';
 
 export interface ArenaShellProps {
   sessionId: number;
-  track: InterviewTrack;
-  onSwitchTrack?: (targetTrack: InterviewTrack) => void;
+  track: InterviewTrack | string;
+  onSwitchTrack?: (targetTrack: InterviewTrack | string) => void;
+  catalogQuestions?: GenerateQuestionResponse[];
   question: GenerateQuestionResponse;
   questionsList: GenerateQuestionResponse[];
   activeQuestionIndex: number;

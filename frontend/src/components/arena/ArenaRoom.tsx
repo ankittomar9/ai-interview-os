@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import type { GenerateQuestionResponse, ModelProvider, SessionPlan } from '../../types';
+import type { GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan } from '../../types';
 import { isApproachGateLocked } from '../../lib/approachGate';
 import { useSessionCatalog } from './hooks/useSessionCatalog';
 import { ArenaShell } from './ArenaShell';
@@ -8,6 +8,7 @@ import { clearVerificationStreams } from '../../services/verificationStreams';
 import { getPersona } from '../../lib/personas';
 import { buildNavSections } from '../../lib/plan-navigation';
 import { getSubmissions } from '../../lib/submissions';
+import { listQuestions } from '../../services/api';
 import { useArenaCodeSession } from './hooks/useArenaCodeSession';
 import { useArenaSessionDetails } from './hooks/useArenaSessionDetails';
 import { useArenaNavigation } from './hooks/useArenaNavigation';
@@ -121,6 +122,24 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const navSections = useMemo(() => buildNavSections(plan?.sections, initialQuestion.track), [plan?.sections, initialQuestion.track]);
   const [isShareLost, setIsShareLost] = useState(false);
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const [currentTrack, setCurrentTrack] = useState<string>(initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES');
+  const [allCatalogQuestions, setAllCatalogQuestions] = useState<GenerateQuestionResponse[]>([]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    listQuestions({ sessionMode, sessionId })
+      .then((qs) => {
+        if (!isCancelled && Array.isArray(qs) && qs.length > 0) {
+          setAllCatalogQuestions(qs);
+        }
+      })
+      .catch((err) => {
+        console.warn('[ArenaRoom] Failed to load catalog questions for menu:', err);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [sessionMode, sessionId]);
 
   useEffect(() => () => { clearVerificationStreams(); }, []);
 
@@ -132,8 +151,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
       defaultQuestion: initialQuestion,
       sectionQuestions,
       activeSectionIndex,
-      playlistQuestions: initialQuestionsList,
-      track: initialQuestion.track || 'ALGORITHMS_DATA_STRUCTURES',
+      playlistQuestions: (!isPlayground || currentTrack === initialQuestion.track) ? initialQuestionsList : undefined,
+      track: currentTrack as InterviewTrack,
       sessionMode,
       sessionId
     });
@@ -142,6 +161,16 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   const fallbackStarter = ensureDsaMethodSignatureBoilerplate(activeQuestion.starterCode, activeSlug, activeQuestion.track);
   const { code, setCode } = useArenaCodeSession({ sessionId, activeSlug, fallbackStarter });
   const [language, setLanguage] = useState(initialQuestion.track === 'SQL' ? 'sql' : 'java');
+
+  useEffect(() => {
+    if (activeQuestion.track === 'SQL') {
+      setLanguage('sql');
+    } else if (activeQuestion.track === 'SPRING_LLD' || activeQuestion.track === 'ALGORITHMS_DATA_STRUCTURES') {
+      if (language === 'sql') {
+        setLanguage('java');
+      }
+    }
+  }, [activeQuestion.track, activeQuestion.slug]);
 
   const sectionChangeHandlerRef = useRef<(idx: number, stage: any) => void>(() => {});
 
@@ -197,6 +226,12 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     sectionGates
   });
 
+  const handleSwitchTrack = useCallback((trackKey: string) => {
+    if (!isPlayground) return;
+    nav.setActiveTrack(trackKey as InterviewTrack);
+    setCurrentTrack(trackKey);
+  }, [isPlayground, nav]);
+
   const shellProps = buildArenaShellProps({
     sessionId,
     track: nav.activeTrack,
@@ -205,7 +240,8 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
     isApproachGateLocked: isGateLocked,
     sectionQuestions,
     onSectionClick: nav.handleSectionClick,
-    onSwitchTrack: nav.setActiveTrack,
+    onSwitchTrack: handleSwitchTrack,
+    catalogQuestions: allCatalogQuestions,
     question: activeQuestion,
     onNextQuestion: nav.handleNextQuestion,
     onNextStage: nav.handleNextStage,
