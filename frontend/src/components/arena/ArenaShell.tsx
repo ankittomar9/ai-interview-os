@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Group, Panel, Separator } from 'react-resizable-panels';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Group, Panel, Separator, type PanelImperativeHandle } from 'react-resizable-panels';
 import type { InterviewTrack } from '../../types';
 import { TrackNavMenu } from '../ui/TrackNavMenu';
 import { StageStepper } from '../StageStepper';
@@ -47,6 +47,22 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   const [hintsRevealed, setHintsRevealed] = useState<Record<string, number>>({});
   const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, boolean>>({});
   const [hasWorkspaceRunAttempt, setHasWorkspaceRunAttempt] = useState(false);
+
+  const problemPanelRef = useRef<PanelImperativeHandle | null>(null);
+
+  useEffect(() => {
+    const panel = problemPanelRef.current;
+    if (!panel) return;
+    if (isFocusMode) {
+      if (!panel.isCollapsed()) {
+        panel.collapse();
+      }
+    } else {
+      if (panel.isCollapsed()) {
+        panel.expand();
+      }
+    }
+  }, [isFocusMode]);
 
   useEffect(() => {
     setHasWorkspaceRunAttempt(false);
@@ -139,7 +155,16 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
         <QuestionRail items={railItems} selectedIndex={activeQuestionIndex} onSelect={onSelectQuestion} sessionMode={isPlayground ? 'PLAYGROUND' : 'INTERVIEW'} className={isFocusMode || isIntroRound || (isPlayground && railItems.length <= 1) ? "w-0 hidden" : "w-12 shrink-0 border-r border-border h-full"} />
         <div className="flex-1 min-w-0 h-full overflow-hidden">
           <Group orientation="horizontal" id="arena-shell-group" className="h-full w-full flex-1 min-w-0">
-            <Panel defaultSize="32%" minSize="24%" maxSize="45%" id="problem-panel" className="min-w-0 flex flex-col h-full overflow-hidden">
+            <Panel
+              defaultSize="32%"
+              minSize="24%"
+              maxSize="45%"
+              collapsible={true}
+              collapsedSize={0}
+              panelRef={problemPanelRef}
+              id="problem-panel"
+              className="min-w-0 flex flex-col h-full overflow-hidden"
+            >
               {isIntroRound ? (
                 <ArenaIntroductionPanel sections={props.sections} activeSectionIndex={props.activeSectionIndex} />
               ) : (
