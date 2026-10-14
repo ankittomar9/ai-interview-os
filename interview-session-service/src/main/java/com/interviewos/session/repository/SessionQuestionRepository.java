@@ -47,4 +47,17 @@ public interface SessionQuestionRepository extends JpaRepository<SessionQuestion
             @Param("candidateId") String candidateId,
             @Param("track") String track
     );
+
+    @Query(value = "SELECT sq.* FROM session_questions sq " +
+            "JOIN interview_sessions s ON sq.session_id = s.id " +
+            "WHERE s.candidate_id = :candidateId " +
+            "AND UPPER(sq.verdict) IN ('PASSED', 'FAILED') " +
+            "AND COALESCE(sq.attempted_at, sq.updated_at) >= :fromIncl " +
+            "AND COALESCE(sq.attempted_at, sq.updated_at) < :toExcl " +
+            "ORDER BY COALESCE(sq.attempted_at, sq.updated_at) ASC, sq.id ASC", nativeQuery = true)
+    List<SessionQuestion> findAttemptedByCandidateAndWindow(
+            @Param("candidateId") String candidateId,
+            @Param("fromIncl") Instant fromIncl,
+            @Param("toExcl") Instant toExcl
+    );
 }

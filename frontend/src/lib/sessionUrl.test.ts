@@ -25,3 +25,10 @@ test('VP-4 / F-3: popstate routing contract for /session/ paths', () => {
   assert.equal(resolvePopStateView('/', null), 'SETUP');
   assert.equal(resolvePopStateView('', null), 'SETUP');
 });
+
+test('SPEC-017 / G-C: popstate routing for /history paths', () => {
+  assert.equal(resolvePopStateView('/history', null), 'HISTORY');
+  assert.equal(resolvePopStateView('/history?day=2026-10-14', null), 'HISTORY');
+  assert.equal(resolvePopStateView('/history/details', null), 'HISTORY');
+  assert.equal(resolvePopStateView('/history', 42), 'HISTORY');
+});

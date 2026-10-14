@@ -228,6 +228,7 @@ services:
       - WORKSPACE_HOST=localhost
       - RUNNER_MAVEN_IMAGE=ai-interview-os/lld-runner:latest
       - VAULT_ROOT=/vault
+      - APP_DEFAULT_TZ=Asia/Kolkata
     volumes:
       - ${VAULT_ROOT:-D:/AI OS Interview Media}:/vault:rw
     depends_on:
@@ -380,6 +381,13 @@ services:
     depends_on:
       - api-gateway-service
 
+# ─── DATA PERSISTENCE (SPEC-017) ─────────────────────────────────────────────
+# postgres_data / mongodb_data / judge0_db_data are NAMED volumes.
+#   docker compose down && docker compose up   → ALL history, streaks, sessions,
+#     reports and question data SURVIVE (safe, routine).
+#   docker compose down -v                     → DESTROYS the volumes: calendar,
+#     streak, practice attempts, session_questions, resume data — everything.
+# Never use -v unless you intend a full reset. See README → "Data persistence".
 volumes:
   mongodb_data:
   postgres_data:

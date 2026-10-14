@@ -280,6 +280,36 @@ ai-interview-os/
 
 ---
 
+## 💾 Data Persistence: Streak, Calendar & History (SPEC-017)
+
+All candidate assessment records, practice submissions, and interview sessions live in PostgreSQL (`interview_session_db`) and MongoDB (`interviewos`):
+
+- **Solved & Attempted Event Ledger:**
+  - Every practice arena execution writes an immutable attempt row to `practice_attempts` (Postgres, migration `V8`).
+  - Every scheduled or proctored interview question writes to `session_questions` (Postgres, migration `V9`).
+  - Candidate profile, code artifacts, and resumes persist in Postgres and MongoDB.
+- **Derived-Only Streak & History:**
+  - Streak metrics (current streak, longest run, total questions solved) and calendar days are **pure mathematical projections** derived at query time directly from `practice_attempts` and `session_questions`.
+  - There is **zero separate mutable streak state or cache** to corrupt or fall out of sync.
+- **Docker Compose Lifecycle Contract:**
+  - `docker compose down && docker compose up` — **SAFE & ROUTINE**. The `postgres_data`, `mongodb_data`, and `judge0_db_data` volumes are named Docker volumes. All streaks, activity calendars, question submissions, and diagnostic reports **100% survive container restarts**.
+  - `docker compose down -v` — **DESTRUCTIVE**. The `-v` flag explicitly wipes named volumes, resetting the database to zero. Never use `-v` unless a complete platform purge is intended.
+
+### Backup & Restore One-Liners
+
+```bash
+# Backup the history ledger
+docker exec -t postgres pg_dump -U postgres interview_session_db > history-backup.sql
+
+# Restore the history ledger
+cat history-backup.sql | docker exec -i postgres psql -U postgres -d interview_session_db
+
+# Or use the automated timestamped helper script:
+sh docker/postgres/backup-history.sh [output_dir]
+```
+
+---
+
 ## 📄 License
 
 Apache License 2.0. Built for high-signal technical evaluation and developer coaching.
