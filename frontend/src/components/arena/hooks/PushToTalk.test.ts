@@ -290,3 +290,49 @@ test('Gate VP9: useSessionCatalog gates playlist-restore index reset to playgrou
     'useSessionCatalog playlist restore effect must be gated to playground mode for defense-in-depth'
   );
 });
+
+test('SPEC-015 AC-1: ArenaShell and AutoGrowingChatInput guard Ctrl+M against e.repeat to prevent key-hold flapping', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+
+  const shellPath = path.resolve(import.meta.dirname, '../ArenaShell.tsx');
+  const shellContent = fs.readFileSync(shellPath, 'utf-8');
+  assert.ok(
+    shellContent.includes('if (e.repeat) return;'),
+    'ArenaShell Ctrl+M keydown handler must ignore e.repeat to prevent held-key flapping'
+  );
+
+  const inputPath = path.resolve(import.meta.dirname, '../../ui/AutoGrowingChatInput.tsx');
+  const inputContent = fs.readFileSync(inputPath, 'utf-8');
+  assert.ok(
+    inputContent.includes('if (e.repeat) return;'),
+    'AutoGrowingChatInput Ctrl+M keydown handler must ignore e.repeat to prevent held-key flapping'
+  );
+});
+
+test('SPEC-015 AC-2: ArenaShell and AutoGrowingChatInput require !isRequestingMic on keyboard start branch and include in deps', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+
+  const shellPath = path.resolve(import.meta.dirname, '../ArenaShell.tsx');
+  const shellContent = fs.readFileSync(shellPath, 'utf-8');
+  assert.ok(
+    shellContent.includes('else if (!isRequestingMic)'),
+    'ArenaShell Ctrl+M handler must guard start branch with !isRequestingMic'
+  );
+  assert.ok(
+    shellContent.includes('[isListening, isAiResponding, isRequestingMic, onStartListening, onStopListening, onMicToggle]'),
+    'ArenaShell Ctrl+M handler must include isRequestingMic in useEffect deps array'
+  );
+
+  const inputPath = path.resolve(import.meta.dirname, '../../ui/AutoGrowingChatInput.tsx');
+  const inputContent = fs.readFileSync(inputPath, 'utf-8');
+  assert.ok(
+    inputContent.includes('else if (!isRequestingMic)'),
+    'AutoGrowingChatInput Ctrl+M handler must guard start branch with !isRequestingMic'
+  );
+  assert.ok(
+    inputContent.includes('[isListening, isAiResponding, isRequestingMic, onStartListening, onStopListening, onToggleListening]'),
+    'AutoGrowingChatInput Ctrl+M handler must include isRequestingMic in useEffect deps array'
+  );
+});

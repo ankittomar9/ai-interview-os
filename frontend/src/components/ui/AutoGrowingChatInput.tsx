@@ -84,13 +84,14 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
+      if (e.repeat) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         if (isAiResponding) return;
         if (isListening) {
           if (onStopListening) onStopListening();
           else onToggleListening();
-        } else {
+        } else if (!isRequestingMic) {
           if (onStartListening) onStartListening();
           else onToggleListening();
         }
@@ -98,7 +99,7 @@ export const AutoGrowingChatInput: React.FC<AutoGrowingChatInputProps> = ({
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isListening, isAiResponding, onStartListening, onStopListening, onToggleListening]);
+  }, [isListening, isAiResponding, isRequestingMic, onStartListening, onStopListening, onToggleListening]);
 
   const formatTimer = (sec: number) => {
     const m = Math.floor(sec / 60).toString().padStart(2, '0');

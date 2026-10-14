@@ -81,13 +81,14 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
+      if (e.repeat) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
         e.preventDefault();
         if (isAiResponding) return;
         if (isListening) {
           if (onStopListening) onStopListening();
           else if (onMicToggle) onMicToggle();
-        } else {
+        } else if (!isRequestingMic) {
           if (onStartListening) onStartListening();
           else if (onMicToggle) onMicToggle();
         }
@@ -95,7 +96,7 @@ export const ArenaShell: React.FC<ArenaShellProps> = (props) => {
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isListening, isAiResponding, onStartListening, onStopListening, onMicToggle]);
+  }, [isListening, isAiResponding, isRequestingMic, onStartListening, onStopListening, onMicToggle]);
 
   const handleTrackSelect = useCallback((trackKey: string) => {
     if (onSwitchTrack) onSwitchTrack(trackKey as TrackKey);
