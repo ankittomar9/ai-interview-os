@@ -50,6 +50,12 @@ public class InterviewSessionService {
     private final SessionQuestionService sessionQuestionService;
     private final CandidateProfileService candidateProfileService;
     private final VaultArchiveService vaultArchiveService;
+    private final QuestionExposureService questionExposureService;
+    private java.util.function.LongSupplier sessionNonceSupplier = () -> System.nanoTime() ^ (long) java.util.UUID.randomUUID().hashCode();
+
+    public void setSessionNonceSupplier(java.util.function.LongSupplier sessionNonceSupplier) {
+        this.sessionNonceSupplier = sessionNonceSupplier != null ? sessionNonceSupplier : () -> System.nanoTime() ^ (long) java.util.UUID.randomUUID().hashCode();
+    }
 
     @org.springframework.beans.factory.annotation.Autowired
     public InterviewSessionService(
@@ -62,7 +68,8 @@ public class InterviewSessionService {
             @org.springframework.beans.factory.annotation.Autowired(required = false) SessionVerificationRepository verificationRepository,
             @org.springframework.beans.factory.annotation.Autowired(required = false) SessionQuestionService sessionQuestionService,
             @org.springframework.beans.factory.annotation.Autowired(required = false) CandidateProfileService candidateProfileService,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) VaultArchiveService vaultArchiveService
+            @org.springframework.beans.factory.annotation.Autowired(required = false) VaultArchiveService vaultArchiveService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) QuestionExposureService questionExposureService
     ) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
@@ -74,6 +81,22 @@ public class InterviewSessionService {
         this.sessionQuestionService = sessionQuestionService;
         this.candidateProfileService = candidateProfileService;
         this.vaultArchiveService = vaultArchiveService;
+        this.questionExposureService = questionExposureService;
+    }
+
+    public InterviewSessionService(
+            InterviewSessionRepository sessionRepository,
+            SessionMessageRepository messageRepository,
+            InterviewSessionMongoRepository mongoSessionRepository,
+            ResumeParsingService resumeParsingService,
+            SessionPlanService sessionPlanService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+            SessionVerificationRepository verificationRepository,
+            SessionQuestionService sessionQuestionService,
+            CandidateProfileService candidateProfileService,
+            VaultArchiveService vaultArchiveService
+    ) {
+        this(sessionRepository, messageRepository, mongoSessionRepository, resumeParsingService, sessionPlanService, objectMapper, verificationRepository, sessionQuestionService, candidateProfileService, vaultArchiveService, null);
     }
 
     public InterviewSessionService(
@@ -132,13 +155,24 @@ public class InterviewSessionService {
         String planJson = null;
 
         if (!"PLAYGROUND".equalsIgnoreCase(effectiveMode)) {
+            long nonce = sessionNonceSupplier.getAsLong();
             long seed = Math.abs((long) (request.candidateId() != null ? request.candidateId().hashCode() : 42) * 31
                     + (request.track() != null ? request.track().name().hashCode() : 0)
-                    + (request.difficulty() != null ? request.difficulty().name().hashCode() : 0));
+                    + (request.difficulty() != null ? request.difficulty().name().hashCode() : 0)
+                    + nonce);
+
+            Map<String, ExposureRecord> exposure = Map.of();
+            if (questionExposureService != null) {
+                exposure = questionExposureService.exposureForCandidate(
+                        request.candidateId(),
+                        request.track() != null ? request.track().name() : null
+                );
+            }
+
             if (request.track() == InterviewTrack.CUSTOM && request.customDomains() != null && !request.customDomains().isEmpty()) {
-                plan = sessionPlanService.buildCustomPlan(request.difficulty(), request.customDomains(), seed, request.getEffectivePlanSource());
+                plan = sessionPlanService.buildCustomPlan(request.difficulty(), request.customDomains(), seed, request.getEffectivePlanSource(), request.candidateId(), exposure);
             } else {
-                plan = sessionPlanService.buildPlan(request.track(), request.difficulty(), seed, request.getEffectivePlanSource());
+                plan = sessionPlanService.buildPlan(request.track(), request.difficulty(), seed, request.getEffectivePlanSource(), request.candidateId(), exposure);
             }
             try {
                 planJson = objectMapper.writeValueAsString(plan);

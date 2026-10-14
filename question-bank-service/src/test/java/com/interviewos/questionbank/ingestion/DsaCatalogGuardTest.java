@@ -8,7 +8,10 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -107,16 +110,18 @@ class DsaCatalogGuardTest {
     }
 
     @Test
-    @DisplayName("Assert all 397 questions across all tracks parse without error and are PUBLISHED")
+    @DisplayName("Assert all catalog questions parse without error, are PUBLISHED, and satisfy track floors")
     void testAllCatalogQuestionsParseAndPublish() throws IOException {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         var allResources = resolver.getResources("classpath*:content/questions/**/*.md");
 
-        assertEquals(397, allResources.length,
-                "Expected exactly 397 total questions in catalog, but found: " + allResources.length);
+        assertTrue(allResources.length >= 397,
+                "Expected at least 397 total questions in catalog, but found: " + allResources.length);
 
         Set<String> allSlugs = new HashSet<>();
         int publishedCount = 0;
+        Map<String, Integer> familyCounts = new HashMap<>();
+        Map<String, Map<String, Integer>> difficultyCounts = new HashMap<>();
 
         for (var res : allResources) {
             String filename = res.getFilename() != null ? res.getFilename() : "unknown.md";
@@ -134,8 +139,45 @@ class DsaCatalogGuardTest {
             assertEquals("PUBLISHED", doc.getStatus(),
                     "Question '" + doc.getSlug() + "' must be PUBLISHED");
             publishedCount++;
+
+            String uriStr = res.getURI().toString().replace('\\', '/');
+            String family = "dsa";
+            if (uriStr.contains("/content/questions/hld/")) family = "hld";
+            else if (uriStr.contains("/content/questions/lld/")) family = "lld";
+            else if (uriStr.contains("/content/questions/sql/")) family = "sql";
+            else if (uriStr.contains("/content/questions/behavioral/")) family = "behavioral";
+
+            familyCounts.put(family, familyCounts.getOrDefault(family, 0) + 1);
+
+            String diff = doc.getDifficulty() != null ? doc.getDifficulty().toUpperCase() : "UNKNOWN";
+            difficultyCounts.computeIfAbsent(family, k -> new HashMap<>()).merge(diff, 1, Integer::sum);
         }
 
-        assertEquals(397, publishedCount, "All 397 questions must be PUBLISHED");
+        assertEquals(allResources.length, publishedCount, "All questions must be PUBLISHED (ratio = 1.0)");
+
+        // Assert RED track floors (current counts baseline per SPEC-016 §3)
+        Map<String, Integer> trackFloors = Map.of(
+                "dsa", 341,
+                "hld", 27,
+                "lld", 19,
+                "sql", 8,
+                "behavioral", 2
+        );
+
+        trackFloors.forEach((track, floor) -> {
+            int actual = familyCounts.getOrDefault(track, 0);
+            assertTrue(actual >= floor,
+                    String.format("Track '%s' floor violation: expected at least %d questions, but found %d", track, floor, actual));
+        });
+
+        // Starvation alarms (documented soft warnings per SPEC-016 §3)
+        difficultyCounts.forEach((fam, diffs) -> {
+            for (String level : List.of("EASY", "MEDIUM", "HARD")) {
+                int count = diffs.getOrDefault(level, 0);
+                if (count == 0) {
+                    System.out.printf("[STARVATION_ALARM] Track family '%s' currently has 0 %s questions%n", fam, level);
+                }
+            }
+        });
     }
 }
