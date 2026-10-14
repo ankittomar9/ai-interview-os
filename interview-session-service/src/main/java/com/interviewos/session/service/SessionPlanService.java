@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.*;
 
 @Slf4j
@@ -17,6 +18,53 @@ import java.util.*;
 public class SessionPlanService {
 
     private final QuestionBankClient questionBankClient;
+
+    public static class RotationState {
+        private final String candidateId;
+        private final InterviewTrack track;
+        private String policy = "STRICT";
+        private final List<String> reusedSlugs = new ArrayList<>();
+
+        public RotationState(String candidateId, InterviewTrack track) {
+            this.candidateId = candidateId;
+            this.track = track;
+        }
+
+        public void markDegradedLru(String slug) {
+            if (!"DEGRADED_ANY".equals(this.policy)) {
+                this.policy = "DEGRADED_LRU";
+            }
+            if (slug != null && !this.reusedSlugs.contains(slug)) {
+                this.reusedSlugs.add(slug);
+            }
+        }
+
+        public void markDegradedAny(String slug) {
+            this.policy = "DEGRADED_ANY";
+            if (slug != null && !this.reusedSlugs.contains(slug)) {
+                this.reusedSlugs.add(slug);
+            }
+        }
+
+        public boolean isDegraded() {
+            return !"STRICT".equals(this.policy);
+        }
+
+        public String getPolicy() {
+            return policy;
+        }
+
+        public List<String> getReusedSlugs() {
+            return Collections.unmodifiableList(reusedSlugs);
+        }
+
+        public void emitTelemetryLog(org.slf4j.Logger logger) {
+            if (isDegraded()) {
+                logger.warn("[ROTATION_DEGRADED] candidate={} track={} policy={} reused={}",
+                        candidateId, track, policy, reusedSlugs);
+            }
+        }
+    }
 
     private static final Map<DifficultyLevel, List<String>> DSA_MAP = Map.of(
             DifficultyLevel.JUNIOR, List.of("two-sum", "reverse-a-string", "valid-parentheses"),
@@ -94,44 +142,66 @@ public class SessionPlanService {
     }
 
     public SessionPlan buildPlan(InterviewTrack track, DifficultyLevel difficulty, long seed) {
-        return buildPlan(track, difficulty, seed, "SETUP_SELECTION");
+        return buildPlan(track, difficulty, seed, "SETUP_SELECTION", null, Map.of());
     }
 
     public SessionPlan buildPlan(InterviewTrack track, DifficultyLevel difficulty, long seed, String source) {
+        return buildPlan(track, difficulty, seed, source, null, Map.of());
+    }
+
+    public SessionPlan buildPlan(
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            long seed,
+            String source,
+            String candidateId,
+            Map<String, ExposureRecord> exposure
+    ) {
         if (track == null) track = InterviewTrack.ALGORITHMS_DATA_STRUCTURES;
         if (difficulty == null) difficulty = DifficultyLevel.MID;
         if (source == null || source.isBlank()) source = "SETUP_SELECTION";
+
+        RotationState rotationState = new RotationState(candidateId, track);
+        Set<String> excludedSlugs = exposure != null ? exposure.keySet() : Set.of();
+        Map<String, ExposureRecord> exposureMap = exposure != null ? exposure : Map.of();
 
         List<PlannedSection> sections;
         int plannedTotalMinutes;
 
         if (track == InterviewTrack.FULL_LOOP) {
-            sections = buildFullLoopSections(difficulty, seed);
+            sections = buildFullLoopSections(difficulty, seed, excludedSlugs, exposureMap, rotationState);
         } else if (track == InterviewTrack.CUSTOM) {
             List<com.interviewos.session.dto.CustomDomainConfig> defaultCustom = List.of(
                     new com.interviewos.session.dto.CustomDomainConfig(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, 30),
                     new com.interviewos.session.dto.CustomDomainConfig(InterviewTrack.SYSTEM_DESIGN, 30)
             );
-            return buildCustomPlan(difficulty, defaultCustom, seed, source);
+            return buildCustomPlan(difficulty, defaultCustom, seed, source, candidateId, exposureMap);
         } else if (track == InterviewTrack.DSA_LLD) {
-            sections = buildDsaLldSections(difficulty, seed);
+            sections = buildDsaLldSections(difficulty, seed, excludedSlugs, exposureMap, rotationState);
         } else if (track == InterviewTrack.LLD_HLD) {
-            sections = buildLldHldSections(difficulty, seed);
+            sections = buildLldHldSections(difficulty, seed, excludedSlugs, exposureMap, rotationState);
         } else if (track == InterviewTrack.DSA_LLD_HLD) {
-            sections = buildDsaLldHldSections(difficulty, seed);
+            sections = buildDsaLldHldSections(difficulty, seed, excludedSlugs, exposureMap, rotationState);
         } else {
-            sections = buildFocusedSections(track, difficulty, seed);
+            sections = buildFocusedSections(track, difficulty, seed, excludedSlugs, exposureMap, rotationState);
         }
         plannedTotalMinutes = sections.stream().mapToInt(PlannedSection::softTimeBudgetMinutes).sum();
 
-        return new SessionPlan(source, difficulty, sections, plannedTotalMinutes);
+        rotationState.emitTelemetryLog(log);
+
+        return new SessionPlan(source, difficulty, sections, plannedTotalMinutes, rotationState.getPolicy(), rotationState.getReusedSlugs());
     }
 
-    private List<PlannedSection> buildFullLoopSections(DifficultyLevel difficulty, long seed) {
+    private List<PlannedSection> buildFullLoopSections(
+            DifficultyLevel difficulty,
+            long seed,
+            Set<String> excludedSlugs,
+            Map<String, ExposureRecord> exposureMap,
+            RotationState rotationState
+    ) {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
 
-        // Every plan starts with INTRODUCTION (8 min, 1 item)
         sections.add(new PlannedSection(
                 SectionType.INTRODUCTION,
                 InterviewTrack.BEHAVIORAL_STAR,
@@ -143,8 +213,7 @@ public class SessionPlanService {
 
         switch (difficulty) {
             case JUNIOR -> {
-                // DSA x 2 (20 min total)
-                List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 2, seed, seenSlugs);
+                List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 2, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(dsaSlugs);
                 sections.add(new PlannedSection(
                         SectionType.DSA,
@@ -154,8 +223,8 @@ public class SessionPlanService {
                         "Core algorithms & data structures",
                         dsaSlugs
                 ));
-                // LLD x 1 (15)
-                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 1, seed + 1, seenSlugs);
+
+                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 1, seed + 1, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(lldSlugs);
                 sections.add(new PlannedSection(
                         SectionType.LLD,
@@ -167,8 +236,7 @@ public class SessionPlanService {
                 ));
             }
             case MID -> {
-                // DSA x 2 (20 min total)
-                List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 2, seed, seenSlugs);
+                List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 2, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(dsaSlugs);
                 sections.add(new PlannedSection(
                         SectionType.DSA,
@@ -178,8 +246,8 @@ public class SessionPlanService {
                         "Algorithmic problem solving & edge cases",
                         dsaSlugs
                 ));
-                // LLD x 2 (15 min total)
-                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 2, seed + 1, seenSlugs);
+
+                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 2, seed + 1, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(lldSlugs);
                 sections.add(new PlannedSection(
                         SectionType.LLD,
@@ -191,8 +259,7 @@ public class SessionPlanService {
                 ));
             }
             case SENIOR -> {
-                // DSA x 1 (20)
-                List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 1, seed, seenSlugs);
+                List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, 1, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(dsaSlugs);
                 sections.add(new PlannedSection(
                         SectionType.DSA,
@@ -202,8 +269,8 @@ public class SessionPlanService {
                         "Algorithmic problem solving",
                         dsaSlugs
                 ));
-                // LLD x 1 (15)
-                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 1, seed + 1, seenSlugs);
+
+                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 1, seed + 1, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(lldSlugs);
                 sections.add(new PlannedSection(
                         SectionType.LLD,
@@ -213,8 +280,8 @@ public class SessionPlanService {
                         "Modular component & low-level design",
                         lldSlugs
                 ));
-                // SD x 1 (18)
-                List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, 1, seed + 2, seenSlugs);
+
+                List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, 1, seed + 2, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(sdSlugs);
                 sections.add(new PlannedSection(
                         SectionType.SYSTEM_DESIGN,
@@ -226,8 +293,7 @@ public class SessionPlanService {
                 ));
             }
             case STAFF -> {
-                // LLD x 1 (15)
-                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 1, seed, seenSlugs);
+                List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, 1, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(lldSlugs);
                 sections.add(new PlannedSection(
                         SectionType.LLD,
@@ -237,8 +303,8 @@ public class SessionPlanService {
                         "Enterprise low-level architecture",
                         lldSlugs
                 ));
-                // SD x 1 (18)
-                List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, 1, seed + 1, seenSlugs);
+
+                List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, 1, seed + 1, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(sdSlugs);
                 sections.add(new PlannedSection(
                         SectionType.SYSTEM_DESIGN,
@@ -248,8 +314,8 @@ public class SessionPlanService {
                         "Large-scale system architecture & scalability",
                         sdSlugs
                 ));
-                // RESUME x 1 (12)
-                List<String> resumeSlugs = buildPlannedSlugsForTrack(InterviewTrack.RESUME_BASED, difficulty, 1, seed + 2, seenSlugs);
+
+                List<String> resumeSlugs = buildPlannedSlugsForTrack(InterviewTrack.RESUME_BASED, difficulty, 1, seed + 2, seenSlugs, excludedSlugs, exposureMap, rotationState);
                 seenSlugs.addAll(resumeSlugs);
                 sections.add(new PlannedSection(
                         SectionType.RESUME,
@@ -265,7 +331,13 @@ public class SessionPlanService {
         return sections;
     }
 
-    private List<PlannedSection> buildDsaLldSections(DifficultyLevel difficulty, long seed) {
+    private List<PlannedSection> buildDsaLldSections(
+            DifficultyLevel difficulty,
+            long seed,
+            Set<String> excludedSlugs,
+            Map<String, ExposureRecord> exposureMap,
+            RotationState rotationState
+    ) {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
         sections.add(new PlannedSection(
@@ -279,7 +351,7 @@ public class SessionPlanService {
 
         int dsaCount = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 2 : 1;
         int dsaMinutes = 20;
-        List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs);
+        List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
         seenSlugs.addAll(dsaSlugs);
         sections.add(new PlannedSection(
                 SectionType.DSA,
@@ -292,7 +364,7 @@ public class SessionPlanService {
 
         int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
         int lldMinutes = 15;
-        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs);
+        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs, excludedSlugs, exposureMap, rotationState);
         seenSlugs.addAll(lldSlugs);
         sections.add(new PlannedSection(
                 SectionType.LLD,
@@ -306,7 +378,13 @@ public class SessionPlanService {
         return sections;
     }
 
-    private List<PlannedSection> buildLldHldSections(DifficultyLevel difficulty, long seed) {
+    private List<PlannedSection> buildLldHldSections(
+            DifficultyLevel difficulty,
+            long seed,
+            Set<String> excludedSlugs,
+            Map<String, ExposureRecord> exposureMap,
+            RotationState rotationState
+    ) {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
         sections.add(new PlannedSection(
@@ -320,7 +398,7 @@ public class SessionPlanService {
 
         int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
         int lldMinutes = 15;
-        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed, seenSlugs);
+        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
         seenSlugs.addAll(lldSlugs);
         sections.add(new PlannedSection(
                 SectionType.LLD,
@@ -333,7 +411,7 @@ public class SessionPlanService {
 
         int hldCount = 1;
         int hldMinutes = 18;
-        List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, hldCount, seed + 1, seenSlugs);
+        List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, hldCount, seed + 1, seenSlugs, excludedSlugs, exposureMap, rotationState);
         seenSlugs.addAll(sdSlugs);
         sections.add(new PlannedSection(
                 SectionType.SYSTEM_DESIGN,
@@ -347,7 +425,13 @@ public class SessionPlanService {
         return sections;
     }
 
-    private List<PlannedSection> buildDsaLldHldSections(DifficultyLevel difficulty, long seed) {
+    private List<PlannedSection> buildDsaLldHldSections(
+            DifficultyLevel difficulty,
+            long seed,
+            Set<String> excludedSlugs,
+            Map<String, ExposureRecord> exposureMap,
+            RotationState rotationState
+    ) {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
         sections.add(new PlannedSection(
@@ -361,7 +445,7 @@ public class SessionPlanService {
 
         int dsaCount = (difficulty == DifficultyLevel.JUNIOR || difficulty == DifficultyLevel.MID) ? 2 : 1;
         int dsaMinutes = 20;
-        List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs);
+        List<String> dsaSlugs = buildPlannedSlugsForTrack(InterviewTrack.ALGORITHMS_DATA_STRUCTURES, difficulty, dsaCount, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
         seenSlugs.addAll(dsaSlugs);
         sections.add(new PlannedSection(
                 SectionType.DSA,
@@ -374,7 +458,7 @@ public class SessionPlanService {
 
         int lldCount = (difficulty == DifficultyLevel.MID) ? 2 : 1;
         int lldMinutes = 15;
-        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs);
+        List<String> lldSlugs = buildPlannedSlugsForTrack(InterviewTrack.SPRING_LLD, difficulty, lldCount, seed + 1, seenSlugs, excludedSlugs, exposureMap, rotationState);
         seenSlugs.addAll(lldSlugs);
         sections.add(new PlannedSection(
                 SectionType.LLD,
@@ -387,7 +471,7 @@ public class SessionPlanService {
 
         int hldCount = 1;
         int hldMinutes = 18;
-        List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, hldCount, seed + 2, seenSlugs);
+        List<String> sdSlugs = buildPlannedSlugsForTrack(InterviewTrack.SYSTEM_DESIGN, difficulty, hldCount, seed + 2, seenSlugs, excludedSlugs, exposureMap, rotationState);
         seenSlugs.addAll(sdSlugs);
         sections.add(new PlannedSection(
                 SectionType.SYSTEM_DESIGN,
@@ -401,11 +485,17 @@ public class SessionPlanService {
         return sections;
     }
 
-    private List<PlannedSection> buildFocusedSections(InterviewTrack track, DifficultyLevel difficulty, long seed) {
+    private List<PlannedSection> buildFocusedSections(
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            long seed,
+            Set<String> excludedSlugs,
+            Map<String, ExposureRecord> exposureMap,
+            RotationState rotationState
+    ) {
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
 
-        // Every plan starts with INTRODUCTION (8 min, 1 item)
         sections.add(new PlannedSection(
                 SectionType.INTRODUCTION,
                 track,
@@ -462,7 +552,7 @@ public class SessionPlanService {
             }
         }
 
-        List<String> slugs = buildPlannedSlugsForTrack(track, difficulty, itemCount, seed, seenSlugs);
+        List<String> slugs = buildPlannedSlugsForTrack(track, difficulty, itemCount, seed, seenSlugs, excludedSlugs, exposureMap, rotationState);
         sections.add(new PlannedSection(
                 domainSectionType,
                 track,
@@ -480,6 +570,17 @@ public class SessionPlanService {
             List<com.interviewos.session.dto.CustomDomainConfig> customDomains,
             long seed,
             String source
+    ) {
+        return buildCustomPlan(difficulty, customDomains, seed, source, null, Map.of());
+    }
+
+    public SessionPlan buildCustomPlan(
+            DifficultyLevel difficulty,
+            List<com.interviewos.session.dto.CustomDomainConfig> customDomains,
+            long seed,
+            String source,
+            String candidateId,
+            Map<String, ExposureRecord> exposure
     ) {
         if (difficulty == null) difficulty = DifficultyLevel.MID;
         if (source == null || source.isBlank()) source = "CUSTOM_BUILDER";
@@ -502,6 +603,10 @@ public class SessionPlanService {
             throw new IllegalArgumentException("Total custom interview duration cannot exceed 120 minutes (requested: " + totalMinutes + " minutes)");
         }
 
+        RotationState rotationState = new RotationState(candidateId, InterviewTrack.CUSTOM);
+        Set<String> excludedSlugs = exposure != null ? exposure.keySet() : Set.of();
+        Map<String, ExposureRecord> exposureMap = exposure != null ? exposure : Map.of();
+
         Set<String> seenSlugs = new HashSet<>();
         List<PlannedSection> sections = new ArrayList<>();
         long sectionSeed = seed;
@@ -510,7 +615,7 @@ public class SessionPlanService {
             InterviewTrack domainTrack = config.domain();
             SectionType sectionType = mapTrackToSectionType(domainTrack);
             int itemCount = config.durationMinutes() >= 30 ? 2 : 1;
-            List<String> slugs = buildPlannedSlugsForTrack(domainTrack, difficulty, itemCount, sectionSeed, seenSlugs);
+            List<String> slugs = buildPlannedSlugsForTrack(domainTrack, difficulty, itemCount, sectionSeed, seenSlugs, excludedSlugs, exposureMap, rotationState);
             seenSlugs.addAll(slugs);
             sections.add(new PlannedSection(
                     sectionType,
@@ -523,7 +628,9 @@ public class SessionPlanService {
             sectionSeed += 1;
         }
 
-        return new SessionPlan(source, difficulty, sections, totalMinutes);
+        rotationState.emitTelemetryLog(log);
+
+        return new SessionPlan(source, difficulty, sections, totalMinutes, rotationState.getPolicy(), rotationState.getReusedSlugs());
     }
 
     private SectionType mapTrackToSectionType(InterviewTrack track) {
@@ -549,6 +656,30 @@ public class SessionPlanService {
             int count,
             long seed,
             Set<String> alreadyChosenSlugs
+    ) {
+        return buildPlannedSlugsForTrack(track, difficulty, count, seed, alreadyChosenSlugs, Set.of(), Map.of(), null);
+    }
+
+    public List<String> buildPlannedSlugsForTrack(
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            int count,
+            long seed,
+            Set<String> alreadyChosenSlugs,
+            Set<String> excludedSlugs
+    ) {
+        return buildPlannedSlugsForTrack(track, difficulty, count, seed, alreadyChosenSlugs, excludedSlugs, Map.of(), null);
+    }
+
+    public List<String> buildPlannedSlugsForTrack(
+            InterviewTrack track,
+            DifficultyLevel difficulty,
+            int count,
+            long seed,
+            Set<String> alreadyChosenSlugs,
+            Set<String> excludedSlugs,
+            Map<String, ExposureRecord> exposureMap,
+            RotationState rotationState
     ) {
         if (track == null) track = InterviewTrack.ALGORITHMS_DATA_STRUCTURES;
         if (difficulty == null) difficulty = DifficultyLevel.MID;
@@ -583,6 +714,8 @@ public class SessionPlanService {
 
         List<String> planned = new ArrayList<>();
         Set<String> localSeen = new HashSet<>(alreadyChosenSlugs != null ? alreadyChosenSlugs : Set.of());
+        Set<String> excluded = excludedSlugs != null ? excludedSlugs : Set.of();
+        Map<String, ExposureRecord> exposure = exposureMap != null ? exposureMap : Map.of();
         Random random = new Random(seed);
 
         for (int i = 0; i < count; i++) {
@@ -615,23 +748,94 @@ public class SessionPlanService {
                 }
             }
 
+            // Eligible in current rung = candidates - localSeen - excludedSlugs
             List<String> eligible = candidates.stream()
-                    .filter(s -> !localSeen.contains(s))
+                    .filter(s -> !localSeen.contains(s) && !excluded.contains(s))
                     .toList();
 
             String chosen;
             if (!eligible.isEmpty()) {
+                // STRICT: Unexposed candidate in current rung
                 chosen = eligible.get(random.nextInt(eligible.size()));
-            } else if (!candidates.isEmpty()) {
-                chosen = candidates.get(random.nextInt(candidates.size()));
             } else {
-                List<String> fallbackPool = trackMap.getOrDefault(chosenDifficulty, List.of());
-                if (fallbackPool.isEmpty()) {
-                    fallbackPool = findAdjacentRungCandidates(trackMap, chosenDifficulty);
+                // D1: Adjacent-rung relaxation (look in adjacent rungs for unexposed questions)
+                List<String> adjacentCandidates = new ArrayList<>();
+                if (questionBankClient != null) {
+                    DifficultyLevel[] adjacentOrder = getAdjacentRungOrder(rung);
+                    for (DifficultyLevel adjDiff : adjacentOrder) {
+                        try {
+                            var remoteAdj = questionBankClient.listProblems(canonicalKey, adjDiff.name());
+                            if (remoteAdj != null && !remoteAdj.isEmpty()) {
+                                remoteAdj.forEach(p -> adjacentCandidates.add(p.getProblemSlug()));
+                            }
+                        } catch (Exception e) {
+                            log.debug("Notice on adjacent remote lookup: {}", e.getMessage());
+                        }
+                    }
                 }
-                chosen = !fallbackPool.isEmpty()
-                        ? fallbackPool.get(random.nextInt(fallbackPool.size()))
-                        : "question-" + canonicalKey.toLowerCase() + "-" + rung.name().toLowerCase();
+                if (adjacentCandidates.isEmpty()) {
+                    adjacentCandidates.addAll(findAdjacentRungCandidates(trackMap, rung));
+                }
+
+                List<String> adjacentEligible = adjacentCandidates.stream()
+                        .filter(s -> !localSeen.contains(s) && !excluded.contains(s))
+                        .toList();
+
+                if (!adjacentEligible.isEmpty()) {
+                    chosen = adjacentEligible.get(random.nextInt(adjacentEligible.size()));
+                } else {
+                    // D2: LRU reuse
+                    Set<String> allPool = new LinkedHashSet<>(candidates);
+                    allPool.addAll(adjacentCandidates);
+
+                    List<String> reusable = allPool.stream()
+                            .filter(s -> !localSeen.contains(s))
+                            .toList();
+
+                    if (!reusable.isEmpty()) {
+                        List<String> sortedByLru = new ArrayList<>(reusable);
+                        sortedByLru.sort((s1, s2) -> {
+                            ExposureRecord rec1 = exposure.get(s1);
+                            ExposureRecord rec2 = exposure.get(s2);
+                            long count1 = rec1 != null ? rec1.timesServed() : 1L;
+                            long count2 = rec2 != null ? rec2.timesServed() : 1L;
+                            int cmp = Long.compare(count1, count2);
+                            if (cmp != 0) return cmp;
+
+                            Instant t1 = rec1 != null ? rec1.lastServedAt() : null;
+                            Instant t2 = rec2 != null ? rec2.lastServedAt() : null;
+                            if (t1 == null && t2 == null) return 0;
+                            if (t1 == null) return -1;
+                            if (t2 == null) return 1;
+                            return t1.compareTo(t2);
+                        });
+
+                        long minCount = exposure.get(sortedByLru.get(0)) != null ? exposure.get(sortedByLru.get(0)).timesServed() : 1L;
+                        List<String> topTies = sortedByLru.stream()
+                                .filter(s -> {
+                                    long c = exposure.get(s) != null ? exposure.get(s).timesServed() : 1L;
+                                    return c == minCount;
+                                })
+                                .toList();
+
+                        chosen = topTies.get(random.nextInt(topTies.size()));
+                        if (rotationState != null) {
+                            rotationState.markDegradedLru(chosen);
+                        }
+                    } else {
+                        // D3: Any published fallback
+                        List<String> anyPool = !candidates.isEmpty() ? candidates : adjacentCandidates;
+                        if (anyPool.isEmpty()) {
+                            anyPool = trackMap.getOrDefault(chosenDifficulty, List.of());
+                        }
+                        chosen = !anyPool.isEmpty()
+                                ? anyPool.get(random.nextInt(anyPool.size()))
+                                : "question-" + canonicalKey.toLowerCase() + "-" + rung.name().toLowerCase();
+                        if (rotationState != null) {
+                            rotationState.markDegradedAny(chosen);
+                        }
+                    }
+                }
             }
 
             localSeen.add(chosen);
@@ -642,11 +846,9 @@ public class SessionPlanService {
         return planned;
     }
 
-    private List<String> findAdjacentRungCandidates(
-            Map<DifficultyLevel, List<String>> trackMap,
-            DifficultyLevel rung
-    ) {
-        DifficultyLevel[] order = switch (rung) {
+    public static DifficultyLevel[] getAdjacentRungOrder(DifficultyLevel rung) {
+        if (rung == null) return new DifficultyLevel[]{DifficultyLevel.MID, DifficultyLevel.SENIOR, DifficultyLevel.JUNIOR};
+        return switch (rung) {
             case STAFF -> new DifficultyLevel[]{
                     DifficultyLevel.SENIOR,
                     DifficultyLevel.MID,
@@ -668,7 +870,13 @@ public class SessionPlanService {
                     DifficultyLevel.STAFF
             };
         };
+    }
 
+    private List<String> findAdjacentRungCandidates(
+            Map<DifficultyLevel, List<String>> trackMap,
+            DifficultyLevel rung
+    ) {
+        DifficultyLevel[] order = getAdjacentRungOrder(rung);
         for (DifficultyLevel adj : order) {
             List<String> adjCandidates = trackMap.get(adj);
             if (adjCandidates != null && !adjCandidates.isEmpty()) {
