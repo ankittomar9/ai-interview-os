@@ -5,9 +5,14 @@ import com.interviewos.session.sandbox.document.ProblemDocument;
 import com.interviewos.session.sandbox.dto.ExecutionResultResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -111,5 +116,104 @@ class LldMavenRunnerTest {
         assertEquals(1, response.totalTests());
         assertEquals(0, response.passedTests());
         assertTrue(response.stderr().contains("Docker daemon unavailable"));
+        assertEquals(0, response.droppedWriteCount());
+    }
+
+    // ---------------------------------------------------------------------------------
+    // V8-01 (SPEC V-2.0.8): editablePaths whitelist policy + staging observability.
+    // ---------------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("V8-01: isEditablePath matches exact paths and non-empty /** directory prefixes, fail-closed")
+    void testIsEditablePathPolicy() {
+        Set<String> whitelist = Set.of(
+                "src/main/java/com/example/atm/service/AtmService.java",
+                "src/main/java/com/example/atm/service/impl/**"
+        );
+
+        assertTrue(LldMavenRunner.isEditablePath("src/main/java/com/example/atm/service/AtmService.java", whitelist));
+        assertTrue(LldMavenRunner.isEditablePath("src/main/java/com/example/atm/service/impl/AtmServiceImpl.java", whitelist));
+        assertTrue(LldMavenRunner.isEditablePath("src/main/java/com/example/atm/service/impl/deep/NewFile.java", whitelist));
+        assertTrue(LldMavenRunner.isEditablePath("\\src\\main\\java\\com\\example\\atm\\service\\AtmService.java", whitelist));
+
+        // Fail-closed cases
+        assertFalse(LldMavenRunner.isEditablePath("src/main/java/com/example/atm/Atm.java", whitelist));
+        assertFalse(LldMavenRunner.isEditablePath("src/main/java/com/example/atm/service/Other.java", whitelist));
+        assertFalse(LldMavenRunner.isEditablePath("pom.xml", whitelist));
+        assertFalse(LldMavenRunner.isEditablePath("src/main/java/com/example/atm/service/impl", whitelist));
+        assertFalse(LldMavenRunner.isEditablePath(null, whitelist));
+        assertFalse(LldMavenRunner.isEditablePath("src/main/java/com/example/atm/service/AtmService.java", Set.of()));
+        assertFalse(LldMavenRunner.isEditablePath("anything/Any.java", Set.of("/**")));
+    }
+
+    @Test
+    @DisplayName("V8-01: staging writes whitelisted candidate files and hidden tests, drops rogue writes, keeps skeleton intact")
+    void testStageWorkspaceFilesWritesWhitelistedAndHiddenAndDropsRogue(@TempDir Path workspace) throws IOException {
+        LldMavenRunner runner = new LldMavenRunner();
+
+        ProblemDocument problem = ProblemDocument.builder()
+                .problemSlug("lld-atm-system")
+                .buildProfile("maven-spring")
+                .starterFiles(Map.of(
+                        "pom.xml", "<project>skeleton</project>",
+                        "src/main/java/com/example/atm/Atm.java", "public class Atm {}",
+                        "src/main/java/com/example/atm/service/AtmService.java", "public interface AtmService {}"
+                ))
+                .editablePaths(List.of(
+                        "src/main/java/com/example/atm/service/AtmService.java",
+                        "src/main/java/com/example/atm/service/impl/**"
+                ))
+                .hiddenTestFiles(Map.of(
+                        "src/test/java/com/example/atm/AtmServiceTest.java", "class AtmServiceTest {}"
+                ))
+                .build();
+
+        Map<String, String> candidateFiles = Map.of(
+                "src/main/java/com/example/atm/service/AtmService.java", "candidate service implementation",
+                "src/main/java/com/example/atm/service/impl/AtmServiceImpl.java", "candidate impl",
+                "pom.xml", "<project>rogue-overwrite</project>",
+                "src/main/java/com/example/atm/Atm.java", "rogue skeleton overwrite"
+        );
+
+        List<String> dropped = runner.stageWorkspaceFiles(workspace, problem, candidateFiles, 42L);
+
+        assertEquals(2, dropped.size());
+        assertTrue(dropped.contains("pom.xml"));
+        assertTrue(dropped.contains("src/main/java/com/example/atm/Atm.java"));
+
+        assertEquals("candidate service implementation",
+                Files.readString(workspace.resolve("src/main/java/com/example/atm/service/AtmService.java")));
+        assertEquals("candidate impl",
+                Files.readString(workspace.resolve("src/main/java/com/example/atm/service/impl/AtmServiceImpl.java")));
+        assertEquals("class AtmServiceTest {}",
+                Files.readString(workspace.resolve("src/test/java/com/example/atm/AtmServiceTest.java")));
+
+        // Skeleton files must survive rogue overwrite attempts untouched
+        assertEquals("<project>skeleton</project>", Files.readString(workspace.resolve("pom.xml")));
+        assertEquals("public class Atm {}", Files.readString(workspace.resolve("src/main/java/com/example/atm/Atm.java")));
+    }
+
+    @Test
+    @DisplayName("V8-01: run() in fallback mode surfaces droppedWriteCount for whitelisted-only candidates")
+    void testRunFallbackSurfacesDroppedWriteCount() {
+        LldMavenRunner runner = new LldMavenRunner((DockerClient) null);
+
+        ProblemDocument problem = ProblemDocument.builder()
+                .problemSlug("lld-atm-system")
+                .buildProfile("maven-spring")
+                .starterFiles(Map.of("pom.xml", "<project/>"))
+                .editablePaths(List.of("src/main/java/com/example/atm/service/AtmService.java"))
+                .sampleTests(List.of(new ProblemDocument.TestCase("Sample 1", "", "")))
+                .build();
+
+        Map<String, String> candidateFiles = Map.of(
+                "src/main/java/com/example/atm/service/AtmService.java", "candidate impl",
+                "pom.xml", "rogue overwrite"
+        );
+
+        ExecutionResultResponse response = runner.run(7L, problem, candidateFiles, "java");
+
+        assertEquals("ENGINE_UNAVAILABLE", response.status());
+        assertEquals(1, response.droppedWriteCount());
     }
 }

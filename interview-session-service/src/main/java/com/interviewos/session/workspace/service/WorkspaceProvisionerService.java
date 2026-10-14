@@ -694,4 +694,16 @@ public class WorkspaceProvisionerService {
             log.debug("Docker container sweep notice: {}", e.getMessage());
         }
     }
+
+    /**
+     * Workspace-profile = the question is meant to boot the multi-file code-server workspace:
+     * SPRING_LLD track, or any question declaring a Maven workspace build profile
+     * ("maven-spring" today; "maven-workspace" per V8-05). Package-private for unit testing.
+     */
+    static boolean isWorkspaceProfileProblem(ProblemDocument problem) {
+        if (problem == null) return false;
+        String track = problem.getTrack() == null ? "" : problem.getTrack().trim().toUpperCase(java.util.Locale.ROOT);
+        String profile = problem.getBuildProfile() == null ? "" : problem.getBuildProfile().trim().toLowerCase(java.util.Locale.ROOT);
+        return "SPRING_LLD".equals(track) || profile.startsWith("maven");
+    }
 }
