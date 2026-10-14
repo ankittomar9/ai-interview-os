@@ -45,7 +45,7 @@ referenceSolutions:
     approachClass: PRIMARY
     kind: WRITEUP
     summary: "Drivers stream GPS pings over WebSockets into Redis Geospatial indexes partitioned by H3 hexagonal cells. Matching engines query nearby concentric rings, calculate estimated arrival times (ETAs), and dispatch offers sequentially."
-    keyIdea: "Index dynamic physical locations into discrete hexagonal spatial cells (Uber H3 or Geohash) to bound nearest-neighbor queries to local memory lookups."
+    keyIdea: "Index dynamic physical locations into discrete hexagonal spatial cells (H3-class hexagonal cells or Geohash) to bound nearest-neighbor queries to local memory lookups."
     tradeoffs:
       - "Updating driver location every 4 seconds balances GPS tracking precision against mobile battery and cellular bandwidth."
       - "Batching ride match candidates over 2-second windows maximizes global dispatch efficiency over greedy first-come matching."

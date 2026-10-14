@@ -204,7 +204,8 @@ Diff in `question-bank-service/src/test/java/com/interviewos/questionbank/ingest
 ---
 
 ## 6. Deviations
-**NONE** — Full compliance with all requirements, fence definitions, and testing gates of SPEC-016.
+- **`QuestionMarkdownParserTest.java` (Test Floor Evolution)**: While §5 fence explicitly named `DsaCatalogGuardTest`, `QuestionMarkdownParserTest.java` also held exact count pins (`assertEquals(27, hldResources.length)`, `assertEquals(19, lldResources.length)`, and `assertEquals(46, seenSlugs.size())`). Following the mandatory §3 P1 guard evolution mandate, these three assertions were updated to monotonic floors (`assertTrue(>= 27)`, `assertTrue(>= 19)`, and `assertTrue(>= 46)`), enabling the suite to validate the expanded 50 HLD and 40 LLD questions without breaking. Adjudicated as legitimate and compliant (QB-40 N-2).
+- **Eponym Nomenclature (N-1)**: Reworded "Twitter Snowflake" to "Snowflake-style Distributed ID Architecture" and "Uber H3" to "H3-class hexagonal cells or Geohash" in the respective HLD question bodies to adhere strictly to §4.4(3).
 
 ---
 

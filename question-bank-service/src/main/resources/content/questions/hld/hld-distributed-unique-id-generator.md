@@ -41,7 +41,7 @@ editorial: |
   - Automated health probes and fast failover ensure rapid recovery without data loss.
 referenceSolutions:
   - approachId: canonical-hld-distributed-unique-id-generator
-    label: "Primary — Twitter Snowflake Architecture (Timestamp + Worker ID + Sequence Counter)"
+    label: "Primary — Snowflake-style Distributed ID Architecture (Timestamp + Worker ID + Sequence Counter)"
     approachClass: PRIMARY
     kind: WRITEUP
     summary: "Each 64-bit ID comprises: 1 sign bit (unused), 41 bits timestamp in milliseconds (~69 years), 10 bits worker/datacenter ID (1,024 nodes), and 12 bits sequence number (4,096 IDs per millisecond per node)."
