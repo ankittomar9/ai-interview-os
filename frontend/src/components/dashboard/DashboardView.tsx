@@ -12,7 +12,8 @@ import {
   AlertTriangle,
   Zap,
   Code2,
-  Radio
+  Radio,
+  Calendar
 } from 'lucide-react';
 import { getDashboardStats } from '../../services/api';
 import {
@@ -22,17 +23,20 @@ import {
 } from '../../lib/dashboardAntiFreeze';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
+import { StreakStrip } from '../history/StreakStrip';
 
 interface DashboardViewProps {
   userId?: string;
   onBackToSetup: () => void;
   onNavigateToLearn?: () => void;
+  onNavigateToHistory?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   userId = 'local',
   onBackToSetup,
-  onNavigateToLearn
+  onNavigateToLearn,
+  onNavigateToHistory
 }) => {
   const [state, dispatch] = useReducer(dashboardPollReducer, createInitialDashboardState());
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -191,6 +195,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </Button>
             )}
 
+            {onNavigateToHistory && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onNavigateToHistory}
+                className="text-xs flex items-center gap-1.5"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>History</span>
+              </Button>
+            )}
+
             <ThemeToggle />
           </div>
         </div>
@@ -210,6 +226,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         )}
+
+        {/* P2 StreakStrip mount (SPEC-017) */}
+        <StreakStrip userId={userId} onNavigateToHistory={onNavigateToHistory} />
 
         {/* TOP 4 KEY AGGREGATE CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

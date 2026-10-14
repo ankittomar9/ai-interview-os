@@ -27,7 +27,8 @@ import {
   Upload,
   CheckCircle2,
   X,
-  BarChart3
+  BarChart3,
+  Calendar
 } from "lucide-react";
 import { FloatingAiOrb } from "./ai/FloatingAiOrb";
 import { AiAssistantPanel } from "./ai/AiAssistantPanel";
@@ -54,6 +55,7 @@ interface SetupScreenProps {
   onOpenCatalog?: () => void;
   onNavigateToLearn?: () => void;
   onNavigateToDashboard?: () => void;
+  onNavigateToHistory?: () => void;
 }
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({
@@ -61,7 +63,8 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   isLoading,
   onOpenCatalog,
   onNavigateToLearn,
-  onNavigateToDashboard
+  onNavigateToDashboard,
+  onNavigateToHistory
 }) => {
   const [candidateId, setCandidateId] = useState("candidate-01");
   const [candidateName, setCandidateName] = useState("Ankit Singh Tomar");
@@ -292,6 +295,18 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               >
                 <BarChart3 className="w-4 h-4 text-primary" />
                 <span className="hidden sm:inline">Dashboard</span>
+              </button>
+            )}
+
+            {onNavigateToHistory && (
+              <button
+                type="button"
+                onClick={onNavigateToHistory}
+                className="p-2 rounded-lg bg-surface border border-border text-text-3 hover:text-text hover:bg-elevated transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                title="Activity Calendar & Question History"
+              >
+                <Calendar className="w-4 h-4 text-primary" />
+                <span className="hidden sm:inline">History</span>
               </button>
             )}
 

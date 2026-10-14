@@ -4,6 +4,7 @@ import com.interviewos.session.entity.PracticeAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -14,4 +15,6 @@ public interface PracticeAttemptRepository extends JpaRepository<PracticeAttempt
     long countByUserIdAndQuestionId(String userId, String questionId);
     long countByUserId(String userId);
     long countByUserIdAndVerdict(String userId, String verdict);
+
+    List<PracticeAttempt> findByUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(String userId, Instant fromIncl, Instant toExcl);
 }

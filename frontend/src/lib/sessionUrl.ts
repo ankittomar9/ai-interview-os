@@ -9,7 +9,7 @@ export function buildRoomUrl(sessionId: number | string): string {
 export function resolvePopStateView(
   pathname: string,
   activeSessionId?: number | null
-): 'ROOM' | 'DASHBOARD' | 'LEARN' | 'SETUP' {
+): 'ROOM' | 'DASHBOARD' | 'LEARN' | 'HISTORY' | 'SETUP' {
   if (pathname.startsWith('/session/')) {
     return activeSessionId ? 'ROOM' : 'SETUP';
   }
@@ -18,6 +18,9 @@ export function resolvePopStateView(
   }
   if (pathname === '/learn' || pathname.startsWith('/learn')) {
     return 'LEARN';
+  }
+  if (pathname === '/history' || pathname.startsWith('/history')) {
+    return 'HISTORY';
   }
   return 'SETUP';
 }

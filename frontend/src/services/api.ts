@@ -1260,5 +1260,151 @@ export const postClientLogs = async (events: unknown[]): Promise<void> => {
     }
 };
 
+// --- History / Activity Calendar / Streak (SPEC-017) ---
+
+export interface HistoryStreakSummary {
+    currentStreak: number;
+    longestStreak: number;
+    activeToday: boolean;
+    lastSolvedDay: string | null;
+    totalDaysActive: number;
+    totalSolved: number;
+}
+
+export interface HistoryCalendarDay {
+    day: string;
+    solvedCount: number;
+    attemptCount: number;
+    practiceSolved: number;
+    interviewSolved: number;
+}
+
+export interface HistoryCalendarResponse {
+    userId: string;
+    tz: string;
+    fromDay: string;
+    toDay: string;
+    days: HistoryCalendarDay[];
+    streak: HistoryStreakSummary;
+    generatedAt: string;
+}
+
+export interface HistoryDayLink {
+    kind: 'PRACTICE' | 'REPORT';
+    slug?: string;
+    sessionId?: number;
+}
+
+export interface HistoryDayItem {
+    id: string;
+    source: 'PRACTICE' | 'INTERVIEW';
+    questionId: string;
+    title: string | null;
+    track: string;
+    verdict: string;
+    detail: string;
+    at: string;
+    link: HistoryDayLink;
+}
+
+export interface HistoryDayResponse {
+    userId: string;
+    tz: string;
+    day: string;
+    solvedCount: number;
+    attemptCount: number;
+    truncated: boolean;
+    items: HistoryDayItem[];
+    streak: HistoryStreakSummary;
+}
+
+export interface HistoryStreakResponse {
+    currentStreak: number;
+    longestStreak: number;
+    activeToday: boolean;
+    lastSolvedDay: string | null;
+    totalDaysActive: number;
+    totalSolved: number;
+    tz: string;
+    generatedAt: string;
+}
+
+export interface HistoryCalendarParams {
+    userId?: string;
+    tz?: string;
+    from?: string;
+    to?: string;
+}
+
+export interface HistoryDayParams {
+    userId?: string;
+    tz?: string;
+    day: string;
+}
+
+export interface HistoryStreakParams {
+    userId?: string;
+    tz?: string;
+}
+
+export const getHistoryCalendar = async (
+    params?: HistoryCalendarParams,
+    signal?: AbortSignal
+): Promise<HistoryCalendarResponse> => {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('userId', params.userId);
+    if (params?.tz) query.set('tz', params.tz);
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    return fetchJson<HistoryCalendarResponse>(
+        `${GATEWAY_BASE}/history/calendar${queryString}`,
+        {
+            method: 'GET',
+            timeoutMs: 10000,
+            signal
+        }
+    );
+};
+
+export const getHistoryDay = async (
+    params: HistoryDayParams,
+    signal?: AbortSignal
+): Promise<HistoryDayResponse> => {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('userId', params.userId);
+    if (params?.tz) query.set('tz', params.tz);
+    query.set('day', params.day);
+
+    return fetchJson<HistoryDayResponse>(
+        `${GATEWAY_BASE}/history/day?${query.toString()}`,
+        {
+            method: 'GET',
+            timeoutMs: 10000,
+            signal
+        }
+    );
+};
+
+export const getHistoryStreak = async (
+    params?: HistoryStreakParams,
+    signal?: AbortSignal
+): Promise<HistoryStreakResponse> => {
+    const query = new URLSearchParams();
+    if (params?.userId) query.set('userId', params.userId);
+    if (params?.tz) query.set('tz', params.tz);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    return fetchJson<HistoryStreakResponse>(
+        `${GATEWAY_BASE}/history/streak${queryString}`,
+        {
+            method: 'GET',
+            timeoutMs: 10000,
+            signal
+        }
+    );
+};
+
 
 

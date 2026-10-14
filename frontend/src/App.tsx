@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Loader2, Award } from 'lucide-react';
 import type { DiagnosticReportResponse, DifficultyLevel, GenerateQuestionResponse, InterviewTrack, ModelProvider, SessionPlan, PlannedSection } from './types';
-import { completeSession, createSession, generateDiagnosticReport, generateQuestion, getStoredApiKey, listQuestions, startSession, markSessionCompleted } from './services/api';
+import { completeSession, createSession, generateDiagnosticReport, generateQuestion, getQuestionBySlug, getStoredApiKey, listQuestions, startSession, markSessionCompleted } from './services/api';
 import { clearVerificationStreams } from './services/verificationStreams';
 import { SetupScreen } from './components/SetupScreen';
 import { PreInterviewChecklist } from './components/PreInterviewChecklist';
@@ -13,13 +13,15 @@ import { QuestionCatalog } from './components/QuestionCatalog';
 import { PracticeSummary } from './components/PracticeSummary';
 import { LearnView } from './components/learn/LearnView';
 import { DashboardView } from './components/dashboard/DashboardView';
+import { HistoryView } from './components/history/HistoryView';
+import { PracticeLauncherCard } from './components/history/PracticeLauncherCard';
 import { Toaster } from './components/ui/Toaster';
 import { ScreenErrorBoundary } from './components/arena/ScreenErrorBoundary';
 
 import { syntheticPlaygroundPlan } from './lib/playgroundPlan';
 import { buildRoomUrl, resolvePopStateView } from './lib/sessionUrl';
 
-type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN' | 'DASHBOARD';
+type ViewState = 'SETUP' | 'CHECKLIST' | 'ROOM' | 'REPORT' | 'PHONE_PROCTOR' | 'PRACTICE_SUMMARY' | 'LEARN' | 'DASHBOARD' | 'HISTORY';
 
 export function App() {
   const [sessionId, setSessionId] = useState<number | null>(() => {
@@ -45,11 +47,26 @@ export function App() {
     if (window.location.pathname === '/learn' || window.location.pathname.startsWith('/learn')) {
       return 'LEARN';
     }
+    if (window.location.pathname === '/history' || window.location.pathname.startsWith('/history')) {
+      return 'HISTORY';
+    }
     if (window.location.pathname.startsWith('/session/')) {
       return 'SETUP';
     }
     return 'SETUP';
   });
+
+  const [historyDay, setHistoryDay] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('day') || '';
+  });
+
+  const [practiceDeepSlug, setPracticeDeepSlug] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('q');
+  });
+  const [deepPracticeQuestion, setDeepPracticeQuestion] = useState<GenerateQuestionResponse | null>(null);
+  const [deepPracticeNotFound, setDeepPracticeNotFound] = useState(false);
 
   const sessionIdRef = useRef<number | null>(sessionId);
   useEffect(() => {
@@ -81,10 +98,31 @@ export function App() {
   useEffect(() => {
     const handlePopState = () => {
       const nextView = resolvePopStateView(window.location.pathname, sessionIdRef.current);
+      if (nextView === 'HISTORY') {
+        const params = new URLSearchParams(window.location.search);
+        setHistoryDay(params.get('day') || '');
+      }
       setView(nextView);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const qParam = params.get('q');
+    if (qParam) {
+      getQuestionBySlug(qParam)
+        .then((q) => {
+          setDeepPracticeQuestion(q);
+          setDeepPracticeNotFound(false);
+        })
+        .catch((err) => {
+          console.warn('[App] Could not load practice deep-link question:', err);
+          setDeepPracticeQuestion(null);
+          setDeepPracticeNotFound(true);
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -112,6 +150,53 @@ export function App() {
   const handleNavigateToLearn = () => {
     window.history.pushState({}, '', '/learn');
     setView('LEARN');
+  };
+
+  const handleNavigateToHistory = (day?: string) => {
+    const url = day ? `/history?day=${encodeURIComponent(day)}` : '/history';
+    window.history.pushState({}, '', url);
+    if (day) setHistoryDay(day);
+    setView('HISTORY');
+  };
+
+  const handleDismissDeepPractice = () => {
+    setPracticeDeepSlug(null);
+    setDeepPracticeQuestion(null);
+    setDeepPracticeNotFound(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('q');
+    window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+  };
+
+  const handleSelectPracticeFromHistory = (slug: string) => {
+    window.history.pushState({}, '', `/?q=${encodeURIComponent(slug)}`);
+    setPracticeDeepSlug(slug);
+    getQuestionBySlug(slug)
+      .then((q) => {
+        setDeepPracticeQuestion(q);
+        setDeepPracticeNotFound(false);
+        setView('SETUP');
+      })
+      .catch((err) => {
+        console.warn('[App] Could not load question for slug:', err);
+        setDeepPracticeQuestion(null);
+        setDeepPracticeNotFound(true);
+        setView('SETUP');
+      });
+  };
+
+  const handleNavigateToReportFromHistory = (sid: number) => {
+    window.history.pushState({}, '', `/?report=${sid}`);
+    setSessionId(sid);
+    generateDiagnosticReport(sid)
+      .then((rep) => {
+        setReport(rep);
+        setView('REPORT');
+      })
+      .catch((err) => {
+        console.warn('Could not load report:', err);
+        setView('REPORT');
+      });
   };
 
   const handleNavigateToLearnQuestion = (slug: string) => {
@@ -429,12 +514,39 @@ export function App() {
 
       {view === 'SETUP' && (
         <ScreenErrorBoundary>
+          {practiceDeepSlug && (
+            <div className="max-w-4xl mx-auto px-4 pt-4">
+              <PracticeLauncherCard
+                slug={practiceDeepSlug}
+                question={deepPracticeQuestion}
+                notFound={deepPracticeNotFound}
+                onLaunch={(q) => {
+                  handleDismissDeepPractice();
+                  handleLaunchPlaylist([q]);
+                }}
+                onDismiss={handleDismissDeepPractice}
+              />
+            </div>
+          )}
           <SetupScreen
             onStart={handleStartInterview}
             isLoading={isLoading}
             onOpenCatalog={() => setIsCatalogOpen(true)}
             onNavigateToLearn={handleNavigateToLearn}
             onNavigateToDashboard={handleNavigateToDashboard}
+            onNavigateToHistory={handleNavigateToHistory}
+          />
+        </ScreenErrorBoundary>
+      )}
+
+      {view === 'HISTORY' && (
+        <ScreenErrorBoundary>
+          <HistoryView
+            userId={candidateId || 'local'}
+            initialDay={historyDay}
+            onBackToSetup={handleBackToSetup}
+            onSelectPractice={handleSelectPracticeFromHistory}
+            onNavigateToReport={handleNavigateToReportFromHistory}
           />
         </ScreenErrorBoundary>
       )}
@@ -455,6 +567,7 @@ export function App() {
             userId={candidateId || 'local'}
             onBackToSetup={handleBackToSetup}
             onNavigateToLearn={handleNavigateToLearn}
+            onNavigateToHistory={handleNavigateToHistory}
           />
         </ScreenErrorBoundary>
       )}
