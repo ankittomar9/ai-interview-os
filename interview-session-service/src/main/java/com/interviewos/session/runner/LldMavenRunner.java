@@ -121,65 +121,22 @@ public class LldMavenRunner implements TrackRunner {
             // 1. Create temporary isolated workspace directory
             tempWorkspace = Files.createTempDirectory("lld-ws-" + sessionId + "-" + System.currentTimeMillis());
 
-            // 2. Populate skeleton starterFiles (pom.xml, models, interfaces, config)
-            if (problem.getStarterFiles() != null) {
-                for (Map.Entry<String, String> entry : problem.getStarterFiles().entrySet()) {
-                    writeFile(tempWorkspace, entry.getKey(), entry.getValue());
-                }
-            }
+            // 2. Stage skeleton + whitelisted candidate files + server-only hidden tests.
+            //    V8-01 (SPEC V-2.0.8): whitelist rejections are collected and reported, never silent.
+            List<String> droppedPaths = stageWorkspaceFiles(tempWorkspace, problem, candidateFiles, sessionId);
 
-            // 3. Overwrite with Candidate's files (STRICTLY constrained to editablePaths whitelist)
-            Set<String> allowedPaths = new HashSet<>(problem.getEditablePaths() != null ? problem.getEditablePaths() : List.of());
-            int droppedCount = 0;
-            List<String> droppedPaths = new ArrayList<>();
-            if (candidateFiles != null) {
-                for (Map.Entry<String, String> entry : candidateFiles.entrySet()) {
-                    String relativePath = entry.getKey().replace('\\', '/').trim();
-                    boolean isAllowed = allowedPaths.contains(relativePath);
-                    if (!isAllowed) {
-                        for (String allowed : allowedPaths) {
-                            if (allowed.endsWith("/**")) {
-                                String prefix = allowed.substring(0, allowed.length() - 3);
-                                if (relativePath.startsWith(prefix)) {
-                                    isAllowed = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (isAllowed) {
-                        writeFile(tempWorkspace, relativePath, entry.getValue());
-                    } else {
-                        droppedCount++;
-                        droppedPaths.add(relativePath);
-                        log.warn("🔒 Candidate attempted to overwrite non-editable file: '{}'. Ignored.", relativePath);
-                    }
-                }
-            }
-            if (droppedCount > 0) {
-                log.warn("[LLD_RUNNER_DROPPED_PATHS] Session {} problem '{}': dropped {} candidate file(s) outside editablePaths whitelist: {}",
-                        sessionId, problem.getProblemSlug(), droppedCount, droppedPaths);
-            }
-
-            // 4. Inject Server-Only Hidden JUnit Test Files (under src/test/java/)
-            if (problem.getHiddenTestFiles() != null) {
-                for (Map.Entry<String, String> entry : problem.getHiddenTestFiles().entrySet()) {
-                    writeFile(tempWorkspace, entry.getKey(), entry.getValue());
-                }
-            }
-
-            // 5. Ensure lazy Docker client is initialized
+            // 3. Ensure lazy Docker client is initialized
             ensureDockerInitialized();
 
-            // 6. Execute via Docker container
+            // 4. Execute via Docker container
             ExecutionResultResponse resp;
             if (isDockerAvailable && dockerClient != null) {
                 resp = executeInDocker(tempWorkspace.toFile());
             } else {
                 resp = executeFallbackSimulation(problem, candidateFiles);
             }
-            if (droppedCount > 0 && resp != null) {
-                resp = resp.toBuilder().droppedFilesCount(droppedCount).build();
+            if (resp != null) {
+                resp = resp.toBuilder().droppedFilesCount(droppedPaths.size()).build();
             }
             return resp;
 
@@ -241,8 +198,8 @@ public class LldMavenRunner implements TrackRunner {
             Set<String> editablePaths = new HashSet<>(problem.getEditablePaths() != null ? problem.getEditablePaths() : List.of());
             if (problem.getStarterFiles() != null) {
                 for (Map.Entry<String, String> entry : problem.getStarterFiles().entrySet()) {
-                    String relativePath = entry.getKey().replace('\\', '/').trim();
-                    if (!editablePaths.contains(relativePath)) {
+                    String relativePath = normalizeRelativePath(entry.getKey());
+                    if (!isEditablePath(relativePath, editablePaths)) {
                         writeFile(tempHiddenTestsDir, relativePath, entry.getValue());
                     }
                 }
@@ -540,6 +497,92 @@ public class LldMavenRunner implements TrackRunner {
         }
         Files.createDirectories(target.getParent());
         Files.writeString(target, content != null ? content : "", StandardCharsets.UTF_8);
+    }
+
+    /**
+     * V8-01 (SPEC V-2.0.8): assembles the ephemeral run workspace (starter skeleton, whitelisted
+     * candidate writes, server-only hidden JUnit tests) and returns every candidate path rejected
+     * by the editablePaths whitelist so the caller can surface the count in the run result.
+     */
+    List<String> stageWorkspaceFiles(Path tempWorkspace, ProblemDocument problem, Map<String, String> candidateFiles, Long sessionId) throws IOException {
+        List<String> droppedPaths = new ArrayList<>();
+
+        // 1. Starter skeleton (pom.xml, domain skeletons, configs)
+        if (problem.getStarterFiles() != null) {
+            for (Map.Entry<String, String> entry : problem.getStarterFiles().entrySet()) {
+                writeFile(tempWorkspace, entry.getKey(), entry.getValue());
+            }
+        }
+
+        // 2. Candidate writes, STRICTLY constrained to the editablePaths whitelist
+        Set<String> allowedPaths = new HashSet<>(problem.getEditablePaths() != null ? problem.getEditablePaths() : List.of());
+        if (candidateFiles != null) {
+            for (Map.Entry<String, String> entry : candidateFiles.entrySet()) {
+                String relativePath = normalizeRelativePath(entry.getKey());
+                if (isEditablePath(relativePath, allowedPaths)) {
+                    writeFile(tempWorkspace, relativePath, entry.getValue());
+                } else {
+                    droppedPaths.add(relativePath);
+                }
+            }
+        }
+
+        if (!droppedPaths.isEmpty()) {
+            log.warn("🔒 Dropped {} candidate write(s) outside the editablePaths whitelist for session {} [problem: {}]: {}",
+                    droppedPaths.size(), sessionId, problem.getProblemSlug(), summarizePaths(droppedPaths));
+        }
+
+        // 3. Server-only hidden JUnit test files (never present in the editor volume)
+        if (problem.getHiddenTestFiles() != null) {
+            for (Map.Entry<String, String> entry : problem.getHiddenTestFiles().entrySet()) {
+                writeFile(tempWorkspace, entry.getKey(), entry.getValue());
+            }
+        }
+
+        return droppedPaths;
+    }
+
+    static String normalizeRelativePath(String rawPath) {
+        if (rawPath == null) return "";
+        String normalized = rawPath.replace('\\', '/').trim();
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        return normalized;
+    }
+
+    /**
+     * editablePaths syntax (SPEC V-2.0.8 V8-02): an entry is either an explicit file path
+     * (overwrite of an existing starter file) or a non-empty directory prefix ending in '/**'
+     * (create-new candidate files under that directory tree). Matching is fail-closed.
+     */
+    static boolean isEditablePath(String relativePath, Set<String> editablePaths) {
+        if (relativePath == null || relativePath.isBlank() || editablePaths == null || editablePaths.isEmpty()) {
+            return false;
+        }
+        String candidate = normalizeRelativePath(relativePath);
+        if (editablePaths.contains(candidate)) {
+            return true;
+        }
+        for (String allowed : editablePaths) {
+            if (allowed == null) {
+                continue;
+            }
+            String prefix = normalizeRelativePath(allowed);
+            if (prefix.endsWith("/**")) {
+                String dir = prefix.substring(0, prefix.length() - 3);
+                if (!dir.isEmpty() && candidate.startsWith(dir) && candidate.length() > dir.length() && candidate.charAt(dir.length()) == '/') {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String summarizePaths(List<String> paths) {
+        int shown = Math.min(paths.size(), 10);
+        String joined = String.join(", ", paths.subList(0, shown));
+        return paths.size() > shown ? joined + ", ...(" + (paths.size() - shown) + " more)" : joined;
     }
 
     private void cleanupDirectory(Path dir) {

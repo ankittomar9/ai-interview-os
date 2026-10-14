@@ -17,6 +17,14 @@ public record ExecutionResultResponse(
         List<TestCaseResult> testResults,
         Integer droppedFilesCount
 ) {
+    /**
+     * V8-01 (SPEC V-2.0.8): number of candidate file writes rejected by the editablePaths
+     * whitelist during the LLD run. Surfaced so silent whitelist drops are observable.
+     */
+    public int droppedWriteCount() {
+        return droppedFilesCount != null ? droppedFilesCount : 0;
+    }
+
     @Builder
     public record TestCaseResult(
             String name,
