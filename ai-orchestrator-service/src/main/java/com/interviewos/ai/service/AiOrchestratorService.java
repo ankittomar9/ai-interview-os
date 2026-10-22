@@ -1,5 +1,6 @@
 package com.interviewos.ai.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewos.ai.client.AiClient;
@@ -145,7 +146,6 @@ public class AiOrchestratorService {
         ModelProvider effectiveProvider = resolveEffectiveProvider(request.modelProvider(), request.apiKey());
         String effectiveApiKey = request.apiKey();
 
-        AiClient client = clientFactory.getClient(effectiveProvider);
 
         // 1. Fetch lightweight session transcript for memory (graceful fallback to empty list)
         List<TranscriptTurnDto> transcript = List.of();
@@ -256,7 +256,7 @@ public class AiOrchestratorService {
                     4. If they submit correct code: congratulate them and suggest further performance, memory, or idiomatic optimizations.
                     5. Never formally evaluate, pass/fail, or score. Never say "that's incorrect, moving on."
                     6. Use guided Socratic questioning: e.g. "What happens when the input array is empty or has duplicates?"
-                    7. If they ask for the solution directly: reveal the approach cleanly and explain key lines.
+                    7. If the candidate explicitly asks for the code or the solution ("provide the code", "give me the solution", "show me the implementation"): provide the full working solution code with clear line-by-line commentary, then suggest one extension exercise. In Playground this is permitted and expected; do not stall with repeated Socratic deflection after an explicit request.
 
                     PRACTICE CONVERSATION MEMORY:
                     - Running summary: %s
@@ -277,6 +277,7 @@ public class AiOrchestratorService {
                       "recommendedAction": "OFFER_HINT | PROBE_DEEPER | ANSWER_CLARIFICATION | ADVANCE_STAGE",
                       "usedFollowUpSeedIds": []
                     }
+                    When revealing a requested solution, set "detectedIntent": "CLARIFYING" and "recommendedAction": "ANSWER_CLARIFICATION".
 
                     FOLLOW-UP RELEVANCE RULE: "followUpQuestion" must probe the current problem's algorithm,
                     correctness, complexity, or realistic boundary cases (empty input, duplicates, extremes,
@@ -564,17 +565,39 @@ public class AiOrchestratorService {
             );
         }
 
-        try {
-            String rawResponse = executeWithProviderFailover(
-                    effectiveProvider,
-                    systemInstruction,
-                    userPrompt,
-                    effectiveApiKey,
-                    request.modelName() != null ? request.modelName() : "dialogue"
-            );
+        List<ModelProvider> providerChain = buildConfiguredProviderChain(effectiveProvider, effectiveApiKey);
+        DialogueAttemptResult winningAttempt = null;
+        Throwable lastProviderError = null;
+        Integer lastHttpStatus = null;
 
-            String cleanJson = JsonCleaner.extractPureJson(rawResponse);
-            JsonNode root = objectMapper.readTree(cleanJson);
+        for (ModelProvider provider : providerChain) {
+            try {
+                AiClient providerClient = clientFactory.getClient(provider);
+                String attemptApiKey = (provider == effectiveProvider) ? effectiveApiKey : null;
+                String modelName = request.modelName() != null ? request.modelName() : "dialogue";
+                String rawResponse = providerClient.generateCompletion(provider, systemInstruction, userPrompt, attemptApiKey, modelName);
+                JsonNode root = parseAndValidateDialogueJson(rawResponse, provider);
+                if (providerStatusService != null) {
+                    providerStatusService.recordOutcome(provider, "OK", 200);
+                }
+                winningAttempt = new DialogueAttemptResult(root, provider, rawResponse);
+                break;
+            } catch (Exception attemptErr) {
+                lastProviderError = attemptErr;
+                Integer status = (attemptErr instanceof org.springframework.web.client.RestClientResponseException rce)
+                        ? rce.getStatusCode().value()
+                        : ((attemptErr instanceof IllegalArgumentException || attemptErr instanceof com.fasterxml.jackson.core.JsonProcessingException) ? 422 : 503);
+                lastHttpStatus = status;
+                if (providerStatusService != null) {
+                    providerStatusService.recordOutcome(provider, "ERROR", status);
+                }
+                log.warn("Attempt failure for provider {} ({}: {}). Advancing to next provider.",
+                        provider, attemptErr.getClass().getSimpleName(), attemptErr.getMessage());
+            }
+        }
+
+        if (winningAttempt != null) {
+            JsonNode root = winningAttempt.root();
 
             String reply = root.hasNonNull("interviewerReply") ? root.get("interviewerReply").asText() : "I see your technical direction.";
             String followUp = root.hasNonNull("followUpQuestion") ? root.get("followUpQuestion").asText() : "How would you handle boundary conditions and scale?";
@@ -724,14 +747,12 @@ public class AiOrchestratorService {
                     null,
                     gateUnlockSource
             );
-        } catch (Exception e) {
-            Integer status = (e instanceof org.springframework.web.client.RestClientResponseException rce)
-                    ? rce.getStatusCode().value() : null;
-            if (providerStatusService != null) {
-                providerStatusService.recordOutcome(effectiveProvider, "ERROR", status);
-            }
-            String generatorReason = effectiveProvider.name() + "_" + (status != null ? status : "OUTAGE");
-            log.warn("⚠️ LLM dialogue extraction notice ({}): {}. Using completion-aware structured fallback dialogue.", generatorReason, e.getMessage());
+        }
+
+        // --- All Providers Failed: Deterministic Fallback ---
+        String generatorReason = effectiveProvider.name() + "_" + (lastHttpStatus != null ? lastHttpStatus : "OUTAGE");
+        log.warn("⚠️ All dialogue providers failed ({}): {}. Using completion-aware structured fallback dialogue.",
+                generatorReason, lastProviderError != null ? lastProviderError.getMessage() : "All attempts failed");
 
             boolean hasQualifyingTurn = hasQualifyingCandidateExplanation(currentSectionTurns)
                     || (request.candidateExplanation() != null && request.candidateExplanation().trim().length() >= 60);
@@ -818,9 +839,18 @@ public class AiOrchestratorService {
                 );
             }
 
-            String fallbackReply = "AGREE".equals(defaultApproach)
-                    ? "Your proposed approach and data structure plan are clear — I have unlocked the code editor so you can proceed with implementation."
-                    : "Thank you for sharing your thoughts. Let's refine the step-by-step details before coding.";
+            String fallbackReply;
+            if (isPlayground) {
+                String candidateText = request.candidateExplanation() != null ? request.candidateExplanation().toLowerCase() : "";
+                boolean mentionsCode = candidateText.contains("code") || candidateText.contains("solution") || candidateText.contains("implement");
+                fallbackReply = mentionsCode
+                        ? "The editor is open — sketch your solution and run it; I'll review your implementation and we'll refine from there."
+                        : "Thank you for sharing your thoughts. Let's refine the step-by-step details before coding.";
+            } else {
+                fallbackReply = "AGREE".equals(defaultApproach)
+                        ? "Your proposed approach and data structure plan are clear — I have unlocked the code editor so you can proceed with implementation."
+                        : "Thank you for sharing your thoughts. Let's refine the step-by-step details before coding.";
+            }
             String fallbackFollowUp = buildRotatingFallbackFollowUp(request, candidateTurnCount, "AGREE".equals(defaultApproach));
 
             return new AiDialogueResponse(
@@ -839,7 +869,87 @@ public class AiOrchestratorService {
                     generatorReason,
                     gateUnlockSource
             );
+    }
+
+    public record DialogueAttemptResult(
+            JsonNode root,
+            ModelProvider winningProvider,
+            String rawResponse
+    ) {}
+
+    public List<ModelProvider> buildConfiguredProviderChain(ModelProvider primary, String apiKey) {
+        List<ModelProvider> chain = new ArrayList<>();
+        if (primary != null) {
+            chain.add(primary);
         }
+
+        List<ModelProvider> preferenceOrder;
+        if (primary == ModelProvider.GEMINI) {
+            preferenceOrder = List.of(ModelProvider.GROQ, ModelProvider.OLLAMA, ModelProvider.OPENAI);
+        } else if (primary == ModelProvider.GROQ) {
+            preferenceOrder = List.of(ModelProvider.GEMINI, ModelProvider.OLLAMA, ModelProvider.OPENAI);
+        } else if (primary == ModelProvider.OLLAMA) {
+            preferenceOrder = List.of(ModelProvider.GROQ, ModelProvider.GEMINI, ModelProvider.OPENAI);
+        } else {
+            preferenceOrder = List.of(ModelProvider.GROQ, ModelProvider.GEMINI, ModelProvider.OLLAMA, ModelProvider.OPENAI);
+        }
+
+        for (ModelProvider p : preferenceOrder) {
+            if (p != primary && isProviderConfigured(p) && !chain.contains(p)) {
+                chain.add(p);
+                if (chain.size() >= 3) break;
+            }
+        }
+        return chain;
+    }
+
+    public boolean isProviderConfigured(ModelProvider provider) {
+        if (provider == null) return false;
+        boolean hasClient = false;
+        try {
+            hasClient = (clientFactory != null && clientFactory.getClient(provider) != null);
+        } catch (Exception ignored) {}
+
+        switch (provider) {
+            case GEMINI:
+                return isGeminiConfigured() || hasClient;
+            case GROQ:
+                return isGroqConfigured() || hasClient;
+            case OLLAMA:
+                return isOllamaRunning() || hasClient;
+            case OPENAI:
+                return isOpenAiConfigured() || hasClient;
+            default:
+                return hasClient;
+        }
+    }
+
+    private boolean isOpenAiConfigured() {
+        try {
+            var cfg = providerProperties.getConfigFor(ModelProvider.OPENAI);
+            if (cfg != null && cfg.apiKey() != null && !cfg.apiKey().isBlank()) return true;
+        } catch (Exception ignored) {}
+        String envKey = System.getenv("OPENAI_API_KEY");
+        return envKey != null && !envKey.isBlank();
+    }
+
+    public JsonNode parseAndValidateDialogueJson(String rawResponse, ModelProvider provider) throws JsonProcessingException {
+        if (rawResponse == null || rawResponse.isBlank()) {
+            throw new IllegalArgumentException("Provider " + provider + " returned blank response");
+        }
+        String cleanJson = JsonCleaner.extractPureJson(rawResponse);
+        JsonNode root;
+        try {
+            root = objectMapper.readTree(cleanJson);
+        } catch (JsonProcessingException e) {
+            String unescaped = JsonCleaner.unescapeDoubleEncoded(cleanJson);
+            root = objectMapper.readTree(unescaped);
+        }
+
+        if (root == null || !root.isObject() || !root.hasNonNull("interviewerReply") || root.get("interviewerReply").asText().isBlank()) {
+            throw new IllegalArgumentException("Provider " + provider + " returned JSON missing required 'interviewerReply' field");
+        }
+        return root;
     }
 
     String executeWithProviderFailover(
@@ -849,46 +959,31 @@ public class AiOrchestratorService {
             String apiKey,
             String modelName
     ) {
-        AiClient primaryClient = clientFactory.getClient(primaryProvider);
-        try {
-            String res = primaryClient.generateCompletion(primaryProvider, systemInstruction, userPrompt, apiKey, modelName);
-            if (providerStatusService != null) {
-                providerStatusService.recordOutcome(primaryProvider, "OK", 200);
-            }
-            return res;
-        } catch (Exception primaryErr) {
-            Integer status = (primaryErr instanceof org.springframework.web.client.RestClientResponseException rce)
-                    ? rce.getStatusCode().value() : 503;
-            if (providerStatusService != null) {
-                providerStatusService.recordOutcome(primaryProvider, "ERROR", status);
-            }
-            ModelProvider fallbackProvider = null;
-            if (primaryProvider == ModelProvider.GEMINI && (isGroqConfigured() || clientFactory.getClient(ModelProvider.GROQ) != null)) {
-                fallbackProvider = ModelProvider.GROQ;
-            } else if (primaryProvider == ModelProvider.GROQ && (isGeminiConfigured() || clientFactory.getClient(ModelProvider.GEMINI) != null)) {
-                fallbackProvider = ModelProvider.GEMINI;
-            } else if (primaryProvider != ModelProvider.OLLAMA && isOllamaRunning()) {
-                fallbackProvider = ModelProvider.OLLAMA;
-            }
-            if (fallbackProvider != null && fallbackProvider != primaryProvider) {
-                try {
-                    AiClient fallbackClient = clientFactory.getClient(fallbackProvider);
-                    if (fallbackClient != null) {
-                        log.warn("DIALOGUE_FAILOVER from={} to={} status={}", primaryProvider, fallbackProvider, status);
-                        String fallbackRes = fallbackClient.generateCompletion(fallbackProvider, systemInstruction, userPrompt, null, modelName);
-                        if (fallbackRes != null && !fallbackRes.isBlank()) {
-                            if (providerStatusService != null) {
-                                providerStatusService.recordOutcome(fallbackProvider, "OK", 200);
-                            }
-                            return fallbackRes;
-                        }
+        List<ModelProvider> chain = buildConfiguredProviderChain(primaryProvider, apiKey);
+        Throwable lastErr = null;
+        for (ModelProvider provider : chain) {
+            try {
+                AiClient providerClient = clientFactory.getClient(provider);
+                String effectiveKey = (provider == primaryProvider) ? apiKey : null;
+                String res = providerClient.generateCompletion(provider, systemInstruction, userPrompt, effectiveKey, modelName);
+                if (res != null && !res.isBlank()) {
+                    if (providerStatusService != null) {
+                        providerStatusService.recordOutcome(provider, "OK", 200);
                     }
-                } catch (Exception fallbackErr) {
-                    log.warn("Failover provider {} also failed: {}", fallbackProvider, fallbackErr.getMessage());
+                    return res;
                 }
+            } catch (Exception e) {
+                lastErr = e;
+                Integer status = (e instanceof org.springframework.web.client.RestClientResponseException rce)
+                        ? rce.getStatusCode().value() : 503;
+                if (providerStatusService != null) {
+                    providerStatusService.recordOutcome(provider, "ERROR", status);
+                }
+                log.warn("Failover provider {} attempt failed: {}", provider, e.getMessage());
             }
-            throw primaryErr;
         }
+        if (lastErr instanceof RuntimeException re) throw re;
+        throw new RuntimeException("All providers in failover chain failed", lastErr);
     }
 
     private String buildRotatingFallbackFollowUp(AiDialogueRequest request, int candidateTurnCount, boolean gateUnlocked) {
@@ -902,6 +997,26 @@ public class AiOrchestratorService {
             }
         }
         boolean isPlayground = "PLAYGROUND".equalsIgnoreCase(request.getEffectiveMode());
+        if (isPlayground) {
+            String candidateText = request.candidateExplanation() != null ? request.candidateExplanation().toLowerCase() : "";
+            boolean mentionsCode = candidateText.contains("code") || candidateText.contains("solution") || candidateText.contains("implement");
+            if (mentionsCode) {
+                String[] playgroundCodePool = new String[]{
+                        "The editor is open — sketch your solution and run it; I'll review your implementation and we'll refine from there.",
+                        "Feel free to write out your approach directly in the editor and click Run Tests — I'll inspect any test results or edge cases with you.",
+                        "You have full access to the editor — start by writing the core logic or helper function, run the test cases, and we'll debug together."
+                };
+                return playgroundCodePool[Math.abs(candidateTurnCount) % playgroundCodePool.length];
+            } else {
+                String[] playgroundGeneralPool = new String[]{
+                        "Building on " + topicSnippet + ", what data structure or algorithm are you considering, and how would it handle edge cases?",
+                        "How will your approach handle boundary inputs (such as empty or extreme values), and what is its expected time complexity?",
+                        "What is the core intuition or invariant behind your idea, and how will you translate it into code in the editor?"
+                };
+                return playgroundGeneralPool[Math.abs(candidateTurnCount) % playgroundGeneralPool.length];
+            }
+        }
+
         if (!isPlayground && ("INTRODUCTION".equalsIgnoreCase(request.currentStage()) || "INTRODUCTION".equalsIgnoreCase(request.sectionType()))) {
             String[] introPool = new String[]{
                     "Which recent backend or distributed system project are you most proud of, and what was your specific role?",
@@ -1199,17 +1314,47 @@ public class AiOrchestratorService {
                 ? request.modelName()
                 : "dialogue";
 
-        String rawResponse;
-        try {
-            rawResponse = executeWithProviderFailover(
-                    provider,
-                    systemPrompt,
-                    "Please deliver the transition narration now.",
-                    request.apiKey(),
-                    modelName
-            );
-        } catch (Exception handoffErr) {
-            log.warn("Notice: handoff provider failed ({}), using deterministic neutral handoff transition.", handoffErr.getMessage());
+        List<ModelProvider> chain = buildConfiguredProviderChain(provider, request.apiKey());
+        JsonNode root = null;
+        for (ModelProvider p : chain) {
+            try {
+                AiClient client = clientFactory.getClient(p);
+                String effectiveKey = (p == provider) ? request.apiKey() : null;
+                String rawHandoff = client.generateCompletion(p, systemPrompt, "Please deliver the transition narration now.", effectiveKey, modelName);
+                if (rawHandoff == null || rawHandoff.isBlank()) {
+                    throw new IllegalArgumentException("Provider " + p + " returned blank handoff response");
+                }
+                String cleanJson = JsonCleaner.extractPureJson(rawHandoff);
+                try {
+                    root = objectMapper.readTree(cleanJson);
+                } catch (JsonProcessingException e) {
+                    String unescaped = JsonCleaner.unescapeDoubleEncoded(cleanJson);
+                    root = objectMapper.readTree(unescaped);
+                }
+                if (root != null && root.hasNonNull("interviewerReply") && !root.get("interviewerReply").asText().isBlank()) {
+                    if (providerStatusService != null) {
+                        providerStatusService.recordOutcome(p, "OK", 200);
+                    }
+                    break;
+                }
+                throw new IllegalArgumentException("Handoff JSON missing required 'interviewerReply'");
+            } catch (Exception handoffErr) {
+                Integer status = (handoffErr instanceof org.springframework.web.client.RestClientResponseException rce)
+                        ? rce.getStatusCode().value() : 503;
+                if (providerStatusService != null) {
+                    providerStatusService.recordOutcome(p, "ERROR", status);
+                }
+                log.warn("Handoff attempt failure for provider {} ({}: {}). Advancing to next provider.",
+                        p, handoffErr.getClass().getSimpleName(), handoffErr.getMessage());
+                root = null;
+            }
+        }
+
+        String reply;
+        if (root != null && root.hasNonNull("interviewerReply")) {
+            reply = root.get("interviewerReply").asText().trim();
+        } else {
+            log.warn("Notice: all handoff providers failed, using deterministic neutral handoff transition.");
             String toTitle = (request.toSectionTitle() != null && !request.toSectionTitle().isBlank())
                     ? request.toSectionTitle().trim()
                     : (request.toSectionType() != null ? request.toSectionType() : "the next section");
@@ -1217,22 +1362,10 @@ public class AiOrchestratorService {
             String gateText = isGated
                     ? " Open the problem and read it fully. Before you write any code, explain to me in the chat how you plan to solve it — the editor unlocks once we agree on the approach."
                     : "";
-            rawResponse = (candidateTurnsInFromSection == 0
+            reply = (candidateTurnsInFromSection == 0
                     ? "Introduction skipped — transitioning directly to " + toTitle + "."
                     : "Thank you for the introduction — transitioning now to " + toTitle + ".") + gateText;
         }
-
-        JsonNode root = null;
-        try {
-            String cleanJson = JsonCleaner.extractPureJson(rawResponse);
-            root = objectMapper.readTree(cleanJson);
-        } catch (Exception e) {
-            log.warn("Notice on parsing handoff JSON response: {}", e.getMessage());
-        }
-
-        String reply = (root != null && root.hasNonNull("interviewerReply"))
-                ? root.get("interviewerReply").asText().trim()
-                : (rawResponse != null ? rawResponse.trim() : "Moving to the next section.");
 
         if (candidateTurnsInFromSection == 0 && reply.matches("(?is).*\\b(successfully completed|completed our (initial )?introduction|completed the previous)\\b.*")) {
             String toTitle = (request.toSectionTitle() != null && !request.toSectionTitle().isBlank())

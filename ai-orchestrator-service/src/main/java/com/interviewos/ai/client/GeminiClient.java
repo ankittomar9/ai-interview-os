@@ -108,7 +108,8 @@ public class GeminiClient implements AiClient {
                         Map.of("parts", parts)
                 ),
                 "generationConfig", Map.of(
-                        "temperature", 0.3
+                        "temperature", 0.3,
+                        "response_mime_type", "application/json"
                 )
         );
 
