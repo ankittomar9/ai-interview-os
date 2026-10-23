@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX, X, Sparkles, MessageSquare, ShieldCheck, Maximize2, Minimize2 } from "lucide-react";
+import { Volume2, VolumeX, X, Sparkles, MessageSquare, ShieldCheck, Maximize2, Minimize2, Copy, Check } from "lucide-react";
 import { AiOrbAvatar, WaveformBars } from "./AiOrbAvatar";
 import { Chip } from "../ui/Chip";
 import { AutoGrowingChatInput } from "../ui/AutoGrowingChatInput";
@@ -44,12 +44,12 @@ export const CandidateMessageContent: React.FC<{ content: string }> = ({ content
   const { isCollapsible, preview, hiddenCount } = getCandidateMessageLines(content);
 
   if (!isCollapsible) {
-    return <div className="whitespace-pre-wrap">{content}</div>;
+    return <div className="whitespace-pre-wrap select-text">{content}</div>;
   }
 
   return (
-    <div>
-      <div className={`whitespace-pre-wrap ${!expanded ? 'relative' : ''}`}>
+    <div className="select-text">
+      <div className={`whitespace-pre-wrap select-text ${!expanded ? 'relative' : ''}`}>
         {expanded ? content : preview}
         {!expanded && (
           <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-primary/10 to-transparent pointer-events-none" />
@@ -58,7 +58,7 @@ export const CandidateMessageContent: React.FC<{ content: string }> = ({ content
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="mt-1 text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+        className="mt-1 text-[10px] text-primary hover:underline font-semibold flex items-center gap-0.5 cursor-pointer select-none"
       >
         {expanded ? 'Show less' : `Show more (${hiddenCount} lines)`}
       </button>
@@ -66,26 +66,89 @@ export const CandidateMessageContent: React.FC<{ content: string }> = ({ content
   );
 };
 
+export const CodeBlock: React.FC<{ code: string; language?: string }> = ({ code, language }) => {
+  const [copied, setCopied] = useState(false);
+
+  const fallbackCopy = (text: string) => {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore error
+    }
+  };
+
+  const handleCopy = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(code).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        fallbackCopy(code);
+      });
+    } else {
+      fallbackCopy(code);
+    }
+  };
+
+  return (
+    <div className="relative group my-2 rounded border border-border bg-surface overflow-hidden">
+      <div className="flex items-center justify-between px-2.5 py-1 bg-elevated/70 border-b border-border text-[10px] text-text-3 font-mono select-none">
+        <span className="uppercase tracking-wider">{language || "code"}</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label={copied ? "Copied" : "Copy code"}
+          className="flex items-center gap-1 text-[10px] text-text-3 hover:text-text px-1.5 py-0.5 rounded hover:bg-surface transition-colors cursor-pointer"
+          title="Copy code to clipboard"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3 h-3 text-emerald-400" />
+              <span className="text-emerald-400 font-semibold">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3 h-3" />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="p-2.5 font-mono text-[11px] overflow-x-auto text-primary-2 whitespace-pre select-text">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
+
 export const AssistantMessageContent: React.FC<{ content: string }> = ({ content }) => {
   const segments = parseInlineFormat(content);
   return (
-    <div className="leading-relaxed">
+    <div className="leading-relaxed select-text">
       {segments.map((segment, idx) => {
         if (segment.type === "fence") {
           return (
-            <pre
+            <CodeBlock
               key={idx}
-              className="p-2 my-1.5 bg-surface rounded border border-border font-mono text-[11px] overflow-x-auto text-primary-2 whitespace-pre"
-            >
-              <code>{segment.value}</code>
-            </pre>
+              code={segment.value}
+              language={segment.language}
+            />
           );
         }
         if (segment.type === "math") {
           return (
             <code
               key={idx}
-              className="font-mono text-[11px] px-1 py-0.5 rounded bg-surface border border-border text-primary font-semibold"
+              className="font-mono text-[11px] px-1 py-0.5 rounded bg-surface border border-border text-primary font-semibold select-text"
             >
               {segment.value}
             </code>
@@ -95,14 +158,14 @@ export const AssistantMessageContent: React.FC<{ content: string }> = ({ content
           return (
             <code
               key={idx}
-              className="font-mono text-[11px] px-1 py-0.5 rounded bg-surface border border-border text-text font-semibold"
+              className="font-mono text-[11px] px-1 py-0.5 rounded bg-surface border border-border text-text font-semibold select-text"
             >
               {segment.value}
             </code>
           );
         }
         return (
-          <span key={idx} className="whitespace-pre-wrap">
+          <span key={idx} className="whitespace-pre-wrap select-text">
             {segment.value}
           </span>
         );
@@ -278,15 +341,15 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
         </div>
       )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 text-xs">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 text-xs select-text">
         {mode === "intro" && (
-          <div className="space-y-3">
-            <div className="p-3 rounded-lg bg-elevated border border-border space-y-2">
+          <div className="space-y-3 select-text">
+            <div className="p-3 rounded-lg bg-elevated border border-border space-y-2 select-text">
               <div className="flex items-center gap-2 text-primary font-bold text-xs">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Autonomous AI Technical Evaluator</span>
               </div>
-              <p className="text-text-2 text-[11px] leading-relaxed">
+              <p className="text-text-2 text-[11px] leading-relaxed select-text">
                 Welcome to AI Interview OS. I am {personaName}, your {personaTitle}. Configure your target track, difficulty level, and optional resume grounding to begin.
               </p>
             </div>
@@ -318,7 +381,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
               return (
               <div
                 key={idx}
-                className={"p-2.5 rounded-lg border text-xs leading-relaxed " + (m.role === "candidate" ? "bg-primary/10 border-primary/40 text-text" : "bg-elevated border-border text-text")}
+                className={"p-2.5 rounded-lg border text-xs leading-relaxed select-text " + (m.role === "candidate" ? "bg-primary/10 border-primary/40 text-text" : "bg-elevated border-border text-text")}
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -409,7 +472,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
               return (
               <div
                 key={idx}
-                className={"p-2.5 rounded-lg border text-xs leading-relaxed " + (turn.senderRole === "CANDIDATE" ? "bg-primary/10 border-primary/40" : "bg-elevated border-border")}
+                className={"p-2.5 rounded-lg border text-xs leading-relaxed select-text " + (turn.senderRole === "CANDIDATE" ? "bg-primary/10 border-primary/40" : "bg-elevated border-border")}
               >
                 <div className="text-[10px] font-bold text-primary-2 mb-1 flex justify-between items-center">
                   <span>{turn.senderRole === "CANDIDATE" ? "Candidate" : isFallbackTurn ? "Automated Fallback — not the interviewer" : personaName}</span>
@@ -423,7 +486,7 @@ export const AiAssistantPanel: React.FC<AiAssistantPanelProps> = ({
                   <AssistantMessageContent content={turn.content} />
                 )}
                 {turn.codeSnippet && turn.codeSnippet.trim() && (
-                  <pre className="mt-1.5 p-1.5 bg-bg rounded border border-border font-mono text-[10px] overflow-x-auto text-primary-2">
+                  <pre className="mt-1.5 p-1.5 bg-bg rounded border border-border font-mono text-[10px] overflow-x-auto text-primary-2 select-text">
                     {turn.codeSnippet}
                   </pre>
                 )}
