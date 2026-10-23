@@ -21,21 +21,27 @@ public final class JsonCleaner {
 
         String candidate = rawOutput.trim();
 
-        // 1. Try markdown code block extraction
-        Matcher matcher = JSON_BLOCK_PATTERN.matcher(candidate);
-        if (matcher.find()) {
-            String extracted = matcher.group(1).trim();
-            int firstBrace = extracted.indexOf('{');
-            int lastBrace = extracted.lastIndexOf('}');
-            if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
-                candidate = extracted.substring(firstBrace, lastBrace + 1).trim();
-            } else {
-                candidate = extracted;
+        int firstBrace = candidate.indexOf('{');
+        int firstFence = candidate.indexOf("```");
+
+        // 1. Try markdown code block extraction ONLY if the fence starts BEFORE the first JSON brace
+        // (meaning the code block wraps the JSON, not an inner code block inside a JSON string value)
+        if (firstFence != -1 && (firstBrace == -1 || firstFence < firstBrace)) {
+            Matcher matcher = JSON_BLOCK_PATTERN.matcher(candidate);
+            if (matcher.find()) {
+                String extracted = matcher.group(1).trim();
+                int fb = extracted.indexOf('{');
+                int lb = extracted.lastIndexOf('}');
+                if (fb != -1 && lb != -1 && lb > fb) {
+                    candidate = extracted.substring(fb, lb + 1).trim();
+                } else {
+                    candidate = extracted;
+                }
             }
         }
 
         // 2. Ensure outermost JSON curly braces { ... } are extracted if present
-        int firstBrace = candidate.indexOf('{');
+        firstBrace = candidate.indexOf('{');
         int lastBrace = candidate.lastIndexOf('}');
         if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
             candidate = candidate.substring(firstBrace, lastBrace + 1).trim();
@@ -88,7 +94,8 @@ public final class JsonCleaner {
         if (s == null) return false;
         return s.startsWith("{\\\"")
                 || s.startsWith("\"{\\\"")
-                || s.contains("\":\"")
+                || s.contains("\\\":\\\"")
+                || s.contains("\\\": \"")
                 || s.matches("(?s).*\\{\\s*\\\\\".*");
     }
 }
