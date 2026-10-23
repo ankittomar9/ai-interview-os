@@ -69,4 +69,39 @@ class JsonCleanerTest {
         JsonNode node = objectMapper.readTree(unescaped);
         assertEquals("wrapped", node.get("interviewerReply").asText());
     }
+
+    @Test
+    @DisplayName("GA1-f: JSON with embedded markdown code block in interviewerReply is preserved intact")
+    void testJsonWithEmbeddedMarkdownCodeBlockInField() throws Exception {
+        String input = """
+                {
+                  "interviewerReply": "Here is the code:\\n```java\\npublic class Solution {\\n    public boolean isPrime(int n) {\\n        return true;\\n    }\\n}\\n```",
+                  "followUpQuestion": "What is the time complexity?"
+                }
+                """;
+        String cleaned = JsonCleaner.extractPureJson(input);
+        JsonNode node = objectMapper.readTree(cleaned);
+        assertTrue(node.get("interviewerReply").asText().contains("public class Solution"));
+        assertTrue(node.get("interviewerReply").asText().contains("```java"));
+        assertEquals("What is the time complexity?", node.get("followUpQuestion").asText());
+    }
+
+    @Test
+    @DisplayName("GA1-g: Conversational prefix before markdown-fenced JSON extracts fenced JSON correctly")
+    void testConversationalPrefixBeforeMarkdownFencedJson() throws Exception {
+        String input = """
+                Sure! Here is the JSON response:
+                ```json
+                {
+                  "interviewerReply": "Hello from model",
+                  "followUpQuestion": "Next step?"
+                }
+                ```
+                Hope this helps!
+                """;
+        String cleaned = JsonCleaner.extractPureJson(input);
+        JsonNode node = objectMapper.readTree(cleaned);
+        assertEquals("Hello from model", node.get("interviewerReply").asText());
+        assertEquals("Next step?", node.get("followUpQuestion").asText());
+    }
 }
