@@ -27,8 +27,10 @@ export function resolveSectionType({
     case 'SPRING_LLD':
     case 'JAVA_SPRING_BOOT':
     case 'LLD_HLD':
+    case 'AGENTIC_ENGINEERING':
       return 'LLD';
     case 'SYSTEM_DESIGN':
+    case 'SYSTEM_TROUBLESHOOTING':
       return 'SYSTEM_DESIGN';
     case 'BEHAVIORAL_STAR':
       return 'BEHAVIORAL';

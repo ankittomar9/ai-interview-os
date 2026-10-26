@@ -9,8 +9,8 @@ import com.interviewos.ai.dto.DesignEvaluationRequest;
 import com.interviewos.ai.dto.DesignEvaluationResponse;
 import com.interviewos.ai.model.ModelProvider;
 import com.interviewos.ai.util.JsonCleaner;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -19,18 +19,35 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DesignEvaluationService {
 
     private final AiClientFactory clientFactory;
     private final SessionAttachmentClient attachmentClient;
     private final ObjectMapper objectMapper;
+    private final ArchitectureTopologyExtractor topologyExtractor;
 
     @Value("${rubric.provider:ollama}")
     private String configuredProvider;
 
     @Value("${rubric.api-key:${RUBRIC_API_KEY:}}")
     private String configuredApiKey;
+
+    @Autowired
+    public DesignEvaluationService(AiClientFactory clientFactory,
+                                   SessionAttachmentClient attachmentClient,
+                                   ObjectMapper objectMapper,
+                                   ArchitectureTopologyExtractor topologyExtractor) {
+        this.clientFactory = clientFactory;
+        this.attachmentClient = attachmentClient;
+        this.objectMapper = objectMapper;
+        this.topologyExtractor = topologyExtractor != null ? topologyExtractor : new ArchitectureTopologyExtractor(objectMapper);
+    }
+
+    public DesignEvaluationService(AiClientFactory clientFactory,
+                                   SessionAttachmentClient attachmentClient,
+                                   ObjectMapper objectMapper) {
+        this(clientFactory, attachmentClient, objectMapper, new ArchitectureTopologyExtractor(objectMapper));
+    }
 
     public DesignEvaluationResponse evaluateDesign(DesignEvaluationRequest request) {
         log.info("Starting System Design Architecture evaluation for sessionId: {}", request.sessionId());
@@ -70,6 +87,8 @@ public class DesignEvaluationService {
         String readWriteRatio = request.requirements() != null && request.requirements().readWriteRatio() != null
                 ? request.requirements().readWriteRatio() : "10:1 Read/Write";
 
+        ArchitectureTopologyExtractor.ArchitectureTopology topology = topologyExtractor.extractTopology(canvasJson);
+
         String systemInstruction = """
                 You are a Principal Staff Architect and Bar Raiser conducting a rigorous System Design Evaluation.
                 You are evaluating a candidate's high-level architecture diagram and capacity estimates.
@@ -82,7 +101,8 @@ public class DesignEvaluationService {
                 5. Capacity Math Alignment: Does the architecture scale comfortably to the specified requirements?
 
                 CRITICAL INSTRUCTION:
-                Reference the ACTUAL component and node names from the candidate's diagram in your feedback bullets.
+                1. Reference the ACTUAL component and node names from the candidate's diagram in your feedback bullets.
+                2. Probe deeply on failure modes identified in the active challenge playbooks (Cache Stampedes, Queue Backpressure, DB Replication Lag).
 
                 Return ONLY a valid JSON object matching this schema:
                 {
@@ -103,8 +123,12 @@ public class DesignEvaluationService {
         userPromptBuilder.append("- Read / Write Ratio: ").append(readWriteRatio).append("\n\n");
 
         if (canvasJson != null && !canvasJson.isBlank()) {
-            userPromptBuilder.append("Candidate Architecture Graph (JSON Snapshot):\n");
-            userPromptBuilder.append(canvasJson).append("\n\n");
+            userPromptBuilder.append("Candidate Architecture Graph (Structured Semantic Topology):\n");
+            userPromptBuilder.append(topology.formattedTopology()).append("\n");
+            if (!topology.activePlaybooks().isEmpty()) {
+                userPromptBuilder.append(topology.promptAugmentation()).append("\n");
+            }
+            userPromptBuilder.append("Raw Graph Snapshot:\n").append(canvasJson).append("\n\n");
         } else {
             userPromptBuilder.append("Architecture components submitted visually in the diagram canvas.\n\n");
         }
@@ -167,7 +191,7 @@ public class DesignEvaluationService {
                     evidence,
                     true,
                     hasVisionSupport ? "VISION" : "TEXT"
-            );
+                );
 
         } catch (Exception e) {
             log.error("⚠️ Error generating system design evaluation for session {}: {}. Returning fallback.", request.sessionId(), e.getMessage(), e);

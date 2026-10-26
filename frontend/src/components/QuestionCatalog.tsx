@@ -8,6 +8,8 @@ import {
   Eye,
   HelpCircle,
   Sparkles,
+  Bot,
+  Wrench,
   ArrowRight,
   Layers,
   Code2,
@@ -30,7 +32,9 @@ const TRACK_ICONS: Record<string, React.ReactNode> = {
   SPRING_LLD: <Code2 className="w-4 h-4" />,
   SYSTEM_DESIGN: <Layers className="w-4 h-4" />,
   BEHAVIORAL_STAR: <Users2 className="w-4 h-4" />,
-  RESUME_BASED: <Sparkles className="w-4 h-4" />
+  RESUME_BASED: <Sparkles className="w-4 h-4" />,
+  AGENTIC_ENGINEERING: <Bot className="w-4 h-4 text-teal-500" />,
+  SYSTEM_TROUBLESHOOTING: <Wrench className="w-4 h-4 text-orange-500" />
 };
 
 export const QuestionCatalog: React.FC<Props> = ({ onSelectQuestions, onClose }) => {
@@ -166,6 +170,8 @@ export const QuestionCatalog: React.FC<Props> = ({ onSelectQuestions, onClose })
               <option value="SPRING_LLD">Spring Boot LLD</option>
               <option value="SYSTEM_DESIGN">High-Level System Design</option>
               <option value="BEHAVIORAL_STAR">Behavioral & Leadership</option>
+              <option value="AGENTIC_ENGINEERING">Agentic & AI-Native (MCP)</option>
+              <option value="SYSTEM_TROUBLESHOOTING">System Troubleshooting</option>
             </select>
 
             <select

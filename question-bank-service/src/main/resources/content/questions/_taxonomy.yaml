@@ -80,3 +80,18 @@ topics:
   - id: behavioral
     name: Behavioral
     track: BEHAVIORAL_STAR
+  - id: agentic-engineering
+    name: Agentic & AI-Native Engineering
+    track: AGENTIC_ENGINEERING
+  - id: mcp-servers
+    name: Model Context Protocol (MCP)
+    track: AGENTIC_ENGINEERING
+  - id: agent-debugging
+    name: Agent & Tool Debugging
+    track: AGENTIC_ENGINEERING
+  - id: incident-response
+    name: Incident & Production Troubleshooting
+    track: SYSTEM_TROUBLESHOOTING
+  - id: performance-tuning
+    name: Performance & Bottleneck Analysis
+    track: SYSTEM_TROUBLESHOOTING
