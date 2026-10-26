@@ -8,6 +8,8 @@ import {
   Code2,
   Users2,
   Sparkles,
+  Bot,
+  Wrench,
   Lock,
   CheckCircle2,
   CircleDot,
@@ -80,6 +82,20 @@ const TRACKS: TrackItem[] = [
     shortLabel: 'Resume-Based',
     description: 'Deep dive into projects and architectural decisions',
     icon: <Sparkles className="w-4 h-4 text-rose-500" />
+  },
+  {
+    key: 'AGENTIC_ENGINEERING',
+    label: 'Agentic & AI-Native Engineering (MCP)',
+    shortLabel: 'Agentic Eng',
+    description: 'Model Context Protocol, Tool Handlers, Sub-Agents & Guardrails',
+    icon: <Bot className="w-4 h-4 text-teal-500" />
+  },
+  {
+    key: 'SYSTEM_TROUBLESHOOTING',
+    label: 'Incident & System Troubleshooting',
+    shortLabel: 'Troubleshooting',
+    description: 'Post-mortems, Connection Starvation, Stampedes & Deadlocks',
+    icon: <Wrench className="w-4 h-4 text-orange-500" />
   }
 ];
 

@@ -148,7 +148,7 @@ export const ArenaRoom: React.FC<ArenaRoomProps> = ({
   useEffect(() => {
     if (activeQuestion.track === 'SQL') {
       setLanguage('sql');
-    } else if (activeQuestion.track === 'SPRING_LLD' || activeQuestion.track === 'ALGORITHMS_DATA_STRUCTURES') {
+    } else if (activeQuestion.track === 'SPRING_LLD' || activeQuestion.track === 'ALGORITHMS_DATA_STRUCTURES' || activeQuestion.track === 'AGENTIC_ENGINEERING' || activeQuestion.track === 'SYSTEM_TROUBLESHOOTING') {
       setLanguage((prev) => prev === 'sql' ? 'java' : prev);
     }
   }, [activeQuestion.track, activeQuestion.slug]);

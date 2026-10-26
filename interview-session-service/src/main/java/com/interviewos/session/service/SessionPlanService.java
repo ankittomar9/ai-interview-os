@@ -108,6 +108,20 @@ public class SessionPlanService {
             DifficultyLevel.STAFF, List.of("resume-system-architecture", "resume-past-impact", "resume-scale-challenge")
     );
 
+    private static final Map<DifficultyLevel, List<String>> AGENTIC_MAP = Map.of(
+            DifficultyLevel.JUNIOR, List.of("agentic-mcp-order-service"),
+            DifficultyLevel.MID, List.of("agentic-mcp-order-service", "agentic-debug-hallucinating-agent"),
+            DifficultyLevel.SENIOR, List.of("agentic-debug-hallucinating-agent", "agentic-design-subagent-guardrails"),
+            DifficultyLevel.STAFF, List.of("agentic-design-subagent-guardrails", "agentic-debug-hallucinating-agent")
+    );
+
+    private static final Map<DifficultyLevel, List<String>> INCIDENT_MAP = Map.of(
+            DifficultyLevel.JUNIOR, List.of("incident-db-connection-pool-exhaustion"),
+            DifficultyLevel.MID, List.of("incident-db-connection-pool-exhaustion", "incident-cache-stampede-thundering-herd"),
+            DifficultyLevel.SENIOR, List.of("incident-cache-stampede-thundering-herd", "incident-deadlock-distributed-locks"),
+            DifficultyLevel.STAFF, List.of("incident-deadlock-distributed-locks", "incident-cache-stampede-thundering-herd")
+    );
+
     private static final Map<String, Map<DifficultyLevel, List<String>>> FALLBACK_CATALOG = Map.ofEntries(
             Map.entry("ALGORITHMS_DATA_STRUCTURES", DSA_MAP),
             Map.entry("SQL", SQL_MAP),
@@ -120,7 +134,9 @@ public class SessionPlanService {
             Map.entry("BEHAVIORAL_STAR", BEHAVIORAL_MAP),
             Map.entry("BEHAVIORAL", BEHAVIORAL_MAP),
             Map.entry("RESUME_BASED", RESUME_MAP),
-            Map.entry("AI-from-resume", RESUME_MAP)
+            Map.entry("AI-from-resume", RESUME_MAP),
+            Map.entry("AGENTIC_ENGINEERING", AGENTIC_MAP),
+            Map.entry("SYSTEM_TROUBLESHOOTING", INCIDENT_MAP)
     );
 
     @Autowired
@@ -138,6 +154,8 @@ public class SessionPlanService {
             case RESUME_BASED -> "AI-from-resume";
             case ALGORITHMS_DATA_STRUCTURES, DSA_LLD, DSA_LLD_HLD -> "ALGORITHMS_DATA_STRUCTURES";
             case FULL_LOOP, CUSTOM -> "FULL_LOOP";
+            case AGENTIC_ENGINEERING -> "AGENTIC_ENGINEERING";
+            case SYSTEM_TROUBLESHOOTING -> "SYSTEM_TROUBLESHOOTING";
         };
     }
 
@@ -642,7 +660,8 @@ public class SessionPlanService {
             case SYSTEM_DESIGN -> SectionType.SYSTEM_DESIGN;
             case BEHAVIORAL_STAR -> SectionType.BEHAVIORAL;
             case RESUME_BASED -> SectionType.RESUME;
-            case FULL_LOOP, CUSTOM -> SectionType.CORE_TECH;
+            case FULL_LOOP, CUSTOM, AGENTIC_ENGINEERING -> SectionType.CORE_TECH;
+            case SYSTEM_TROUBLESHOOTING -> SectionType.SYSTEM_DESIGN;
         };
     }
 

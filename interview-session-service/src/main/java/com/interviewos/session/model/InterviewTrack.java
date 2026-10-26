@@ -12,5 +12,7 @@ public enum InterviewTrack {
     DSA_LLD,
     DSA_LLD_HLD,
     LLD_HLD,
-    CUSTOM
+    CUSTOM,
+    AGENTIC_ENGINEERING,
+    SYSTEM_TROUBLESHOOTING
 }

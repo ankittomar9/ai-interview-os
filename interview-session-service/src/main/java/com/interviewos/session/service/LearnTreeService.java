@@ -454,6 +454,8 @@ public class LearnTreeService {
         if ("SPRING_LLD".equalsIgnoreCase(track)) return "lld";
         if ("SQL".equalsIgnoreCase(track)) return "sql";
         if ("BEHAVIORAL_STAR".equalsIgnoreCase(track)) return "behavioral";
+        if ("AGENTIC_ENGINEERING".equalsIgnoreCase(track)) return "agentic-engineering";
+        if ("SYSTEM_TROUBLESHOOTING".equalsIgnoreCase(track)) return "incident-response";
         return "arrays";
     }
 
@@ -462,6 +464,8 @@ public class LearnTreeService {
         if ("lld".equals(topic)) return "SPRING_LLD";
         if ("sql".equals(topic)) return "SQL";
         if ("behavioral".equals(topic)) return "BEHAVIORAL_STAR";
+        if ("agentic-engineering".equals(topic) || "mcp-servers".equals(topic) || "agent-debugging".equals(topic)) return "AGENTIC_ENGINEERING";
+        if ("incident-response".equals(topic) || "performance-tuning".equals(topic)) return "SYSTEM_TROUBLESHOOTING";
         return "ALGORITHMS_DATA_STRUCTURES";
     }
 
