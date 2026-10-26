@@ -12,7 +12,7 @@ const LIFECYCLE_STAGES = [
 
 export const SetupHeroSidebar: React.FC = () => {
   return (
-    <div className="lg:col-span-4 bg-sidebar-bg border-b lg:border-b-0 lg:border-r border-sidebar-accent p-6 sm:p-8 flex flex-col space-y-6 select-none">
+    <div className="lg:col-span-4 bg-sidebar-bg border-b lg:border-b-0 lg:border-r border-sidebar-accent p-6 sm:p-8 flex flex-col space-y-6 select-none h-full overflow-y-auto">
       <div className="space-y-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2.5">

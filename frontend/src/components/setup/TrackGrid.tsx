@@ -1,5 +1,5 @@
 import React from 'react';
-import { Binary, Database, Code2, Layers, Users2, CheckCircle2, Sparkles } from 'lucide-react';
+import { Binary, Database, Code2, Layers, Users2, CheckCircle2, Sparkles, Bot, AlertTriangle } from 'lucide-react';
 import type { DifficultyLevel, InterviewTrack, CustomDomainConfig } from '../../types';
 import { getPlanPresetPreview, formatCustomPlanPreview } from '../../lib/plan-presets';
 import { CustomPlanBuilder } from './CustomPlanBuilder';
@@ -39,6 +39,20 @@ export const TRACK_OPTIONS: TrackOption[] = [
     title: 'SQL',
     description: 'Window functions, joins, live PostgreSQL sandbox',
     icon: <Database className="w-4 h-4" />,
+    isTechOnly: true
+  },
+  {
+    track: 'AGENTIC_ENGINEERING',
+    title: 'Agentic AI',
+    description: 'MCP servers, tool-use debugging & agent guardrails',
+    icon: <Bot className="w-4 h-4" />,
+    isTechOnly: true
+  },
+  {
+    track: 'SYSTEM_TROUBLESHOOTING',
+    title: 'Incident Ops',
+    description: 'Live incident triage, cache stampedes & pool exhaustion',
+    icon: <AlertTriangle className="w-4 h-4" />,
     isTechOnly: true
   },
   {
@@ -154,7 +168,7 @@ export const TrackGrid: React.FC<TrackGridProps> = ({
       )}
 
       {/* Grid of 6 Cards (or 2 Cards if Non-tech) */}
-      <div className={`grid gap-3 ${persona === 'NON_TECH' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`grid gap-2.5 sm:gap-3 ${persona === 'NON_TECH' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}`}>
         {visibleOptions.map((item) => {
           const isSelected = selectedTrack === item.track;
           return (
@@ -178,6 +192,16 @@ export const TrackGrid: React.FC<TrackGridProps> = ({
                     {item.track === 'ALGORITHMS_DATA_STRUCTURES' && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary border border-primary/30 uppercase">
                         Popular
+                      </span>
+                    )}
+                    {item.track === 'AGENTIC_ENGINEERING' && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary border border-primary/30 uppercase">
+                        AI Harness
+                      </span>
+                    )}
+                    {item.track === 'SYSTEM_TROUBLESHOOTING' && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-warning/20 text-warning border border-warning/30 uppercase">
+                        Incident
                       </span>
                     )}
                     {item.track === 'CUSTOM' && (

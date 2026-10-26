@@ -11,8 +11,8 @@ import {
 import type { CustomDomainConfig } from '../types';
 
 describe('P2: Track Cards Consolidation & Custom Plan Builder', () => {
-  test('TRACK_OPTIONS has exactly 6 cards with correct tracks and legacy cards purged', () => {
-    assert.strictEqual(TRACK_OPTIONS.length, 6, 'Must contain exactly 6 track cards');
+  test('TRACK_OPTIONS has exactly 8 cards with correct tracks and legacy cards purged', () => {
+    assert.strictEqual(TRACK_OPTIONS.length, 8, 'Must contain exactly 8 track cards');
 
     const trackKeys = TRACK_OPTIONS.map((o) => o.track);
     assert.deepStrictEqual(trackKeys, [
@@ -20,6 +20,8 @@ describe('P2: Track Cards Consolidation & Custom Plan Builder', () => {
       'SPRING_LLD',
       'SYSTEM_DESIGN',
       'SQL',
+      'AGENTIC_ENGINEERING',
+      'SYSTEM_TROUBLESHOOTING',
       'RESUME_BASED',
       'CUSTOM'
     ]);
@@ -39,8 +41,8 @@ describe('P2: Track Cards Consolidation & Custom Plan Builder', () => {
     assert.deepStrictEqual(nonTechTracks, ['RESUME_BASED', 'CUSTOM']);
   });
 
-  test('Custom Builder: all 5 domains are available with valid defaults and tech constraints', () => {
-    assert.strictEqual(CUSTOM_AVAILABLE_DOMAINS.length, 5, 'Must provide 5 selectable domains');
+  test('Custom Builder: all 7 domains are available with valid defaults and tech constraints', () => {
+    assert.strictEqual(CUSTOM_AVAILABLE_DOMAINS.length, 7, 'Must provide 7 selectable domains');
 
     const domainKeys = CUSTOM_AVAILABLE_DOMAINS.map((d) => d.domain);
     assert.deepStrictEqual(domainKeys, [
@@ -48,6 +50,8 @@ describe('P2: Track Cards Consolidation & Custom Plan Builder', () => {
       'SPRING_LLD',
       'SYSTEM_DESIGN',
       'SQL',
+      'AGENTIC_ENGINEERING',
+      'SYSTEM_TROUBLESHOOTING',
       'RESUME_BASED'
     ]);
 
@@ -134,6 +138,8 @@ describe('P2: Track Cards Consolidation & Custom Plan Builder', () => {
     assert.strictEqual(getPlanPreset('SQL', 'MID').plannedTotalMinutes, 32);
     assert.strictEqual(getPlanPreset('SQL', 'JUNIOR').plannedTotalMinutes, 20);
     assert.strictEqual(getPlanPreset('BEHAVIORAL_STAR', 'MID').plannedTotalMinutes, 18);
+    assert.strictEqual(getPlanPreset('AGENTIC_ENGINEERING', 'MID').plannedTotalMinutes, 28);
+    assert.strictEqual(getPlanPreset('SYSTEM_TROUBLESHOOTING', 'MID').plannedTotalMinutes, 28);
     assert.strictEqual(getPlanPreset('RESUME_BASED', 'MID').plannedTotalMinutes, 20);
   });
 });
