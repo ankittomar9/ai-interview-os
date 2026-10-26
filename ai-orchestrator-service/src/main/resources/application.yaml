@@ -56,6 +56,13 @@ eureka:
   client:
     enabled: ${EUREKA_ENABLED:false}
 
+# SPEC-019 / C3: MCP Host API endpoints gate (default disabled).
+# Intended for local-only, trusted internal network communications.
+# When false (default), McpController is not registered (HTTP 404).
+mcp:
+  host:
+    enabled: ${MCP_HOST_ENABLED:false}
+
 management:
   endpoints:
     web:

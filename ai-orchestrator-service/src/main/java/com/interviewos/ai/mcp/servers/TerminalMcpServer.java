@@ -5,6 +5,10 @@ import com.interviewos.ai.mcp.McpProtocol;
 
 import java.util.*;
 
+/**
+ * First-party Terminal MCP Server reference implementation.
+ * Note: SIMULATED — reference implementation, no execution in P1.
+ */
 public class TerminalMcpServer {
 
     public static final String SERVER_NAME = "terminal-mcp";
@@ -18,7 +22,7 @@ public class TerminalMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("run_command")
-                        .description("Execute a sandboxed command inside the candidate container")
+                        .description("[SIMULATED — reference implementation, no execution in P1] Validate and simulate a sandboxed terminal command")
                         .category("terminal")
                         .inputSchema(Map.of(
                                 "type", "object",
@@ -31,7 +35,7 @@ public class TerminalMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("get_process_status")
-                        .description("Query process status and resource utilization")
+                        .description("[SIMULATED — reference implementation, no execution in P1] Query simulated process status and resource utilization")
                         .category("terminal")
                         .inputSchema(Map.of("type", "object", "properties", Map.of()))
                         .requiredPermissions(List.of("terminal:read"))
@@ -77,7 +81,7 @@ public class TerminalMcpServer {
                             .id(id)
                             .result(Map.of(
                                     "isError", true,
-                                    "content", List.of(Map.of("type", "text", "text", "Error: Command cannot be blank."))
+                                    "content", List.of(Map.of("type", "text", "text", "[SIMULATED — reference implementation, no execution in P1] Error: Command cannot be blank."))
                             ))
                             .build();
                 }
@@ -90,13 +94,12 @@ public class TerminalMcpServer {
                             .id(id)
                             .result(Map.of(
                                     "isError", true,
-                                    "content", List.of(Map.of("type", "text", "text", "Permission Denied: Command '" + cmd + "' is outside the allowed sandbox whitelist."))
+                                    "content", List.of(Map.of("type", "text", "text", "[SIMULATED — reference implementation, no execution in P1] Permission Denied: Command '" + cmd + "' is outside the allowed sandbox whitelist."))
                             ))
                             .build();
                 }
 
-                String simulatedOutput = "Executing in isolated sandbox: " + trimmed + "\n" +
-                        (trimmed.contains("test") ? "[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0\n[INFO] BUILD SUCCESS" : "Exit code: 0");
+                String simulatedOutput = "[SIMULATED — reference implementation, no execution in P1] Command accepted: '" + trimmed + "'. Real execution sandbox deferred to SPEC-019.1.";
 
                 return McpProtocol.Response.builder()
                         .jsonrpc(McpProtocol.JSONRPC_VERSION)
@@ -111,7 +114,7 @@ public class TerminalMcpServer {
                         .id(id)
                         .result(Map.of("content", List.of(Map.of(
                                 "type", "text",
-                                "text", "CPU: 2.1%, Memory: 142MB/768MB, Active Containers: 1, State: HEALTHY"
+                                "text", "[SIMULATED — reference implementation, no execution in P1] Process telemetry: CPU: 0.0%, Memory: 0MB/0MB, State: SIMULATED"
                         ))))
                         .build();
             }

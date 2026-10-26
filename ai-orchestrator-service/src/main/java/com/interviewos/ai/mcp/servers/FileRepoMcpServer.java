@@ -5,6 +5,10 @@ import com.interviewos.ai.mcp.McpProtocol;
 
 import java.util.*;
 
+/**
+ * First-party File/Repo MCP Server reference implementation.
+ * Note: SIMULATED — reference implementation, no execution in P1.
+ */
 public class FileRepoMcpServer {
 
     public static final String SERVER_NAME = "file-repo-mcp";
@@ -21,7 +25,7 @@ public class FileRepoMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("list_files")
-                        .description("List files in the candidate workspace repository")
+                        .description("[SIMULATED — reference implementation, no execution in P1] List files in the candidate workspace repository")
                         .category("file")
                         .inputSchema(Map.of("type", "object", "properties", Map.of()))
                         .requiredPermissions(List.of("repo:read"))
@@ -29,7 +33,7 @@ public class FileRepoMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("read_file")
-                        .description("Read contents of a file in the workspace")
+                        .description("[SIMULATED — reference implementation, no execution in P1] Read contents of a file in the workspace")
                         .category("file")
                         .inputSchema(Map.of(
                                 "type", "object",
@@ -41,7 +45,7 @@ public class FileRepoMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("search_code")
-                        .description("Search across files in the candidate workspace")
+                        .description("[SIMULATED — reference implementation, no execution in P1] Search across files in the candidate workspace")
                         .category("file")
                         .inputSchema(Map.of(
                                 "type", "object",
@@ -89,7 +93,7 @@ public class FileRepoMcpServer {
                         .id(id)
                         .result(Map.of("content", List.of(Map.of(
                                 "type", "text",
-                                "text", String.join("\n", VIRTUAL_REPO.keySet())
+                                "text", "[SIMULATED — reference implementation, no execution in P1]\n" + String.join("\n", VIRTUAL_REPO.keySet())
                         ))))
                         .build();
             }
@@ -102,7 +106,7 @@ public class FileRepoMcpServer {
                             .id(id)
                             .result(Map.of(
                                     "isError", true,
-                                    "content", List.of(Map.of("type", "text", "text", "File not found: " + path))
+                                    "content", List.of(Map.of("type", "text", "text", "[SIMULATED — reference implementation, no execution in P1] File not found: " + path))
                             ))
                             .build();
                 }
@@ -111,7 +115,7 @@ public class FileRepoMcpServer {
                         .id(id)
                         .result(Map.of("content", List.of(Map.of(
                                 "type", "text",
-                                "text", VIRTUAL_REPO.get(path)
+                                "text", "[SIMULATED — reference implementation, no execution in P1]\n" + VIRTUAL_REPO.get(path)
                         ))))
                         .build();
             }
@@ -131,7 +135,7 @@ public class FileRepoMcpServer {
                         .id(id)
                         .result(Map.of("content", List.of(Map.of(
                                 "type", "text",
-                                "text", matches.isEmpty() ? "No matches found." : "Matches found in:\n  " + String.join("\n  ", matches)
+                                "text", "[SIMULATED — reference implementation, no execution in P1] " + (matches.isEmpty() ? "No matches found." : "Matches found in:\n  " + String.join("\n  ", matches))
                         ))))
                         .build();
             }

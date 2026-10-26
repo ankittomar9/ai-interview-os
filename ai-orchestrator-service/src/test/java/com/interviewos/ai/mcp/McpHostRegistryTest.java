@@ -37,6 +37,7 @@ class McpHostRegistryTest {
 
         List<McpModels.ToolDefinition> tools = registry.listAllTools();
         assertEquals(8, tools.size(), "Expected 8 tools across first-party MCP servers");
+        assertTrue(servers.stream().allMatch(s -> s.getToolCount() > 0), "Expected positive toolCount on all servers");
     }
 
     @Test
@@ -69,7 +70,7 @@ class McpHostRegistryTest {
                 .build();
         McpModels.ToolCallResult queryRes = registry.executeToolCall(queryReq, Duration.ofSeconds(2));
         assertFalse(queryRes.isError());
-        assertTrue(queryRes.getContent().get(0).get("text").toString().contains("2 rows returned"));
+        assertTrue(queryRes.getContent().get(0).get("text").toString().contains("Reference mock schema only"));
 
         // 4. execute_query non-SELECT is rejected
         McpModels.ToolCallRequest dropReq = McpModels.ToolCallRequest.builder()
@@ -126,7 +127,7 @@ class McpHostRegistryTest {
                 .build();
         McpModels.ToolCallResult mvnRes = registry.executeToolCall(mvnReq, Duration.ofSeconds(2));
         assertFalse(mvnRes.isError());
-        assertTrue(mvnRes.getContent().get(0).get("text").toString().contains("BUILD SUCCESS"));
+        assertTrue(mvnRes.getContent().get(0).get("text").toString().contains("Command accepted"));
 
         // 2. Disallowed command
         McpModels.ToolCallRequest rmReq = McpModels.ToolCallRequest.builder()

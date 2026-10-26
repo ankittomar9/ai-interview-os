@@ -2,16 +2,23 @@ package com.interviewos.ai.mcp;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.List;
 
+/**
+ * REST API gateway for Model Context Protocol (MCP) host services.
+ * SPEC-019 / C3: Gated behind 'mcp.host.enabled' (default: false).
+ * Intended for local-only, trusted internal network communications.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/mcp")
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "mcp.host.enabled", havingValue = "true", matchIfMissing = false)
 public class McpController {
 
     private final McpHostRegistry mcpHostRegistry;

@@ -58,8 +58,8 @@ public class McpHostRegistry {
 
     public void registerInProcessServer(String name, java.util.function.Function<McpProtocol.Request, McpProtocol.Response> handler, List<McpModels.ToolDefinition> tools, Set<String> permissions) {
         McpTransport transport = new InProcessMcpTransport(handler);
+        serverTools.put(name, tools != null ? tools : Collections.emptyList());
         registerServer(name, transport, permissions);
-        serverTools.put(name, tools);
     }
 
     public void registerServer(String name, McpTransport transport, Set<String> permissions) {

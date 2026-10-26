@@ -5,6 +5,10 @@ import com.interviewos.ai.mcp.McpProtocol;
 
 import java.util.*;
 
+/**
+ * First-party Database MCP Server reference implementation.
+ * Note: SIMULATED — reference implementation, no execution in P1.
+ */
 public class DatabaseMcpServer {
 
     public static final String SERVER_NAME = "database-mcp";
@@ -21,7 +25,7 @@ public class DatabaseMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("list_tables")
-                        .description("List all available tables in the candidate database sandbox")
+                        .description("[SIMULATED — reference implementation, no execution in P1] List all available tables in the candidate database sandbox")
                         .category("database")
                         .inputSchema(Map.of("type", "object", "properties", Map.of()))
                         .requiredPermissions(List.of("db:read"))
@@ -29,7 +33,7 @@ public class DatabaseMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("describe_table")
-                        .description("Inspect the schema and column definitions for a given table")
+                        .description("[SIMULATED — reference implementation, no execution in P1] Inspect the schema and column definitions for a given table")
                         .category("database")
                         .inputSchema(Map.of(
                                 "type", "object",
@@ -41,7 +45,7 @@ public class DatabaseMcpServer {
                 McpModels.ToolDefinition.builder()
                         .serverName(SERVER_NAME)
                         .name("execute_query")
-                        .description("Execute a read-only SQL query against the sandbox database")
+                        .description("[SIMULATED — reference implementation, no execution in P1] Execute a read-only SQL query against the sandbox database")
                         .category("database")
                         .inputSchema(Map.of(
                                 "type", "object",
@@ -89,7 +93,7 @@ public class DatabaseMcpServer {
                         .id(id)
                         .result(Map.of("content", List.of(Map.of(
                                 "type", "text",
-                                "text", "Tables: " + String.join(", ", MOCK_SCHEMA.keySet())
+                                "text", "[SIMULATED — reference implementation, no execution in P1] Tables: " + String.join(", ", MOCK_SCHEMA.keySet())
                         ))))
                         .build();
             }
@@ -102,7 +106,7 @@ public class DatabaseMcpServer {
                             .id(id)
                             .result(Map.of(
                                     "isError", true,
-                                    "content", List.of(Map.of("type", "text", "text", "Unknown table: " + tableName))
+                                    "content", List.of(Map.of("type", "text", "text", "[SIMULATED — reference implementation, no execution in P1] Unknown table: " + tableName))
                             ))
                             .build();
                 }
@@ -111,7 +115,7 @@ public class DatabaseMcpServer {
                         .id(id)
                         .result(Map.of("content", List.of(Map.of(
                                 "type", "text",
-                                "text", "Schema for " + tableName + ":\n  " + String.join("\n  ", MOCK_SCHEMA.get(tableName.toLowerCase()))
+                                "text", "[SIMULATED — reference implementation, no execution in P1] Schema for " + tableName + ":\n  " + String.join("\n  ", MOCK_SCHEMA.get(tableName.toLowerCase()))
                         ))))
                         .build();
             }
@@ -124,7 +128,7 @@ public class DatabaseMcpServer {
                             .id(id)
                             .result(Map.of(
                                     "isError", true,
-                                    "content", List.of(Map.of("type", "text", "text", "Permission Denied: Only read-only SELECT queries are allowed."))
+                                    "content", List.of(Map.of("type", "text", "text", "[SIMULATED — reference implementation, no execution in P1] Permission Denied: Only read-only SELECT queries are allowed."))
                             ))
                             .build();
                 }
@@ -133,7 +137,7 @@ public class DatabaseMcpServer {
                         .id(id)
                         .result(Map.of("content", List.of(Map.of(
                                 "type", "text",
-                                "text", "Executed: " + query + "\nResult: 2 rows returned (sandboxed mock execution)."
+                                "text", "[SIMULATED — reference implementation, no execution in P1] Query evaluated: " + query + "\nResult: Reference mock schema only. Real JDBC execution deferred to SPEC-019.1."
                         ))))
                         .build();
             }
