@@ -1,32 +1,76 @@
-# AI Interview OS
+# 🎯 AI Interview OS — Extensible Technical Evaluation Harness
 
-> **Run your interview prep entirely on your laptop, with your own keys, forever free of cloud bills — so no learner is ever priced out of feeling confident.**
+> **An open-source, production-grade technical evaluation harness and developer assessment platform that turns raw LLMs into deterministic, trustworthy technical interviewers.**
 
-Your resume never leaves your machine. Your failures are never uploaded. $0/month, forever.
+Run entirely on your laptop with your own keys, or self-hosted in an enterprise VPC — with zero canned metrics, true containerized execution sandboxes, and complete data privacy.
 
 ---
 
-# 🎯 AI Interview OS — Autonomous Technical Assessment & Learning Engine
+## 🏛️ What is an Evaluation Harness?
 
-An enterprise-grade, autonomous technical interview and developer coaching platform. It pairs a **voice-driven AI bar-raiser** with **real sandboxed code execution** (Judge0 for DSA, an isolated Docker Maven runner for Spring Boot LLD), an **interactive HLD whiteboard** with multimodal vision evaluation, a **minimalist VS Code IDE workspace**, and a **structured 5-dimension rubric** backed by verbatim transcript evidence — with zero canned metrics.
+A raw LLM cannot safely run arbitrary code, grade system designs, prevent hallucinations, or guarantee zero session drops. **The Harness is the runtime envelope wrapping the model to enforce determinism, safety, and rigor.**
 
-> **Honesty by design:** Every score is grounded in real sandbox test results and quoted candidate dialogue. If the execution engine is offline, the platform reports `ENGINE_UNAVAILABLE` — it never fabricates a pass.
+AI Interview OS structures this harness into four foundational pillars:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        EVALUATION HARNESS                              │
+│                                                                        │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
+│  │ 1. SENSORS &     │  │ 2. GUARDRAILS &  │  │ 3. EXECUTION         │  │
+│  │    ACTUATORS     │  │    RESILIENCE    │  │    SANDBOXES         │  │
+│  │  • AST Analysis  │  │  • Provider Chain│  │  • Judge0 CE         │  │
+│  │  • HLD Topology  │  │    Failover      │  │    (cgroups/ptrace)  │  │
+│  │  • Audio Duplex  │  │  • JsonCleaner   │  │  • Ephemeral Maven   │  │
+│  │  • Telemetry     │  │  • Deterministic │  │  • Sandboxed SQL     │  │
+│  │    Sentinel      │  │    Fallbacks     │  │    (Isolated DB)     │  │
+│  └─────────┬────────┘  └────────┬─────────┘  └──────────┬───────────┘  │
+│            │                    │                       │              │
+│            ▼                    ▼                       ▼              │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │ 4. STATE & AUDIT LEDGERS                                         │  │
+│  │  • Session State Machine     • Anti-Cheat Telemetry Ledger       │  │
+│  │  • Topic Exposure Ledger     • Streak & Activity History Ledger  │  │
+│  └──────────────────────────────┬───────────────────────────────────┘  │
+│                                 │                                      │
+│                                 ▼                                      │
+│                  ┌──────────────────────────────┐                      │
+│                  │  Pluggable LLM Core (BYOM)   │                      │
+│                  │ Gemini / Groq / OpenAI / vLLM│                      │
+│                  └──────────────────────────────┘                      │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Sensors & Actuators (Tools & Inputs)**: Captures candidate code, whiteboard architecture graphs (`HldWhiteboardCanvas.tsx`), push-to-talk audio (`useCoachVoice.ts`), and proctoring telemetry (`proctor-sentinel-service`) without relying on unstructured model impressions.
+2. **Guardrails & Resilience**: A 3-provider failover chain (Primary $\to$ Secondary $\to$ Local Ollama), multi-stage `JsonCleaner` recovery (preventing inner-fence corruption), and deterministic fallback loops ensuring **zero dropped turns** even during upstream API 503s.
+3. **Execution Sandboxing**: Zero-trust code execution via Judge0 CE containers (CPU/memory/time bounded) and isolated Docker Maven containers. The platform **never hallucinates a test pass** — if the sandbox is unavailable, it reports `ENGINE_UNAVAILABLE`.
+4. **State & Memory Ledgers**: Append-only exposure ledgers (SPEC-016), persistent activity and streak calendars (SPEC-017), and verbatim dialogue transcripts that feed the diagnostic scorecard.
+
+---
+
+## 🔌 Bring Your Own Model (BYOM)
+
+AI Interview OS is completely vendor-agnostic. Models are abstracted behind a pluggable `ModelProvider` and `AiClientFactory` interface:
+
+* **Cloud Frontier**: Gemini 2.0 Flash, Groq (Llama 3.3 70B & Whisper Large v3 Turbo), OpenAI GPT-4o.
+* **100% Offline / Self-Hosted**: Local Ollama (`qwen2.5-coder:7b`, `llama3.2:3b`) or any OpenAI-compatible vLLM endpoint.
+* **Hot-Failover (SPEC-018)**: If your primary provider exhausts rate limits or returns 5xx, the harness dynamically shifts in-flight turns to your configured secondary provider without candidate-visible disruption.
 
 ---
 
 ## 🏗️ Architecture
 
-Spring Cloud microservices (Eureka + Config Server + Gateway) with a React 19 + Vite 8 + Tailwind v4 frontend.
+Spring Cloud microservices (Gateway + Services) with a React 19 + Vite 8 + Tailwind v4 frontend.
 
-| Service | Port | Responsibility |
-|---|---|---|
-| `api-gateway-service` | 8080 | Single entry point, reverse proxy routing all `/api/v1/**` |
-| `interview-session-service` | 8081 | Sessions, resume ingestion (MongoDB), GridFS attachments, DSA + LLD runners, `/system/capabilities` preflight, storage hygiene |
-| `ai-orchestrator-service` | 8082 | Question matching, live dialogue (grounded in `followUpSeeds`), Whisper STT, rubric + multimodal vision design evaluation |
-| `proctor-sentinel-service` | 8083 | Telemetry (tab blur, paste dumps, focus), proctor audit summary |
-| `evaluation-report-service` | 8084 | 360° diagnostic scorecard, hiring verdict, 7-day actionable study plan |
-| `question-bank-service` | 8086 | Centralized problem catalog, resume-aware matching, coaching curricula & rubric checkpoints |
-| `whisper-sidecar` | 8178 | Local Whisper.cpp speech-to-text inference (profile: `local-stt`) |
+| Service | Port | Responsibility | Harness Role |
+|---|---|---|---|
+| `api-gateway-service` | 8080 | Single entry point, reverse proxy routing all `/api/v1/**` | Ingress & Auth Gate |
+| `interview-session-service` | 8081 | Sessions, resume ingestion, GridFS, DSA/LLD runners, `/history` analytics | State & Execution Sandbox |
+| `ai-orchestrator-service` | 8082 | Question matching, live dialogue, provider failover, Whisper STT, vision eval | Evaluation & Guardrail Engine |
+| `proctor-sentinel-service` | 8083 | Telemetry (tab blur, paste dumps, focus), proctor audit summary | Sensor & Proctor Ledger |
+| `evaluation-report-service` | 8084 | 360° diagnostic scorecard, hiring verdict, 7-day actionable study plan | Audit & Scoring Ledger |
+| `question-bank-service` | 8086 | Centralized problem catalog (475 questions), topic rotation, rubrics | Curriculum & Exposure Ledger |
+| `whisper-sidecar` | 8178 | Local Whisper.cpp speech-to-text inference (profile: `local-stt`) | Local Audio Sensor |
 
 *(Note: `service-discovery-service` and `cloud-config-server` were retired per ADR-004 to cap host RAM footprint under 5GB).*
 
@@ -176,7 +220,7 @@ The assessment cockpit delivers a distraction-free, high-density 3-zone VS Code 
 | **Java Core & Frameworks** | QuestionBank-matched deep dive | Full dialogue + code review |
 
 ### 📚 Problem Catalog
-The platform ships with a curated catalog of **364 questions (316 DSA + 27 HLD + 11 LLD + 8 SQL + 2 Behavioral)**, complete with hidden testcases, starter templates, coaching rubrics, and taxonomy metadata.
+The platform ships with an extensive, curated catalog of **475 questions (134 Easy / 258 Medium / 83 Hard across DSA, SQL, LLD, HLD, and Behavioral)**, complete with hidden testcases, starter templates, coaching rubrics, and taxonomy metadata. In line with modern technical hiring standards, the catalog serves as a calibrated algorithmic sanity filter, while architecture, incident scenarios, and AI-native engineering carry the primary evaluation signal.
 
 ---
 
@@ -222,6 +266,26 @@ Completed interviews are automatically archived to the operator's local filesyst
 2. **Execution** — Real test runs produce `CODE_EXECUTION` transcript turns (`X/Y tests passed (STATUS)` in `Z`ms).
 3. **Rubric** — The LLM scores 5 dimensions and must attach **verbatim transcript evidence** to each; `rubricCheckpoints` from the QuestionBank ground the evaluation.
 4. **Verdict gating** — `HIRE` / `STRONG_HIRE` require ≥ 1 verified passing execution; otherwise the score is capped and the diagnostic report highlights the gaps.
+
+---
+
+## ⚖️ Honest-Judge Test Discipline (Four-Number Reporting)
+
+To ensure true regression resistance and open-source transparency, AI Interview OS operates under the **Honest-Judge Test Standard** (QB-18 / QB-44 / SPEC-019). Every pull request, release, and audit reports test health via the four-number vocabulary:
+$$\text{Test Files (on disk)} \quad / \quad \text{Test Cases} \quad / \quad \text{Assertions} \quad / \quad \text{Skipped}$$
+
+Run the checked-in test counter to verify the exact counts across the reactor:
+```bash
+./scripts/count-tests.sh --markdown
+```
+
+Current baseline across the repository:
+| Module | Test Files (on disk) | Test Cases | Assertions | Skipped | Status |
+|---|---|---|---|---|---|
+| `ai-orchestrator-service` | 16 | 117 | 415 | 1 | PASS |
+| `interview-session-service` | 44 | 220 | 816 | 1 | PASS |
+| `frontend` | 52 | 320 | 1231 | 0 | PASS |
+| **Total / Reactor** | **112** | **657** | **2462** | **2** | **PASS** |
 
 ---
 
