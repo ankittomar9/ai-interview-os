@@ -246,15 +246,16 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-bg text-text p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-      <div className="w-full max-w-6xl bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px] backdrop-blur-md">
+    <div className="min-h-screen bg-bg text-text p-2 sm:p-4 lg:p-6 flex items-center justify-center overflow-y-auto">
+      <div className="w-full max-w-6xl bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 lg:h-[calc(100vh-2.5rem)] lg:max-h-[860px] lg:min-h-[560px] backdrop-blur-md my-auto">
         {/* Left Dark Sidebar */}
         <SetupHeroSidebar />
 
         {/* Right Light Form Panel */}
-        <div className="lg:col-span-8 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto space-y-6">
+        <form onSubmit={handleSubmit} className="lg:col-span-8 flex flex-col h-full min-h-0 overflow-hidden bg-surface">
           {/* Top Header Row: Segmented Mode Switcher + Settings Drawer Toggle + Theme Toggle */}
-          <div className="flex items-center gap-3">
+          <div className="p-4 sm:p-6 pb-3 border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3">
             <div className="flex-1 grid grid-cols-2 gap-2 bg-elevated p-1.5 rounded-xl border border-border">
               <button
                 type="button"
@@ -321,10 +322,11 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
             </button>
 
             <ThemeToggle size="md" />
+            </div>
           </div>
 
-          {/* Form Sections */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Form Scrollable Body */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 min-h-0">
             {errorMessage && (
               <div className="p-3 rounded-lg bg-danger/10 border border-danger/40 text-danger text-xs font-medium flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -405,56 +407,57 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({
               onChangeCustomDomains={setCustomDomains}
             />
 
-            {/* Action Bar */}
-            <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/80">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                {onNavigateToLearn ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    onClick={onNavigateToLearn}
-                    className="text-xs"
-                  >
-                    <BookOpen className="w-4 h-4 mr-1.5 text-primary" />
-                    <span>Practice Center (/learn)</span>
-                  </Button>
-                ) : onOpenCatalog && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    onClick={onOpenCatalog}
-                    className="text-xs"
-                  >
-                    <Compass className="w-4 h-4 mr-1.5 text-primary" />
-                    <span>Catalog</span>
-                  </Button>
-                )}
+          </div>
+
+          {/* Action Bar (Permanently Docked at Bottom) */}
+          <div className="p-4 sm:p-6 py-3.5 bg-surface/95 backdrop-blur-md border-t border-border/80 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 shadow-xs">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {onNavigateToLearn ? (
                 <Button
                   type="button"
                   variant="secondary"
                   size="md"
-                  onClick={() => setShowProgressModal(true)}
+                  onClick={onNavigateToLearn}
                   className="text-xs"
                 >
-                  <TrendingUp className="w-4 h-4 mr-1.5 text-success" />
-                  <span>Progress Ledger</span>
+                  <BookOpen className="w-4 h-4 mr-1.5 text-primary" />
+                  <span>Practice Center (/learn)</span>
                 </Button>
-              </div>
-
+              ) : onOpenCatalog && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={onOpenCatalog}
+                  className="text-xs"
+                >
+                  <Compass className="w-4 h-4 mr-1.5 text-primary" />
+                  <span>Catalog</span>
+                </Button>
+              )}
               <Button
-                type="submit"
-                variant="primary"
+                type="button"
+                variant="secondary"
                 size="md"
-                loading={isLoading}
-                className="w-full sm:w-auto px-6 text-xs font-bold ml-auto"
+                onClick={() => setShowProgressModal(true)}
+                className="text-xs"
               >
-                <span>{sessionMode === "PLAYGROUND" ? "Launch Practice Arena" : "Initialize Proctored Assessment"}</span>
+                <TrendingUp className="w-4 h-4 mr-1.5 text-success" />
+                <span>Progress Ledger</span>
               </Button>
             </div>
-          </form>
-        </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              loading={isLoading}
+              className="w-full sm:w-auto px-6 text-xs font-bold ml-auto cursor-pointer shadow-sm"
+            >
+              <span>{sessionMode === "PLAYGROUND" ? "Launch Practice Arena" : "Initialize Proctored Assessment"}</span>
+            </Button>
+          </div>
+        </form>
       </div>
 
       {showProgressModal && (

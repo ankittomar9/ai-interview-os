@@ -13,6 +13,8 @@ export const CUSTOM_AVAILABLE_DOMAINS: CustomDomainItem[] = [
   { domain: 'SPRING_LLD', name: 'LLD', subtitle: 'Object-oriented low-level design', defaultMinutes: 20, isTechOnly: true },
   { domain: 'SYSTEM_DESIGN', name: 'HLD', subtitle: 'System architecture & trade-offs', defaultMinutes: 30, isTechOnly: true },
   { domain: 'SQL', name: 'SQL', subtitle: 'Window functions, joins & database sandbox', defaultMinutes: 20, isTechOnly: true },
+  { domain: 'AGENTIC_ENGINEERING', name: 'Agentic AI', subtitle: 'MCP tools, agent workflows & guardrails', defaultMinutes: 25, isTechOnly: true },
+  { domain: 'SYSTEM_TROUBLESHOOTING', name: 'Incident Ops', subtitle: 'Live incident triage & bottleneck resolution', defaultMinutes: 25, isTechOnly: true },
   { domain: 'RESUME_BASED', name: 'Others', subtitle: 'Resume-grounded AI-led interview', defaultMinutes: 20, isTechOnly: false },
 ];
 
@@ -41,6 +43,8 @@ export function formatCustomPlanPreview(customDomains: CustomDomainConfig[]): st
       : d.domain === 'SPRING_LLD' ? 'LLD'
       : d.domain === 'SYSTEM_DESIGN' ? 'HLD'
       : d.domain === 'SQL' ? 'SQL'
+      : d.domain === 'AGENTIC_ENGINEERING' ? 'Agentic AI'
+      : d.domain === 'SYSTEM_TROUBLESHOOTING' ? 'Incident Ops'
       : d.domain === 'RESUME_BASED' ? 'Others'
       : d.domain;
     return `${label} (${d.durationMinutes}m)`;
@@ -232,6 +236,34 @@ export const getPlanPreset = (track: InterviewTrack, difficulty: DifficultyLevel
         sections: [
           { sectionType: 'INTRODUCTION', track, itemCount: 1, softTimeBudgetMinutes: 8, note: 'Candidate introduction & warm-up' },
           { sectionType: 'SYSTEM_DESIGN', track, itemCount: items, softTimeBudgetMinutes: 18, note: 'High-level distributed architecture' }
+        ]
+      };
+    }
+    case 'AGENTIC_ENGINEERING': {
+      const isSeniorOrStaff = difficulty === 'SENIOR' || difficulty === 'STAFF';
+      const items = isSeniorOrStaff ? 2 : 1;
+      return {
+        track,
+        difficulty,
+        plannedTotalMinutes: 28,
+        preview: `Intro · Agentic AI ×${items} · ≈28 min`,
+        sections: [
+          { sectionType: 'INTRODUCTION', track, itemCount: 1, softTimeBudgetMinutes: 8, note: 'Candidate introduction & warm-up' },
+          { sectionType: 'CORE_TECH', track, itemCount: items, softTimeBudgetMinutes: 20, note: 'Agentic workflows, tool protocols & guardrails' }
+        ]
+      };
+    }
+    case 'SYSTEM_TROUBLESHOOTING': {
+      const isSeniorOrStaff = difficulty === 'SENIOR' || difficulty === 'STAFF';
+      const items = isSeniorOrStaff ? 2 : 1;
+      return {
+        track,
+        difficulty,
+        plannedTotalMinutes: 28,
+        preview: `Intro · Incident Ops ×${items} · ≈28 min`,
+        sections: [
+          { sectionType: 'INTRODUCTION', track, itemCount: 1, softTimeBudgetMinutes: 8, note: 'Candidate introduction & warm-up' },
+          { sectionType: 'SYSTEM_DESIGN', track, itemCount: items, softTimeBudgetMinutes: 20, note: 'Production incident triage & distributed troubleshooting' }
         ]
       };
     }
