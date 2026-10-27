@@ -271,4 +271,33 @@ class RetryQueueServiceTest {
         assertThat(queue).extracting(RetryQueueItem::slug)
                 .containsExactly("merge-intervals", "two-sum", "trapping-rain-water");
     }
+
+    @Test
+    @DisplayName("Fallback topic resolution buckets agentic- and incident- correctly on catalog miss")
+    void testFallbackTopicResolutionBucketsAgenticAndIncident() {
+        String userId = "agentic-candidate";
+        PracticeAttempt pa1 = new PracticeAttempt();
+        pa1.setUserId(userId);
+        pa1.setQuestionId("agentic-mcp-order-service");
+        pa1.setVerdict("FAILED");
+        pa1.setCreatedAt(Instant.now());
+
+        PracticeAttempt pa2 = new PracticeAttempt();
+        pa2.setUserId(userId);
+        pa2.setQuestionId("incident-db-connection-pool-exhaustion");
+        pa2.setVerdict("FAILED");
+        pa2.setCreatedAt(Instant.now().minusSeconds(10));
+
+        when(practiceAttemptRepository.findByUserIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of(pa1, pa2));
+        when(interviewSessionRepository.findByCandidateIdOrderByCreatedAtDesc(userId))
+                .thenReturn(List.of());
+
+        List<RetryQueueItem> queue = retryQueueService.getRetryQueue(userId);
+        assertThat(queue).hasSize(2);
+        assertThat(queue.get(0).slug()).isEqualTo("agentic-mcp-order-service");
+        assertThat(queue.get(0).topic()).isEqualTo("agentic-engineering");
+        assertThat(queue.get(1).slug()).isEqualTo("incident-db-connection-pool-exhaustion");
+        assertThat(queue.get(1).topic()).isEqualTo("incident-response");
+    }
 }

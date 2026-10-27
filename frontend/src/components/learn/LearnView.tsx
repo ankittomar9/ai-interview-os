@@ -9,7 +9,9 @@ import {
   Cpu,
   RefreshCw,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  Bot,
+  AlertOctagon
 } from 'lucide-react';
 import { SubmissionsDrawer } from './SubmissionsDrawer';
 import { QuestionDetailModal } from './QuestionDetailModal';
@@ -125,6 +127,8 @@ export const LearnView: React.FC<LearnViewProps> = ({
     { id: 'ALGORITHMS_DATA_STRUCTURES', label: 'Algorithms & DSA', icon: Code2, countKey: 'ALGORITHMS_DATA_STRUCTURES' },
     { id: 'SYSTEM_DESIGN', label: 'System Design', icon: Layers, countKey: 'SYSTEM_DESIGN' },
     { id: 'SPRING_LLD', label: 'Low-Level Design', icon: Cpu, countKey: 'SPRING_LLD' },
+    { id: 'AGENTIC_ENGINEERING', label: 'Agentic Engineering', icon: Bot, countKey: 'AGENTIC_ENGINEERING' },
+    { id: 'SYSTEM_TROUBLESHOOTING', label: 'Incident Ops', icon: AlertOctagon, countKey: 'SYSTEM_TROUBLESHOOTING' },
     { id: 'SQL', label: 'SQL & DB', icon: Database, countKey: 'SQL' },
     { id: 'BEHAVIORAL_STAR', label: 'Behavioral STAR', icon: Award, countKey: 'BEHAVIORAL_STAR' }
   ];
