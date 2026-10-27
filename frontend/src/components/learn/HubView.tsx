@@ -11,7 +11,9 @@ import {
   Database,
   Award,
   Zap,
-  BookOpen
+  BookOpen,
+  Bot,
+  AlertOctagon
 } from 'lucide-react';
 import type {
   CatalogTopicSummary,
@@ -166,6 +168,8 @@ export const HubView: React.FC<HubViewProps> = ({
     { key: 'ALGORITHMS_DATA_STRUCTURES', label: 'Algorithms & DSA', icon: Code2 },
     { key: 'SYSTEM_DESIGN', label: 'System Design', icon: Layers },
     { key: 'SPRING_LLD', label: 'Low-Level Design', icon: Cpu },
+    { key: 'AGENTIC_ENGINEERING', label: 'Agentic Engineering', icon: Bot },
+    { key: 'SYSTEM_TROUBLESHOOTING', label: 'Incident Ops', icon: AlertOctagon },
     { key: 'SQL', label: 'SQL & DB', icon: Database },
     { key: 'BEHAVIORAL_STAR', label: 'Behavioral STAR', icon: Award }
   ];

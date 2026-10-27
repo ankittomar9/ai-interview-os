@@ -237,4 +237,19 @@ class LearnTreeServiceTest {
             assertThat(node.interviewPassed()).isEqualTo(0);
         }
     }
+
+    @Test
+    @DisplayName("isValidSlug recognizes all supported prefixes including agentic- and incident-")
+    void testIsValidSlugRecognizesAllPrefixes() {
+        assertThat(learnTreeService.isValidSlug("agentic-mcp-order-service")).isTrue();
+        assertThat(learnTreeService.isValidSlug("incident-cache-stampede-thundering-herd")).isTrue();
+        assertThat(learnTreeService.isValidSlug("dsa-two-sum-target")).isTrue();
+        assertThat(learnTreeService.isValidSlug("hld-url-shortener-bitly")).isTrue();
+        assertThat(learnTreeService.isValidSlug("lld-parking-lot")).isTrue();
+        assertThat(learnTreeService.isValidSlug("sql-second-highest-salary-safe")).isTrue();
+        assertThat(learnTreeService.isValidSlug("beh-critical-production-outage-rollback")).isTrue();
+        assertThat(learnTreeService.isValidSlug("random-unknown-slug")).isFalse();
+        assertThat(learnTreeService.isValidSlug(null)).isFalse();
+        assertThat(learnTreeService.isValidSlug("")).isFalse();
+    }
 }

@@ -59,6 +59,24 @@ public class LearnTreeService {
             "valid-parentheses"
     );
 
+    public static final List<String> LEARN_SLUG_PREFIXES =
+            List.of("dsa-", "hld-", "lld-", "sql-", "beh-", "agentic-", "incident-");
+
+    public static boolean isLearnSlug(String slug) {
+        if (slug == null || slug.isBlank()) return false;
+        return LEARN_SLUG_PREFIXES.stream().anyMatch(slug::startsWith);
+    }
+
+    public static String stripLearnPrefix(String slug) {
+        if (slug == null) return null;
+        for (String pfx : LEARN_SLUG_PREFIXES) {
+            if (slug.startsWith(pfx)) {
+                return slug.substring(pfx.length());
+            }
+        }
+        return null;
+    }
+
     public record CatalogQuestionItem(
             String slug,
             String title,
@@ -131,11 +149,7 @@ public class LearnTreeService {
             if (page != null && page.content() != null) {
                 List<CatalogQuestionItem> curated = page.content().stream()
                         .filter(q -> q.slug() != null && !EXCLUDED_LEGACY_SLUGS.contains(q.slug()))
-                        .filter(q -> q.slug().startsWith("dsa-")
-                                || q.slug().startsWith("hld-")
-                                || q.slug().startsWith("lld-")
-                                || q.slug().startsWith("sql-")
-                                || q.slug().startsWith("beh-"))
+                        .filter(q -> isLearnSlug(q.slug()))
                         .toList();
 
                 Map<String, String> topicNames = new HashMap<>();
@@ -176,7 +190,7 @@ public class LearnTreeService {
         if (catalog != null && catalog.questions() != null && !catalog.questions().isEmpty()) {
             return catalog.questions().stream().anyMatch(q -> slug.equals(q.slug()));
         }
-        return slug.startsWith("dsa-") || slug.startsWith("hld-") || slug.startsWith("lld-") || slug.startsWith("sql-") || slug.startsWith("beh-");
+        return isLearnSlug(slug);
     }
 
     @Transactional(readOnly = true)
@@ -440,13 +454,7 @@ public class LearnTreeService {
     }
 
     private String stripPrefix(String slug) {
-        if (slug == null) return null;
-        for (String pfx : List.of("dsa-", "hld-", "lld-", "sql-", "beh-")) {
-            if (slug.startsWith(pfx)) {
-                return slug.substring(pfx.length());
-            }
-        }
-        return null;
+        return stripLearnPrefix(slug);
     }
 
     private String defaultTopicForTrack(String track) {

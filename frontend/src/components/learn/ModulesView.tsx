@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import {
   BookOpen,
   ExternalLink,
-  Zap
+  Zap,
+  Compass
 } from 'lucide-react';
 import type {
   CatalogTopicSummary,
@@ -14,6 +15,7 @@ import type { LearnTreePollState } from '../../lib/learnTree';
 import type { RetryQueuePollState } from '../../lib/retryQueue';
 import { QuestionTable } from './QuestionTable';
 import { VerdictChip } from './verdictChips';
+import { AgenticGuideDrawer } from './AgenticGuideDrawer';
 
 export interface ModulesViewProps {
   track: string;
@@ -47,10 +49,18 @@ export const ModulesView: React.FC<ModulesViewProps> = ({
   onOpenSubmissions
 }) => {
   const [activeTab, setActiveTab] = useState<'problems' | 'resources'>('problems');
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Default to first topic if none is selected
   const activeTopicId = selectedTopic || (enrichedTopics.length > 0 ? enrichedTopics[0].topic : null);
   const activeTopic = enrichedTopics.find((t) => t.topic === activeTopicId) || enrichedTopics[0];
+
+  const isAgenticModule =
+    track === 'AGENTIC_ENGINEERING' ||
+    activeTopicId === 'agentic-engineering' ||
+    activeTopicId === 'mcp-servers' ||
+    activeTopicId === 'agent-debugging' ||
+    Boolean(activeTopic?.topic && activeTopic.topic.startsWith('agentic-'));
 
   // Map tree questions for two-track counters
   const treeQuestionsMap = useMemo(() => {
@@ -190,17 +200,29 @@ export const ModulesView: React.FC<ModulesViewProps> = ({
                   </h1>
                 </div>
 
-                {/* Topic Progress Bar */}
-                <div className="flex items-center gap-3 w-full sm:w-64">
-                  <div className="flex-1 bg-elevated rounded-full h-2 overflow-hidden border border-border">
-                    <div
-                      className="h-full bg-primary rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(activeTopicPercent, 100)}%` }}
-                    />
+                {/* Topic Progress Bar & Guide Action */}
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  {isAgenticModule && (
+                    <button
+                      type="button"
+                      onClick={() => setIsGuideOpen(true)}
+                      className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/25 text-xs font-bold hover:bg-primary/20 transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Compass className="w-4 h-4" />
+                      <span>Interview Guide</span>
+                    </button>
+                  )}
+                  <div className="flex items-center gap-3 w-full sm:w-64">
+                    <div className="flex-1 bg-elevated rounded-full h-2 overflow-hidden border border-border">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(activeTopicPercent, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-mono font-bold text-text-2 shrink-0">
+                      {activeTopicPercent}%
+                    </span>
                   </div>
-                  <span className="text-xs font-mono font-bold text-text-2 shrink-0">
-                    {activeTopicPercent}%
-                  </span>
                 </div>
               </div>
 
@@ -210,6 +232,30 @@ export const ModulesView: React.FC<ModulesViewProps> = ({
                   ? `${activeTopic.pressureGap}. Each problem carries two lanes — practice runs against the visible test suite, and mock runs under interview constraints.`
                   : 'Deliberate practice curriculum with two-track assessment.'}
               </p>
+
+              {/* Agentic Guide Banner */}
+              {isAgenticModule && (
+                <div className="p-3.5 rounded-xl border border-primary/25 bg-primary/5 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5 text-text-2 min-w-0">
+                    <div className="p-1 rounded-lg bg-primary/10 text-primary shrink-0">
+                      <Compass className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-text">How Agentic-Track Interviews Work</span>
+                      <p className="text-[11px] text-text-3 truncate">
+                        Master the 4 archetypes: Tool/MCP implementation, hallucination debugging, sub-agent guardrails, and incident ops.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsGuideOpen(true)}
+                    className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover transition-colors whitespace-nowrap cursor-pointer shrink-0 text-xs shadow-2xs"
+                  >
+                    View Guide →
+                  </button>
+                </div>
+              )}
 
               {/* Module Tabs: Problems / Resources / Notes (SOON) */}
               <div className="flex items-center gap-1 border-b border-border -mb-5 pt-2">
@@ -347,6 +393,12 @@ export const ModulesView: React.FC<ModulesViewProps> = ({
           </div>
         )}
       </main>
+
+      <AgenticGuideDrawer
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        onSelectQuestion={onOpenDetail}
+      />
     </div>
   );
 };

@@ -228,6 +228,8 @@ public class RetryQueueService {
             if (lower.startsWith("lld-")) return "lld";
             if (lower.startsWith("sql-")) return "sql";
             if (lower.startsWith("beh-")) return "behavioral";
+            if (lower.startsWith("agentic-")) return "agentic-engineering";
+            if (lower.startsWith("incident-")) return "incident-response";
         }
         return "arrays";
     }
@@ -255,12 +257,6 @@ public class RetryQueueService {
     }
 
     private String stripPrefix(String slug) {
-        if (slug == null) return null;
-        for (String pfx : List.of("dsa-", "hld-", "lld-", "sql-", "beh-")) {
-            if (slug.startsWith(pfx)) {
-                return slug.substring(pfx.length());
-            }
-        }
-        return null;
+        return LearnTreeService.stripLearnPrefix(slug);
     }
 }
