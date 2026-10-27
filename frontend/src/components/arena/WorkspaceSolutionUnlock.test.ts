@@ -103,3 +103,29 @@ test('Workspace Solution Unlock: Logical unlock state transitions', () => {
   hasRunAttempt = executionResult !== null || hasWorkspaceRunAttempt;
   assert.equal(hasRunAttempt, false, 'Navigating to next question resets unlock state');
 });
+
+test('QB-51 Runner Honesty: EmbeddedWorkspace and ProjectWorkspace handle NO_TESTS status and guard PASSED with totalTests > 0', () => {
+  const embeddedPath = path.resolve(import.meta.dirname, '../workspace/EmbeddedWorkspace.tsx');
+  const embeddedCode = fs.readFileSync(embeddedPath, 'utf-8');
+
+  assert.ok(
+    embeddedCode.includes("result.status === 'NO_TESTS'"),
+    'EmbeddedWorkspace.tsx must handle NO_TESTS status'
+  );
+  assert.ok(
+    embeddedCode.includes("result.status === 'PASSED' && (result.totalTests ?? 0) > 0"),
+    'EmbeddedWorkspace.tsx must guard PASSED banner with totalTests > 0'
+  );
+
+  const projectPath = path.resolve(import.meta.dirname, '../ProjectWorkspace.tsx');
+  const projectCode = fs.readFileSync(projectPath, 'utf-8');
+
+  assert.ok(
+    projectCode.includes("resp.status === 'NO_TESTS'"),
+    'ProjectWorkspace.tsx must handle NO_TESTS status'
+  );
+  assert.ok(
+    projectCode.includes("resp.status === 'PASSED' && (resp.totalTests ?? 0) > 0"),
+    'ProjectWorkspace.tsx must guard PASSED banner with totalTests > 0'
+  );
+});

@@ -142,7 +142,13 @@ export const ProjectWorkspace: React.FC<Props> = ({
         setConsoleOutput(
           `[Maven Compiler Output] Compilation Failed:\n${resp.compilerOutput || resp.stderr || 'Syntax error during build.'}\n\n❌ Status: COMPILE_ERROR (0 / ${resp.totalTests} Tests Passed)`
         );
-      } else if (resp.status === 'PASSED') {
+      } else if (resp.status === 'NO_TESTS' || (resp.status === 'PASSED' && (resp.totalTests ?? 0) === 0)) {
+        setTestStatus('failed');
+        setConsoleOutput(
+          `⚠️ [NO TESTS RAN] Status: NO_TESTS (0 test cases declared in question scaffold)\n\n` +
+          `The question scaffold does not declare any runnable test cases.`
+        );
+      } else if (resp.status === 'PASSED' && (resp.totalTests ?? 0) > 0) {
         setTestStatus('passed');
         let out = `[Maven Test Runner] Build Succeeded in ${resp.executionTimeMs.toFixed(1)}ms (Heap: ${resp.memoryUsedMb.toFixed(1)}MB)\n\n`;
         resp.testResults.forEach((t) => {

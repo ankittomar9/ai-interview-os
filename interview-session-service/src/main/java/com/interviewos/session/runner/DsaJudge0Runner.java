@@ -221,7 +221,8 @@ public class DsaJudge0Runner implements TrackRunner {
                     .build());
         }
 
-        String overallStatus = passedCount == totalTests ? "PASSED" : (passedCount > 0 ? "PARTIAL" : "FAILED");
+        String overallStatus = (totalTests > 0 && passedCount == totalTests) ? "PASSED"
+                : (passedCount > 0 ? "PARTIAL" : (totalTests == 0 ? "NO_TESTS" : "FAILED"));
 
         return ExecutionResultResponse.builder()
                 .status(overallStatus)

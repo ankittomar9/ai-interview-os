@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class LldMavenRunnerTest {
 
     @Test
-    @DisplayName("supports() should return true only for maven-spring buildProfile")
+    @DisplayName("supports() should return true for maven-spring and maven-workspace buildProfile")
     void testSupports() {
         LldMavenRunner runner = new LldMavenRunner();
 
@@ -27,6 +27,11 @@ class LldMavenRunnerTest {
                 .buildProfile("maven-spring")
                 .build();
         assertTrue(runner.supports(mavenProblem));
+
+        ProblemDocument workspaceProblem = ProblemDocument.builder()
+                .buildProfile("maven-workspace")
+                .build();
+        assertTrue(runner.supports(workspaceProblem));
 
         ProblemDocument judgeProblem = ProblemDocument.builder()
                 .buildProfile("judge0")

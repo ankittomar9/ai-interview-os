@@ -134,12 +134,18 @@ export const EmbeddedWorkspace: React.FC<Props> = ({
 
       const elapsed = (performance.now() - startTime).toFixed(0);
 
-      if (result.status === 'PASSED') {
+      if (result.status === 'PASSED' && (result.totalTests ?? 0) > 0) {
         setTestStatus('passed');
         setConsoleOutput(
           `✅ [BUILD SUCCESS] All JUnit tests passed (${result.passedTests}/${result.totalTests}) in ${elapsed}ms\n` +
           `Sandbox Memory: ${result.memoryUsedMb?.toFixed(1) || '384.0'} MB\n\n` +
           (result.stdout || 'Tests executed cleanly with 0 failures.')
+        );
+      } else if (result.status === 'NO_TESTS' || (result.status === 'PASSED' && (result.totalTests ?? 0) === 0)) {
+        setTestStatus('failed');
+        setConsoleOutput(
+          `⚠️ [NO TESTS RAN] Status: NO_TESTS (0 test cases declared in question scaffold)\n\n` +
+          `The question scaffold does not declare any runnable test cases.`
         );
       } else if (result.status === 'ENGINE_UNAVAILABLE') {
         setTestStatus('failed');

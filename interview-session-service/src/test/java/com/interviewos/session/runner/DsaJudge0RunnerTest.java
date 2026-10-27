@@ -114,4 +114,24 @@ class DsaJudge0RunnerTest {
         assertTrue(result.stderr().contains("unreachable after 3 attempts"));
         org.mockito.Mockito.verify(mockClient, org.mockito.Mockito.times(3)).submitAndAwait(org.mockito.ArgumentMatchers.any());
     }
+
+    @Test
+    @DisplayName("QB-51: run() returns NO_TESTS status when problem has zero test cases")
+    void testZeroTestsYieldsNoTestsStatus() {
+        DsaJudge0Runner runner = new DsaJudge0Runner(null);
+
+        ProblemDocument problem = ProblemDocument.builder()
+                .problemSlug("empty-tests-problem")
+                .sampleTests(java.util.List.of())
+                .hiddenTests(java.util.List.of())
+                .build();
+
+        com.interviewos.session.sandbox.dto.ExecutionResultResponse result =
+                runner.run(1L, problem, java.util.Map.of("solution.java", "class Main {}"), "java");
+
+        assertNotNull(result);
+        assertEquals("NO_TESTS", result.status());
+        assertEquals(0, result.totalTests());
+        assertEquals(0, result.passedTests());
+    }
 }
