@@ -243,4 +243,18 @@ describe('SPEC-009 VP-4: Turn Abort, Draft Restore & Recall Semantics', () => {
       'AiAssistantPanel must render Stopped chip when m.metadata?.stopped is present'
     );
   });
+
+  it('useArenaEngines grounds Coach Sam with workspace file template and starter code', () => {
+    const enginesPath = path.resolve(process.cwd(), 'src/components/arena/hooks/useArenaEngines.ts');
+    const enginesSrc = fs.readFileSync(enginesPath, 'utf-8');
+
+    assert.ok(
+      enginesSrc.includes('Target Workspace File'),
+      'useArenaEngines must include Target Workspace File in getQuestionContext'
+    );
+    assert.ok(
+      enginesSrc.includes('activeQuestion?.starterFiles'),
+      'useArenaEngines must check activeQuestion.starterFiles'
+    );
+  });
 });
