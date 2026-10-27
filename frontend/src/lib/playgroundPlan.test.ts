@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildNavSections } from './plan-navigation';
-import { syntheticPlaygroundSection, syntheticPlaygroundPlan } from './playgroundPlan';
+import { derivePlaygroundSectionType, syntheticPlaygroundSection, syntheticPlaygroundPlan } from './playgroundPlan';
+import { resolveSectionType } from '../components/arena/ArenaShellTypes';
 
 test('VP-1 / F-1: synthetic playground plan yields exactly one section with stage=DSA and no INTRODUCTION', () => {
   const dummyQuestion = {
@@ -46,4 +47,46 @@ test('VP-1 / F-1: playlist synthetic plan correctly tracks all question slugs wi
   assert.equal(navSections[0].stage, 'DSA');
   assert.match(navSections[0].label, /1\.\s+Coding\s+&\s+DSA\s+×3/);
   assert.equal(navSections[0].key, 'DSA_0');
+});
+
+test('QB-51: derivePlaygroundSectionType routes tracks to appropriate section types without defaulting to DSA', () => {
+  assert.equal(derivePlaygroundSectionType('AGENTIC_ENGINEERING'), 'LLD');
+  assert.equal(derivePlaygroundSectionType('SPRING_LLD'), 'LLD');
+  assert.equal(derivePlaygroundSectionType('JAVA_SPRING_BOOT'), 'LLD');
+  assert.equal(derivePlaygroundSectionType('LLD_HLD'), 'LLD');
+  assert.equal(derivePlaygroundSectionType('SQL'), 'SQL');
+  assert.equal(derivePlaygroundSectionType('SYSTEM_DESIGN'), 'SYSTEM_DESIGN');
+  assert.equal(derivePlaygroundSectionType('SYSTEM_TROUBLESHOOTING'), 'SYSTEM_DESIGN');
+  assert.equal(derivePlaygroundSectionType('BEHAVIORAL_STAR'), 'BEHAVIORAL');
+  assert.equal(derivePlaygroundSectionType('RESUME_BASED'), 'RESUME');
+  assert.equal(derivePlaygroundSectionType('ALGORITHMS_DATA_STRUCTURES'), 'DSA');
+  assert.equal(derivePlaygroundSectionType('DSA_LLD'), 'DSA');
+  assert.equal(derivePlaygroundSectionType('DSA_LLD_HLD'), 'DSA');
+  assert.equal(derivePlaygroundSectionType(undefined), 'DSA');
+});
+
+test('QB-51: syntheticPlaygroundSection derives sectionType and track from question, pinning LLD for AGENTIC_ENGINEERING', () => {
+  const agenticQ = {
+    slug: 'agentic-mcp-order-service',
+    track: 'AGENTIC_ENGINEERING' as const
+  };
+  const section = syntheticPlaygroundSection(agenticQ);
+  assert.equal(section.sectionType, 'LLD', 'Agentic questions must route to LLD sectionType');
+  assert.notEqual(section.sectionType, 'DSA', 'Agentic questions must NEVER hardcode DSA');
+  assert.equal(section.track, 'AGENTIC_ENGINEERING');
+
+  const troubleshootingQ = {
+    slug: 'sys-troubleshoot-db-pool',
+    track: 'SYSTEM_TROUBLESHOOTING' as const
+  };
+  const sysSection = syntheticPlaygroundSection(troubleshootingQ);
+  assert.equal(sysSection.sectionType, 'SYSTEM_DESIGN');
+  assert.equal(sysSection.track, 'SYSTEM_TROUBLESHOOTING');
+
+  const plan = syntheticPlaygroundPlan(agenticQ);
+  const navSections = buildNavSections(plan.sections, agenticQ.track);
+  assert.equal(navSections.length, 1);
+  assert.equal(navSections[0].stage, 'LLD');
+
+  assert.equal(resolveSectionType({ track: 'AGENTIC_ENGINEERING', isPlayground: true }), 'LLD');
 });

@@ -8,7 +8,7 @@ topics:
   - mcp-servers
 est_minutes: 35
 tags: ['mcp', 'agentic', 'tool-use', 'json-rpc', 'schema-validation']
-buildProfile: judge0
+buildProfile: maven-workspace
 source: enterprise-agentic:v1
 status: PUBLISHED
 hints:
@@ -19,6 +19,124 @@ coaching:
   presentationTips:
     - "Explain the difference between tool declaration (schema contract) and tool execution (runtime dispatch)."
     - "Highlight how structured error responses help the LLM self-correct without failing the user conversation."
+starterFiles:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.interviewos.workspace</groupId>
+        <artifactId>agentic-mcp-order-service</artifactId>
+        <version>1.0.0</version>
+        <properties>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+            <junit.jupiter.version>5.11.4</junit.jupiter.version>
+        </properties>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+  README.md: |
+    # Build an MCP Tool Server for Customer Order Status
+
+    Implement `getOrderStatus(String orderId)` in `src/main/java/com/interviewos/workspace/Solution.java` adhering to the MCP contract.
+  src/main/java/com/interviewos/workspace/Solution.java: |
+    package com.interviewos.workspace;
+
+    public class Solution {
+
+        /**
+         * Executes the 'get_order_status' MCP tool call.
+         *
+         * @param orderId the order identifier passed by the calling LLM (expected format: ORD-[0-9]{6})
+         * @return MCP-compliant JSON response string
+         */
+        public static String getOrderStatus(String orderId) {
+            // TODO: Validate orderId and return MCP JSON response
+            return "{\"content\": [{\"type\": \"text\", \"text\": \"TODO\"}], \"isError\": true}";
+        }
+
+        public static void main(String[] args) {
+            System.out.println("Workspace ready.");
+        }
+    }
+editablePaths:
+  - src/main/java/com/interviewos/workspace/Solution.java
+hiddenTestFiles:
+  src/test/java/com/interviewos/workspace/SolutionTest.java: |
+    package com.interviewos.workspace;
+
+    import org.junit.jupiter.api.DisplayName;
+    import org.junit.jupiter.api.Test;
+    import static org.junit.jupiter.api.Assertions.*;
+
+    public class SolutionTest {
+
+        @Test
+        @DisplayName("Test 1: Valid Order ORD-123456 returns DELIVERED status with isError: false")
+        void testValidOrderDelivered() {
+            String response = Solution.getOrderStatus("ORD-123456");
+            assertNotNull(response, "Response must not be null");
+            assertTrue(response.contains("\"isError\": false") || response.contains("\"isError\":false"),
+                    "Expected isError: false for valid order ORD-123456");
+            assertTrue(response.contains("DELIVERED"), "Expected status DELIVERED");
+            assertTrue(response.contains("3"), "Expected 3 items");
+            assertTrue(response.contains("2026-10-28"), "Expected ETA 2026-10-28");
+        }
+
+        @Test
+        @DisplayName("Test 2: Invalid order pattern returns isError: true with validation explanation")
+        void testInvalidOrderIdPattern() {
+            String response = Solution.getOrderStatus("INVALID-12");
+            assertNotNull(response, "Response must not be null");
+            assertTrue(response.contains("\"isError\": true") || response.contains("\"isError\":true"),
+                    "Expected isError: true for malformed order ID");
+            assertTrue(response.toLowerCase().contains("invalid") || response.toLowerCase().contains("pattern") || response.toLowerCase().contains("format"),
+                    "Expected error explanation describing invalid format");
+        }
+
+        @Test
+        @DisplayName("Test 3: Missing order returns isError: true indicating order not found")
+        void testOrderNotFound() {
+            String response = Solution.getOrderStatus("ORD-999999");
+            assertNotNull(response, "Response must not be null");
+            assertTrue(response.contains("\"isError\": true") || response.contains("\"isError\":true"),
+                    "Expected isError: true for non-existent order");
+            assertTrue(response.toLowerCase().contains("not found"),
+                    "Expected 'not found' in error message for missing order");
+        }
+
+        @Test
+        @DisplayName("Test 4: Null, empty, or blank orderId returns isError: true")
+        void testBlankOrNullOrderId() {
+            String blankResp = Solution.getOrderStatus("   ");
+            assertNotNull(blankResp, "Response must not be null");
+            assertTrue(blankResp.contains("\"isError\": true") || blankResp.contains("\"isError\":true"),
+                    "Expected isError: true for blank orderId");
+
+            String nullResp = Solution.getOrderStatus(null);
+            assertNotNull(nullResp, "Response must not be null");
+            assertTrue(nullResp.contains("\"isError\": true") || nullResp.contains("\"isError\":true"),
+                    "Expected isError: true for null orderId");
+        }
+    }
 editorial: |
   ### Engineering Walkthrough: Building a Production-Grade MCP Tool Server
 
