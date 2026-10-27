@@ -90,11 +90,29 @@ export function useArenaEngines({
     provider,
     apiKey,
     isPlayground,
-    getQuestionContext: () => activeQuestion?.problemStatement || '',
+    getQuestionContext: () => {
+      let ctx = activeQuestion?.problemStatement || '';
+      if (activeQuestion?.starterFiles) {
+        const editablePath = activeQuestion.editablePaths?.[0] || Object.keys(activeQuestion.starterFiles).find((k) => k.endsWith('.java'));
+        if (editablePath && activeQuestion.starterFiles[editablePath]) {
+          ctx += `\n\n### Target Workspace File (${editablePath}):\n\`\`\`java\n${activeQuestion.starterFiles[editablePath]}\n\`\`\``;
+        }
+      }
+      return ctx;
+    },
     getSectionQuestionTitle: () => activeQuestion?.title,
     problemSlug: activeQuestion?.problemSlug || activeQuestion?.slug,
     starterCode: fallbackStarter,
-    getStarterCode: () => activeQuestion?.starterCode || fallbackStarter,
+    getStarterCode: () => {
+      if (activeQuestion?.starterCode) return activeQuestion.starterCode;
+      if (activeQuestion?.starterFiles) {
+        const editablePath = activeQuestion.editablePaths?.[0] || Object.keys(activeQuestion.starterFiles).find((k) => k.endsWith('.java'));
+        if (editablePath && activeQuestion.starterFiles[editablePath]) {
+          return activeQuestion.starterFiles[editablePath];
+        }
+      }
+      return fallbackStarter;
+    },
     getQuestionIndex: () => activeQuestionIndex,
     getTotalQuestionsInSection: () => questionsList.length,
     activeSectionIndex,
