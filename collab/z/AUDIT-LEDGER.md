@@ -11,4 +11,4 @@
 | 2026-11-02 | `fa82671` | **QB-54** dead-code-cleanup audit | **ACCEPTED** (merge `76ffa3c`; findings D1–D7 logged as backlog) |
 | 2026-11-02 | `fa82671` | Infrastructure question audit (gateway / discovery / config-server) | Gateway load-bearing (KEEP); discovery + config-server dead → seeded QB-55 |
 
-**Pending**: VP-1/VP-2/VP-3 operator runtime gates for QB-56 (post-rebuild, non-blocking). Next backlog item: offline Maven plugin pinning (item 2).
+**Pending**: VP-1/VP-2/VP-3 operator runtime gates for QB-56 (post-rebuild, non-blocking). **QB-57** ready for execution (spec: `collab/z/QB-57-OFFLINE-RUNNER-PLUGIN-PINNING-SPEC.md` — offline runner determinism, receipts frozen).
