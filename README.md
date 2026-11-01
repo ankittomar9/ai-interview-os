@@ -1,82 +1,152 @@
-# 🎯 AI Interview OS — Extensible Technical Evaluation Harness
+# 🎯 AI Interview OS — Extensible Technical Evaluation Harness & AI Practice Arena
 
-> **An open-source, production-grade technical evaluation harness and developer assessment platform that turns raw LLMs into deterministic, trustworthy technical interviewers.**
+> **An open-source, production-grade technical evaluation harness and developer assessment platform that turns raw LLMs into deterministic, trustworthy technical interviewers and Socratic coaches.**
 
-Run entirely on your laptop with your own keys, or self-hosted in an enterprise VPC — with zero canned metrics, true containerized execution sandboxes, and complete data privacy.
+Run entirely on your laptop with your own API keys, or self-host in an enterprise VPC — with zero canned metrics, true containerized execution sandboxes, and complete data privacy.
+
+---
+
+## 📸 Platform Walkthrough (Visual Tour)
+
+> 📷 *Screenshots will be populated following session recording. The visual gallery highlights the key assessment workflows:*
+
+| Stage / View | Description | Preview |
+|---|---|---|
+| **1. Setup Studio & Calibration** | Configure candidate seniority (Junior $\to$ Staff), paste Job Description or upload resume PDF for automatic skill matching and rubric calibration. | *`<!-- Screenshot: Setup Studio & Track Selection -->`* |
+| **2. Live Proctored Interview** | Dr. Anya Chen (Principal Bar Raiser) conducts a proctored assessment with real-time video HUD, anti-cheat telemetry (tab-blur, paste detection), and audio waveform. | *`<!-- Screenshot: Live Interview with Dr. Anya Chen & Proctor HUD -->`* |
+| **3. Minimalist VS Code Arena** | 3-zone high-density workspace: ActivityBar, BreadcrumbBar, Monaco editor, Project Explorer, and bottom test execution drawer. | *`<!-- Screenshot: Multi-file LLD Workspace with Maven Test Runner -->`* |
+| **4. React Flow System Design** | Full-canvas interactive whiteboard with drag-and-drop microservice nodes, databases, message queues, protocol connectors, and PNG export. | *`<!-- Screenshot: HLD Whiteboard Architecture Canvas -->`* |
+| **5. Playground & Coach Sam** | Unproctored developer practice arena with Coach Sam, offering progressive Socratic hint ladders and targeted bug diagnosis. | *`<!-- Screenshot: Playground Arena with Coach Sam Socratic Panel -->`* |
+| **6. Practice Center & Curriculum** | Interactive topic tree (`/learn`) spanning 29 taxonomy topics, 481+ questions, progress tracking, and curated study modules. | *`<!-- Screenshot: Practice Center Curriculum Tree & Modules -->`* |
+| **7. 360° Diagnostic Scorecard** | Verbatim transcript evidence, 5-dimension rubric breakdown, hiring recommendation, and a 7-day personalized study roadmap. | *`<!-- Screenshot: 360 Diagnostic Scorecard & Study Plan -->`* |
 
 ---
 
 ## 🏛️ What is an Evaluation Harness?
 
-A raw LLM cannot safely run arbitrary code, grade system designs, prevent hallucinations, or guarantee zero session drops. **The Harness is the runtime envelope wrapping the model to enforce determinism, safety, and rigor.**
+A raw LLM cannot safely execute candidate code, grade system designs, prevent hallucinations, or guarantee zero session drops. **The Harness is the deterministic runtime envelope wrapping the model to enforce safety, rigor, and auditability.**
 
 AI Interview OS structures this harness into four foundational pillars:
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        EVALUATION HARNESS                              │
-│                                                                        │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │ 1. SENSORS &     │  │ 2. GUARDRAILS &  │  │ 3. EXECUTION         │  │
-│  │    ACTUATORS     │  │    RESILIENCE    │  │    SANDBOXES         │  │
-│  │  • AST Analysis  │  │  • Provider Chain│  │  • Judge0 CE         │  │
-│  │  • HLD Topology  │  │    Failover      │  │    (cgroups/ptrace)  │  │
-│  │  • Audio Duplex  │  │  • JsonCleaner   │  │  • Ephemeral Maven   │  │
-│  │  • Telemetry     │  │  • Deterministic │  │  • Sandboxed SQL     │  │
-│  │    Sentinel      │  │    Fallbacks     │  │    (Isolated DB)     │  │
-│  └─────────┬────────┘  └────────┬─────────┘  └──────────┬───────────┘  │
-│            │                    │                       │              │
-│            ▼                    ▼                       ▼              │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ 4. STATE & AUDIT LEDGERS                                         │  │
-│  │  • Session State Machine     • Anti-Cheat Telemetry Ledger       │  │
-│  │  • Topic Exposure Ledger     • Streak & Activity History Ledger  │  │
-│  └──────────────────────────────┬───────────────────────────────────┘  │
-│                                 │                                      │
-│                                 ▼                                      │
-│                  ┌──────────────────────────────┐                      │
-│                  │  Pluggable LLM Core (BYOM)   │                      │
-│                  │ Gemini / Groq / OpenAI / vLLM│                      │
-│                  └──────────────────────────────┘                      │
-└────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 EVALUATION HARNESS                                     │
+│                                                                                        │
+│  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────────────┐  │
+│  │ 1. SENSORS &         │  │ 2. GUARDRAILS &      │  │ 3. EXECUTION                 │  │
+│  │    ACTUATORS         │  │    RESILIENCE        │  │    SANDBOXES                 │  │
+│  │  • AST Code Analyzer │  │  • 3-Provider Chain  │  │  • Judge0 CE Isolated Sandbox│  │
+│  │  • HLD Graph Canvas  │  │    Failover          │  │    (cgroups / ptrace)        │  │
+│  │  • Audio Duplex STT  │  │  • Multi-Phase       │  │  • Docker Maven Container    │  │
+│  │  • Proctor Sentinel  │  │    JsonCleaner       │  │    (Offline / Network None)  │  │
+│  │    (Focus/Paste/HUD) │  │  • Workspace Grounded│  │  • PostgreSQL Isolated       │  │
+│  │  • Camera & Mic Chunks│ │    Socratic Fallbacks│  │    Sandbox (Schema & Query)  │  │
+│  └──────────┬───────────┘  └──────────┬───────────┘  └──────────────┬───────────────┘  │
+│             │                         │                             │                  │
+│             ▼                         ▼                             ▼                  │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│  │ 4. STATE, AUDIT & STORAGE LEDGERS                                                │  │
+│  │  • Session State Machine              • Immutable Practice Attempt Ledger        │  │
+│  │  • Anti-Cheat Telemetry Ledger        • Derived Mathematical Streak & Activity   │  │
+│  │  • Topic Exposure Ledger              • Local Session Auto-Vault (P7-AUTOVAULT)  │  │
+│  └────────────────────────────────────┬─────────────────────────────────────────────┘  │
+│                                       │                                                │
+│                                       ▼                                                │
+│                      ┌─────────────────────────────────┐                               │
+│                      │    Pluggable LLM Core (BYOM)    │                               │
+│                      │  Gemini / Groq / OpenAI / Ollama│                               │
+│                      └─────────────────────────────────┘                               │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Sensors & Actuators (Tools & Inputs)**: Captures candidate code, whiteboard architecture graphs (`HldWhiteboardCanvas.tsx`), push-to-talk audio (`useCoachVoice.ts`), and proctoring telemetry (`proctor-sentinel-service`) without relying on unstructured model impressions.
-2. **Guardrails & Resilience**: A 3-provider failover chain (Primary $\to$ Secondary $\to$ Local Ollama), multi-stage `JsonCleaner` recovery (preventing inner-fence corruption), and deterministic fallback loops ensuring **zero dropped turns** even during upstream API 503s.
-3. **Execution Sandboxing**: Zero-trust code execution via Judge0 CE containers (CPU/memory/time bounded) and isolated Docker Maven containers. The platform **never hallucinates a test pass** — if the sandbox is unavailable, it reports `ENGINE_UNAVAILABLE`.
-4. **State & Memory Ledgers**: Append-only exposure ledgers (SPEC-016), persistent activity and streak calendars (SPEC-017), and verbatim dialogue transcripts that feed the diagnostic scorecard.
+1. **Sensors & Actuators (Tools & Inputs)**: Captures candidate code, whiteboard architecture graphs (`HldWhiteboardCanvas.tsx`), push-to-talk audio (`useCoachVoice.ts`), video streams, and proctoring telemetry (`proctor-sentinel-service`) without relying on unstructured model impressions.
+2. **Guardrails & Resilience**: A 3-provider failover chain (Primary $\to$ Secondary $\to$ Local Ollama), multi-stage `JsonCleaner` recovery (preventing inner-fence markdown corruption), grounded workspace file templates, and deterministic fallback loops ensuring **zero dropped turns** even during upstream API outages.
+3. **Execution Sandboxing**: Zero-trust code execution via Judge0 CE containers (CPU/memory/time bounded), isolated offline Docker Maven runners, and sandboxed PostgreSQL instances. The platform **never hallucinates a test pass** — if the sandbox is unavailable, it reports an honest `ENGINE_UNAVAILABLE`.
+4. **State & Storage Ledgers**: Append-only practice attempt ledgers, pure mathematical streak projections, verbatim dialogue transcripts with rubric citations, and cryptographic automated vault archival (`manifest.json` with SHA-256 signatures).
 
 ---
 
-## 🔌 Bring Your Own Model (BYOM)
+## 🎓 Seven Technical Evaluation Tracks
 
-AI Interview OS is completely vendor-agnostic. Models are abstracted behind a pluggable `ModelProvider` and `AiClientFactory` interface:
+The platform provides dedicated interview screens, evaluation engines, and problem workspaces across 7 core engineering disciplines:
 
-* **Cloud Frontier**: Gemini 2.0 Flash, Groq (Llama 3.3 70B & Whisper Large v3 Turbo), OpenAI GPT-4o.
-* **100% Offline / Self-Hosted**: Local Ollama (`qwen2.5-coder:7b`, `llama3.2:3b`) or any OpenAI-compatible vLLM endpoint.
-* **Hot-Failover (SPEC-018)**: If your primary provider exhausts rate limits or returns 5xx, the harness dynamically shifts in-flight turns to your configured secondary provider without candidate-visible disruption.
-
----
-
-## 🏗️ Architecture
-
-Spring Cloud microservices (Gateway + Services) with a React 19 + Vite 8 + Tailwind v4 frontend.
-
-| Service | Port | Responsibility | Harness Role |
+| Track | Execution Sandbox | Workspace & Interactive Tools | Evaluation Focus |
 |---|---|---|---|
-| `api-gateway-service` | 8080 | Single entry point, reverse proxy routing all `/api/v1/**` | Ingress & Auth Gate |
-| `interview-session-service` | 8081 | Sessions, resume ingestion, GridFS, DSA/LLD runners, `/history` analytics | State & Execution Sandbox |
-| `ai-orchestrator-service` | 8082 | Question matching, live dialogue, provider failover, Whisper STT, vision eval | Evaluation & Guardrail Engine |
-| `proctor-sentinel-service` | 8083 | Telemetry (tab blur, paste dumps, focus), proctor audit summary | Sensor & Proctor Ledger |
-| `evaluation-report-service` | 8084 | 360° diagnostic scorecard, hiring verdict, 7-day actionable study plan | Audit & Scoring Ledger |
-| `question-bank-service` | 8086 | Centralized problem catalog (475 questions), topic rotation, rubrics | Curriculum & Exposure Ledger |
-| `whisper-sidecar` | 8178 | Local Whisper.cpp speech-to-text inference (profile: `local-stt`) | Local Audio Sensor |
+| **Algorithms & Data Structures (DSA)** | Judge0 CE (ptrace/cgroup isolate; Java, Python 3, JavaScript) | Single-file Monaco IDE with ActivityBar, testcase drawer, and execution telemetry | Time/space complexity, correctness, edge-case coverage, algorithmic optimization |
+| **Low-Level Design (LLD / Spring Boot)** | Isolated Docker Maven Runner (`ai-interview-os/lld-runner:latest`, JUnit 5, offline `--network none`) | Multi-file VS Code workspace with Project Explorer, read-only locks, and Surefire reporting | Design patterns, SOLID principles, concurrency, domain modeling, clean code |
+| **High-Level System Design (HLD)** | Multimodal Vision Evaluation + Topology Analyzer | Interactive React Flow canvas with microservices, queues, caches, load balancers, and PNG export | Component decomposition, data flow, scalability, trade-off analysis, failure modes |
+| **Behavioral & Leadership** | Neural Socratic Dialogue Engine | Interactive audio duplex with real-time waveform, speech-to-text, and voice synthesis | STAR framework, engineering leadership, conflict resolution, technical ownership |
+| **SQL & Database Engineering** | Sandboxed PostgreSQL Instance with isolated test schemas | Schema inspector, syntax-highlighted SQL editor, and result-set comparator | Query optimization, indexing strategies, CTEs, window functions, relational modeling |
+| **Agentic Engineering & MCP** | Docker Maven Container + Structured Rubric Evaluator | Model Context Protocol (MCP) tool server workspace, schema contracts, JSON-RPC validation | Tool discovery, schema gating, injection defense, subagent permission scoping |
+| **System Troubleshooting & DevOps** | Scenario-driven Simulation & Incident Triage | Production logs, metrics dashboards, architectural topologies, and root-cause ledger | Symptom isolation, log analysis, mitigation runbooks, post-mortem rigor |
 
-*(Note: `service-discovery-service` and `cloud-config-server` were retired per ADR-004 to cap host RAM footprint under 5GB).*
+---
 
-**Data stores:** PostgreSQL (sessions, reports) · MongoDB (`interviewos` + `questionbank` DBs, GridFS attachments).
+## 📚 Problem Catalog & Practice Center (`/learn`)
 
-**Frontend:** React 19, Vite 8, Tailwind CSS v4 (design tokens in `frontend/src/styles/tokens.css`), Monaco editor, React Flow whiteboard, recharts. Reusable design system primitives live in `frontend/src/components/ui/` and IDE chrome components live in `frontend/src/components/ide/`.
+The platform ships with a comprehensive curriculum of **481 production-grade questions** mapped across **29 taxonomy topics**:
+
+- **Curriculum Tree (`/learn`)**: Browse topics across Data Structures, Algorithms, Distributed Systems, Database Internals, Concurrency, and Agentic Workflows.
+- **Detailed Solution Writeups**: Approach taxonomy featuring primary canonical solutions, alternative trade-offs, time/space complexity analysis, and key algorithmic concepts.
+- **Playground Practice Arena**: Launch any question in unconstrained practice mode with interactive multi-track switching (DSA ⇄ SQL ⇄ LLD ⇄ HLD).
+- **Socratic AI Coach (Coach Sam)**:
+  - Guided hints ladder (progressive hints without revealing complete answers prematurely).
+  - Explicit code reveals grounded directly in the question's workspace file structure and package declarations.
+  - Bug diagnosis and edge-case probing.
+
+---
+
+## 🔌 Bring Your Own Model (BYOM) & Bring Your Own Key (BYOK)
+
+AI Interview OS is completely vendor-agnostic. Keys are stored **strictly in your browser's `localStorage`** — never persisted on any server:
+
+* **Cloud Frontier**:
+  - **Google Gemini**: Gemini 2.0 Flash (high-throughput multimodal vision & fast dialogue).
+  - **Groq**: Llama 3.3 70B & Whisper Large v3 Turbo (sub-200ms ultra-low latency voice & chat).
+  - **OpenAI**: GPT-4o and GPT-4o mini.
+* **100% Offline / Self-Hosted**:
+  - Local **Ollama** (`qwen2.5-coder:7b`, `llama3.2:3b`) or any OpenAI-compatible **vLLM** endpoint.
+* **Hot-Failover (SPEC-018)**: If your primary provider exhausts rate limits or encounters 5xx errors, the orchestrator dynamically fails over to your secondary provider without dropping session context.
+
+---
+
+## 🔒 100% Local Mode (Zero Cloud Egress)
+
+Run entire technical evaluations on your laptop with zero cloud bills and complete privacy:
+
+1. **Start Ollama** locally:
+   ```bash
+   ollama run qwen2.5-coder:7b
+   ```
+2. **Start InterviewOS**:
+   ```bash
+   docker compose up -d
+   ```
+3. **Optional Local Neural STT**: Start the Whisper.cpp sidecar:
+   ```bash
+   docker compose --profile local-stt up -d
+   ```
+4. **Purity Verification**: The UI displays the green **`🔒 100% Local`** badge confirming zero external requests leave your machine.
+
+---
+
+## 🏗️ System Architecture
+
+Built on Spring Cloud microservices with a modern React 19 + Vite 8 frontend.
+
+| Service | Port | Primary Responsibility | Harness Role |
+|---|---|---|---|
+| `api-gateway-service` | 8080 | Central entry point, reverse proxy routing `/api/v1/**` | Ingress & Auth Gate |
+| `interview-session-service` | 8081 | Sessions, state machine, GridFS, DSA/LLD/SQL runners, `/history` | State & Execution Sandbox |
+| `ai-orchestrator-service` | 8082 | Dialogue management, provider failover, Whisper STT, vision eval | Evaluation & Guardrail Engine |
+| `proctor-sentinel-service` | 8083 | Anti-cheat telemetry (tab-blur, paste events, focus), audit logs | Sensor & Proctor Ledger |
+| `evaluation-report-service` | 8084 | 360° scorecard, rubric evidence extraction, 7-day study plan | Audit & Scoring Ledger |
+| `question-bank-service` | 8086 | Curriculum repository (481 questions), topic taxonomy, rubrics | Curriculum & Exposure Ledger |
+| `whisper-sidecar` | 8178 | Local Whisper.cpp speech-to-text inference (`--profile local-stt`) | Local Audio Sensor |
+
+**Datastores:** PostgreSQL (sessions, practice attempts, reports) · MongoDB (`interviewos` + `questionbank` DBs, GridFS attachments).
+
+**Frontend:** React 19, Vite 8, Tailwind CSS v4, Monaco Editor, React Flow, Recharts.
 
 ---
 
@@ -84,194 +154,72 @@ Spring Cloud microservices (Gateway + Services) with a React 19 + Vite 8 + Tailw
 
 ### Prerequisites
 - Docker + Docker Compose (v2)
-- JDK 21 (only if building services locally: `mvn clean package`)
-- Node 20+ (for frontend dev)
-- Optional: an LLM API key (Gemini / Groq / OpenAI) or local Ollama for 100% offline assessment
+- JDK 21 (only if compiling services locally: `mvn clean package`)
+- Node 20+ (for frontend development)
+- An LLM API key (Gemini / Groq / OpenAI) or local Ollama
 
-### 1. Boot infrastructure + core stack
+### 1. Boot Core Stack
 ```bash
 docker compose up -d
 ```
 
-### 2. Add execution sandboxes (DSA + LLD)
+### 2. Boot Sandboxed Execution Engines (DSA + LLD + SQL)
 ```bash
 docker compose --profile engines up -d
 ```
 
-| Compose command | What boots | ~Memory | Best for |
+| Compose Command | Services Started | Approx. RAM | Ideal For |
 |---|---|---|---|
-| `docker compose up -d` | Core stack (gateway, services, Mongo, Postgres, QuestionBank) | ~2.5 GB | Behavioral, HLD, resume ingestion, AI dialogue |
-| `docker compose --profile engines up -d` | Core + Judge0 CE (server/workers/db/redis) + Docker Maven runner | ~5.2 GB (measured) | DSA coding + Spring Boot LLD execution |
+| `docker compose up -d` | Core Gateway, Services, MongoDB, PostgreSQL, QuestionBank | ~2.5 GB | Behavioral, HLD, resume ingestion, AI dialogue |
+| `docker compose --profile engines up -d` | Core + Judge0 CE (workers/redis/db) + Docker Maven runner + Postgres sandbox | ~5.2 GB | Real DSA coding, Spring Boot LLD & SQL execution |
 
-### 3. Observability (optional)
-```bash
-docker compose -f docker-compose.observability.yaml up -d
-```
-Prometheus + Grafana + Loki + Promtail + Tempo. Grafana dashboards at [http://localhost:3000](http://localhost:3000) (`admin`/`admin`) show service health, request latency, 5xx rate, and live logs.
-
-### 4. Frontend
+### 3. Launch Frontend
 ```bash
 cd frontend
 npm install
 npm run dev   # http://localhost:5173
 ```
 
----
-
-## 🔑 Bring Your Own Key (BYOK)
-
-Keys are stored **only in your browser localStorage** — never on any server. Choose a provider on the Setup screen:
-
-- **Gemini** (Gemini 2.0 Flash — fast multimodal vision + dialogue)
-- **Groq** (Llama 3.3 70B & Whisper Large v3 Turbo — sub-200ms speech & chat)
-- **OpenAI** (GPT-4o / GPT-4o mini)
-- **Ollama** (local `qwen2.5-coder:7b`, zero keys, 100% offline)
-
----
-
-## 🔒 Local Mode (No Cloud Keys Required — SPEC-003)
-
-Run entirely on your laptop with zero cloud bills and complete data privacy:
-
-1. **Start Ollama** locally (`ollama run qwen2.5-coder:7b` or `ollama run llama3.2:3b`).
-2. **Start InterviewOS**:
-   ```bash
-   docker compose up -d
-   ```
-3. **Optional Local STT**: Start the Whisper.cpp sidecar for offline neural speech-to-text:
-   ```bash
-   docker compose --profile local-stt up -d
-   ```
-4. **Verify Local Purity**: The UI displays the green **`🔒 100% Local`** badge confirming that zero external requests leave your machine. If cloud fallback is activated, the badge automatically reflects cloud egress count.
-
-**What stays 100% local**:
-- All AI dialogue & question personalized generation (Ollama)
-- All speech-to-text (Whisper.cpp / Web Speech API)
-- All code compilation & sandboxed execution (Judge0 CE supporting Java, Python, C++; Postgres / Maven. *Note: TypeScript cannot run in local mode or cloud Judge0 due to isolate timeouts; see known limitations*)
-- All databases & file attachments (Local Postgres & MongoDB)
-
----
-
-## 🎯 Track-Neutral Rubrics & Local Resume Parsing (SPEC-004)
-
-The platform evaluates candidates across track-specific rubrics so that non-coding assessments are scored objectively:
-
-- **Algorithms & DSA / SQL / LLD**: Evaluated on Algorithmic Reasoning, Code Quality, Requirements Clarification, Communication, and Edge Cases.
-- **Behavioral (STAR)**: Evaluated on Leadership, Conflict Resolution, Teamwork, Adaptability, and STAR Communication.
-- **Resume Deep Dive**: Evaluated on Technical Depth, Project Impact, Problem Solving, Career Narrative, and Intellectual Honesty.
-- **System Design (HLD)**: Evaluated on Architecture Decomposition, Scalability, Trade-Offs, Whiteboard Communication, and Production Rigor.
-
-**Local Resume Ingestion**: Upload a resume PDF (or paste text) during Setup to automatically parse contact info, extract skills, and calibrate the difficulty ladder (Junior $\to$ Mid $\to$ Senior $\to$ Staff) to your background.
-
----
-
-## 📈 Progress Ledger & Trajectory Analytics (SPEC-005)
-
-Practice interviews are tracked across time in a dedicated historical ledger:
-
-- **Trajectory Tracking**: View score progression across consecutive attempts on each track (`GET /api/v1/progress/{candidateId}/{track}`).
-- **Improvement Analytics**: Automatic detection of score deltas (+/- points) and 3-session moving averages.
-- **Weak Dimension Alerts**: Automatically highlights focus areas where scores fell below 70 across multiple attempts, recommending specific targeted drills.
-- **Integrated Cockpit**: Access your Progress Ledger directly from the Setup Screen or review it alongside your Diagnostic Report post-session.
-
----
-
-## 💻 Minimalist VS Code IDE Workspace (M5.5)
-
-The assessment cockpit delivers a distraction-free, high-density 3-zone VS Code experience:
-
+### 4. Observability Dashboard (Optional)
+```bash
+docker compose -f docker-compose.observability.yaml up -d
 ```
-┌────┬───────────────────────────────────────┬──────────────────────────────────────────────────────────┐
-│ 📋 │ 📑 Problem Specification              │ 📁 Spring Boot LLD Workspace             [ Java 21 ▾ ]   │
-│    ├───────────────────────────────────────┼───────────────────────┬──────────────────────────────────┤
-│ 🎙️ │ ## Order Service Implementation       │ 📂 Project Explorer   │ 📄 OrderService.java ✖   [+ Tab]  │
-│    │                                       │  ▼ src/main/java      │ ──────────────────────────────── │
-│ 📊 │ ### Requirements                      │    ▼ controller       │ 1  @Service                      │
-│    │ 1. In `OrderController`:              │      📄 OrderCtrl.java │ 2  public class OrderService {   │ Monaco
-│    │    • Implement POST /orders           │    ▼ service          │ 3    @Autowired                  │ Editor
-│    │ 2. In `OrderService`:                 │      📄 OrderSvc.java  │ 4    private OrderRepo repo;     │
-│    │    • Check stock invariant            │    ▼ model 🔒         │ 5  }                             │
-│    │                                       │      📄 Order.java    │                                  │
-│    │ ### Expected Output                   │  ▼ src/test/java 🔒   │ ──────────────────────────────── │
-│    │ `{"status": "CREATED", "id": ...}`    │      📄 OrderTest.java│ Ln 14, Col 5 | Spaces: 4 | UTF-8 │
-│    │                                       ├───────────────────────┴──────────────────────────────────┤
-│    │                                       │ 🧪 Test Cases (5/5 Passed)                 [ ⬆ Expand ] │ Bottom
-│    │                                       │  ✅ CreateOrderPersistsWithCreatedStatus (120ms)         │ Test
-│    │                                       │  ✅ InsufficientStockThrowsException (45ms)              │ Drawer
-└────┴───────────────────────────────────────┴──────────────────────────────────────────────────────────┘
-```
-
-- **ActivityBar**: 40px vertical rail with Explorer, Run action, and Proctor Sentinel indicators.
-- **BreadcrumbBar**: File path navigation trail (`src › main › java › com › example › OrderService.java`).
-- **StatusBar**: Caret position (`Ln {ln}, Col {col}` subscribing to Monaco caret movements), file encoding, language, and sandbox engine readiness chips (`Judge0 ready` / `Maven ready`).
-- **MarkdownProblem**: Rendered markdown problem specifications with structured requirement lists and example assertions.
-- **Workspace Lifecycle Guard**: Client-side tab collision detection preventing multiple active workspace tabs for the same session.
+Prometheus + Grafana + Loki + Promtail + Tempo at [http://localhost:3000](http://localhost:3000) (`admin`/`admin`).
 
 ---
 
-## 🎓 Interview Tracks
+## 🔒 Sandbox & Security Architecture
 
-| Track | Execution engine | Workspace Format |
-|---|---|---|
-| **Algorithms & Data Structures** | Judge0 CE (stdin/stdout, hidden fixtures; Java, Python 3, JavaScript; *TypeScript unsupported*) | Single-file Monaco IDE with ActivityBar & StatusBar |
-| **Spring Boot LLD** | Isolated Docker Maven runner (JUnit 5, hidden suites) | Multi-file workspace (Explorer + Tabs + Read-only Locks) |
-| **High-Level System Design** | React Flow canvas + multimodal vision eval | Drag/drop architecture nodes, protocol handles, PNG export |
-| **Behavioral & Leadership** | Neural dialogue engine | STAR-method voice conversation with live audio waveform |
-| **Java Core & Frameworks** | QuestionBank-matched deep dive | Full dialogue + code review |
-
-### 📚 Problem Catalog
-The platform ships with an extensive, curated catalog of **475 questions (134 Easy / 258 Medium / 83 Hard across DSA, SQL, LLD, HLD, and Behavioral)**, complete with hidden testcases, starter templates, coaching rubrics, and taxonomy metadata. In line with modern technical hiring standards, the catalog serves as a calibrated algorithmic sanity filter, while architecture, incident scenarios, and AI-native engineering carry the primary evaluation signal.
-
----
-
-## 🔒 Sandbox & Security Model
-
-- **Judge0 (DSA Execution):** Zero-trust ptrace/cgroup containers, strict CPU/memory/time limits, per-test stdin/expected-output loops. Active runner support includes Java (OpenJDK), Python 3, and JavaScript (Node.js). **Known Limitation — TypeScript:** Judge0 1.13.1 TypeScript (Language ID 74) fails every submission with `Compilation time limit exceeded` (`tsc` on Node 12 inside the isolate); `DsaJudge0Runner.resolveLanguageId` rejects TS upfront; the frontend language selector offers only Java, JavaScript, and SQL. Local Mode cannot execute TypeScript either. An upgrade path via a custom Judge0 image with a newer Node runtime is an explicitly deferred decision (tracked as a non-goal in §8).
-- **Maven runner (LLD):** Ephemeral `--network none` containers (768 MB / 2 CPU), pre-warmed `~/.m2`, candidate edits confined to an `editablePaths` whitelist, hidden JUnit suites injected server-side.
-- **Docker socket** is mounted exclusively into `interview-session-service`. For production, proxy it (e.g. `tecnativa/docker-socket-proxy`) allowing only create/start/wait/delete.
-- **Proctoring:** Frontal webcam HUD, tab-blur + paste-dump telemetry, single-monitor check, optional dual-camera phone link (QR), focus-loss lockout.
-
----
-
-## 🧼 Storage Hygiene & Retention
-
-- **GridFS attachments** (canvas PNG/JSON, etc.) are purged nightly for sessions `COMPLETED` > `storage.retention-days` (default 14) plus orphans — `StorageHygieneScheduledJob`.
-- **Loki** logs retain 168 h (7 days) with compactor enabled.
+- **Judge0 (DSA Sandbox):** Zero-trust ptrace/cgroup isolates with strict CPU, memory, and timeout limits. Supported: Java (OpenJDK), Python 3, JavaScript (Node.js). *(Note: TypeScript is intentionally disabled due to isolate compilation timeouts).*
+- **Maven Runner (LLD & Agentic Sandbox):** Ephemeral `--network none` containers (768 MB RAM, 2 CPUs) based on pre-warmed image `ai-interview-os/lld-runner:latest`. Candidate writes are constrained to an `editablePaths` whitelist; hidden JUnit 5 test suites are injected server-side.
+- **SQL Runner (Database Sandbox):** Isolated PostgreSQL databases created per execution with pre-seeded table schemas, data assertions, and query performance checks.
+- **Proctor Sentinel:** Frontal webcam HUD, tab-blur tracking, multi-monitor check, paste-dump detection, and focus-loss lockout.
 
 ---
 
 ## 🗄️ Local Session Auto-Vault (P7-AUTOVAULT)
 
-Completed interviews are automatically archived to the operator's local filesystem with zero clicks, no browser downloads, and a cryptographic manifest (`manifest.json` with SHA-256 for all artifacts).
+Completed interviews are automatically archived to the local filesystem with zero clicks, no browser downloads, and a cryptographic manifest (`manifest.json` with SHA-256 signatures for every recording, transcript, report, and code submission):
 
-### Operator Setup
-1. **Choose the drive:** Default is `D:/AI OS Interview Media`. If D: does not exist on your machine, set `VAULT_ROOT=E:/AI OS Interview Media` (or `C:/AI OS Interview Media`) in `.env` (forward slashes are recommended for Docker Desktop on Windows).
-2. **Docker File Sharing:** Ensure the chosen drive is shared in Docker Desktop (`Settings` → `Resources` → `File Sharing`). On WSL2 backends, fixed drives are typically available by default.
-3. **Rebuild & Start:**
-   ```bash
-   docker compose build interview-session-service evaluation-report-service && docker compose up -d
-   ```
-4. **Sanity Check:**
-   ```bash
-   curl http://localhost:8080/api/v1/sessions/vault/health
-   # Returns: {"root":"/vault","mounted":true,"writable":true}
-   ```
-5. **Run any interview:** When the interview finishes, the session folder appears automatically under `<VAULT_ROOT>/<YYYY-MM-DD>/<HHmm>_<TRACK>_<DIFFICULTY>_<sessionId>/` with recordings, transcripts, reports, code submissions, and manifest.
-
----
-
-## 🧪 Honest Evaluation Pipeline
-
-1. **Preflight** — `GET /api/v1/system/capabilities` probes engines, services, and storage; the checklist UI shows per-track readiness and the exact `docker compose --profile engines up -d` hint when a sandbox is offline.
-2. **Execution** — Real test runs produce `CODE_EXECUTION` transcript turns (`X/Y tests passed (STATUS)` in `Z`ms).
-3. **Rubric** — The LLM scores 5 dimensions and must attach **verbatim transcript evidence** to each; `rubricCheckpoints` from the QuestionBank ground the evaluation.
-4. **Verdict gating** — `HIRE` / `STRONG_HIRE` require ≥ 1 verified passing execution; otherwise the score is capped and the diagnostic report highlights the gaps.
+```
+<VAULT_ROOT>/<YYYY-MM-DD>/<HHmm>_<TRACK>_<DIFFICULTY>_<sessionId>/
+├── manifest.json
+├── report.json
+├── report.pdf / report.md
+├── transcript.json
+├── recordings/
+│   ├── screen.webm
+│   ├── webcam.webm
+│   └── audio.webm
+└── submissions/
+    └── Solution.java
+```
 
 ---
 
 ## ⚖️ Honest-Judge Test Discipline (Four-Number Reporting)
 
-To ensure true regression resistance and open-source transparency, AI Interview OS operates under the **Honest-Judge Test Standard** (QB-18 / QB-44 / SPEC-019). Every pull request, release, and audit reports test health via the four-number vocabulary:
+AI Interview OS operates under the **Honest-Judge Test Standard** (SPEC-019 / QB-44). Every PR, audit, and commit reports verification health using the four-number vocabulary:
 $$\text{Test Files (on disk)} \quad / \quad \text{Test Cases} \quad / \quad \text{Assertions} \quad / \quad \text{Skipped}$$
 
 Run the checked-in test counter to verify the exact counts across the reactor:
@@ -279,31 +227,29 @@ Run the checked-in test counter to verify the exact counts across the reactor:
 ./scripts/count-tests.sh --markdown
 ```
 
-Current baseline across the repository:
+Current verified repository baseline:
 | Module | Test Files (on disk) | Test Cases | Assertions | Skipped | Status |
 |---|---|---|---|---|---|
-| `ai-orchestrator-service` | 16 | 117 | 415 | 1 | PASS |
-| `interview-session-service` | 44 | 220 | 816 | 1 | PASS |
-| `frontend` | 52 | 320 | 1231 | 0 | PASS |
-| **Total / Reactor** | **112** | **657** | **2462** | **2** | **PASS** |
+| `ai-orchestrator-service` | 19 | 129 | 482 | 1 | PASS |
+| `interview-session-service` | 44 | 223 | 836 | 1 | PASS |
+| `frontend` | 53 | 329 | 1287 | 0 | PASS |
+| **Total / Reactor** | **116** | **681** | **2605** | **2** | **PASS** |
 
 ---
 
-## 🗺️ API Directory (via Gateway `:8080`)
+## 🗺️ Milestone Roadmap Status
 
-| Area | Endpoints |
-|---|---|
-| Sessions | `POST /api/v1/sessions`, `GET /api/v1/sessions/{id}`, `POST /api/v1/sessions/{id}/messages`, `GET /api/v1/sessions/{id}/transcript` |
-| Resume | `POST /api/v1/resume/upload`, `POST /api/v1/resume/text` |
-| Attachments | `POST /api/v1/sessions/{id}/attachments` (multipart or JSON), `GET .../attachments/{attId}` |
-| Execution | `POST /api/v1/sessions/{id}/execute` (DSA), `POST /api/v1/sessions/{id}/execute-project` (LLD) |
-| Questions | `GET /api/v1/questions`, `GET /api/v1/questions/{slug}`, `POST /api/v1/questions/match` |
-| AI | `POST /api/v1/ai/generate-question`, `/dialogue`, `/transcribe`, `/design-evaluate`, `/rubric-evaluate` |
-| Proctor | `POST /api/v1/proctor/events`, `GET /api/v1/proctor/sessions/{id}/summary` |
-| Reports | `POST /api/v1/reports/generate/{id}`, `GET /api/v1/reports/sessions/{id}` |
-| System | `GET /api/v1/system/capabilities` |
-
-*Internal-only (not routed externally):* `GET /internal/v1/questions/{slug}/full`, `POST /internal/v1/questions/import`.
+- ✅ **M1 — Real Code Execution**: Judge0 CE container integration with hidden test assertions
+- ✅ **M2 — System Design Whiteboard**: React Flow canvas + GridFS attachments + multimodal vision rubric
+- ✅ **M3 — Audio/Video Telemetry & AutoVault**: Screen/webcam/audio chunk recording + local filesystem AutoVault
+- ✅ **M4 — Evidence-Grounded Scoring**: 5-dimension rubric with verbatim dialogue citations and hiring verdict
+- ✅ **M5 — VS Code Arena IDE**: ActivityBar, BreadcrumbBar, StatusBar, test drawers, and multi-mode sizing
+- ✅ **M6 — Multi-File LLD Workspace**: Spring Boot project workspaces + offline Docker Maven runner + JUnit 5
+- ✅ **M7 — Centralized Question Bank**: 481 questions across 29 topics, capability probe, and curriculum ingestion
+- ✅ **M8 — Multi-Stage Onsite Loop**: Multi-track switching (DSA ⇄ SQL ⇄ LLD ⇄ HLD), StageStepper, and proctored flow
+- ✅ **SQL Track**: Isolated PostgreSQL database runner with schema generation and query result comparators
+- ✅ **Practice / Coaching Playground**: Dedicated `/learn` hub, hints ladder, Coach Sam Socratic assistant
+- ✅ **Agentic Engineering Track**: Model Context Protocol (MCP) tool servers, security guardrails, and debugging
 
 ---
 
@@ -311,65 +257,18 @@ Current baseline across the repository:
 
 ```
 ai-interview-os/
-├── docker-compose.yaml              # core + `engines` profile
-├── docker-compose.observability.yaml
-├── docker/lld-runner/               # pre-warmed Maven runner image
-├── cloud-config-server/config-repo/ # per-service YAML config
-├── api-gateway-service/             # port 8080 (Spring Cloud Gateway)
-├── service-discovery-service/       # port 8761 (Eureka)
-├── interview-session-service/       # port 8081 (Session & Code Execution)
-├── ai-orchestrator-service/         # port 8082 (AI Dialogue & Evaluation)
-├── proctor-sentinel-service/        # port 8083 (Telemetry & Anti-Cheat)
-├── evaluation-report-service/       # port 8084 (360° Scorecard & Rubric)
-├── question-bank-service/           # port 8086 (Curricula & Matching)
-└── frontend/                        # React 19 + Tailwind v4 + VS Code IDE chrome
-```
-
----
-
-## 🗺️ Milestone Roadmap
-
-- ✅ **M1** — Real Judge0 CE Sandbox with hidden test execution
-- ✅ **M1.5** — Catalog-driven verification loop
-- ✅ **M4** — Structured 5-dimension rubric with verbatim evidence
-- ✅ **M5.3 & M5.4** — Tailwind v4 design tokens + 13-component `ui/` library + Visual QA
-- ✅ **M2** — React Flow HLD whiteboard + GridFS attachments + multimodal vision rubric
-- ✅ **M6** — Multi-file Spring Boot LLD workspace + isolated Docker Maven test runner + JUnit 5
-- ✅ **M7** — QuestionBank microservice + preflight capability probe + compose profiles + grounded dialogue seeds
-- ✅ **M5.5** — Minimalist VS Code IDE chrome (ActivityBar, BreadcrumbBar, StatusBar, MarkdownProblem, Lifecycle Guard)
-- ⏸ **M8** — Unified multi-stage onsite loop (Screening ➔ DSA ➔ LLD/HLD ➔ Behavioral in a single session)
-- ⏸ **M3** — Session recording, audio/video replay & media retention
-- ⏸ **SQL & DevOps Tracks** — PostgreSQL sandbox & query evaluation
-- ⏸ **Practice / Coaching Playground** — Developer learning mode surfacing common mistakes and model answers
-
----
-
-## 💾 Data Persistence: Streak, Calendar & History (SPEC-017)
-
-All candidate assessment records, practice submissions, and interview sessions live in PostgreSQL (`interview_session_db`) and MongoDB (`interviewos`):
-
-- **Solved & Attempted Event Ledger:**
-  - Every practice arena execution writes an immutable attempt row to `practice_attempts` (Postgres, migration `V8`).
-  - Every scheduled or proctored interview question writes to `session_questions` (Postgres, migration `V9`).
-  - Candidate profile, code artifacts, and resumes persist in Postgres and MongoDB.
-- **Derived-Only Streak & History:**
-  - Streak metrics (current streak, longest run, total questions solved) and calendar days are **pure mathematical projections** derived at query time directly from `practice_attempts` and `session_questions`.
-  - There is **zero separate mutable streak state or cache** to corrupt or fall out of sync.
-- **Docker Compose Lifecycle Contract:**
-  - `docker compose down && docker compose up` — **SAFE & ROUTINE**. The `postgres_data`, `mongodb_data`, and `judge0_db_data` volumes are named Docker volumes. All streaks, activity calendars, question submissions, and diagnostic reports **100% survive container restarts**.
-  - `docker compose down -v` — **DESTRUCTIVE**. The `-v` flag explicitly wipes named volumes, resetting the database to zero. Never use `-v` unless a complete platform purge is intended.
-
-### Backup & Restore One-Liners
-
-```bash
-# Backup the history ledger
-docker exec -t postgres pg_dump -U postgres interview_session_db > history-backup.sql
-
-# Restore the history ledger
-cat history-backup.sql | docker exec -i postgres psql -U postgres -d interview_session_db
-
-# Or use the automated timestamped helper script:
-sh docker/postgres/backup-history.sh [output_dir]
+├── docker-compose.yaml              # Core stack + `engines` profile
+├── docker-compose.observability.yaml # Prometheus, Grafana, Loki stack
+├── docker/lld-runner/               # Pre-warmed offline Maven runner image
+├── scripts/                         # count-tests.sh and automation tools
+├── api-gateway-service/             # Port 8080 (Spring Cloud Gateway)
+├── interview-session-service/       # Port 8081 (Session state, runners, vault)
+├── ai-orchestrator-service/         # Port 8082 (Dialogue, failover, evaluation)
+├── proctor-sentinel-service/        # Port 8083 (Telemetry, focus & anti-cheat)
+├── evaluation-report-service/       # Port 8084 (360° scorecard, study plan)
+├── question-bank-service/           # Port 8086 (Catalog, taxonomy, rubrics)
+├── whisper-sidecar/                 # Port 8178 (Local Whisper.cpp STT)
+└── frontend/                        # React 19 + Tailwind v4 + VS Code Arena
 ```
 
 ---
