@@ -2,15 +2,15 @@
 
 ## Repo facts
 - Maven multi-module · Java 21 · Spring Boot 3.4.2 · Spring Cloud 2024.0.0
-- Modules/ports: service-discovery 8761 · cloud-config 8888 · api-gateway 8080 · interview-session 8081 · ai-orchestrator 8082 · proctor-sentinel 8083 · evaluation-report 8084 · frontend (React 19 + Vite 8, dev 5173 / nginx 80)
-- Package roots: com.interviewos.{ai,session,proctor,evaluation,apigatewayservice,servicediscoveryservice,cloudconfigserver}
-- Runtime config lives ONLY in cloud-config-server/src/main/resources/config-repo/<service>.yaml. Service-local application.yaml stays minimal (name + config import).
+- Modules/ports: api-gateway 8080 · interview-session 8081 · ai-orchestrator 8082 · proctor-sentinel 8083 · evaluation-report 8084 · question-bank 8086 · frontend (React 19 + Vite 8, dev 5173 / nginx 80)
+- Package roots: com.interviewos.{ai,session,proctor,evaluation,apigatewayservice,questionbank}
+- Runtime config lives in each service's src/main/resources/application.yaml with ${ENV:default} overrides (ADR-004 retired cloud-config-server; QB-55 removed the module).
 - Frontend calls relative /api/v1/**; proxied by nginx (prod) and vite (dev). Any new WebSocket path must be added to BOTH proxies (nginx needs Upgrade headers).
 
 ## Conventions
 - Constructor injection via @RequiredArgsConstructor; @Slf4j with sessionId/peerId context; no field @Autowired
 - DTOs = Java records with static fromEntity mappers (match existing files)
-- New endpoints under /api/v1/...; new config keys in config-repo with ${ENV:default} overrides
+- New endpoints under /api/v1/...; new config keys in the owning service's application.yaml with ${ENV:default} overrides
 - Match the existing *ControllerTest style per module for new tests
 
 ## Multi-Machine & Multi-Session Sync (MANDATORY FIRST STEP)

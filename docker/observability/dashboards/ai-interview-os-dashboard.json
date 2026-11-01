@@ -117,7 +117,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{container=~\"api-gateway-service|interview-session-service|ai-orchestrator-service|proctor-sentinel-service|evaluation-report-service|cloud-config-server|service-discovery-service\"} |~ \"(?i)(ERROR|Exception|failed|timeout|refused|deadlock)\"",
+          "expr": "{container=~\"api-gateway-service|interview-session-service|ai-orchestrator-service|proctor-sentinel-service|evaluation-report-service|question-bank-service\"} |~ \"(?i)(ERROR|Exception|failed|timeout|refused|deadlock)\"",
           "refId": "A"
         }
       ],
@@ -139,7 +139,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{container=~\"api-gateway-service|interview-session-service|ai-orchestrator-service|proctor-sentinel-service|evaluation-report-service|cloud-config-server|service-discovery-service\"}",
+          "expr": "{container=~\"api-gateway-service|interview-session-service|ai-orchestrator-service|proctor-sentinel-service|evaluation-report-service|question-bank-service\"}",
           "refId": "A"
         }
       ],
