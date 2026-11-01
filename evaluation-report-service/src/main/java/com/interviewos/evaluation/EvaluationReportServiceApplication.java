@@ -18,6 +18,6 @@ public class EvaluationReportServiceApplication {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("🚀 EvaluationReportService is LIVE, configured with OpenFeign clients for Session & Proctor services, and registered with Eureka.");
+        log.info("🚀 EvaluationReportService is LIVE, configured with OpenFeign clients for Session & Proctor services.");
     }
 }

@@ -37,7 +37,6 @@ class SystemCapabilitiesControllerTest {
                 .services(Map.of(
                         "postgres", true,
                         "mongo", true,
-                        "eureka", true,
                         "orchestrator", true
                 ))
                 .storage(new SystemCapabilitiesService.StorageMetrics(10, 2048000))

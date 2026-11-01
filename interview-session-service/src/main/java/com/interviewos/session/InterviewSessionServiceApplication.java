@@ -18,6 +18,6 @@ public class InterviewSessionServiceApplication {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("🚀 InterviewSessionService is LIVE, initialized JPA Repositories, and registered with Eureka/Prometheus.");
+        log.info("🚀 InterviewSessionService is LIVE, initialized JPA Repositories, and instrumented with Prometheus.");
     }
 }

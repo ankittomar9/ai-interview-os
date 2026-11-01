@@ -16,6 +16,6 @@ public class ProctorSentinelServiceApplication {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("🚀 ProctorSentinelService is LIVE, tracking real-time telemetry (tab switch, paste dump, bursts), and registered with Eureka.");
+        log.info("🚀 ProctorSentinelService is LIVE, tracking real-time telemetry (tab switch, paste dump, bursts).");
     }
 }
