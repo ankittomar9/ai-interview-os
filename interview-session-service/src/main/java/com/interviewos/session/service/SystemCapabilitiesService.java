@@ -167,7 +167,6 @@ public class SystemCapabilitiesService {
         Map<String, Boolean> services = new HashMap<>();
         services.put("postgres", probePostgres());
         services.put("mongo", probeMongo());
-        services.put("eureka", false); // ADR-004: Eureka retired — hardcoded to runtime truth (QB-55)
         services.put("orchestrator", probeHttp(orchestratorUrl + "/actuator/health"));
         services.put("proctor", probeHttp(proctorUrl + "/actuator/health"));
         services.put("questionBank", probeHttp(questionBankUrl + "/actuator/health"));

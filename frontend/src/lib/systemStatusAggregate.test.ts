@@ -59,10 +59,11 @@ test('Intelligence status: dynamic ready count when providers status loaded', ()
   assert.equal(result.text, '2/4 providers ready');
 });
 
-test('Data status: ONLINE when postgres, mongo, eureka all true', () => {
-  assert.equal(computeDataStatus({ postgres: true, mongo: true, eureka: true }), 'ONLINE');
-  assert.equal(computeDataStatus({ postgres: true, mongo: false, eureka: true }), 'DEGRADED');
-  assert.equal(computeDataStatus({ postgres: false, mongo: false, eureka: false }), 'DOWN');
+test('Data status: ONLINE when postgres and mongo are both true', () => {
+  assert.equal(computeDataStatus({ postgres: true, mongo: true }), 'ONLINE');
+  assert.equal(computeDataStatus({ postgres: true, mongo: false }), 'DEGRADED');
+  assert.equal(computeDataStatus({ postgres: false, mongo: false }), 'DOWN');
+  assert.equal(computeDataStatus({ postgres: true, mongo: true, eureka: false }), 'ONLINE'); // regression pin: retired key must not block ONLINE
 });
 
 test('Overall status: OFFLINE when backend not connected', () => {
@@ -106,8 +107,7 @@ const healthyCapabilities = {
     mongo: true,
     orchestrator: true,
     proctor: true,
-    questionBank: true,
-    eureka: false // note: eureka is ignored as non-core
+    questionBank: true
   },
   checkedAt: new Date().toISOString()
 };
@@ -207,19 +207,4 @@ test('Pill status: lists multiple failing services, one line each', () => {
   assert.equal(result.tooltipLines[2], 'SQL Sandbox: Docker socket unavailable');
 });
 
-test('Pill status: eureka false does NOT cause DEGRADED state', () => {
-  const cap = {
-    ...healthyCapabilities,
-    services: {
-      ...healthyCapabilities.services,
-      eureka: false
-    }
-  };
-  const result = computePillStatus({
-    isChecking: false,
-    backendOk: true,
-    capabilities: cap
-  });
-  assert.equal(result.status, 'ONLINE');
-});
 

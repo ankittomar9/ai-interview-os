@@ -52,8 +52,8 @@ export function computeIntelligenceStatus(orchestratorOnline?: boolean, provider
 
 export function computeDataStatus(services?: Record<string, boolean>) {
   if (!services) return 'DOWN' as const;
-  const count = (services.postgres ? 1 : 0) + (services.mongo ? 1 : 0) + (services.eureka ? 1 : 0);
-  if (count === 3) return 'ONLINE' as const;
+  const count = (services.postgres ? 1 : 0) + (services.mongo ? 1 : 0);
+  if (count === 2) return 'ONLINE' as const;
   if (count > 0) return 'DEGRADED' as const;
   return 'DOWN' as const;
 }

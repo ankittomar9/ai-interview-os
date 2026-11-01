@@ -19,6 +19,6 @@ public class AiOrchestratorServiceApplication {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("🚀 AiOrchestratorService is LIVE, initialized AI provider adapters (Ollama, Gemini, Groq, OpenAI), and registered with Eureka.");
+        log.info("🚀 AiOrchestratorService is LIVE, initialized AI provider adapters (Ollama, Gemini, Groq, OpenAI).");
     }
 }
