@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-V206 Verification Report: Session #146 Adjudicated Fix-Pack
 
 | Field | Value |

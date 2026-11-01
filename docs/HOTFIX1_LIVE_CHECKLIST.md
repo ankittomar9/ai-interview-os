@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # HOTFIX-1 Live Verification Checklist (SPEC-PLAN-1 §5 Debts)
 
 | Item | Specification Scope | Command to Run | Expected Observation | Evidence Slot (Log / Screenshot / Result) | Owner | Status |

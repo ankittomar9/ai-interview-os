@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC V-2.0.8 — Per-Question Project Scaffolds for Workspace-Profile Questions (LLD / HLD)
 
 | Metadata | Value |

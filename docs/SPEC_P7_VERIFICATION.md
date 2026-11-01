@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # Verification Report: SPEC P7-AUTOVAULT — Zero-Touch Local Archival
 
 | Metadata | Value |

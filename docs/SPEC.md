@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # AI Interview OS — Living Specification & Roadmap (SPEC.md)
 
 This document serves as the authoritative, living task tracker and acceptance specification for ongoing reliability (R2–R5) and user experience (U1–U4) engineering tasks.

@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-011 — LLD Catalog Seed: 8 Maven-Workspace Low-Level Design Problems (REV 2)
 
 **Published by:** Z.ai (architect/audit lane) · **REV 2 — supersedes REV 1 (`e928e67`)** · **Status:** APPROVED — AWAITING EXECUTION

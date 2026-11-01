@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-V207 Verification Report: Reference-Solution Bank & Arena Decomposition
 
 | Field | Value |

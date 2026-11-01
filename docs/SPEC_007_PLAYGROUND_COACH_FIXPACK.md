@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-007 — Playground Coach Fixpack: Stage Integrity, Payload Honesty, URL Sync
 
 **Status:** APPROVED — AWAITING EXECUTION

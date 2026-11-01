@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-006 — Playground Redesign: Hub / Module Dual View with Toggle
 
 > **Status**: APPROVED FOR EXECUTION · **Author**: Z.ai (architecture/audit lane) · **Reviewer**: Operator (verdict recorded 2026-10-03)
