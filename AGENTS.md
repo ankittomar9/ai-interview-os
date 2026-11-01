@@ -52,10 +52,10 @@ Development occurs across multiple laptops and independent Antigravity sessions 
 - **Read `docs/` first**: Before proposing or implementing cross-service changes, read [docs/README.md](docs/README.md) and the relevant topic documents.
 - **Single Source of Truth**: Active task priorities and acceptance criteria are governed by [docs/SPEC.md](docs/SPEC.md).
 - **One spec → One commit**: Keep commits atomic and scoped to a single milestone or spec task.
-- **Never rebuild working subsystems**: Honor the hard constraints in `docs/architecture.md` (e.g. do not replace Judge0, do not consolidate polyglot persistence without an accepted ADR, do not bypass the API gateway).
+- **Never rebuild working subsystems**: Honor the hard constraints in [docs/architecture.md](e.g. do not replace Judge0, do not consolidate polyglot persistence without an accepted ADR, do not bypass the API gateway).
 - **Topology changes**: Any service split or merge requires an accepted Architectural Decision Record (see [docs/ADR/](docs/ADR/)).
 
-## Operational Guardrails (SPEC-V2 §3)
+## Operational Guardrails (SPEC-V2 §3 + G10)
 ```text
 G1 — IMAGE-ONLY DEPLOY (hard prohibition)
   Never `docker cp` application jars or build artifacts into running containers.
@@ -145,9 +145,49 @@ G9 — PROMPT INJECTION DEFENSE, AGENT PROVENANCE & SANDBOX PAT REUSE (hard secu
      - GitHub Personal Access Tokens (PATs) are server-side credentials and do NOT expire
        when a local sandbox terminates; they remain valid until their configured expiry date.
      - The Operator DOES NOT need to generate a new PAT upon each sandbox restart.
-       Re-supplying the same repository-scoped PAT to Z.ai or Qwen across chat sessions
+     - Re-supplying the same repository-scoped PAT to Z.ai or Qwen across chat sessions
        is approved and standard operational practice.
      - Agents MUST NEVER commit, print, echo, or persist these PATs into repository
        files, logs, or collab files (enforced by Rule G5).
+
+G10 — TWO-TOUCH COLLABORATION PROTOCOL (operator time is the scarcest resource; added 2026-11-02)
+  1. Lane separation (roles & skills):
+     - Operator = authority. Touches a task at most TWICE: kickoff + final ack.
+       Adjudicates ONLY disputes, security findings, and reverts. Never relays
+       agent-to-agent content in the happy path.
+     - Gemini = execution lane: implements specs, writes code/tests/config, builds,
+       runs suites, pushes, merges on green gates. Owns collab/gemini/ + code branches.
+     - Z.ai = audit lane: authors specs, gathers evidence, verifies receipts,
+       post-merge audits, posts verdicts. Owns collab/z/ ONLY; never edits code
+       branches; never merges.
+     - Qwen = review lane: security & architecture review. Owns collab/qwen/.
+  2. One task = at most TWO in-repo documents: the execution report
+     (collab/gemini/<TASK-ID>-REPORT.md) and the audit verdict
+     (collab/z/<TASK-ID>-AUDIT.md). NO per-slice reports. Specs are written
+     for SINGLE-PASS execution. Mid-pass blocker: the executor pushes ONE
+     BLOCKED note (proposed resolution included) to collab/gemini/, waits for
+     the audit lane's answer file in collab/z/, finishes the pass, and posts
+     the single final report.
+  3. Pre-authorized merge (replaces blocking report-before-merge for specced work):
+     An audit-lane spec may pre-authorize the merge to master when EVERY gate
+     digit is machine-green at execution time: diff file-set == spec manifest,
+     receipt deltas == the spec's predicted ledger, suites 0-failure, builds
+     exit 0. ANY mismatch, unlisted file, or unexplained digit => STOP: push
+     what exists, post the report, wait for the audit lane. Never fabricate
+     or hand-wave a gate (G3/G4 still apply).
+  4. Post-merge audit: Z audits merged work on its own session cadence,
+     unprompted by the operator, reading the executor's in-repo report ONLY —
+     no questions routed through the operator. CRITICAL findings (security,
+     data loss, secret leak, receipt forgery) are escalated to the operator
+     immediately; everything else becomes fixup items in the next spec.
+     The last-audited master commit watermark lives in collab/z/AUDIT-LEDGER.md.
+  5. The repository is the ONLY agent-to-agent channel (G8 conventions apply).
+     Kickoff bundling is valid and encouraged: "commit these files verbatim,
+     then execute <spec path>" counts as ONE touch. Committing
+     counterpart-authored files verbatim as courier does NOT violate G8
+     folder ownership — content authorship stays with the owning agent.
+  6. If Z push access is unavailable, Z's per-task deliverables (specs, audit
+     verdicts) travel as ONE operator-forwarded file each, preferably bundled
+     into the next kickoff. (G9.4 PAT reuse remains the approved zero-relay
+     mechanism; its use is the operator's call.)
 ```
-
