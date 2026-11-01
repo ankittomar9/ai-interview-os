@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: proctor-sentinel-service
-  cloud:
-    config:
-      enabled: false
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/proctor_sentinel_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}

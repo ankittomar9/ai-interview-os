@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: interview-session-service
-  cloud:
-    config:
-      enabled: false
   servlet:
     multipart:
       max-file-size: 16MB

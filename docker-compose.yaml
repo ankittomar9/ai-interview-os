@@ -201,9 +201,9 @@ services:
     entrypoint: ["true"]
     profiles: ["build-images"]
 
-  # NOTE (ADR-004 / SPEC-002): Standalone service-discovery-service (:8761) and
-  # cloud-config-server (:8888) have been retired in favor of Docker internal DNS
-  # (ai-interview-net bridge) and profile inlining, reducing host RAM by ~750MB.
+  # NOTE (ADR-004 / QB-55): Standalone service-discovery-service (:8761) and
+  # cloud-config-server (:8888) were retired in ADR-004 and fully removed from the
+  # repository under QB-55 in favor of Docker internal DNS (ai-interview-net) and profile inlining.
 
   # 3. Interview Session Service (Protected via Gateway & Socket Proxy)
   interview-session-service:

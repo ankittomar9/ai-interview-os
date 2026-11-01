@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: ai-orchestrator-service
-  cloud:
-    config:
-      enabled: false
   servlet:
     multipart:
       max-file-size: 25MB

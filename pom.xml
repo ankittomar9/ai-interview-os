@@ -21,7 +21,6 @@
     <modules>
         <!-- Infrastructure Layer -->
         <module>service-discovery-service</module>
-        <module>cloud-config-server</module>
         <module>api-gateway-service</module>
 
         <!-- Business Microservices Layer -->
