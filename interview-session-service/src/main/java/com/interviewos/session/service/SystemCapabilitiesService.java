@@ -10,7 +10,6 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
@@ -36,7 +35,6 @@ public class SystemCapabilitiesService {
     private final DataSource dataSource;
     private final MongoTemplate mongoTemplate;
     private final GridFSBucket gridFSBucket;
-    private final DiscoveryClient discoveryClient;
 
     @Value("${ai.orchestrator.url:http://ai-orchestrator-service:8082}")
     private String orchestratorUrl;
@@ -169,7 +167,7 @@ public class SystemCapabilitiesService {
         Map<String, Boolean> services = new HashMap<>();
         services.put("postgres", probePostgres());
         services.put("mongo", probeMongo());
-        services.put("eureka", probeEureka());
+        services.put("eureka", false); // ADR-004: Eureka retired — hardcoded to runtime truth (QB-55)
         services.put("orchestrator", probeHttp(orchestratorUrl + "/actuator/health"));
         services.put("proctor", probeHttp(proctorUrl + "/actuator/health"));
         services.put("questionBank", probeHttp(questionBankUrl + "/actuator/health"));
@@ -204,13 +202,6 @@ public class SystemCapabilitiesService {
         }
     }
 
-    private boolean probeEureka() {
-        try {
-            return discoveryClient != null && !discoveryClient.getServices().isEmpty();
-        } catch (Exception e) {
-            return false;
-        }
-    }
 
     private boolean probeHttp(String url) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();

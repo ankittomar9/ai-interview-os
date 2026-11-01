@@ -112,13 +112,6 @@ spring:
           predicates:
             - Path=/api/v1/catalog/**
 
-eureka:
-  instance:
-    prefer-ip-address: true
-  client:
-    enabled: ${EUREKA_ENABLED:false}
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
 
 management:
   endpoints:

@@ -61,9 +61,6 @@ evaluation:
   report:
     url: ${EVALUATION_REPORT_URL:http://evaluation-report-service:8084}
 
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
 
 management:
   endpoints:

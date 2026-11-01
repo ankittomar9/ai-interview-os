@@ -28,9 +28,6 @@ proctor:
     keystroke-burst-penalty: 10
     keystroke-burst-cpm-threshold: 800
 
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
 
 management:
   endpoints:

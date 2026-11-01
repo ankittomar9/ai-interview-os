@@ -28,9 +28,6 @@ services:
     url: ${SERVICES_AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}
     timeout-seconds: ${AI_ORCHESTRATOR_TIMEOUT_SECONDS:65}
 
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
 
 management:
   endpoints:

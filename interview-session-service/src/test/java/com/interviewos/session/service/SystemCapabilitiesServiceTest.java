@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
 import javax.sql.DataSource;
@@ -56,8 +55,6 @@ class SystemCapabilitiesServiceTest {
     @Mock
     private GridFSFindIterable gridFSFindIterable;
 
-    @Mock
-    private DiscoveryClient discoveryClient;
 
     private SystemCapabilitiesService service;
 
@@ -67,7 +64,6 @@ class SystemCapabilitiesServiceTest {
         lenient().when(connection.createStatement()).thenReturn(statement);
         lenient().when(statement.execute(anyString())).thenReturn(true);
         lenient().when(gridFSBucket.find()).thenThrow(new RuntimeException("not needed for unit test"));
-        lenient().when(discoveryClient.getServices()).thenReturn(Collections.emptyList());
 
         service = new SystemCapabilitiesService(
                 judge0Client,
@@ -75,8 +71,7 @@ class SystemCapabilitiesServiceTest {
                 sqlPostgresRunner,
                 dataSource,
                 mongoTemplate,
-                gridFSBucket,
-                discoveryClient
+                gridFSBucket
         );
     }
 
