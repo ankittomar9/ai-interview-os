@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # V-2.0.7-SPEC — Reference-Solution Bank (Multi-Approach) & Arena Decomposition (r1)
 
 | Metadata | Value |

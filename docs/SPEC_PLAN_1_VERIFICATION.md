@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-PLAN-1 Verification Log & Audit Trail
 
 This append-only verification log records the evidence, automated test runs, line counts, and commit hashes for each batch executed under **SPEC-PLAN-1**.

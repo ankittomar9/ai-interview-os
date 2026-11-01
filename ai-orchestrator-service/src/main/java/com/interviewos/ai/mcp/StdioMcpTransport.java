@@ -12,6 +12,12 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.*;
 
+/**
+ * @deprecated Tier-3 MCP Roadmap Quarantine (QB-54 / SPEC-019).
+ * Transport implementation for out-of-process STDIO MCP servers.
+ * Currently quarantined pending configuration wiring for external MCP servers.
+ */
+@Deprecated
 @Slf4j
 public class StdioMcpTransport implements McpTransport {
 

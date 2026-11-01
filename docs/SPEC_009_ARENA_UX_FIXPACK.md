@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-009 — Playground Arena UX Fixpack: CTA Dedupe, Coach Panel Control, Turn Abort, Prompt Relevance
 
 **Status:** APPROVED — AWAITING EXECUTION · **REV 2** (2026-10-03: F-3 retargeted to the StageStepper reel after Gemini's independent analysis confirmed the operator's "reel" is the top bar, not the rail; stop-affordance pointer corrected; ↑ draft recall adopted from Gemini proposal — see §0.1)

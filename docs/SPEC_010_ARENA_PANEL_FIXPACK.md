@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-010 — Arena Panel Fixpack: Geometry Safety, Transcript Collapse, Inline Formatting
 
 **Status:** APPROVED — AWAITING EXECUTION · REV 1

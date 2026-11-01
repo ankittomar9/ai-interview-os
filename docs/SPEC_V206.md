@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # V-2.0.6-SPEC — Session #146 Adjudicated Fix-Pack (r1, re-issued)
 
 > **Re-issue note (r1):** The original SPEC file was lost in a workspace environment rebuild before it

@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-008 — Client Telemetry Echo: Browser Logs into the Loki Pane
 
 **Status:** APPROVED — AWAITING EXECUTION

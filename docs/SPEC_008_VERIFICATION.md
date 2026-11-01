@@ -1,3 +1,5 @@
+> **STATUS: HISTORICAL SPECIFICATION** — Retained for architectural provenance. Current active development and audits are governed by collab/ protocol.
+
 # SPEC-008 Verification Log: Interview Flow Integrity & First-Screen Polish
 
 | Field | Value |

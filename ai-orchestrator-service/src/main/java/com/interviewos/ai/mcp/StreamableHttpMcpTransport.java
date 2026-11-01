@@ -9,6 +9,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+/**
+ * @deprecated Tier-3 MCP Roadmap Quarantine (QB-54 / SPEC-019).
+ * Transport implementation for HTTP/SSE-streamable MCP servers.
+ * Currently quarantined pending configuration wiring for external MCP servers.
+ */
+@Deprecated
 @Slf4j
 public class StreamableHttpMcpTransport implements McpTransport {
 
