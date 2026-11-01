@@ -201,9 +201,9 @@ services:
     entrypoint: ["true"]
     profiles: ["build-images"]
 
-  # NOTE (ADR-004 / SPEC-002): Standalone service-discovery-service (:8761) and
-  # cloud-config-server (:8888) have been retired in favor of Docker internal DNS
-  # (ai-interview-net bridge) and profile inlining, reducing host RAM by ~750MB.
+  # NOTE (ADR-004 / QB-55): Standalone service-discovery-service (:8761) and
+  # cloud-config-server (:8888) were retired in ADR-004 and fully removed from the
+  # repository under QB-55 in favor of Docker internal DNS (ai-interview-net) and profile inlining.
 
   # 3. Interview Session Service (Protected via Gateway & Socket Proxy)
   interview-session-service:
@@ -217,7 +217,6 @@ services:
     environment:
       - SERVER_PORT=8081
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
-      - EUREKA_ENABLED=false
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/interview_session_db
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
@@ -251,7 +250,6 @@ services:
     environment:
       - SERVER_PORT=8082
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
-      - EUREKA_ENABLED=false
       - OLLAMA_ENDPOINT=http://host.docker.internal:11434/api/generate
       - OLLAMA_MODEL=qwen2.5-coder:7b
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -295,7 +293,6 @@ services:
     environment:
       - SERVER_PORT=8083
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
-      - EUREKA_ENABLED=false
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/proctor_sentinel_db
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
@@ -315,7 +312,6 @@ services:
     environment:
       - SERVER_PORT=8084
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
-      - EUREKA_ENABLED=false
       - SESSION_SERVICE_URL=http://interview-session-service:8081
       - PROCTOR_SERVICE_URL=http://proctor-sentinel-service:8083
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/evaluation_report_db
@@ -337,7 +333,6 @@ services:
     environment:
       - SERVER_PORT=8086
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
-      - EUREKA_ENABLED=false
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/questionbank
       - GROQ_MODEL=${GROQ_MODEL:-openai/gpt-oss-120b}
       - GROQ_FALLBACK_MODELS=${GROQ_FALLBACK_MODELS:-openai/gpt-oss-20b,qwen/qwen3.8-27b}
@@ -359,7 +354,6 @@ services:
     mem_limit: 384m
     environment:
       - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m -XX:+UseSerialGC
-      - EUREKA_ENABLED=false
       - SESSION_SERVICE_URL=http://interview-session-service:8081
       - AI_ORCHESTRATOR_URL=http://ai-orchestrator-service:8082
       - PROCTOR_SENTINEL_URL=http://proctor-sentinel-service:8083

@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: evaluation-report-service
-  cloud:
-    config:
-      enabled: false
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/evaluation_report_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
@@ -31,9 +28,6 @@ services:
     url: ${SERVICES_AI_ORCHESTRATOR_URL:http://ai-orchestrator-service:8082}
     timeout-seconds: ${AI_ORCHESTRATOR_TIMEOUT_SECONDS:65}
 
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
 
 management:
   endpoints:

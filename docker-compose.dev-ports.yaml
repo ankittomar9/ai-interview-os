@@ -3,13 +3,6 @@
 # Usage: docker compose -f docker-compose.yaml -f docker-compose.dev-ports.yaml up
 # ==============================================================================
 services:
-  service-discovery-service:
-    ports:
-      - "8761:8761"
-
-  cloud-config-server:
-    ports:
-      - "8888:8888"
 
   interview-session-service:
     ports:

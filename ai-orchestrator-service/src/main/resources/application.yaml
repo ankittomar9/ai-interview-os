@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: ai-orchestrator-service
-  cloud:
-    config:
-      enabled: false
   servlet:
     multipart:
       max-file-size: 25MB
@@ -52,9 +49,6 @@ question:
   bank:
     url: ${QUESTION_BANK_URL:http://question-bank-service:8086}
 
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
 
 # SPEC-019 / C3: MCP Host API endpoints gate (default disabled).
 # Intended for local-only, trusted internal network communications.

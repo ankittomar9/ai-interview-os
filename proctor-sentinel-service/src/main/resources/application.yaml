@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: proctor-sentinel-service
-  cloud:
-    config:
-      enabled: false
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/proctor_sentinel_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
@@ -31,9 +28,6 @@ proctor:
     keystroke-burst-penalty: 10
     keystroke-burst-cpm-threshold: 800
 
-eureka:
-  client:
-    enabled: ${EUREKA_ENABLED:false}
 
 management:
   endpoints:
