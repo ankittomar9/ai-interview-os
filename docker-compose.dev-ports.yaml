@@ -7,10 +7,6 @@ services:
     ports:
       - "8761:8761"
 
-  cloud-config-server:
-    ports:
-      - "8888:8888"
-
   interview-session-service:
     ports:
       - "8081:8081"
