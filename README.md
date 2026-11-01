@@ -277,7 +277,7 @@ npm run build     # tsc -b && vite build
 ./scripts/count-tests.sh --markdown
 ```
 
-Services read datasource, Mongo, Judge0, Docker-socket and Vault configuration from environment (see `docker-compose.yaml`; per-service overrides in `cloud-config-server/src/main/resources/config-repo/`). Question content is **auto-seeded**: `QuestionMarkdownSeeder` scans `classpath*:content/questions/**/*.md` at boot, validates every file through `ContentValidator`, and loads the taxonomy from `content/questions/_taxonomy.yaml`. To add a question, drop a Markdown file under `question-bank-service/src/main/resources/content/questions/` and restart `question-bank-service`.
+Services read datasource, Mongo, Judge0, Docker-socket and Vault configuration from environment (see `docker-compose.yaml`; per-service configuration in each service's `src/main/resources/application.yaml`). Question content is **auto-seeded**: `QuestionMarkdownSeeder` scans `classpath*:content/questions/**/*.md` at boot, validates every file through `ContentValidator`, and loads the taxonomy from `content/questions/_taxonomy.yaml`. To add a question, drop a Markdown file under `question-bank-service/src/main/resources/content/questions/` and restart `question-bank-service`.
 
 ---
 
@@ -361,7 +361,7 @@ Current verified repository baseline:
 
 ```
 ai-interview-os/
-├── docker-compose.yaml              # Core stack + `engines` profile
+├── docker-compose.yaml              # Core stack + `build-images`, `local-stt` profiles
 ├── docker-compose.observability.yaml # Prometheus, Grafana, Loki stack
 ├── docker/lld-runner/               # Pre-warmed offline Maven runner image
 ├── scripts/                         # count-tests.sh and automation tools
