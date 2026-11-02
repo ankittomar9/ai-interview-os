@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-21
+FROM maven:3.9.9-eclipse-temurin-21
 
 LABEL maintainer="ai-interview-os"
 LABEL description="Pre-warmed isolated container runner for Spring Boot 3.4 / JUnit 5 LLD evaluation"
