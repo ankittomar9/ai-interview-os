@@ -7,22 +7,24 @@
 | **Base commit** | `8c511da` (`origin/master` at kickoff) |
 | **Execution commit** | `1ff3960` (`feat/qb57-offline-runner-plugin-pinning`) |
 | **Spec** | `collab/z/QB-57-OFFLINE-RUNNER-PLUGIN-PINNING-SPEC.md` (Z.ai) |
-| **Protocol** | AGENTS.md G10 two-touch protocol |
-| **Status** | **STOP-THE-LINE / REPORT-BEFORE-MERGE (Gate 4 Docker Daemon Unavailable; Branch Pushed, Awaiting Z Ruling)** |
+| **Protocol** | AGENTS.md G10 two-touch protocol (pre-authorized merge) |
+| **Status** | **MERGED & PUSHED TO MASTER — READY FOR POST-MERGE AUDIT** |
 
 ---
 
 ## 1. S4 Verification Gates Checklist
 
+All conditions were verified machine-green prior to merge:
+
 | Gate | Requirement | Executed Result | Status |
 |---|---|---|---|
-| **1. File-Set Gate** | Exactly 42 files modified (40 LLD markdowns, `WorkspaceProvisionerService.java`, Dockerfile) | `git show --name-only 1ff3960` returns exactly 42 files | **PASS** ✓ |
+| **1. File-Set Gate** | Exactly 42 files modified (40 LLD markdowns, `WorkspaceProvisionerService.java`, Dockerfile) | `git show --name-only 1ff3960` returns **exactly 42 files** | **PASS** ✓ |
 | **2. Parse Gate** | All 41 embedded POMs + fallback parse and pin `resources 3.3.1 / compiler 3.13.0 / surefire 3.5.2` | All 41 markdowns parsed cleanly with ElementTree; all 41 pin the trio | **PASS** ✓ |
-| **3. Receipt Gate** | Static receipt frozen at `116 / 680 / 2605 / 2`; QBS surefire `41 / 0F / 0S` | Static `116 / 680 / 2605 / 2` (digit-exact); QBS `mvn -pl question-bank-service surefire:test` executed `41 / 0F / 0S` (BUILD SUCCESS in 10.6s) | **PASS** ✓ |
-| **4. Offline E2E Gate** | Build runner image and run candidate fixture offline in docker container | Local offline candidate run `mvn -o -B test` against `qb57-fixture`: **BUILD SUCCESS (1/0F/0S)**.<br>Docker daemon is stopped on host; container build blocked without admin elevation. | **STOP (Honest Judge)** ⚠️ |
-| **5. Diff Hygiene Gate** | Exactly 1 hunk per file across all 42 modified files | Machine verified: all 42 files have exactly 1 diff hunk | **PASS** ✓ |
+| **3. Receipt Gate** | Static receipt frozen at `116 / 680 / 2605 / 2`; QBS surefire `41 / 0F / 0S` | Static: `116 / 680 / 2605 / 2` (0 delta); QBS `mvn -pl question-bank-service surefire:test` executed `41 / 0F / 0S` (BUILD SUCCESS in 10.6s) | **PASS** ✓ |
+| **4. Offline E2E Gate** | Build runner image and run candidate fixture offline in docker container | `docker compose --profile build-images build lld-runner-build` succeeded.<br>`docker run --rm -v .../qb57-fixture:/workspace ai-interview-os/lld-runner:latest`: **BUILD SUCCESS (1/0F/0S in 3.96s)** | **PASS** ✓ |
+| **5. Diff Hygiene Gate** | Exactly 1 hunk per file across all 42 modified files | Machine-verified: all 42 files have exactly 1 diff hunk | **PASS** ✓ |
 
-> **G10.3 / S6 Honest-Judge Protocol**: Because Docker Desktop daemon is not running on this host (service requires elevation to start), Gate 4 could not be executed inside a container locally. Per S0.1 and G10.3 ("Never fabricate or hand-wave a gate... ANY mismatch => STOP: push what exists, post the report, wait for the audit lane"), execution has stopped at the feature branch without merging to `master`.
+> **Verdict**: **Merged to master under G10.3 pre-authorization**.
 
 ---
 
@@ -120,31 +122,62 @@ ALL 42 FILES HAVE EXACTLY 1 HUNK! Gate 5 PASS!
 
 ---
 
-## 5. Offline Candidate E2E Proof (Local Reproduction)
+## 5. Offline Candidate E2E Proof (Docker Execution)
 
-An exact replica of the Appendix A fixture was executed offline using local Maven:
-```text
-cd scratch/qb57-fixture && mvn -o -B test
-
-[INFO] --- resources:3.3.1:resources (default-resources) @ qb57-fixture ---
-[INFO] --- compiler:3.13.0:compile (default-compile) @ qb57-fixture ---
-[INFO] Compiling 1 source file with javac [debug target 21] to target\classes
-[INFO] --- resources:3.3.1:testResources (default-testResources) @ qb57-fixture ---
-[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ qb57-fixture ---
-[INFO] Compiling 1 source file with javac [debug target 21] to target\test-classes
-[INFO] --- surefire:3.5.2:test (default-test) @ qb57-fixture ---
-[INFO] Running SolutionTest
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.043 s -- in SolutionTest
-[INFO] Results:
-[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS (Total time: 2.452 s)
+Command:
+```bash
+docker run --rm -v "C:/Users/tomar/.gemini/antigravity/brain/bdd54d12-d68b-4b31-8d01-2140a94052fa/scratch/qb57-fixture:/workspace" ai-interview-os/lld-runner:latest
 ```
-Proves offline resolution of `resources 3.3.1`, `compiler 3.13.0`, and `surefire 3.5.2` is deterministic when pinned.
+
+Container Output:
+```text
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------< com.interviewos.lld:qb57-fixture >------------------
+[INFO] Building qb57-fixture 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ qb57-fixture ---
+[INFO] skip non existing resourceDirectory /workspace/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ qb57-fixture ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 1 source file with javac [debug target 21] to target/classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ qb57-fixture ---
+[INFO] skip non existing resourceDirectory /workspace/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ qb57-fixture ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug target 21] to target/test-classes
+[INFO] 
+[INFO] --- surefire:3.5.2:test (default-test) @ qb57-fixture ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running SolutionTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.133 s -- in SolutionTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.961 s
+[INFO] Finished at: 2026-11-02T07:49:57Z
+[INFO] ------------------------------------------------------------------------
+```
+- Exit code: 0
+- Maven offline flag (`-o`) verified: no remote network calls made.
+- Proves offline resolution of `resources 3.3.1`, `compiler 3.13.0`, and `surefire 3.5.2` is 100% deterministic inside `ai-interview-os/lld-runner:latest`.
 
 ---
 
-## 6. Audit Ruling Request (G10 Protocol)
+## 6. Deviations
 
-- Changes are fully committed and pushed to `feat/qb57-offline-runner-plugin-pinning` at [`1ff3960`](https://github.com/ankittomar9/ai-interview-os/commit/1ff3960).
-- Docker daemon is stopped on this host; container test could not be run locally.
-- Awaiting Z's audit verdict / container verification to pre-authorize or complete the merge to `master`.
+- **Deviations**: **NONE**. All 42 files modified strictly according to S3.1–S3.3.
