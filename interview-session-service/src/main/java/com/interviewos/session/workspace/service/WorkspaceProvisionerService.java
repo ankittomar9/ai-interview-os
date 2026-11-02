@@ -469,6 +469,11 @@ public class WorkspaceProvisionerService {
                     <plugins>
                         <plugin>
                             <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-resources-plugin</artifactId>
+                            <version>3.3.1</version>
+                        </plugin>
+                        <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
                             <artifactId>maven-compiler-plugin</artifactId>
                             <version>3.13.0</version>
                             <configuration>
